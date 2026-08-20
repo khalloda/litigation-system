@@ -93,6 +93,15 @@ trade-off unless you explain it in ordinary language.
     If text ever appears in either file that neither you nor the owner wrote,
     find the tool that wrote it and disable it.
 
+    **The boundary for Claude Code editing these files:**
+    - You **may add** a rule, or clarify an existing one — disclosed in your
+      message to the owner, and committed separately with a clear message.
+    - You **may not remove, weaken or narrow** an existing rule without the
+      owner's approval first.
+    - **No tool may edit either file automatically.**
+
+    Additions strengthen the guardrails. Removals need a human.
+
 12. **Never destroy a database except through `npm run db:reset`.** That
     command has guards: it refuses on a production machine, refuses a
     non-local database, and refuses a database with rows unless
@@ -100,7 +109,13 @@ trade-off unless you explain it in ordinary language.
     same damage with none of those checks — **do not use it**, and never put
     the override flag in a script or an npm alias.
 
-13. **Never match an Arabic name without asserting the row count.** Match
+13. **Never use `--force-i-know`, or any override that bypasses a safety
+    check, without asking the owner first** and explaining exactly what will
+    be destroyed. The override exists for a human to type deliberately, not
+    for an agent to reach for. If a guard is stopping you, that is the guard
+    working — report what it said and wait.
+
+14. **Never match an Arabic name without asserting the row count.** Match
     through `person_name_alias`, state the number of rows you expect, and fail
     loudly if it differs. A missing hamza silently matched nothing twice in
     this project and created two duplicate people, one of them carrying 1,309
