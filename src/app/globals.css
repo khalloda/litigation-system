@@ -1,0 +1,24 @@
+/*
+ * Placeholder stylesheet — task 0.1.
+ *
+ * The real one arrives in task 0.4: brand colours from docs/BRAND.md as CSS
+ * custom properties, Noto Naskh Arabic bundled locally, right-to-left layout.
+ *
+ * Rule for everything written here from 0.4 onward: CSS LOGICAL PROPERTIES
+ * only. `margin-inline-start`, never `margin-left`. See docs/BRAND.md.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+}

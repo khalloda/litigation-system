@@ -1,0 +1,21 @@
+# Generated or vendored — not ours to format.
+.next/
+out/
+build/
+coverage/
+node_modules/
+next-env.d.ts
+package-lock.json
+
+# Bundled fonts and images.
+public/fonts/
+assets/
+
+# SQL and PowerShell are hand-formatted with aligned columns and Arabic
+# comments. Prettier does not understand either and would wreck the alignment.
+sql/
+scripts/
+
+# Reference documents. Prettier reflows Arabic paragraphs and tables badly.
+docs/
+*.md

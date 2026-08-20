@@ -48,7 +48,27 @@ Excel via ExcelJS. PDF via Playwright. Rationale in `docs/DECISIONS.md`.
 ## Running it
 
 ```bash
-docker compose up -d      # database
 npm install
 npm run dev               # http://localhost:3000
 ```
+
+The database arrives in task 0.2 (`docker compose up -d`). Until then the app
+runs on its own with no database.
+
+### Before every commit
+
+```bash
+npm run check
+```
+
+That runs three things in one go: the TypeScript type check, ESLint, and the
+formatting check. All three must pass. `npm run format` fixes formatting
+automatically; `npm run lint:fix` fixes what ESLint can fix on its own.
+
+Note: since Next.js 16, `npm run build` no longer runs ESLint. `npm run check`
+is the gate.
+
+### Requirements
+
+Node.js 22 or newer (see `.nvmrc`). Docker Desktop on Windows, Docker Engine
+on the Ubuntu server.

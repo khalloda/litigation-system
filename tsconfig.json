@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+
+    /* Strictness. `strict` is the baseline; the three below catch mistakes
+       that matter for this project specifically. */
+    "strict": true,
+
+    /* Reading past the end of an array gives `undefined`, not a silent
+       wrong value. Matters when handling migrated rows that may be short. */
+    "noUncheckedIndexedAccess": true,
+
+    /* Windows treats Foo.ts and foo.ts as the same file; Ubuntu does not.
+       Without this, an import that works on the laptop fails on the server. */
+    "forceConsistentCasingInFileNames": true,
+
+    "noImplicitOverride": true,
+
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
