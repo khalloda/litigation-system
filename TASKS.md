@@ -68,6 +68,11 @@ be bigger than expected, split it and tell the owner.
 
 Follow `docs/MIGRATION.md` exactly. Do not shortcut the gates.
 
+**Every gate must be proved before it is trusted:** break something on purpose,
+confirm the gate catches it, and record what was broken and what it said. See
+"Prove the check catches a failure" in `docs/MIGRATION.md`. A gate that has
+only ever seen good data is not known to work.
+
 - [ ] **2.1 Extract** — run `scripts/01_extract_access.ps1`.
       **Gate 1: must report 54 attachments and 288 multi-value entries.**
       If either is zero, stop.

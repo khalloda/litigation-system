@@ -130,12 +130,55 @@ later when a report comes up short.
 
 4. The same applies in TypeScript transforms: compare the returned count against
    the expected figure and throw. Never log a warning and carry on.
-5. When an expected count changes, **re-derive every figure that depends on it**.
-   Merging two duplicate people moved five separate numbers: total people
-   140 → 138, staff 69 → 67, current staff 23 → 21, unassigned 18 → 16,
-   aliases 338 → 339. Four of the five were missed on the first pass.
-
 Apply this to seeds, transforms and reconciliation queries alike.
+
+### The cascade rule
+
+**When an expected count changes, re-derive every figure that depends on it.
+Do not edit the one you noticed.**
+
+Merging two duplicate people moved **five** numbers, not one:
+
+| | was | now |
+|---|---:|---:|
+| total people | 140 | 138 |
+| firm staff | 69 | 67 |
+| current staff | 23 | 21 |
+| current staff with no team | 18 | 16 |
+| aliases | 338 | 339 |
+
+Four of the five were missed on the first pass, and the stale figures had been
+written into a validation query. **An assertion that fails on correct data is
+worse than no assertion at all**: the natural response is to loosen it until it
+passes, and at that point it has stopped being a check while still looking like
+one.
+
+Re-derive figures **by parsing the data**, never by reading the comment that
+describes it. Twice in one day the description was wrong and the data was
+right.
+
+### Prove the check catches a failure
+
+**Before trusting any gate or assertion, break something on purpose and confirm
+it fails.**
+
+A check that has only ever seen good data is not known to work. This found a
+real fault in the database setup: PostgreSQL started perfectly well with no
+Arabic collation, and the health check said "healthy" — because it was only
+asking whether the server answered. Dropping the collation on a running
+database exposed it in seconds.
+
+Apply this to **every one of the four migration gates**:
+
+| Gate | Break it like this | It must |
+|---|---|---|
+| 1 — extract | Point it at a table with a row removed; blank an attachment | Report the count mismatch and stop |
+| 2 — load | Delete a row from a staging file after extraction | Refuse to proceed, naming the table |
+| 3 — profile | Add an unmappable value that no crosswalk row covers | Land it in quarantine, not in the target table |
+| 4 — reconcile | Change one lawyer's matter count; drop one hearing | Fail the comparison and name the figure |
+
+Record the result of each deliberate break next to the gate. "We ran it and it
+passed" is not evidence that a gate works.
 
 ## Quarantine, don't delete
 
