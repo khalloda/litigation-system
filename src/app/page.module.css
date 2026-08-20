@@ -39,8 +39,21 @@
   padding-inline: var(--space-6);
   margin-block-end: var(--space-4);
 
-  /* The accent stripe sits on the leading edge — the right in Arabic, and
-     automatically the left if the interface is ever run left-to-right. */
+  /*
+   * The accent stripe sits on the leading edge — the right in Arabic, and
+   * automatically the left if the interface is ever run left-to-right.
+   *
+   * DELIBERATE HERE, AND NOWHERE ELSE. A thick coloured stripe down one side
+   * of a card is a stock template flourish and the design hook flags it as
+   * one, correctly. It earns its place on this page only because it IS the
+   * demonstration: it is how a reader sees with their own eyes that a logical
+   * property resolves to the RIGHT edge in an Arabic page. The browser
+   * measurement recorded in the task 0.4 commit is this line — 4px on the
+   * right, 1px on the left.
+   *
+   * This page is a scaffold and Stage 5 deletes it. Do not carry this stripe
+   * into the real screens.
+   */
   border-inline-start: 4px solid var(--colour-accent);
 }
 
