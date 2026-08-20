@@ -1,0 +1,92 @@
+# ===========================================================================
+#  Litigation Management System — local and server database
+#
+#  One command brings it up, on the Windows laptop and on the Ubuntu server:
+#
+#      docker compose up -d
+#
+#  Nothing else is needed. Settings can be overridden in a .env file next to
+#  this one; copy .env.example to .env to start.
+# ===========================================================================
+
+services:
+  db:
+    # Pinned to the major version on purpose. PostgreSQL will not open a data
+    # folder created by a different major version, so an accidental upgrade
+    # must never happen by itself.
+    image: postgres:17-bookworm
+    container_name: litigation-db
+    # Restarts after a server reboot or a crash. Note this also restarts after
+    # a failed first-time setup — which is why the health check below verifies
+    # the setup itself, not merely that the server is up.
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-litigation}
+      POSTGRES_USER: ${POSTGRES_USER:-litigation}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_only_change_me}
+
+      # The database is created UTF-8. The collation provider is ICU, which is
+      # what makes Arabic sort correctly: ICU treats أ and ا as the same letter
+      # at sorting strength, so أحمد and احمد land next to each other in a
+      # name list. The plain byte ordering puts them in different places.
+      POSTGRES_INITDB_ARGS: >-
+        --encoding=UTF8
+        --locale-provider=icu
+        --icu-locale=ar-EG
+        --locale=C.UTF-8
+
+      # Arabic messages are not wanted in the server log; keep it English.
+      LANG: C.UTF-8
+
+    ports:
+      # Bound to 127.0.0.1 deliberately: the database is reachable from this
+      # machine only, never from the office network or the internet, whatever
+      # the password is. Change this only with a firewall rule in front of it.
+      #
+      # 5433, not the usual 5432. The owner's laptop already runs another
+      # PostgreSQL on 5432 (the ZKBioTime attendance system). That one is a
+      # live system and must not be disturbed.
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
+
+    volumes:
+      # A named volume, not a folder on the host. Bind mounts break PostgreSQL
+      # permissions on Windows, and this has to work identically on both
+      # machines.
+      - db-data:/var/lib/postgresql/data
+
+      # Runs ONCE, only when db-data is empty. See "Changing the setup" in
+      # docs/DATABASE.md.
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+
+      # Checks, available inside the container so no shell redirection is
+      # needed. `npm run db:verify` runs this.
+      - ./docker/postgres/verify.sql:/verify.sql:ro
+      - ./docker/postgres/healthcheck.sh:/healthcheck.sh:ro
+
+    healthcheck:
+      # Not just "is PostgreSQL answering" — it also confirms the Arabic
+      # collation and the search extensions are present, so a half-finished
+      # setup can never report healthy. See docker/postgres/healthcheck.sh.
+      test: ['CMD', 'bash', '/healthcheck.sh']
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+    # 13,279 hearings is small, but reports do grouped scans over all of it.
+    # These are modest, safe values for a laptop and comfortable on the server.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - log_min_duration_statement=1000 # log any query slower than 1 second
+
+volumes:
+  db-data:
+    name: litigation-db-data

@@ -15,7 +15,7 @@ be bigger than expected, split it and tell the owner.
       `.env`, `node_modules`, and **any database file or CSV export** — the data
       is confidential and must never be committed.
 
-- [ ] **0.2 Docker Compose**
+- [x] **0.2 Docker Compose**
       PostgreSQL 16+ with the ICU Arabic collation available. One command must
       bring the database up on Windows and on the Ubuntu server.
 

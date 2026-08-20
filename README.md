@@ -36,6 +36,7 @@ in the database for a possible future bilingual version.
 | `docs/DECISIONS-ADDENDUM.md` | Merged into `DECISIONS.md` — kept as a pointer |
 | `docs/PERMISSIONS.md` | The four user roles |
 | `docs/BRAND.md` | Colours, fonts, right-to-left rules |
+| `docs/DATABASE.md` | Running the database, and what to do when it complains |
 | `docs/DECISIONS.md` | Decisions already made, and why. **Do not re-open these.** |
 | `docs/GLOSSARY.md` | Arabic legal terms explained |
 | `TASKS.md` | The build order. Work through it top to bottom. |
@@ -48,12 +49,15 @@ Excel via ExcelJS. PDF via Playwright. Rationale in `docs/DECISIONS.md`.
 ## Running it
 
 ```bash
+cp .env.example .env
 npm install
+npm run db:up             # PostgreSQL 17 in Docker, on port 5433
 npm run dev               # http://localhost:3000
 ```
 
-The database arrives in task 0.2 (`docker compose up -d`). Until then the app
-runs on its own with no database.
+`npm run db:verify` confirms the database is set up correctly — every line
+must read PASS. Full details, including what to do when something is wrong,
+are in `docs/DATABASE.md`.
 
 ### Before every commit
 

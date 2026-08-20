@@ -15,7 +15,13 @@
     "lint:fix": "eslint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run typecheck && npm run lint && npm run format:check"
+    "check": "npm run typecheck && npm run lint && npm run format:check",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f db",
+    "db:psql": "docker compose exec db psql -U litigation -d litigation",
+    "db:verify": "docker compose exec db psql -U litigation -d litigation -f /verify.sql",
+    "db:reset": "docker compose down -v && docker compose up -d --wait"
   },
   "dependencies": {
     "next": "16.3.1",
