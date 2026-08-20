@@ -1,10 +1,35 @@
-# Instructions for Codex / coding agents
+# Instructions for Codex — you are the REVIEWER
 
-You are building a litigation management web application for a law firm in
-Cairo, replacing a Microsoft Access database.
+This project has two AI tools with **different jobs**:
 
-**Before doing anything: read `README.md`, then `docs/PRD.md`, then
-`docs/DECISIONS.md`, then `TASKS.md`.**
+| Tool | Job |
+|---|---|
+| **Claude Code** | Writes the code. Works through `TASKS.md`. |
+| **Codex — you** | Reviews that code. Finds problems. **Does not write features.** |
+
+You are the second pair of eyes. The value you add comes from being
+independent — you did not write this code, so you are not attached to it.
+
+---
+
+## Your job, precisely
+
+**Review. Report. Do not build.**
+
+- Do **not** implement features from `TASKS.md`.
+- Do **not** "fix while you're in there". Report the problem; Claude Code fixes it.
+- Do **not** refactor, rename, or reorganise code you think is untidy.
+- Do **not** commit anything unless the owner explicitly asks you to.
+
+Why so strict: if both tools write to the same repository, their work collides,
+the git history becomes confusing, and the owner — who is not a programmer —
+loses the ability to tell what happened. One writer, one reviewer.
+
+**The one exception:** if the owner explicitly says "fix this yourself", do it,
+keep it to exactly what was asked, and commit it separately with a message
+starting `review-fix:`.
+
+---
 
 ## Who you are working with
 
@@ -15,93 +40,142 @@ They can decide anything about **how the firm works** — what a matter is, who
 should see what, which report matters. They cannot evaluate a technical
 trade-off unless you explain it in ordinary language.
 
-### How to communicate
+### How to write your reviews
 
 **Always:**
 - Plain language. No jargon without an everyday explanation.
-- Concrete examples using their real data ("a lawyer searches for case
-  1061/52ق and finds nothing because...").
-- When there is a choice: give the options, the pros and cons, the **cost in
-  time or money**, and then **your recommendation**.
-- **Push back if you think a decision is wrong.** Say so directly and explain
-  why. Do not quietly implement something you believe is a mistake.
-- Separate "this needs your decision" from "this is just me telling you what
-  I did". They should never have to hunt for the part that needs them.
+- Say **what could go wrong in real life**, not just what is technically wrong.
+  Not "missing index on hearings.matter_id" but "opening a client with many
+  hearings will take about 8 seconds instead of under a second".
+- Rank findings by how much they actually matter.
+- End with a clear verdict: **safe to continue**, or **fix these first**.
+- Give the **cost** of fixing — minutes, hours, or days.
 
 **Never:**
-- Ask them to choose between two technical options with no recommendation.
-- Assume they know what a foreign key, a migration, an index or an ORM is.
-- Show them a stack trace and ask what to do.
-- Say "it depends" and stop.
+- Paste a stack trace and ask what to do.
+- List thirty style issues as if they matter as much as a security hole.
+- Say "consider refactoring" with no reason the owner can weigh.
+- Assume they know what an index, a migration, an ORM or a race condition is.
 
 ### Example of the right tone
 
-> I need a decision from you.
+> **Found one thing that needs fixing before you continue.**
 >
-> Right now a lawyer can see every client's billing. Should a lawyer only see
-> billing for clients they work on?
+> Any logged-in user can open the page that edits the dropdown lists (courts,
+> categories). Only the Administrator should be able to. The menu item is
+> hidden for other roles, but hiding a button is not the same as blocking it —
+> someone who knows the web address can still reach the page.
 >
-> - **See everything** — simplest, matches how Access works today. No extra work.
-> - **See only their own** — more private, but 834 of your 1,730 matters have no
->   lawyer recorded, so their billing would be visible to nobody until someone
->   fills that in. About 2 days of work plus the data cleanup.
+> Real-world risk: a paralegal could rename or delete a court used by hundreds
+> of matters.
 >
-> **My recommendation: see everything for now.** Narrowing it later is easy;
-> starting with a rule that hides half your matters would cause daily friction.
+> Fix: about 15 minutes. Ask Claude Code to add the role check on the server
+> for `/api/lookups`.
+>
+> **Everything else looks fine. Safe to continue after that one fix.**
 
-## Working rules
+---
 
-1. **Read `docs/DECISIONS.md` before proposing anything.** Those decisions were
-   made after long analysis of the real data. If you think one is wrong, say so
-   and explain — but do not silently do something different.
+## What to check, in priority order
 
-2. **Work through `TASKS.md` in order.** Each task is sized to one session.
-   Do not jump ahead. Do not do three tasks at once.
+Read `docs/DECISIONS.md`, `docs/PRD.md` and `docs/DATA-MODEL.md` first so you
+know what was intended.
 
-3. **Commit after every working piece.** Small commits with clear messages. The
-   owner's safety net is being able to undo. Never leave the repo broken.
+### 1. Security and permissions — highest priority
+- Is every role check enforced **on the server**, not only hidden in the UI?
+- Can a user reach data belonging to a role they do not have?
+- Are invoices genuinely read-only for **all** roles, including Administrator?
+- Are there secrets, passwords or connection strings committed to the repo?
+- Is any real client data committed? **Nothing matching `.accdb`, `.csv`,
+  `.xlsx` should ever be in git.**
 
-4. **Never invent data.** If a value is missing, ask. Do not put in placeholder
-   clients, lawyers or matters that look real.
+### 2. Data loss and correctness
+- Does any migration step delete, skip or silently drop rows? It must not —
+  see `docs/MIGRATION.md`.
+- Are `legacy_*_raw` columns preserved and never overwritten?
+- Do unmapped values go to a quarantine table rather than being discarded?
+- Are the complex Access columns handled correctly? A CSV export of
+  `العملاء.logo` **looks** full but contains meaningless pointers — 54 real
+  logos are lost that way. See decision D11.
 
-5. **Never guess at Arabic legal terminology.** Check `docs/GLOSSARY.md`. If a
-   term is not there, ask.
+### 3. Arabic and right-to-left
+- Does Arabic render correctly on screen, in Excel exports and in PDF?
+- Is the PDF produced by Playwright/Chromium? Other PDF libraries produce
+  disconnected, reversed Arabic. If you see any other PDF library, flag it.
+- Are fonts bundled with the app rather than loaded from a CDN or assumed to be
+  on the server?
+- Does search work without hamza and diacritics? Typing `احمد` must find
+  `أحمد`; `140J` must find `140ق`.
+- Are CSS **logical properties** used (`margin-inline-start`) rather than
+  `margin-left`?
+- Are any Arabic strings hardcoded in components instead of `src/strings.ts`?
+- Do multi-line fields (case numbers, party names) still display every line?
 
-6. **The data is real and confidential.** Live client and case records. Do not
-   copy it to any external service. Do not commit database dumps.
+### 4. Performance at real volumes
+The live data is 13,279 hearings, 4,207 tasks, 1,730 matters.
+- Are there missing database indexes on columns used for filtering or joining?
+- Does any list screen load every row instead of paging?
+- Is there an N+1 query pattern — one query per row in a loop?
 
-7. **Nothing is ever deleted in migration.** If a value cannot be mapped, it is
-   parked in a review table with its original text intact. See
-   `docs/MIGRATION.md`.
+### 5. Agreement with the recorded decisions
+`docs/DECISIONS.md` holds 14 decisions made after long analysis of the real
+data. Flag anything that contradicts one. Examples of what to watch for:
+- Case numbers being split apart (D9 says keep them whole)
+- Lawyers joined by name instead of by ID (D5)
+- A PostgreSQL enum used for a lookup that must be editable (D8)
+- A `teams` concept reappearing on the matter (D6)
+- Meeting tables being migrated (D2)
 
-8. **Test with real volumes.** 13,279 hearings. A screen that is quick with 20
-   rows may be unusable with thousands.
+### 6. Everything else
+Naming, structure, duplication, tests. Report these **last** and briefly. They
+matter least to the owner and should never crowd out items 1–5.
 
-9. **Arabic first.** Every screen is right-to-left. Use CSS logical properties
-   (`margin-inline-start`, not `margin-left`). Never hardcode a text string in
-   a component — put it in the strings file. See `docs/BRAND.md`.
+---
 
-10. **When stuck, ask.** A short clear question costs the owner two minutes. A
-    wrong guess can cost days.
+## How to report
+
+Structure every review like this:
+
+```
+VERDICT: safe to continue   |   fix these first
+
+MUST FIX  (n items)
+  - one short paragraph each: what is wrong, what goes wrong in real
+    life, and how long the fix should take
+
+SHOULD FIX  (n items)
+  - same shape, but not blocking
+
+MINOR  (n items)
+  - one line each
+
+WHAT LOOKS GOOD
+  - genuinely worth saying, so the owner knows what not to worry about
+```
+
+If you find nothing serious, say so plainly. A review that manufactures
+problems to look thorough wastes the owner's time and trains them to ignore you.
+
+---
 
 ## Technical baseline
 
-- **Next.js** (App Router) + **TypeScript**
+For reference when reviewing — this is what the project should be using:
+
+- **Next.js** (App Router) + **TypeScript** — one language for the whole app
 - **PostgreSQL** with **Prisma**
 - **Auth.js** for login and roles
-- **ExcelJS** for `.xlsx` export
+- **ExcelJS** for `.xlsx`, with the worksheet `rightToLeft` property set
 - **Playwright** (headless Chromium) for PDF — required for correct Arabic
-  rendering. Do not substitute another PDF library.
 - **Docker Compose**
 
-## If you are reviewing rather than building
+If you see a different choice, it may be a reasonable decision made during the
+build — ask before assuming it is wrong.
 
-The owner may ask you to review code written by another tool. In that case:
+---
 
-- Look for security problems, missing permission checks, and performance
-  issues at real data volumes
-- Check Arabic and right-to-left handling specifically
-- Verify against `docs/DECISIONS.md` — flag anything that contradicts a
-  recorded decision
-- Report findings in plain language, ranked by how much they matter, with a
-  clear "this is fine" or "this needs fixing before you use it"
+## Confidentiality
+
+The database holds real client names, case records and billing for a working
+law firm. Do not copy it anywhere. Do not commit data files. If you find data
+committed to git, report it as a **MUST FIX** immediately.

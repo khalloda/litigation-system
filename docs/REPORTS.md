@@ -1,6 +1,9 @@
 # Reports
 
-49 reports must be reproduced. Every one exports to **Excel** and **PDF**.
+**45 reports** must be reproduced. Every one exports to **Excel** and **PDF**.
+
+Reduced from 49 — see D17. Four were the same report with hard-coded filters;
+one was dropped by the firm.
 
 ## How to build them
 
@@ -16,38 +19,45 @@ in RTL, matching the printed reports.
 **Fonts must be bundled with the application.** The PDF renderer runs on a
 server with no fonts installed.
 
+**Read `docs/REPORT-LAYOUTS.md` before building any report.** It documents the
+house style, taken from nine real printed samples.
+
 ## Shared behaviour
 
 - Right-to-left page layout; page numbers mirror
 - Firm logo in the header, emerald green headings
-- Most reports take parameters — commonly a date range (`من` / `إلى`), and one
-  of client, branch, team or lawyer
+- **Client-facing reports also carry the client's own logo**, opposite the firm
+  logo. Where the client has no logo — 259 of 313 today — print the client's
+  name in text instead
+- **Every list report ends with a count row**
+- Most reports take parameters: a date range (`من` / `إلى`), and one of client,
+  branch, team or lawyer
 - Several embed sub-reports; these become nested queries
 
-## Reports needing sample PDFs before building
+## The one report with an unknown layout
 
-Six reports could not be exported from Access — their **data sources and
-columns are known, but their page layout is not**. The firm will supply printed
-samples. Do not guess at their layout.
+`صالح-ضد مفصل حسب المحامي` could not be exported from Access. Its data source
+and columns are known; its page layout is not. The firm is supplying a sample.
+**Do not guess at it.**
 
-- `تقرير عملاء 2`
-- `تقرير عملاء 6`
-- `تقرير عملاء 8`
-- `تقرير عملاء -جميع الدعاوى سارية ومنتهية`
-- `صالح-ضد مفصل حسب المحامي`
-- `Copy Of صالح-ضد temp-JTI`
+## Two reports carry a hard-coded date
 
-## Two reports are hard-coded snapshots
+`توزيع جلسات أولي 31-12-2020` and `توزيع جلسات نهائي 31-12-2020`.
+The `أولي` / `نهائي` distinction (preliminary / final) is real and both are
+needed — but the **date must become a parameter**, not stay in the name.
 
-`توزيع جلسات أولي 31-12-2020` and `توزيع جلسات نهائي 31-12-2020` have a fixed
-date in their name. Build **one parameterised report**, not two literal copies.
+## Watch for further duplicates
+
+Three reports still carry `Copy Of` in their names. Before building any of them,
+compare their record sources against the report they appear to copy. If the
+queries match, ask the firm rather than building both — this already reduced the
+count by four.
 
 ## Full list
 
 - `Contact list for active clients`
 - `Copy Of cases`
 - `Copy Of تقرير فردي لفريق العمل بالمحامي أ`
-- `Copy Of صالح-ضد temp-JTI`  **(layout unknown — see below)**
 - `Lawyers sub-report`
 - `rptAllPOAs`
 - `rptClientBranches`
@@ -75,10 +85,7 @@ date in their name. Build **one parameterised report**, not two literal copies.
 - `تقرير بأعمال المحامي خلال فترة`
 - `تقرير بأعمال المحامي خلال فترة قادمة`
 - `تقرير جميع المستندات`
-- `تقرير عملاء -جميع الدعاوى سارية ومنتهية`  **(layout unknown — see below)**
-- `تقرير عملاء 2`  **(layout unknown — see below)**
-- `تقرير عملاء 6`  **(layout unknown — see below)**
-- `تقرير عملاء 8`  **(layout unknown — see below)**
+- `تقرير عملاء 2`  **(the parameterised client report — see REPORT-LAYOUTS.md)**
 - `تقرير فردي لفريق العمل بالمحامي أ`
 - `تقرير فردي لفريق العمل بالمحامي ب`
 - `توزيع جلسات أولي 31-12-2020`
@@ -88,7 +95,7 @@ date in their name. Build **one parameterised report**, not two literal copies.
 - `صالح ضد -إحصائيات مجمعة`
 - `صالح-ضد شهور -تقرير فرعي`
 - `صالح-ضد محامين -بالنسبة`
-- `صالح-ضد مفصل حسب المحامي`  **(layout unknown — see below)**
+- `صالح-ضد مفصل حسب المحامي`  **(layout unknown — sample still needed)**
 - `غلاف الملف`
 - `قرارات مفتوحة`
 - `قرارات مفتوحة جميع الجهات`
@@ -117,5 +124,4 @@ GROUP BY matter_id HAVING count(*) > 1   -- shared
 GROUP BY matter_id HAVING count(*) = 1   -- not shared
 ```
 
-Look for similar collapses elsewhere, but **ask before merging two reports** —
-the firm may want both in the menu out of habit.
+**Ask before merging two reports** — the firm may want both in the menu.

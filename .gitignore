@@ -108,3 +108,5 @@ logs/
 docker-compose.override.yml
 postgres-data/
 pgdata/
+# Report samples — real client data, kept locally only
+docs/report-samples/
