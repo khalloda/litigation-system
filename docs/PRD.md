@@ -31,7 +31,7 @@ its Dashboard — as a web application the whole firm can use.
 | Documents register (paper tracking + M-Files reference) | 405 |
 | Fee letters / engagement contracts | 331 |
 | Invoices and payments — **historical, read-only** | 543 + 597 |
-| Staff roster | 140 people (23 current) |
+| Staff roster | 138 people (21 current) |
 | Reports | 45 |
 
 ### Deferred — build the database now, the screens later

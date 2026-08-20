@@ -6,9 +6,16 @@
 --  -----------------------
 --  Names were typed by hand into 18 different columns for six years. The raw
 --  data held 373 distinct spellings. After the firm's review these
---  resolve to 140 real people:
---       69 firm staff (23 current, 46 former)
+--  resolve to 138 real people:
+--       67 firm staff (21 current, 46 former)
 --       71 external people (mostly counsel named on powers of attorney)
+--
+--  WAS 140 (69 staff / 23 current). Two CURRENT-staff rows were hamza
+--  duplicates and have been merged out, their spellings kept as aliases:
+--       احمد إسماعيل  ->  أحمد إسماعيل   (U+0627 vs U+0623 at character 0)
+--       احمد سعيد     ->  أحمد سعيد
+--  Every derived figure moved with them: staff 69->67, current 23->21.
+--  Aliases 338 -> 339.
 --
 --  Some fields held SEVERAL people in one string, with no consistent
 --  separator, e.g.

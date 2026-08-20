@@ -14,8 +14,13 @@ Every table carries: `id`, `created_at`, `created_by`, `updated_at`,
 
 ## People and organisation
 
-### `people` — 140 rows
+### `people` — 138 rows
 The single roster. Replaces both Access lawyer tables.
+
+**67 firm staff (21 current, 46 former) + 71 external.** Was 140 until two
+hamza duplicates — `احمد إسماعيل`/`أحمد إسماعيل` and `احمد سعيد`/`أحمد سعيد`,
+differing only at character 0 — were merged. Both were *current* staff, so
+current staff is **21**, not 23. Their old spellings survive as aliases.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -26,7 +31,7 @@ The single roster. Replaces both Access lawyer tables.
 | `is_trainee` | boolean | |
 | `can_login` | boolean | Former staff never log in |
 
-### `person_name_alias` — 338 rows
+### `person_name_alias` — 339 rows
 Every spelling ever typed, mapped to one person. Makes historical search work.
 
 ### `users`

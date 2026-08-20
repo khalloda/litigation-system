@@ -256,13 +256,20 @@ WHERE EXISTS (
 -- only 5 are current staff -- مؤمن سليم, أحمد إسماعيل and محمود شعبان have
 -- left the firm. The recorded team membership is therefore largely historical.
 --
--- That leaves 18 of the 23 current staff with team_id NULL:
+-- That leaves 16 of the 21 current staff with team_id NULL:
 --     محمود علي, سامي إبراهيم خطاب, ناجي رمضان, هاني سري الدين, محمد حمدي,
 --     عبد الرحمن البنا, نهى رضوان, أميرة شريف, عمرو سليم, عبد الله حافظ,
 --     شريف شكري, احمد أبو العباس الاتربي, أحمد رزق, كريم أيمن, عمرو صقر,
---     نيرمين حجازي, أحمد إسماعيل (former), محمود شعبان (former)
+--     نيرمين حجازي
 --
---     5 assigned + 18 unassigned = 23 current staff.
+--     5 assigned + 16 unassigned = 21 current staff.
+--
+--  NOTE: this said "18 of 23" until the two hamza duplicates were merged out.
+--  Both duplicates were CURRENT staff, so current staff fell 23 -> 21 and the
+--  unassigned figure fell 18 -> 16. The five who DO have a team are
+--  إيهاب حمدي, أحمد سيف, محمد عبد العزيز عبد الحافظ, أحمد سعيد, هاني الدالي.
+--  أحمد إسماعيل and محمود شعبان are team-assigned but FORMER staff, so they
+--  belong in neither figure.
 --
 -- A NULL team is VALID. Team-grouped reports must show these people under an
 -- "unassigned" heading rather than dropping them -- otherwise a report headed
@@ -288,7 +295,12 @@ GROUP  BY t.label_ar;
 SELECT count(*) AS current_staff_without_team
 FROM   people
 WHERE  is_staff AND is_active AND team_id IS NULL;
--- Expected: 18
+-- Expected: 16
+
+SELECT count(*) AS current_staff
+FROM   people
+WHERE  is_staff AND is_active;
+-- Expected: 21   (was 23 before the two hamza duplicates were merged)
 
 SELECT count(*) AS total_people FROM people;
 -- Expected: 138  (two hamza duplicates were merged out -- see the roster file)

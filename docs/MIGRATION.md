@@ -90,6 +90,53 @@ extractor with `-IncludeArchiveTables` also reads `Copy Of العملاء`, whic
 the same 54 images again, and the manifest will then total **108**. Gate 1
 assumes the default.
 
+## Never match an Arabic name without asserting the count
+
+**Every statement that matches on an Arabic name must state how many rows it
+expects to touch, and fail loudly if the number differs.**
+
+This is not a style preference. Two real bugs in this project were both silent:
+
+- `احمد إسماعيل` and `أحمد إسماعيل` differ only at character 0 —
+  `ا` (U+0627) against `أ` (U+0623). A generator matched the wrong one,
+  affected **0 rows**, reported success, and created a duplicate person
+  carrying 2 mentions beside the real one carrying 1,309.
+- The same for `احمد سعيد` / `أحمد سعيد` — 1 mention against 2,000.
+
+In Access the identical defect detached 3 matters from their lawyer (D5).
+
+**A `0 rows affected` that nobody checks is how a person disappears from 1,309
+hearings.** Nothing errors. Nothing is logged. The loss is only visible months
+later when a report comes up short.
+
+### The rule
+
+1. Match through `person_name_alias`, never through `people.name_ar`. The
+   alias table exists precisely so a hamza variant cannot miss.
+2. State the expected row count next to every such statement.
+3. Assert it. In SQL:
+
+   ```sql
+   DO $
+   DECLARE n integer;
+   BEGIN
+       UPDATE people p SET team_id = ... WHERE ...;
+       GET DIAGNOSTICS n = ROW_COUNT;
+       IF n <> 4 THEN
+           RAISE EXCEPTION 'team A: expected 4 rows, got %', n;
+       END IF;
+   END $;
+   ```
+
+4. The same applies in TypeScript transforms: compare the returned count against
+   the expected figure and throw. Never log a warning and carry on.
+5. When an expected count changes, **re-derive every figure that depends on it**.
+   Merging two duplicate people moved five separate numbers: total people
+   140 → 138, staff 69 → 67, current staff 23 → 21, unassigned 18 → 16,
+   aliases 338 → 339. Four of the five were missed on the first pass.
+
+Apply this to seeds, transforms and reconciliation queries alike.
+
 ## Quarantine, don't delete
 
 ```sql

@@ -34,7 +34,16 @@ be bigger than expected, split it and tell the owner.
       Nine lookups from `sql/lookups-and-crosswalk.sql`. Tables, never enums.
 
 - [ ] **1.2 People + aliases**
-      From `sql/people-roster-and-aliases.sql`. 140 people, 338 aliases.
+      From `sql/people-roster-and-aliases.sql`.
+      **Assert these exactly — fail the seed if any differs:**
+      `people` = **138** · `person_name_alias` = **339**
+      staff = 67 (current 21, former 46) · external = 71
+      teams: الفريق أ = 4, الفريق ب = 4 (8 distinct, 5 of them current)
+      current staff with no team = 16
+      Every statement matching an Arabic name goes through
+      `person_name_alias` and asserts its row count — see
+      "Never match an Arabic name without asserting the count" in
+      `docs/MIGRATION.md`.
 
 - [ ] **1.3 Core schema**
       clients, contacts, matters, hearings, admin_tasks, task_actions,

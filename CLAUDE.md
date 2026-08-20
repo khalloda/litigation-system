@@ -84,6 +84,21 @@ trade-off unless you explain it in ordinary language.
 10. **When stuck, ask.** A short clear question costs the owner two minutes. A
     wrong guess can cost days.
 
+11. **No tool may edit `AGENTS.md` or `CLAUDE.md`.** These two files are
+    written by people: `AGENTS.md` is Codex's reviewer brief, `CLAUDE.md` is
+    this file. Any tool that auto-generates or appends to either must be
+    switched off, not tidied up afterwards.
+    *Already found:* Next.js 16 appends its own instructions to `AGENTS.md` on
+    every `next dev`. Disabled with `agentRules: false` in `next.config.ts`.
+    If text ever appears in either file that neither you nor the owner wrote,
+    find the tool that wrote it and disable it.
+
+12. **Never match an Arabic name without asserting the row count.** Match
+    through `person_name_alias`, state the number of rows you expect, and fail
+    loudly if it differs. A missing hamza silently matched nothing twice in
+    this project and created two duplicate people, one of them carrying 1,309
+    hearings. Full rule in `docs/MIGRATION.md`.
+
 ## Technical baseline
 
 - **Next.js** (App Router) + **TypeScript** — one language for the whole app
