@@ -1,0 +1,110 @@
+# ===========================================================================
+#  CONFIDENTIAL DATA — never commit any of this
+#
+#  This repository holds the CODE for the litigation system.
+#  It must never hold client data, case records, or database exports.
+#  Anything matching the patterns below stays on the local machine only.
+# ===========================================================================
+
+# Microsoft Access databases
+*.accdb
+*.mdb
+*.laccdb
+*.ldb
+
+# Database dumps and backups
+*.sql.gz
+*.dump
+*.bak
+*.backup
+dump/
+backups/
+
+# Extracted data from the migration
+_export/
+_export2/
+_migration/
+analysis/
+analysis_direct/
+analysis_source/
+staging/
+attachments/
+
+# Spreadsheets and CSVs — these carry real client data
+*.csv
+*.tsv
+*.xlsx
+*.xls
+!docs/**/*.xlsx          # except blank templates deliberately kept in docs
+
+# Extracted client logos and documents
+uploads/
+storage/
+media/
+
+
+# ===========================================================================
+#  SECRETS
+# ===========================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials.json
+secrets.json
+
+
+# ===========================================================================
+#  BUILD OUTPUT AND DEPENDENCIES
+# ===========================================================================
+node_modules/
+.next/
+out/
+build/
+dist/
+coverage/
+*.tsbuildinfo
+.turbo/
+
+# Prisma generated client
+prisma/generated/
+
+# Playwright
+playwright-report/
+test-results/
+/playwright/.cache/
+
+
+# ===========================================================================
+#  EDITOR AND OPERATING SYSTEM
+# ===========================================================================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+
+# ===========================================================================
+#  LOGS
+# ===========================================================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+
+
+# ===========================================================================
+#  DOCKER
+# ===========================================================================
+docker-compose.override.yml
+postgres-data/
+pgdata/

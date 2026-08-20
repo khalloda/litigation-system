@@ -1,0 +1,149 @@
+# Data migration
+
+Move 35,343 rows from Access to PostgreSQL with **provable** zero loss.
+
+**Core rule: never delete, clean or fix anything during extraction or load.**
+Data that cannot be mapped is *quarantined*, not dropped.
+
+## The trap that destroys data silently
+
+Access "complex columns" (Attachment, Multi-Value) are not stored in the
+visible table. The visible column holds an internal pointer.
+
+Exporting `العملاء` to CSV gives a `logo` column that looks fully populated —
+all 313 rows have a value. The values are `136`, `42`, `1`. **Only 54 clients
+have a logo**, and the real image data lives in a hidden table.
+
+| Column | CSV export gives | Reality |
+|---|---|---|
+| `العملاء.logo` | 313 integers | 54 image files |
+| `خطابات الأتعاب.Matter` | 331 integers | 288 case-number strings across 195 parents |
+| `Contacts.Attachments` | looks populated | **empty** |
+
+The export reports success and raises no error. Use `scripts/01_extract_access.ps1`,
+which reads these through the Access object model.
+
+**Never use `mdbtools`, plain ODBC, or a Python `.accdb` reader for extraction.**
+
+## Stages
+
+```
+Access file (read-only copy)
+   │
+ [A] extract      → UTF-8 CSV + attachment files + manifest
+   │  GATE 1: row counts and SHA-256 match the manifest
+ [B] load         → staging schema, EVERY column as text
+   │  GATE 2: staging counts equal manifest counts
+ [C] profile      → quarantine tables, review queues
+   │  GATE 3: every source row accounted for
+ [D] transform    → typed, normalised target tables
+   │  GATE 4: counts, business totals, six reports reconciled
+ [E] cutover
+```
+
+### Why staging is all-text
+
+A load can never fail on a type conversion, so **no row is rejected at the
+door**. Bad dates and non-numeric numbers arrive intact and are dealt with in
+Stage C, where the decision is visible and reversible.
+
+Every staging row carries `src_row_num` and `src_file`, so any target row traces
+back to its origin.
+
+## Gate 1 — expected values
+
+Fail the migration if these do not match.
+
+| Table | Rows | | Table | Rows |
+|---|---:|---|---|---:|
+| `الجلسات` | 13,279 | | `المستندات` | 405 |
+| `admin work table` | 4,207 | | `خطابات الأتعاب` | 331 |
+| `إجراءات المهام` | 4,130 | | `العملاء` | 313 |
+| `Attendance` | 4,022 | | `Contacts` | 188 |
+| `الدعاوى` | 1,730 | | `تقسيم التحصيلات` | 47 |
+| `التوكيلات` | 735 | | `lawyers` | 23 |
+| `السداد` | 597 | | `فريق العمل` | 3 |
+| `الفواتير` | 543 | | | |
+
+Also: **54 attachments** and **288 multi-value entries**. If either is zero,
+extraction failed silently — stop.
+
+## Quarantine, don't delete
+
+```sql
+CREATE TABLE qc.quarantine (
+    id serial PRIMARY KEY,
+    source_table text, src_row_num bigint,
+    issue_type text, column_name text, raw_value text,
+    proposed_action text, resolved boolean DEFAULT false,
+    resolution text, detected_at timestamptz DEFAULT now()
+);
+```
+
+Known items, with measured volumes:
+
+| Issue | Count | Handling |
+|---|---:|---|
+| Fee-letter links matching no matter | 289 | Load matter, link null, queue |
+| Orphan task actions | 36 | Load, link null, queue |
+| Task actions with no parent id | 39 | Load, link null |
+| Hearings with no matter | 4 | Load to unassigned bucket |
+| POA with no client | 1 | Same |
+| Attendee names seen once | ~474 | Queue for human review |
+
+## The `_raw` rule
+
+Every normalised column keeps the original text beside it —
+`legacy_category_raw`, `legacy_degree_raw`, `capacity_raw`. Even where 50
+spellings collapse into one list entry, the byte-exact original stays
+queryable. A wrong mapping can be corrected and re-derived without going back to
+the Access file.
+
+## Load order
+
+Parents before children.
+
+```
+ 1 people            2 lookups          3 clients
+ 4 client_logos      5 contacts         6 matters
+ 7 matter_lawyers    8 matter_parties   9 hearings
+10 hearing_attendees 11 powers_of_attorney
+12 documents        13 fee_letters     14 fee_letter_matters
+15 invoices         16 payments        17 admin_tasks
+18 task_actions     19 attendance
+```
+
+## Gate 4 — proving it worked
+
+**Counts** are not enough. A reversed join gives the right number of rows with
+the wrong content. Also check:
+
+- Matter count per lawyer against the legacy figures: إيهاب حمدي 476,
+  ناجي رمضان 200, هاني الدالي 181, أحمد سعيد 129, محمد عبد العزيز 124,
+  أحمد إسماعيل 85, محمود شعبان 41
+- Matters per status: سارية 493 / منتهية 1,223 / null 14
+- Total invoiced and total paid, per currency
+- Hearing count per year, 2009 → 2026
+- SHA-256 of each of the 54 logos, before and after
+
+**Then run six real reports** in Access and in the new system and compare row
+for row — one client, one for/against, one lawyer workload, one hearings by
+date, one administrative works, one financial. This is the only check that
+catches a wrong join.
+
+## Cutover
+
+The Access file is in daily use. A stale copy drifted **325 rows in a few days**.
+
+```
+T-14d  Full dry run on a copy. All gates pass. Six reports reconciled.
+T-7d   Second dry run. Firm signs off.
+T-1d   Final compact + backup. SHA-256 recorded.
+T-0    FREEZE Access (read-only for everyone). Run A–E. Gate 4 must pass.
+T+0    Go live. Access stays available read-only for 90 days.
+T+90d  Archive the .accdb to cold storage. Do not delete.
+```
+
+**Separately and urgently:** the production Access file sits at exactly
+2,147,483,648 bytes — the hard limit — and compacts to 45 MB. Compact and repair
+it on a backup now. A file at its ceiling can refuse to save new records.
