@@ -1,5 +1,9 @@
 # Patches to existing repo files
 
+> **STATUS: APPLIED — 2026-08-20.**
+> Every patch below is already in the repo. This file is kept as a record of
+> what changed and why. **Do not apply it again.**
+
 Small edits to files already in the repo. Apply these by hand — they are short.
 
 ---

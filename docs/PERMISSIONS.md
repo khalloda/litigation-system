@@ -14,6 +14,7 @@ About 10 users. Four roles. Users can be added and removed by the Administrator.
 | Powers of attorney | full | add / edit | view | view |
 | Documents register | full | add / edit | view | view |
 | Fee letters | full | add / edit | view | view |
+| Client logo upload | full | add / edit | view | view |
 | Invoices & payments | **view** | **view** | **view** | **view** |
 | Run and export reports | yes | yes | yes | yes |
 | Staff roster | **manage** | view | view | view |

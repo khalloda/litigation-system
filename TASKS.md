@@ -111,6 +111,12 @@ Each screen: list with Arabic search, detail view, create/edit where the role
 allows. Test with real volumes.
 
 - [ ] **4.1 Clients** — list, detail, contacts, logo
+
+- [ ] **4.1a Client logo upload**
+      Upload field on the client screen (Administrator and Litigation
+      Assistant). PNG / JPG / GIF, max 2 MB, resized to a sensible print width.
+      Stored in the folder per **D15**. Preview before saving.
+      A missing file must fall back to the client's name in text.
 - [ ] **4.2 Matters** — the biggest screen. Classification, parties, lawyers.
       **Case number field must display multiple lines (D9).**
 - [ ] **4.3 Hearings** — 13,279 rows; needs paging and fast filters.
@@ -139,13 +145,21 @@ allows. Test with real volumes.
       branch, lawyer), Excel via ExcelJS with `rightToLeft`, PDF via Playwright
       with bundled fonts and the firm letterhead.
 - [ ] **6.2 Client reports**
+      `تقرير عملاء 2` / `6` / `8` and
+      `تقرير عملاء -جميع الدعاوى سارية ومنتهية` are **one parameterised
+      report** (D17). Build it once.
+      Layout: `docs/REPORT-LAYOUTS.md`, "Type 4 — Client status report".
+      Includes the client's own logo, with a text fallback.
 - [ ] **6.3 Matter reports**
 - [ ] **6.4 Lawyer reports**
 - [ ] **6.5 Hearing reports**
 - [ ] **6.6 Administrative works reports**
 - [ ] **6.7 Document and POA reports**
-- [ ] **6.8 The six reports needing sample PDFs** — do not start until the firm
-      supplies them
+- [ ] **6.8 The one report with an unknown layout** — do not start until the
+      firm supplies the sample.
+      Only `صالح-ضد مفصل حسب المحامي` remains unknown.
+      `Copy Of صالح-ضد temp-JTI` has been dropped entirely (D17).
+      The other four are now one parameterised report — see 6.2.
 - [ ] **6.9 Reconcile six reports against Access, row for row**
 
 ---
@@ -153,7 +167,15 @@ allows. Test with real volumes.
 ## Stage 7 — Going live
 
 - [ ] **7.1 Deploy to the Ubuntu VM** with Docker Compose
-- [ ] **7.2 Backups** — automated, tested by actually restoring one
+- [ ] **7.2 Backups** — three layers, all required (**D16**)
+      a) Nightly automated backup of the database **and** the client-logo
+         folder in **one** operation. 30 nights retained.
+      b) Those backups copied **off the VM** — another machine, network share
+         or cloud. A backup on the server dies with the server.
+      c) The firm's weekly/monthly VM snapshot stays as the disaster layer.
+      d) Weekly integrity job: list clients whose logo file is missing.
+      e) **Test a restore** onto a spare machine before go-live, and confirm a
+         client logo appears in a printed report. Do not skip this.
 - [ ] **7.3 Full dry-run migration** (T-14d in `docs/MIGRATION.md`)
 - [ ] **7.4 Second dry run + firm sign-off** (T-7d)
 - [ ] **7.5 Cutover** — freeze Access, migrate, Gate 4, go live

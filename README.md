@@ -18,6 +18,9 @@ the rules on how to communicate.
 An Access file holding **35,343 rows** of live data — 13,279 hearings, 4,207
 administrative tasks, 1,730 matters, 313 clients — still used every day.
 
+Of those, **30,553 rows migrate**; the remaining 4,790 are archived tables the
+firm dropped (meetings and old copies). See `docs/MIGRATION.md`.
+
 The application is **Arabic only**, right-to-left, with English data retained
 in the database for a possible future bilingual version.
 
@@ -28,7 +31,9 @@ in the database for a possible future bilingual version.
 | `docs/PRD.md` | What the system must do. Start here. |
 | `docs/DATA-MODEL.md` | Every table and column |
 | `docs/MIGRATION.md` | Moving the old data across without losing any |
-| `docs/REPORTS.md` | The 49 reports that must be reproduced |
+| `docs/REPORTS.md` | The 45 reports that must be reproduced |
+| `docs/REPORT-LAYOUTS.md` | House style for printed reports, from real samples |
+| `docs/DECISIONS-ADDENDUM.md` | Merged into `DECISIONS.md` — kept as a pointer |
 | `docs/PERMISSIONS.md` | The four user roles |
 | `docs/BRAND.md` | Colours, fonts, right-to-left rules |
 | `docs/DECISIONS.md` | Decisions already made, and why. **Do not re-open these.** |

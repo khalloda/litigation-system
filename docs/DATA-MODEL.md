@@ -43,9 +43,26 @@ Login accounts. Linked to `people`. Role is one of the four in
 `contact_person_id`, `client_start`, `client_end`.
 
 ### `client_logos` — 54 rows
-Extracted from an Access Attachment column. Stored in object storage;
-the table holds `storage_key`, `file_name`, `content_type`, `byte_size`.
-**See D11 — a normal CSV export destroys these.**
+Extracted from an Access Attachment column.
+
+Stored as **files in a folder on the server** — not in the database and not in
+cloud storage. See decision **D15**.
+
+```
+/var/lib/litigation/client-logos/{client_id}/{filename}
+```
+
+The table holds `client_id`, `relative_path`, `file_name`, `content_type`,
+`byte_size`. **Never the image itself.**
+
+Mandatory safeguards (D15):
+
+- the database and this folder are backed up in **one** operation
+- a weekly job lists any client whose logo file is missing
+- a missing file prints the client's name in text, never a broken image
+
+See `docs/MIGRATION.md` for extraction. **A normal CSV export destroys these
+(D11).**
 
 ### `contacts` — 188 rows
 Client contact people. Note `Contacts.Attachments` in Access is **empty**.
@@ -72,6 +89,12 @@ logistics, money, classification and free text.
 | `status` | سارية 493 / منتهية 1,223 / null 14 |
 | `legacy_category_raw` | Original Access text, never overwritten |
 | `legacy_degree_raw` | Original Access text, never overwritten |
+| `court_id` | FK — court name |
+| `circuit_id` | FK — court circuit, stored **separately** from the court (D18) |
+
+`court_id` and `circuit_id` are two columns, not one. Reports join them for
+display: `الإدارية العليا (11 موضوع)`,
+`المحكمة الاقتصادية (الدائرة: (9) استئناف)`. See `docs/REPORT-LAYOUTS.md`.
 
 Court detail columns (floor, hall, shelf, secretary room) may move to a
 `matter_court_details` table — optional, discuss before doing it.
@@ -144,9 +167,16 @@ system. Precedent exists: `خطابات الأتعاب.mfilesID` is filled on 30
 to these records. Still actively used (latest entry Nov 2025).
 
 ### `fee_letter_matters` — 288 rows
-From an Access multi-value column across 195 parents. Values are case-number
-*strings* (`1039 / 20ق`), not IDs, so matching to `matters` will produce
-unmatched rows. Quarantine them; do not drop them.
+From the Access multi-value column `خطابات الأتعاب.Matter` — **288 values
+across 195 parent rows**. Values are case-number *strings* (`1039 / 20ق`), not
+IDs, so matching to `matters` will produce unmatched rows. Quarantine them; do
+not drop them.
+
+**There is a second, separate link in the other direction.**
+`الدعاوى.[خطاب الأتعاب]` → `خطابات الأتعاب.mfilesID`: **412 matters carry a
+value, and 289 of them match no fee letter.** These are two different
+relationships and two different numbers. Both are correct — do not try to
+reconcile 288 against 289.
 
 ---
 
@@ -188,7 +218,8 @@ These are **expected**. Load them; do not try to fix them silently.
 
 | Issue | Count |
 |---|---|
-| Fee-letter links that match no matter | 289 of 412 |
+| Matters whose `خطاب الأتعاب` reference matches no fee letter | 289 of 412 |
+| Fee-letter → matter multi-value entries (`خطابات الأتعاب.Matter`) | 288 across 195 parents |
 | Orphan task actions | 36 |
 | Task actions with no parent id | 39 |
 | Matters with no lawyer recorded | 834 |

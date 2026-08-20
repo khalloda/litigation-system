@@ -32,7 +32,7 @@ its Dashboard — as a web application the whole firm can use.
 | Fee letters / engagement contracts | 331 |
 | Invoices and payments — **historical, read-only** | 543 + 597 |
 | Staff roster | 140 people (23 current) |
-| Reports | 49 |
+| Reports | 45 |
 
 ### Deferred — build the database now, the screens later
 
@@ -79,8 +79,12 @@ suffix `J ↔ ق`. The same function is applied to the user's query.
 
 ## 5. Reports
 
-49 reports must be reproduced, each exportable to **Excel** and **PDF**.
-Full list in `docs/REPORTS.md`.
+45 reports must be reproduced, each exportable to **Excel** and **PDF**.
+Full list in `docs/REPORTS.md`; house style and page layouts in
+`docs/REPORT-LAYOUTS.md`. Reduced from 49 — see D17.
+
+Client-facing reports carry the **client's own logo**. Where none exists —
+259 of 313 clients — the client's name prints in text instead.
 
 PDF must be produced by rendering HTML in headless Chromium (Playwright).
 Most PDF libraries cannot shape Arabic letters or handle mixed
@@ -88,7 +92,10 @@ Arabic/Latin/number text, and produce disconnected reversed letterforms.
 
 ## 6. Success criteria
 
-1. All 35,343 rows migrated, with a report proving nothing was lost
+1. **All 30,553 rows migrated**, with a report proving nothing was lost.
+   The reconciliation report must show *migrated + archived = 35,343*, so both
+   numbers are visible and the difference is never rediscovered as a bug.
+   See "Which row count is the target?" in `docs/MIGRATION.md`.
 2. Six representative reports match the Access originals row for row
 3. Arabic renders correctly on screen, in Excel and in PDF
 4. The four roles are enforced on the server
@@ -98,7 +105,7 @@ Arabic/Latin/number text, and produce disconnected reversed letterforms.
 ## 7. Phases
 
 **Phase 1** — clients, matters, hearings, administrative works, powers of
-attorney, documents, fee letters, historical billing (read-only), the 49
+attorney, documents, fee letters, historical billing (read-only), the 45
 reports, login and roles.
 
 **Phase 2** — attendance screens, invoicing and payment entry, collection

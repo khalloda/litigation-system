@@ -1,9 +1,24 @@
 # Data migration
 
-Move 35,343 rows from Access to PostgreSQL with **provable** zero loss.
+Move **30,553 rows** from Access to PostgreSQL with **provable** zero loss.
 
 **Core rule: never delete, clean or fix anything during extraction or load.**
 Data that cannot be mapped is *quarantined*, not dropped.
+
+## Which row count is the target?
+
+Two numbers appear in this project and both are correct. They mean different
+things, and confusing them makes the final reconciliation impossible to judge.
+
+| Number | What it is |
+|---:|---|
+| **35,343** | Every row in the Access file, including the tables the firm dropped |
+| **30,553** | The rows that actually migrate — the sum of the Gate 1 table below |
+| **4,790** | The difference: archived tables. Meetings (3,230 rows, D2) plus `Copy Of العملاء`, `Follow-up`, `عهدة قسم القضايا`, `Paste Errors`, `tblMinMatterHearingDate` and the other archive-only tables the extraction script skips by default |
+
+**Prove 30,553.** The Gate 4 reconciliation report must also show
+*migrated 30,553 + archived 4,790 = 35,343*, so both numbers are visible on one
+page and nobody rediscovers this gap later and reports it as lost data.
 
 ## The trap that destroys data silently
 
@@ -65,8 +80,15 @@ Fail the migration if these do not match.
 | `السداد` | 597 | | `فريق العمل` | 3 |
 | `الفواتير` | 543 | | | |
 
+**These 15 tables sum to 30,553 rows.** That is the migration target.
+
 Also: **54 attachments** and **288 multi-value entries**. If either is zero,
 extraction failed silently — stop.
+
+Note: the attachment count is 54 only with the default table set. Running the
+extractor with `-IncludeArchiveTables` also reads `Copy Of العملاء`, which holds
+the same 54 images again, and the manifest will then total **108**. Gate 1
+assumes the default.
 
 ## Quarantine, don't delete
 
