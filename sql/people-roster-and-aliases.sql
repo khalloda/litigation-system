@@ -81,10 +81,8 @@ INSERT INTO people (name_ar, name_en, is_staff, is_active, is_trainee) VALUES ('
 INSERT INTO people (name_ar, name_en, is_staff, is_active, is_trainee) VALUES ('احمد أبو العباس الاتربي', NULL, true, true, false);   -- 5 mentions
 INSERT INTO people (name_ar, name_en, is_staff, is_active, is_trainee) VALUES ('أحمد رزق', NULL, true, true, false);   -- 4 mentions
 INSERT INTO people (name_ar, name_en, is_staff, is_active, is_trainee) VALUES ('كريم أيمن', NULL, true, true, false);   -- 4 mentions
-INSERT INTO people (name_ar, name_en, is_staff, is_active, is_trainee) VALUES ('احمد إسماعيل', NULL, true, true, false);   -- 2 mentions
 INSERT INTO people (name_ar, name_en, is_staff, is_active, is_trainee) VALUES ('عمرو صقر', 'Amr Sakr', true, true, false);   -- 1 mentions
 INSERT INTO people (name_ar, name_en, is_staff, is_active, is_trainee) VALUES ('نيرمين حجازي', NULL, true, true, false);   -- 1 mentions
-INSERT INTO people (name_ar, name_en, is_staff, is_active, is_trainee) VALUES ('احمد سعيد', NULL, true, true, false);   -- 1 mentions
 
 -- ---- roster: former staff --------------------------------------------------
 INSERT INTO people (name_ar, name_en, is_staff, is_active, is_trainee) VALUES ('محمود شعبان', 'Mahmoud Sha’ban', true, false, false);   -- 1412 mentions
@@ -208,6 +206,7 @@ INSERT INTO people (name_ar, is_staff, is_active) VALUES ('يحيى علي قد�
 INSERT INTO people (name_ar, is_staff, is_active) VALUES ('يسري سعدي لبيب أحمد', false, true);   -- 1 mentions
 
 -- ---- aliases: every spelling ever typed ------------------------------------
+INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'احمد إسماعيل', false FROM people WHERE name_ar = 'أحمد إسماعيل';
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, '10- محمود شعبان', false FROM people WHERE name_ar = 'محمود شعبان';
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'محمد شعبان', false FROM people WHERE name_ar = 'محمود شعبان';
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'محمود', false FROM people WHERE name_ar = 'محمود شعبان';
@@ -540,10 +539,10 @@ INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'ها
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'هانيا أبو العيون', true FROM people WHERE name_ar = 'هانيا أبو العيون';
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'وأحمد عبد الله محمد', false FROM people WHERE name_ar = 'احمد عبدالله';
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'والأساتذه أحمد عبد الله محمد علي', false FROM people WHERE name_ar = 'احمد عبدالله';
-INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'وأحمد سعيد أحمد', false FROM people WHERE name_ar = 'احمد سعيد';
+INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'وأحمد سعيد أحمد', false FROM people WHERE name_ar = 'أحمد سعيد';
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'ود. خالد محمود حمدي عبد العزيز عطية', false FROM people WHERE name_ar = 'خالد عطية';
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'وسام صالح', true FROM people WHERE name_ar = 'وسام صالح';
-INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'ىأحمد إسماعيل', false FROM people WHERE name_ar = 'احمد إسماعيل';
+INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'ىأحمد إسماعيل', false FROM people WHERE name_ar = 'أحمد إسماعيل';
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'يحيى علي قدري', true FROM people WHERE name_ar = 'يحيى علي قدري';
 INSERT INTO person_name_alias (person_id, alias_ar, is_primary) SELECT id, 'يسري سعدي لبيب أحمد', true FROM people WHERE name_ar = 'يسري سعدي لبيب أحمد';
 

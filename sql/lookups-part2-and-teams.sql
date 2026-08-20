@@ -229,12 +229,22 @@ WHERE code = 'B';
 
 -- ---- membership recovered from the Access blob -----------------------------
 -- Team 1 / A
-UPDATE people SET team_id = (SELECT id FROM lookup_team WHERE code = 'A')
-WHERE name_ar IN ('إيهاب حمدي', 'مؤمن سليم', 'أحمد إسماعيل', 'أحمد سيف');
+-- Matched through person_name_alias so a hamza variant cannot miss.
+UPDATE people p SET team_id = (SELECT id FROM lookup_team WHERE code = 'A')
+WHERE EXISTS (
+    SELECT 1 FROM person_name_alias a
+    WHERE a.person_id = p.id
+      AND a.alias_ar IN ('إيهاب حمدي', 'مؤمن سليم', 'أحمد إسماعيل', 'أحمد سيف')
+);
 
 -- Team 2 / B
-UPDATE people SET team_id = (SELECT id FROM lookup_team WHERE code = 'B')
-WHERE name_ar IN ('محمد عبد العزيز عبد الحافظ', 'أحمد سعيد', 'هاني الدالي', 'محمود شعبان');
+UPDATE people p SET team_id = (SELECT id FROM lookup_team WHERE code = 'B')
+WHERE EXISTS (
+    SELECT 1 FROM person_name_alias a
+    WHERE a.person_id = p.id
+      AND a.alias_ar IN ('محمد عبد العزيز عبد الحافظ', 'محمد عبد العزيز',
+                         'أحمد سعيد', 'هاني الدالي', 'محمود شعبان')
+);
 
 -- NOTE: Access "team 3" was also code A, with members محمد عبد العزيز,
 -- أحمد سعيد, هاني الدالي and أحمد إسماعيل — overlapping teams 1 and 2, used by
@@ -242,16 +252,23 @@ WHERE name_ar IN ('محمد عبد العزيز عبد الحافظ', 'أحمد 
 -- duplicate. It is NOT created here. Ask the firm before adding it.
 
 -- ---- staff with no team yet ------------------------------------------------
--- Only 12 of the 23 current staff appear in the Access blob. The rest have
--- team_id NULL until the firm assigns them:
+-- The Access blob assigns 8 DISTINCT people across the two teams. Of those,
+-- only 5 are current staff -- مؤمن سليم, أحمد إسماعيل and محمود شعبان have
+-- left the firm. The recorded team membership is therefore largely historical.
+--
+-- That leaves 18 of the 23 current staff with team_id NULL:
 --     محمود علي, سامي إبراهيم خطاب, ناجي رمضان, هاني سري الدين, محمد حمدي,
 --     عبد الرحمن البنا, نهى رضوان, أميرة شريف, عمرو سليم, عبد الله حافظ,
 --     شريف شكري, احمد أبو العباس الاتربي, أحمد رزق, كريم أيمن, عمرو صقر,
---     نيرمين حجازي
+--     نيرمين حجازي, أحمد إسماعيل (former), محمود شعبان (former)
 --
--- A NULL team is valid. Team-grouped reports must show these under an
--- "unassigned" heading rather than dropping them.
-
+--     5 assigned + 18 unassigned = 23 current staff.
+--
+-- A NULL team is VALID. Team-grouped reports must show these people under an
+-- "unassigned" heading rather than dropping them -- otherwise a report headed
+-- "hearings by team" would silently omit most of the firm.
+--
+-- The firm will confirm the final membership before Stage 6.
 
 -- ============================================================================
 --  VALIDATION
@@ -266,4 +283,12 @@ UNION ALL SELECT 'team',                count(*) FROM lookup_team;
 SELECT t.label_ar, count(p.id) AS members
 FROM   lookup_team t LEFT JOIN people p ON p.team_id = t.id
 GROUP  BY t.label_ar;
--- Expected: الفريق أ = 4, الفريق ب = 4
+-- Expected: الفريق أ = 4, الفريق ب = 4   (8 distinct people, 5 of them current)
+
+SELECT count(*) AS current_staff_without_team
+FROM   people
+WHERE  is_staff AND is_active AND team_id IS NULL;
+-- Expected: 18
+
+SELECT count(*) AS total_people FROM people;
+-- Expected: 138  (two hamza duplicates were merged out -- see the roster file)
