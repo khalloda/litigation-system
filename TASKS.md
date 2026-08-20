@@ -10,7 +10,7 @@ be bigger than expected, split it and tell the owner.
 
 ## Stage 0 — Foundations
 
-- [ ] **0.1 Repository skeleton**
+- [x] **0.1 Repository skeleton**
       Next.js + TypeScript. Prettier and ESLint. `.gitignore` that excludes
       `.env`, `node_modules`, and **any database file or CSV export** — the data
       is confidential and must never be committed.
