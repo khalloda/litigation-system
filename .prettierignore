@@ -1,3 +1,6 @@
+# Tool caches. Not ours, and git-ignored, but Prettier still walks them.
+.impeccable/
+
 # Generated or vendored — not ours to format.
 src/generated/
 
