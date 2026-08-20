@@ -27,7 +27,7 @@ be bigger than expected, split it and tell the owner.
       typed deliberately, printing which tables have rows and how many.
       All six paths tested by deliberately breaking each one.
 
-- [ ] **0.4 Arabic base layout**
+- [x] **0.4 Arabic base layout**
       `<html lang="ar" dir="rtl">`, brand colours as CSS variables from
       `docs/BRAND.md`, Noto Naskh Arabic bundled locally. Create
       `src/strings.ts`. Prove RTL works with one simple page.

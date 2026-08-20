@@ -1,22 +1,41 @@
 import type { Metadata } from 'next';
+import { t } from '@/strings';
 import './globals.css';
 
 /*
- * Root layout — task 0.1 skeleton.
+ * Root layout.
  *
- * `lang="ar" dir="rtl"` is set here from the very first commit because it is
- * permanent (docs/BRAND.md), not because this page is finished. Fonts, brand
- * colours, the shared chrome and src/strings.ts all arrive in task 0.4.
+ * lang="ar" dir="rtl" is set here and nowhere else. Every screen in the
+ * application inherits it — see docs/BRAND.md.
  */
 
 export const metadata: Metadata = {
-  title: 'Litigation Management System',
-  description: 'Sarie Eldin & Partners — litigation management system',
+  title: {
+    default: `${t.app.system} — ${t.app.name}`,
+    template: `%s — ${t.app.system}`,
+  },
+  description: t.app.system,
+  // Not a public site; nothing here should ever be indexed.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ar" dir="rtl">
+      <head>
+        {/*
+          The Arabic subset is needed on every page, so fetch it alongside the
+          stylesheet rather than after it. Without this the first paint shows
+          a fallback face and the text visibly reflows.
+        */}
+        <link
+          rel="preload"
+          href="/fonts/noto-naskh-arabic-arabic-wght-normal.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

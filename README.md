@@ -67,9 +67,14 @@ are in `docs/DATABASE.md`.
 npm run check
 ```
 
-That runs three things in one go: the TypeScript type check, ESLint, and the
-formatting check. All three must pass. `npm run format` fixes formatting
-automatically; `npm run lint:fix` fixes what ESLint can fix on its own.
+That runs four things in one go: the TypeScript type check, ESLint, the
+formatting check, and `check:rtl`. All four must pass. `npm run format` fixes
+formatting automatically; `npm run lint:fix` fixes what ESLint can fix.
+
+`check:rtl` catches the two mistakes that are invisible until someone opens
+the screen: a physical CSS direction (`margin-left` instead of
+`margin-inline-start`), and an Arabic string written inside a component
+instead of in `src/strings.ts`.
 
 Note: since Next.js 16, `npm run build` no longer runs ESLint. `npm run check`
 is the gate.

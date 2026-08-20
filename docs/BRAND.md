@@ -43,6 +43,10 @@ decoration.
    `padding-inline-end`, not `padding-right`. This costs nothing now and saves a
    full restyle if a left-to-right version is ever needed.
 
+   **Enforced.** `npm run check:rtl` fails on any physical direction in a
+   stylesheet, and is part of `npm run check`. A deliberate exception needs an
+   `rtl-ok` comment on the line or the one above it, saying why.
+
 2. **No hardcoded strings in components.** Every visible string lives in
    `src/strings.ts`:
 
@@ -56,6 +60,9 @@ decoration.
    No i18n library in Phase 1 — one language does not need one. But this file
    makes a future second language a mechanical change.
 
+   **Enforced.** `npm run check:rtl` fails on any Arabic character inside a
+   `.tsx` file outside a comment.
+
 3. **Numbers stay Western** (0–9). Confirmed: zero Arabic-Indic digits in
    35,343 rows. But **search must accept** `٠-٩` in case a user types them.
 
@@ -68,8 +75,9 @@ decoration.
 
 ## Fonts
 
-**Noto Naskh Arabic** or **Cairo**, bundled with the application — never loaded
-from a CDN and never relying on the user's system fonts. The PDF renderer runs
+**Noto Naskh Arabic**, variable weight 400–700, bundled in `public/fonts/` —
+never loaded from a CDN and never relying on the user's system fonts. Three
+subsets: Arabic, Latin and Latin Extended. See `public/fonts/README.md`. The PDF renderer runs
 on a server with no fonts installed; if the font is not bundled, Arabic will
 render as empty boxes.
 

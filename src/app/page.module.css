@@ -1,0 +1,97 @@
+/*
+ * Styles for the task 0.4 verification page. Temporary, like the page.
+ *
+ * Logical properties only — see globals.css. `npm run check:rtl` enforces it.
+ */
+
+.page {
+  max-inline-size: 60rem;
+  margin-inline: auto;
+  padding-block: var(--space-8);
+  padding-inline: var(--space-4);
+}
+
+.header {
+  background-color: var(--colour-primary);
+  color: var(--colour-on-primary);
+  padding-block: var(--space-4);
+  padding-inline: var(--space-6);
+  border-radius: var(--radius);
+  margin-block-end: var(--space-6);
+}
+
+.header h1 {
+  color: var(--colour-on-primary);
+  margin-block-end: var(--space-1);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--colour-accent-warm);
+  font-size: var(--text-sm);
+}
+
+.card {
+  background-color: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  padding-block: var(--space-4);
+  padding-inline: var(--space-6);
+  margin-block-end: var(--space-4);
+
+  /* The accent stripe sits on the leading edge — the right in Arabic, and
+     automatically the left if the interface is ever run left-to-right. */
+  border-inline-start: 4px solid var(--colour-accent);
+}
+
+.card h2 {
+  font-size: var(--text-base);
+  color: var(--colour-text-muted);
+  font-weight: 400;
+  margin-block-end: var(--space-2);
+}
+
+.value {
+  font-size: var(--text-lg);
+  color: var(--colour-primary);
+}
+
+.note {
+  font-size: var(--text-sm);
+  color: var(--colour-text-muted);
+  margin-block-start: var(--space-2);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.swatch {
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.chip {
+  block-size: 3rem;
+}
+
+.swatchLabel {
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  font-size: var(--text-sm);
+  background-color: var(--colour-surface);
+}
+
+.hex {
+  color: var(--colour-text-muted);
+  /* A hex code is Latin and must read left-to-right inside an RTL line. */
+  direction: ltr;
+  display: inline-block;
+  unicode-bidi: isolate;
+}

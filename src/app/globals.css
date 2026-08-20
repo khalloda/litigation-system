@@ -1,24 +1,173 @@
-/*
- * Placeholder stylesheet — task 0.1.
+/* ===========================================================================
+ *  Base stylesheet — brand tokens, fonts, and the right-to-left ground rules.
  *
- * The real one arrives in task 0.4: brand colours from docs/BRAND.md as CSS
- * custom properties, Noto Naskh Arabic bundled locally, right-to-left layout.
+ *  ONE RULE ABOVE ALL OTHERS: use CSS LOGICAL PROPERTIES.
+ *      margin-inline-start   not  margin-left
+ *      padding-inline-end    not  padding-right
+ *      border-inline-start   not  border-left
+ *      inset-inline-start    not  left
+ *      text-align: start     not  text-align: right
  *
- * Rule for everything written here from 0.4 onward: CSS LOGICAL PROPERTIES
- * only. `margin-inline-start`, never `margin-left`. See docs/BRAND.md.
- */
+ *  In a right-to-left page "left" and "right" are the wrong way round half
+ *  the time, and every one of those is a bug that only shows up on screen.
+ *  `npm run check:rtl` fails the build if a physical property appears.
+ *  See docs/BRAND.md.
+ * ======================================================================== */
 
-* {
+/* ---------------------------------------------------------------------------
+ *  Fonts — bundled with the application, never from a CDN.
+ *
+ *  The PDF renderer runs on a server with no fonts installed; an unbundled
+ *  font makes every Arabic letter in a printed report an empty box.
+ *  See public/fonts/README.md.
+ * ------------------------------------------------------------------------ */
+
+/* Arabic. Always needed, so it is preloaded in the layout. */
+@font-face {
+  font-family: 'Noto Naskh Arabic';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/noto-naskh-arabic-arabic-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E,
+    U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+
+/* Latin. The data is genuinely mixed: شركة هيوليت باكارد HP, 1039 / 20ق. */
+@font-face {
+  font-family: 'Noto Naskh Arabic';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/noto-naskh-arabic-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Noto Naskh Arabic';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/noto-naskh-arabic-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+/* ---------------------------------------------------------------------------
+ *  Brand tokens — docs/BRAND.md. These twelve colours and no others.
+ *
+ *  Balance: 60% background, 30% primary, 10% accent. The interface reads
+ *  mostly light, with emerald green for headers, navigation and primary
+ *  actions. Terracotta red is for warnings and destructive actions only,
+ *  never decoration.
+ * ------------------------------------------------------------------------ */
+:root {
+  /* Brand */
+  --colour-primary: #214b4b; /* Emerald Green */
+  --colour-primary-dark: #163232; /* Dark Emerald */
+  --colour-primary-mid: #2b605c;
+  --colour-accent: #46a398; /* Teal */
+  --colour-accent-warm: #b6aa92; /* Light Gold */
+  --colour-accent-warm-dark: #9c9174;
+
+  /* Surfaces */
+  --colour-background: #eeede8; /* Off-white */
+  --colour-surface: #ffffff;
+
+  /* Text */
+  --colour-text: #1e1e1e; /* Charcoal */
+  --colour-text-muted: #333333;
+  --colour-on-primary: #ffffff;
+
+  /* Lines and warnings */
+  --colour-border: #c7c7c7;
+  --colour-danger: #802f1c; /* Terracotta Red */
+
+  /* Type. Arabic naskh needs more line height than Latin to keep the
+     descenders and the dots legible at working sizes. */
+  --font-body: 'Noto Naskh Arabic', 'Segoe UI', system-ui, sans-serif;
+  --line-height: 1.85;
+
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+
+  /* Spacing, on a 4px step. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+ *  Base
+ * ------------------------------------------------------------------------ */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
+html {
+  /* Western digits everywhere, even where a browser or operating system is
+     configured for Arabic-Indic. Confirmed: the real data contains none. */
+  font-variant-numeric: lining-nums;
 }
 
 body {
-  font-family: system-ui, sans-serif;
-  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+  background-color: var(--colour-background);
+  color: var(--colour-text);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--line-height);
+
+  /* Belt and braces: dir="rtl" is on <html>, this makes the intent explicit
+     for anything that inherits oddly. */
+  text-align: start;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--colour-primary);
+  line-height: 1.4;
+  margin-block: 0 var(--space-3);
+}
+
+h1 {
+  font-size: var(--text-xl);
+}
+h2 {
+  font-size: var(--text-lg);
+}
+
+p {
+  margin-block: 0 var(--space-3);
+}
+
+a {
+  color: var(--colour-primary-mid);
+}
+
+/* ---------------------------------------------------------------------------
+ *  Multi-line data must show every line.
+ *
+ *  Case numbers and party capacities contain deliberate line breaks — 18% of
+ *  matters hold several case numbers stacked (decision D9). Collapsing them
+ *  to one line destroys the one thing lawyers use to find a case.
+ * ------------------------------------------------------------------------ */
+.multiline {
+  white-space: pre-line;
 }
