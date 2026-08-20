@@ -52,6 +52,8 @@ Excel via ExcelJS. PDF via Playwright. Rationale in `docs/DECISIONS.md`.
 cp .env.example .env
 npm install
 npm run db:up             # PostgreSQL 17 in Docker, on port 5433
+npm run db:migrate        # build the schema inside it
+npm run db:check          # confirm the application can reach it
 npm run dev               # http://localhost:3000
 ```
 

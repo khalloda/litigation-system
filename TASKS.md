@@ -19,7 +19,7 @@ be bigger than expected, split it and tell the owner.
       PostgreSQL 16+ with the ICU Arabic collation available. One command must
       bring the database up on Windows and on the Ubuntu server.
 
-- [ ] **0.3 Prisma set up, connects, migration runs**
+- [x] **0.3 Prisma set up, connects, migration runs**
 
 - [ ] **0.4 Arabic base layout**
       `<html lang="ar" dir="rtl">`, brand colours as CSS variables from

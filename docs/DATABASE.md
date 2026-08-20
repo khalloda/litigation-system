@@ -12,18 +12,32 @@ Run these from the project folder.
 | What you want | Command |
 |---|---|
 | Start the database | `npm run db:up` |
+| Apply any new schema changes | `npm run db:migrate` |
+| Check the app can use it | `npm run db:check` |
+| Check the database itself | `npm run db:verify` |
 | Stop it (keeps all data) | `npm run db:down` |
-| Check it is set up correctly | `npm run db:verify` |
 | Watch what it is doing | `npm run db:logs` |
 | Open a database prompt | `npm run db:psql` |
+| Browse the data in a window | `npm run db:studio` |
 | **Wipe it and start over** | `npm run db:reset` |
 
-`npm run db:up` waits until the database is genuinely ready before it returns,
-so if it comes back without complaining, the database is up and correct.
+From nothing to a working database:
+
+```bash
+npm run db:up        # start PostgreSQL
+npm run db:migrate   # build the schema inside it
+npm run db:check     # confirm the application can use it
+```
+
+`npm run db:up` waits until the database is genuinely ready before it returns.
 
 **`npm run db:reset` destroys everything in the database.** It exists because
 during the build we will rebuild from the Access data many times. Once the firm
 is live, do not run it.
+
+Prisma refuses to run `db:reset` and other destructive commands when an AI
+agent invokes them; it requires a person to say yes each time. That guard is
+deliberate and stays on.
 
 ---
 
@@ -78,20 +92,46 @@ internet can reach it directly, whatever the password is.
 
 ---
 
-## Changing the setup
+## Two layers, and which owns what
 
-The file `docker/postgres/initdb/01-extensions-and-collation.sql` runs **once**,
-the first time the database is created, and never again. Editing it later has
-no effect on a database that already exists.
+There is a line between what Docker sets up and what Prisma sets up, and it is
+drawn where it is for a reason.
 
-To apply a change to it:
+**Docker, once, when the database is first created** — the things a later
+change can never fix, because they are fixed when the database is built:
+
+- the character encoding (UTF8)
+- the collation provider (ICU)
+- the locale (`ar-EG`)
+
+If any of these is wrong, Arabic is stored or ordered incorrectly for the life
+of the database and the only remedy is to build it again. So
+`docker/postgres/initdb/01-check-cluster.sql` **checks** them and refuses to
+start otherwise. It creates nothing.
+
+**Prisma migrations, replayable at any time** — everything inside the database:
+extensions, the `arabic` collation, and every table.
+
+Why not put the extensions in the Docker script too? Because
+`prisma migrate reset` rebuilds the whole schema, and anything created outside
+a migration is thrown away and never comes back. The database would look
+correct on the day it was built and quietly lose its Arabic sorting the first
+time someone reset it.
+
+### Changing the schema
+
+Edit `prisma/schema.prisma`, then:
 
 ```bash
-npm run db:reset
+npm run db:migrate
 ```
 
-Once real data is loaded, that is no longer acceptable — from that point on,
-changes are made as Prisma migrations instead (task 0.3 onwards).
+That writes a new numbered folder under `prisma/migrations/` and applies it.
+**Commit the migration folder.** The Ubuntu server is brought to the same state
+by replaying them in order with `npm run db:migrate:deploy`.
+
+Never change a migration that has already been applied anywhere. Write a new
+one.
 
 ---
 

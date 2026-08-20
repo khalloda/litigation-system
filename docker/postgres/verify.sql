@@ -43,10 +43,10 @@ UNION ALL SELECT
 FROM pg_database d WHERE d.datname = current_database()
 
 UNION ALL SELECT
-    'Named collation "arabic"',
+    'Named collation "arabic" (migration)',
     coalesce((SELECT colllocale FROM pg_collation WHERE collname = 'arabic'), '(missing)'),
     CASE WHEN EXISTS (SELECT 1 FROM pg_collation WHERE collname = 'arabic')
-         THEN 'PASS' ELSE 'FAIL' END
+         THEN 'PASS' ELSE 'run: npm run db:migrate' END
 
 UNION ALL SELECT
     'Stock ICU Arabic collations',
@@ -58,8 +58,20 @@ UNION ALL SELECT
     'Extension ' || e,
     coalesce((SELECT extversion FROM pg_extension WHERE extname = e), '(missing)'),
     CASE WHEN EXISTS (SELECT 1 FROM pg_extension WHERE extname = e)
-         THEN 'PASS' ELSE 'FAIL' END
-FROM unnest(ARRAY['pg_trgm', 'btree_gin', 'unaccent']) AS e;
+         THEN 'PASS' ELSE 'run: npm run db:migrate' END
+FROM unnest(ARRAY['pg_trgm', 'btree_gin', 'unaccent']) AS e
+
+UNION ALL SELECT
+    'Migrations applied',
+    coalesce((SELECT count(*)::text FROM _prisma_migrations
+              WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL),
+             '(none)'),
+    CASE WHEN to_regclass('public._prisma_migrations') IS NULL
+              THEN 'run: npm run db:migrate'
+         WHEN EXISTS (SELECT 1 FROM _prisma_migrations
+                      WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL)
+              THEN 'FAIL — a migration did not finish'
+         ELSE 'PASS' END;
 
 
 -- ---------------------------------------------------------------------------
@@ -70,6 +82,7 @@ FROM unnest(ARRAY['pg_trgm', 'btree_gin', 'unaccent']) AS e;
 -- ---------------------------------------------------------------------------
 \echo ''
 \echo '--- Arabic sort order (ICU) — expect: احمد/أحمد together, then بسام ---'
+\echo '--- (needs the migration: npm run db:migrate) ---'
 SELECT n AS icu_order
 FROM   unnest(ARRAY['بسام', 'احمد', 'أحمد', 'إبراهيم']) AS n
 ORDER  BY n COLLATE "arabic";

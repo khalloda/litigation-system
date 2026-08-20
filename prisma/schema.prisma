@@ -1,0 +1,33 @@
+// ===========================================================================
+//  Prisma schema — the shape of the database, in one file.
+//
+//  Nothing is edited directly in the database. A change is made here, then
+//  `npm run db:migrate` writes a numbered migration file and applies it. The
+//  migration files are committed, so the Ubuntu server can be brought to the
+//  exact same state by replaying them in order.
+//
+//  Naming, per docs/DATA-MODEL.md: physical tables and columns are
+//  snake_case ASCII. Arabic is a display label and lives in src/strings.ts,
+//  never in a column name. Prisma models are PascalCase and map to the
+//  snake_case table with @@map.
+// ===========================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+//  No models yet.
+//
+//  The tables arrive in Stage 1, in this order:
+//    1.1 lookups   1.2 people + aliases   1.3 core   1.4 junctions
+//    1.5 billing and deferred             1.6 Arabic search
+//
+//  Migration 0001 below carries the PostgreSQL extensions and the Arabic
+//  collation that everything else depends on.
+// ---------------------------------------------------------------------------

@@ -87,8 +87,10 @@ next-env.d.ts
 # Vercel CLI
 .vercel
 
-# Prisma generated client
+# Prisma generated client. Rebuilt by `npm install` (postinstall) and by
+# `npm run db:generate`, so it is never committed.
 prisma/generated/
+src/generated/
 
 # Playwright
 playwright-report/

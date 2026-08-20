@@ -21,9 +21,18 @@
     "db:logs": "docker compose logs -f db",
     "db:psql": "docker compose exec db psql -U litigation -d litigation",
     "db:verify": "docker compose exec db psql -U litigation -d litigation -f /verify.sql",
-    "db:reset": "docker compose down -v && docker compose up -d --wait"
+    "db:reset": "docker compose down -v && docker compose up -d --wait && prisma migrate deploy",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
+    "db:studio": "prisma studio",
+    "db:generate": "prisma generate",
+    "db:check": "tsx scripts/check-db.ts"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -32,10 +41,13 @@
     "@types/node": "^22.19.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.6.2",
+    "prisma": "^7.9.1",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }

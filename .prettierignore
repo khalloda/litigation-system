@@ -1,4 +1,5 @@
 # Generated or vendored — not ours to format.
+src/generated/
 .next/
 out/
 build/
