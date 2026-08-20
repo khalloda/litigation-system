@@ -21,6 +21,12 @@ be bigger than expected, split it and tell the owner.
 
 - [x] **0.3 Prisma set up, connects, migration runs**
 
+- [x] **0.3a Guard `db:reset`**
+      Refuses on a production machine and on a non-local database, with no
+      override. Refuses a database that holds rows unless `--force-i-know` is
+      typed deliberately, printing which tables have rows and how many.
+      All six paths tested by deliberately breaking each one.
+
 - [ ] **0.4 Arabic base layout**
       `<html lang="ar" dir="rtl">`, brand colours as CSS variables from
       `docs/BRAND.md`, Noto Naskh Arabic bundled locally. Create
@@ -181,6 +187,11 @@ allows. Test with real volumes.
 ## Stage 7 — Going live
 
 - [ ] **7.1 Deploy to the Ubuntu VM** with Docker Compose
+      Set `APP_ENV=production` in the server's `.env` — this is what makes
+      `db:reset` refuse outright there. The server's database is also on
+      localhost, so the "is it local?" check cannot tell the two apart.
+      **Re-run `npm audit`** and re-assess the advisories recorded at task
+      0.3; the picture may have changed by then.
 - [ ] **7.2 Backups** — three layers, all required (**D16**)
       a) Nightly automated backup of the database **and** the client-logo
          folder in **one** operation. 30 nights retained.

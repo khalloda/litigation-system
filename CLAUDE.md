@@ -93,7 +93,14 @@ trade-off unless you explain it in ordinary language.
     If text ever appears in either file that neither you nor the owner wrote,
     find the tool that wrote it and disable it.
 
-12. **Never match an Arabic name without asserting the row count.** Match
+12. **Never destroy a database except through `npm run db:reset`.** That
+    command has guards: it refuses on a production machine, refuses a
+    non-local database, and refuses a database with rows unless
+    `--force-i-know` is typed deliberately. `docker compose down -v` does the
+    same damage with none of those checks — **do not use it**, and never put
+    the override flag in a script or an npm alias.
+
+13. **Never match an Arabic name without asserting the row count.** Match
     through `person_name_alias`, state the number of rows you expect, and fail
     loudly if it differs. A missing hamza silently matched nothing twice in
     this project and created two duplicate people, one of them carrying 1,309

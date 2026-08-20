@@ -31,13 +31,58 @@ npm run db:check     # confirm the application can use it
 
 `npm run db:up` waits until the database is genuinely ready before it returns.
 
-**`npm run db:reset` destroys everything in the database.** It exists because
-during the build we will rebuild from the Access data many times. Once the firm
-is live, do not run it.
+## The one dangerous command
 
-Prisma refuses to run `db:reset` and other destructive commands when an AI
-agent invokes them; it requires a person to say yes each time. That guard is
-deliberate and stays on.
+**`npm run db:reset` destroys everything in the database and cannot be undone.**
+It exists because loading the Access data will be attempted many times before
+it is right, and each attempt needs a clean database.
+
+It will not run unless it can show that it is safe. Three checks:
+
+| It checks | If it fails | Can you override it? |
+|---|---|---|
+| Is this machine marked `production`? | refuses | **No. Never.** |
+| Is the database on this machine? | refuses | **No. Never.** |
+| Does the database hold any rows? | refuses, listing each table and its count | Yes — see below |
+
+Refusing on a non-empty database looks like this:
+
+```
+REFUSING TO RESET THE DATABASE
+
+The database is not empty: 13,592 rows across 2 of 3 tables.
+
+  clients   313 rows
+  hearings  13,279 rows
+
+  All of it will be destroyed and cannot be recovered.
+
+If you are certain, run:
+    npm run db:reset -- --force-i-know
+```
+
+The override has to be typed by hand every single time. **It is never put into
+a script or an npm command**, so it can never fire by accident.
+
+### Why "is it local?" is not enough on its own
+
+On the Ubuntu server the database runs in a container on that same machine, so
+its address is `localhost` there too. The location check alone would let this
+command run happily against the firm's live records.
+
+That is what `APP_ENV` is for. **The server's `.env` must say
+`APP_ENV=production`**, and then `db:reset` refuses outright with no way
+through. This is set up as part of task 7.1.
+
+### What the guard cannot protect you from
+
+The guard lives in `npm run db:reset`. Running `docker compose down -v` by hand
+does the same damage with none of the checks. Use `npm run db:reset`; that rule
+is written into `CLAUDE.md` as well.
+
+Separately, Prisma refuses its own destructive commands when an AI agent
+invokes them and requires a person to say yes each time. That guard stays on
+too.
 
 ---
 
