@@ -118,6 +118,19 @@ a migration is thrown away and never comes back. The database would look
 correct on the day it was built and quietly lose its Arabic sorting the first
 time someone reset it.
 
+**This was tested, not assumed.** A second collation was created by hand,
+outside any migration, alongside the migration-owned one. After
+`prisma migrate reset`:
+
+| | before | after |
+|---|---|---|
+| `arabic` — owned by migration 0001 | present | **present** |
+| `made_outside_a_migration` — created by hand | present | **gone** |
+| `pg_trgm`, `btree_gin`, `unaccent` | present | **present** |
+
+The hand-made one did not come back and nothing reported an error. That is the
+failure this arrangement prevents.
+
 ### Changing the schema
 
 Edit `prisma/schema.prisma`, then:
