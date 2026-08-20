@@ -107,11 +107,26 @@ export const t = {
     digits: 'الأرقام تبقى غربية',
     logical: 'الحاشية الداخلية تتبع اتجاه الصفحة',
 
-    // Real examples from the firm's data, kept here rather than in the
-    // component so the check for hardcoded Arabic stays honest.
-    sampleClientName: 'شركة هيوليت باكارد HP',
-    // 18% of matters stack several case numbers like this — the matter's
+    // Display fixtures for this page. A mixed Arabic/Latin name, and several
+    // case numbers stacked the way 18% of matters hold them — the matter's
     // journey up through the courts. Never split, never collapsed (D9).
+    sampleClientName: 'شركة هيوليت باكارد HP',
     sampleCaseNumbers: ['83066 / 69ق', '10714 / 72ق', '9239 / 72ق'],
+
+    // Colour names displayed beside each swatch. They are interface text, so
+    // they live here and not in the component — the hex codes stay in the
+    // component because they are values, not words.
+    palette: {
+      primary: 'Emerald Green',
+      primaryDark: 'Dark Emerald',
+      primaryMid: 'Primary mid',
+      accent: 'Teal',
+      accentWarm: 'Light Gold',
+      accentWarmDark: 'Gold dark',
+      background: 'Off-white',
+      text: 'Charcoal',
+      border: 'Border',
+      danger: 'Terracotta Red',
+    },
   },
 } as const;

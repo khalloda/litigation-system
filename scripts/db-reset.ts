@@ -7,19 +7,35 @@
  * loading the Access data will be attempted many times before it is right,
  * and each attempt needs a clean database.
  *
- * It refuses to run unless it can prove it is safe. Three checks, in order of
+ * It refuses to run unless it can PROVE it is safe. Four checks, in order of
  * how bad the mistake would be:
  *
- *   1. Is this a production environment?  -> refuse. NO OVERRIDE.
- *   2. Is the database somewhere else?    -> refuse. NO OVERRIDE.
- *   3. Does the database contain rows?    -> refuse, listing them.
- *                                            Override: --force-i-know
+ *   1. Is this environment explicitly marked development?  no  -> refuse
+ *   2. Is the database address on this machine?            no  -> refuse
+ *   3. Is it the very database this command will delete?   no  -> refuse
+ *   4. Does ANY schema hold rows?                          yes -> refuse
  *
- * Why check 1 exists, when the brief only asked for 2 and 3: on the Ubuntu
- * server the database runs in a container on that same machine, so its
- * address is localhost there too. A host check alone would let this command
- * run happily against the live system. Check 1 is what actually stands
- * between a tired hand and the firm's case records, so nothing overrides it.
+ * Checks 1 to 3 have NO override. Check 4 has one, and it must be typed by
+ * hand every time — never placed in a script.
+ *
+ * Three of these exist because of failures found in review, and each was a
+ * gap in a check that already looked complete:
+ *
+ *   Check 1 used to refuse only when APP_ENV said "production", so an unset,
+ *   misspelled or unfamiliar value sailed straight through. A safety check
+ *   must fail closed: if it cannot tell where it is, it refuses.
+ *
+ *   Check 3 exists because counting rows in one database and then deleting
+ *   the volume of another is not a check at all. It compares the PostgreSQL
+ *   system identifier seen through DATABASE_URL against the one inside the
+ *   container whose volume is about to be removed.
+ *
+ *   Check 4 used to count only the `public` schema. From Stage 2 onward every
+ *   extracted Access row lands in `stg` and every quarantined value in `qc`.
+ *   `public` would have been empty, the guard would have said proceed, and
+ *   `docker compose down -v` would have destroyed the entire extraction —
+ *   the exact disaster this command exists to prevent, at the exact moment it
+ *   matters most. It now counts every non-system schema.
  */
 
 import 'dotenv/config';
@@ -29,7 +45,29 @@ import { Client } from 'pg';
 const OVERRIDE_FLAG = '--force-i-know';
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1'];
 
+/*
+ * Only this exact value permits a reset. Not "anything that is not
+ * production" — a positive, explicit statement that this is a development
+ * machine.
+ */
+const DEVELOPMENT = 'development';
+
+/* Schemas PostgreSQL owns. Everything else is ours, and must be counted. */
+const SYSTEM_SCHEMAS = ['pg_catalog', 'information_schema', 'pg_toast'];
+
 const override = process.argv.includes(OVERRIDE_FLAG);
+
+function refuse(reason: string, detail: string[], overridable: boolean): never {
+  console.error('\nREFUSING TO RESET THE DATABASE\n');
+  console.error(reason + '\n');
+  for (const line of detail) console.error('  ' + line);
+  console.error(
+    overridable
+      ? `\nIf you are certain, run:\n    npm run db:reset -- ${OVERRIDE_FLAG}\n`
+      : '\nThere is no override for this. It is deliberate.\n',
+  );
+  process.exit(1);
+}
 
 /*
  * Node's connection failures often arrive as an AggregateError whose own
@@ -50,33 +88,35 @@ function describe(error: unknown): string {
   return String(error);
 }
 
-function refuse(reason: string, detail: string[], overridable: boolean): never {
-  console.error('\nREFUSING TO RESET THE DATABASE\n');
-  console.error(reason + '\n');
-  for (const line of detail) console.error('  ' + line);
-  console.error(
-    overridable
-      ? `\nIf you are certain, run:\n    npm run db:reset -- ${OVERRIDE_FLAG}\n`
-      : '\nThere is no override for this. It is deliberate.\n',
-  );
-  process.exit(1);
-}
-
 // ---------------------------------------------------------------------------
-//  1. Production. No override, ever.
+//  1. Is this explicitly a development machine? Fail closed.
 // ---------------------------------------------------------------------------
 const appEnv = process.env['APP_ENV'] ?? '';
 const nodeEnv = process.env['NODE_ENV'] ?? '';
 
-if (appEnv === 'production' || nodeEnv === 'production') {
+if (appEnv !== DEVELOPMENT) {
   refuse(
-    'This is marked as a production environment.',
+    appEnv === ''
+      ? 'APP_ENV is not set, so this machine has not been declared a development machine.'
+      : `APP_ENV is "${appEnv}", which is not "${DEVELOPMENT}".`,
     [
       `APP_ENV  = ${appEnv || '(not set)'}`,
       `NODE_ENV = ${nodeEnv || '(not set)'}`,
       '',
-      'Resetting production would destroy the firm\'s live case records.',
+      `Only APP_ENV=${DEVELOPMENT} permits a reset. Anything else — unset,`,
+      'misspelled, or a name this script does not recognise — is refused,',
+      'because a check that cannot tell where it is must assume the worst.',
+      '',
+      'On a development machine, put APP_ENV=development in .env.',
     ],
+    false,
+  );
+}
+
+if (nodeEnv === 'production') {
+  refuse(
+    'NODE_ENV says production.',
+    ["Resetting production would destroy the firm's live case records."],
     false,
   );
 }
@@ -100,86 +140,176 @@ const host = url.hostname;
 if (!LOCAL_HOSTS.includes(host)) {
   refuse(
     'The database is not on this machine.',
-    [
-      `host = ${host}`,
-      '',
-      'This command only ever runs against a local development database.',
-    ],
+    [`host = ${host}`, '', 'This command only ever runs against a local development database.'],
     false,
   );
 }
 
 // ---------------------------------------------------------------------------
-//  3. Does it hold anything?
+//  Helpers
 // ---------------------------------------------------------------------------
-type TableCount = { table: string; rows: number };
+type TableCount = { schema: string; table: string; rows: number };
 
-async function countRows(): Promise<TableCount[]> {
+function quote(identifier: string): string {
+  return '"' + identifier.replace(/"/g, '""') + '"';
+}
+
+/*
+ * The container's own view of itself. `docker compose exec` targets the `db`
+ * service in this project's compose file — the same service whose volume the
+ * reset removes — so whatever this returns belongs to the thing being
+ * deleted.
+ */
+function containerSystemIdentifier(): string {
+  return execFileSync(
+    'docker',
+    [
+      'compose',
+      'exec',
+      '-T',
+      'db',
+      'psql',
+      '-U',
+      process.env['POSTGRES_USER'] ?? 'litigation',
+      '-d',
+      process.env['POSTGRES_DB'] ?? 'litigation',
+      '-tAc',
+      'SELECT system_identifier FROM pg_control_system()',
+    ],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  ).trim();
+}
+
+async function inspect(): Promise<{ identifier: string; counts: TableCount[] }> {
   const client = new Client({ connectionString: rawUrl });
   await client.connect();
   try {
-    const { rows: tables } = await client.query<{ table_name: string }>(
-      `SELECT table_name FROM information_schema.tables
-       WHERE table_schema = 'public'
-         AND table_type = 'BASE TABLE'
-         AND table_name <> '_prisma_migrations'
-       ORDER BY table_name`,
+    const { rows: control } = await client.query<{ id: string }>(
+      'SELECT system_identifier::text AS id FROM pg_control_system()',
+    );
+    const identifier = control[0]?.id ?? '';
+
+    /*
+     * EVERY non-system schema, not only `public`. From Stage 2 the extracted
+     * Access data lives in `stg` and the quarantine in `qc`; counting only
+     * `public` would report an empty database while holding the extraction.
+     *
+     * `_prisma_migrations` is excluded because it is Prisma's own bookkeeping,
+     * not data — it always holds rows once a migration has run.
+     */
+    const { rows: tables } = await client.query<{ schema: string; table: string }>(
+      `SELECT table_schema AS schema, table_name AS table
+         FROM information_schema.tables
+        WHERE table_type = 'BASE TABLE'
+          AND table_schema <> ALL ($1::text[])
+          AND table_schema NOT LIKE 'pg_temp%'
+          AND table_schema NOT LIKE 'pg_toast%'
+          AND NOT (table_schema = 'public' AND table_name = '_prisma_migrations')
+        ORDER BY table_schema, table_name`,
+      [SYSTEM_SCHEMAS],
     );
 
     const counts: TableCount[] = [];
-    for (const { table_name } of tables) {
-      // An exact count, not an estimate. This decides whether data is
-      // destroyed; a statistic that is "usually about right" will not do.
+    for (const { schema, table } of tables) {
+      /*
+       * An exact count, never an estimate. This decides whether data is
+       * destroyed; a statistic that is "usually about right" will not do.
+       */
       const { rows } = await client.query<{ n: string }>(
-        `SELECT count(*)::text AS n FROM "public"."${table_name.replace(/"/g, '""')}"`,
+        `SELECT count(*)::text AS n FROM ${quote(schema)}.${quote(table)}`,
       );
-      counts.push({ table: table_name, rows: Number(rows[0]?.n ?? 0) });
+      counts.push({ schema, table, rows: Number(rows[0]?.n ?? 0) });
     }
-    return counts;
+    return { identifier, counts };
   } finally {
     await client.end();
   }
 }
 
+// ---------------------------------------------------------------------------
 async function main() {
-  console.log(`Target: ${url.pathname.replace(/^\//, '')} on ${host}:${url.port || '5432'}`);
+  const database = url.pathname.replace(/^\//, '');
+  console.log(`Target: ${database} on ${host}:${url.port || '5432'}`);
 
+  let identifier: string;
   let counts: TableCount[];
   try {
-    counts = await countRows();
+    ({ identifier, counts } = await inspect());
   } catch (error) {
-    // Not being able to look is not permission to proceed. Wiping the Docker
-    // volume destroys the data whether or not the server is answering.
+    /*
+     * Not being able to look is not permission to proceed. Removing the
+     * Docker volume destroys the data whether or not the server is answering.
+     */
     refuse(
       'Could not read the database, so it cannot be shown to be empty.',
-      [
-        describe(error),
-        '',
-        'Start it first:  npm run db:up',
-      ],
+      [describe(error), '', 'Start it first:  npm run db:up'],
       true,
     );
   }
 
+  // -------------------------------------------------------------------------
+  //  3. Is the database just inspected the one whose volume will be deleted?
+  // -------------------------------------------------------------------------
+  let containerIdentifier: string;
+  try {
+    containerIdentifier = containerSystemIdentifier();
+  } catch (error) {
+    refuse(
+      'Could not reach the Docker container to confirm which database it holds.',
+      [describe(error), '', 'Start it first:  npm run db:up'],
+      false,
+    );
+  }
+
+  if (identifier === '' || containerIdentifier === '' || identifier !== containerIdentifier) {
+    refuse(
+      'DATABASE_URL does not point at the container this command would delete.',
+      [
+        `DATABASE_URL reaches database   ${identifier || '(unknown)'}`,
+        `the Docker container holds      ${containerIdentifier || '(unknown)'}`,
+        '',
+        'These are two different servers. This command would count rows in one',
+        'and destroy the other, so it would report "empty" and then delete real',
+        'data. Point DATABASE_URL at the container, or stop the other server.',
+      ],
+      false,
+    );
+  }
+  console.log(`Confirmed: this is the container's own database (id ${identifier}).`);
+
+  // -------------------------------------------------------------------------
+  //  4. Does anything hold rows, in any schema?
+  // -------------------------------------------------------------------------
   const occupied = counts.filter((c) => c.rows > 0);
-  const total = counts.reduce((sum, c) => sum + c.rows, 0);
+  const total = occupied.reduce((sum, c) => sum + c.rows, 0);
+  const schemas = [...new Set(counts.map((c) => c.schema))];
 
   if (counts.length === 0) {
     console.log('Tables: none. Nothing to lose.');
   } else if (occupied.length === 0) {
-    console.log(`Tables: ${counts.length}, all empty. Nothing to lose.`);
+    console.log(
+      `Tables: ${counts.length} across ${schemas.length} schema(s) ` +
+        `(${schemas.join(', ')}), all empty.`,
+    );
   } else {
-    const width = Math.max(...occupied.map((c) => c.table.length));
-    const detail = occupied.map((c) => `${c.table.padEnd(width)}  ${c.rows.toLocaleString()} rows`);
+    const labels = occupied.map((c) => `${c.schema}.${c.table}`);
+    const width = Math.max(...labels.map((l) => l.length));
+    const detail = occupied.map(
+      (c, i) => `${(labels[i] ?? '').padEnd(width)}  ${c.rows.toLocaleString()} rows`,
+    );
+    const occupiedSchemas = [...new Set(occupied.map((c) => c.schema))].join(', ');
+
     if (!override) {
       refuse(
-        `The database is not empty: ${total.toLocaleString()} rows across ${occupied.length} of ${counts.length} tables.`,
+        `The database is not empty: ${total.toLocaleString()} rows across ` +
+          `${occupied.length} of ${counts.length} tables, in schema(s) ${occupiedSchemas}.`,
         [...detail, '', 'All of it will be destroyed and cannot be recovered.'],
         true,
       );
     }
     console.log(
-      `\nOverride given. Destroying ${total.toLocaleString()} rows across ${occupied.length} tables:`,
+      `\nOverride given. Destroying ${total.toLocaleString()} rows ` +
+        `across ${occupied.length} tables:`,
     );
     for (const line of detail) console.log('  ' + line);
   }

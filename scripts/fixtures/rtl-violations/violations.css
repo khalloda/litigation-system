@@ -1,0 +1,72 @@
+/*
+ * DELIBERATELY WRONG. Do not copy anything from this file.
+ *
+ * Every line below breaks a rule that `npm run check:rtl` must catch. The
+ * self-test asserts each one is still reported. A rule with no fixture here
+ * is a rule nobody has tested.
+ */
+
+.physical-margins {
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.physical-padding {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.physical-borders {
+  border-left: 1px solid red;
+  border-right: 1px solid red;
+}
+
+.physical-corners {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* Written on one line, which the first version of the checker missed. */
+.inset-one-line { left: 0; }
+.inset-one-line-end { right: 0; }
+
+.inset-multi-line {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+}
+
+.alignment {
+  text-align: left;
+}
+
+.alignment-end {
+  text-align: right;
+}
+
+.floated {
+  float: left;
+}
+
+.floated-end {
+  float: right;
+}
+
+.cleared {
+  clear: left;
+}
+
+/*
+ * Four-value shorthand is top-right-bottom-left. The right and left values
+ * differ, so this is directional and stays pointing the same way in an
+ * Arabic page.
+ */
+.directional-shorthand {
+  margin: 0 4px 0 16px;
+}
+
+.directional-padding-shorthand {
+  padding: 2px 8px 2px 24px;
+}

@@ -63,13 +63,32 @@ FROM unnest(ARRAY['pg_trgm', 'btree_gin', 'unaccent']) AS e
 
 UNION ALL SELECT
     'Migrations applied',
-    coalesce((SELECT count(*)::text FROM _prisma_migrations
-              WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL),
-             '(none)'),
+    /*
+     * _prisma_migrations does not exist until the first migration runs, and
+     * PostgreSQL resolves every table named in a statement BEFORE running any
+     * of it — so naming the table directly makes the whole query fail on a
+     * fresh database, and the friendly "run the migration" line never prints.
+     * The to_regclass guard could not save it: the statement never got that
+     * far.
+     *
+     * query_to_xml takes the inner query as TEXT, so nothing is resolved at
+     * planning time, and CASE only evaluates the branch it needs. On a fresh
+     * database the branch simply is not taken.
+     */
+    CASE WHEN to_regclass('public._prisma_migrations') IS NULL THEN '(none)'
+         ELSE (xpath('/row/n/text()',
+                     query_to_xml('SELECT count(*) AS n FROM public._prisma_migrations
+                                    WHERE finished_at IS NOT NULL
+                                      AND rolled_back_at IS NULL',
+                                  false, true, '')))[1]::text
+    END,
     CASE WHEN to_regclass('public._prisma_migrations') IS NULL
               THEN 'run: npm run db:migrate'
-         WHEN EXISTS (SELECT 1 FROM _prisma_migrations
-                      WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL)
+         WHEN (xpath('/row/n/text()',
+                     query_to_xml('SELECT count(*) AS n FROM public._prisma_migrations
+                                    WHERE finished_at IS NULL
+                                       OR rolled_back_at IS NOT NULL',
+                                  false, true, '')))[1]::text::int > 0
               THEN 'FAIL — a migration did not finish'
          ELSE 'PASS' END;
 
@@ -82,10 +101,23 @@ UNION ALL SELECT
 -- ---------------------------------------------------------------------------
 \echo ''
 \echo '--- Arabic sort order (ICU) — expect: احمد/أحمد together, then بسام ---'
-\echo '--- (needs the migration: npm run db:migrate) ---'
+
+/*
+ * COLLATE "arabic" is resolved when the statement is PLANNED, so on a fresh
+ * database this would fail outright rather than explain itself — and no
+ * amount of WHERE or CASE inside the query can prevent that. The decision has
+ * to be made before the statement is sent, which is what psql's own \if does.
+ */
+SELECT EXISTS (SELECT 1 FROM pg_collation WHERE collname = 'arabic') AS has_arabic \gset
+
+\if :has_arabic
 SELECT n AS icu_order
 FROM   unnest(ARRAY['بسام', 'احمد', 'أحمد', 'إبراهيم']) AS n
 ORDER  BY n COLLATE "arabic";
+\else
+\echo '    skipped — the "arabic" collation arrives with the first migration.'
+\echo '    run: npm run db:migrate'
+\endif
 
 \echo ''
 \echo '--- The same list in raw byte order, for comparison ---'

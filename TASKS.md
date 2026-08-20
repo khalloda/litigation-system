@@ -105,7 +105,11 @@ only ever seen good data is not known to work.
 
 - [ ] **2.10 Transform: invoices and payments** — read-only. No `Pay-Date`.
 
-- [ ] **2.11 Upload the 54 client logos** to object storage; verify SHA-256.
+- [ ] **2.11 Write the 54 client logos** to the server folder defined in
+      **D15** — `/var/lib/litigation/client-logos/{client_id}/{filename}` —
+      and record `relative_path`, `file_name`, `content_type`, `byte_size`
+      in `client_logos`. **Never the image itself, and never cloud storage.**
+      Verify SHA-256 before and after.
 
 - [ ] **2.12 Gate 4 reconciliation**
       Counts, per-lawyer matter totals, status totals, billing totals.

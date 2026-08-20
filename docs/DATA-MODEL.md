@@ -95,11 +95,16 @@ logistics, money, classification and free text.
 | `legacy_category_raw` | Original Access text, never overwritten |
 | `legacy_degree_raw` | Original Access text, never overwritten |
 | `court_id` | FK — court name |
-| `circuit_id` | FK — court circuit, stored **separately** from the court (D18) |
+| `circuit_id` | FK — court circuit, stored **separately** from the court |
 
 `court_id` and `circuit_id` are two columns, not one. Reports join them for
 display: `الإدارية العليا (11 موضوع)`,
-`المحكمة الاقتصادية (الدائرة: (9) استئناف)`. See `docs/REPORT-LAYOUTS.md`.
+`المحكمة الاقتصادية (الدائرة: (9) استئناف)`.
+
+Source: `docs/REPORT-LAYOUTS.md`, "Type 4 — Client status report", which
+records that the samples show court and circuit rendered together but stored
+apart. **This is not D18** — D18 is the parameterised client report. Earlier
+drafts cited D18 here and were wrong.
 
 Court detail columns (floor, hall, shelf, secretary room) may move to a
 `matter_court_details` table — optional, discuss before doing it.

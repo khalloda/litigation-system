@@ -182,7 +182,10 @@ INSERT INTO lookup_client_branch (label_ar, sort_order) VALUES ('إقتصادي'
 
 
 -- ============================================================================
---  TEAMS — see decisions D6 and D18
+--  TEAMS — see decision D6
+--
+--  (An earlier version of this header cited D18 as well. That was wrong:
+--   D18 is the parameterised client report and has nothing to do with teams.)
 --
 --  IMPORTANT: teams do NOT go on the matter. D6 removed that, because 1,507 of
 --  1,730 matters were all on "team 1" — a field where 87% of rows share one

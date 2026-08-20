@@ -32,12 +32,35 @@ analysis_source/
 staging/
 attachments/
 
-# Spreadsheets and CSVs — these carry real client data
+# Spreadsheets and CSVs.
+#
+# The firm has decided this data is not confidential, so the reason for this
+# rule is now OPERATIONAL, and it is just as binding: git keeps every version
+# of every file for ever. The Access database is 46 MB compacted. Commit it
+# once and the repository carries it permanently — deleting it later does not
+# shrink the history, and every future clone pays for it.
 *.csv
 *.tsv
 *.xlsx
+*.xlsm
+*.xlsb
 *.xls
+*.ods
 !docs/**/*.xlsx          # except blank templates deliberately kept in docs
+
+# Other databases. Anything holding rows belongs outside the repository.
+*.sqlite
+*.sqlite3
+*.db
+
+# Archives. Usually an export of something large that is already excluded
+# above, smuggled past these rules by being compressed.
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+*.tgz
 
 # Extracted client logos and documents
 uploads/

@@ -3,7 +3,9 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Status:** requirements complete, no code written yet.
+**Status:** Stage 0 complete — the application skeleton, the database, and
+the Arabic right-to-left layout all run. Stage 1 (the database schema) is
+next. Progress is tracked in `TASKS.md`.
 
 ---
 

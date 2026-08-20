@@ -13,21 +13,31 @@ const NEWLINE = String.fromCharCode(10);
  * palette, mixed Arabic/Latin text, Western digits, and multi-line values
  * kept intact.
  *
- * Note there is not one Arabic string in this file. Everything visible comes
- * from src/strings.ts — decision D12.
+ * Note there is not one piece of visible text written in this file — not
+ * Arabic, and not English either. Everything a reader sees comes from
+ * src/strings.ts (decision D12). The colour names used to live here, which
+ * `npm run check:rtl` now refuses.
  */
 
+/*
+ * Hex codes and token names are values, not words, so they stay here. The
+ * name beside each swatch is text a person reads, so it comes from strings.
+ */
 const palette = [
-  { name: 'Emerald Green', hex: '#214B4B', token: '--colour-primary' },
-  { name: 'Dark Emerald', hex: '#163232', token: '--colour-primary-dark' },
-  { name: 'Primary mid', hex: '#2B605C', token: '--colour-primary-mid' },
-  { name: 'Teal', hex: '#46A398', token: '--colour-accent' },
-  { name: 'Light Gold', hex: '#B6AA92', token: '--colour-accent-warm' },
-  { name: 'Gold dark', hex: '#9C9174', token: '--colour-accent-warm-dark' },
-  { name: 'Off-white', hex: '#EEEDE8', token: '--colour-background' },
-  { name: 'Charcoal', hex: '#1E1E1E', token: '--colour-text' },
-  { name: 'Border', hex: '#C7C7C7', token: '--colour-border' },
-  { name: 'Terracotta Red', hex: '#802F1C', token: '--colour-danger' },
+  { label: t.setupCheck.palette.primary, hex: '#214B4B', token: '--colour-primary' },
+  { label: t.setupCheck.palette.primaryDark, hex: '#163232', token: '--colour-primary-dark' },
+  { label: t.setupCheck.palette.primaryMid, hex: '#2B605C', token: '--colour-primary-mid' },
+  { label: t.setupCheck.palette.accent, hex: '#46A398', token: '--colour-accent' },
+  { label: t.setupCheck.palette.accentWarm, hex: '#B6AA92', token: '--colour-accent-warm' },
+  {
+    label: t.setupCheck.palette.accentWarmDark,
+    hex: '#9C9174',
+    token: '--colour-accent-warm-dark',
+  },
+  { label: t.setupCheck.palette.background, hex: '#EEEDE8', token: '--colour-background' },
+  { label: t.setupCheck.palette.text, hex: '#1E1E1E', token: '--colour-text' },
+  { label: t.setupCheck.palette.border, hex: '#C7C7C7', token: '--colour-border' },
+  { label: t.setupCheck.palette.danger, hex: '#802F1C', token: '--colour-danger' },
 ];
 
 export default function SetupCheck() {
@@ -70,7 +80,7 @@ export default function SetupCheck() {
             <li key={colour.token} className={styles.swatch}>
               <div className={styles.chip} style={{ backgroundColor: colour.hex }} />
               <div className={styles.swatchLabel}>
-                {colour.name}
+                {colour.label}
                 <br />
                 <span className={styles.hex}>{colour.hex}</span>
               </div>

@@ -43,9 +43,13 @@ Add to `matters`:
 
 ```
 court_id     FK — court name
-circuit_id   FK — court circuit, stored SEPARATELY from the court (D18).
+circuit_id   FK — court circuit, stored SEPARATELY from the court.
              Reports join them for display:
              "الإدارية العليا (11 موضوع)"
+
+             [Correction, applied later: this patch originally cited D18.
+              D18 is the parameterised client report. The source for
+              court/circuit separation is docs/REPORT-LAYOUTS.md, Type 4.]
 ```
 
 ---

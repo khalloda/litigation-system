@@ -82,8 +82,19 @@ Fail the migration if these do not match.
 
 **These 15 tables sum to 30,553 rows.** That is the migration target.
 
-Also: **54 attachments** and **288 multi-value entries**. If either is zero,
-extraction failed silently — stop.
+Also: **54 attachments** and **288 multi-value entries**.
+
+**These numbers are asserted by `scripts/01_extract_access.ps1`, not printed
+for a human to compare.** The script exits non-zero on any mismatch, and on
+**any warning at all** — a complex-column read that throws is recorded as a
+warning, and a warning in a lossless extraction is a failure. It used to print
+the expected values and a note saying "if attachments = 0 the extraction
+failed silently", which is advice, not a gate: nobody reads the twelfth line
+of a run that says it succeeded.
+
+If the firm's data has genuinely changed — it is in daily use and drifts about
+100 records a day — update the expected counts in that script deliberately,
+in the same commit as the reason.
 
 Note: the attachment count is 54 only with the default table set. Running the
 extractor with `-IncludeArchiveTables` also reads `Copy Of العملاء`, which holds
@@ -156,6 +167,36 @@ one.
 Re-derive figures **by parsing the data**, never by reading the comment that
 describes it. Twice in one day the description was wrong and the data was
 right.
+
+### A check must be tested where it will actually run
+
+**A safety check must be tested against the failure it exists to prevent, in
+the environment where it will run.**
+
+Six passing paths did not cover the schema the data will actually be in. The
+`db:reset` guard counted rows in `public` and was proved against six
+deliberately broken cases — all of them in `public`. From Stage 2 the
+extracted Access data lives in `stg` and the quarantine in `qc`, so on the
+day it mattered most the guard would have looked at an empty `public`, said
+"nothing to lose", and destroyed the entire extraction.
+
+Every finding in the Stage 0 review was a gap in a check that already existed
+and already passed its own tests. So when writing a check, ask two questions:
+
+1. **What is the failure this exists to prevent?** Reproduce that exact
+   failure, not a convenient stand-in for it.
+2. **Where will this run, and what will be true there that is not true here?**
+   A different schema. A different PowerShell. A live server whose database is
+   also on `localhost`. An `.env` with one line missing.
+
+Two more from the same review, both of the same shape:
+
+- The production guard was tested with `APP_ENV=production` and refused
+  correctly. It was never tested with `APP_ENV` **unset**, which is the way it
+  would actually fail on the server — and unset was accepted.
+- The extraction script was read but never parsed by **Windows PowerShell
+  5.1**, the version needed for Access. It reads a file without a byte-order
+  mark as Windows-1252, so every Arabic table name in it was corrupt.
 
 ### Prove the check catches a failure
 

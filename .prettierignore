@@ -1,5 +1,9 @@
 # Generated or vendored — not ours to format.
 src/generated/
+
+# Deliberately broken fixtures for the check:rtl self-test. Reformatting them
+# would quietly change what is being tested.
+scripts/fixtures/
 .next/
 out/
 build/

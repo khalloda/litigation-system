@@ -74,6 +74,22 @@ That is what `APP_ENV` is for. **The server's `.env` must say
 `APP_ENV=production`**, and then `db:reset` refuses outright with no way
 through. This is set up as part of task 7.1.
 
+### What the guard checks
+
+| It checks | If it fails | Override? |
+|---|---|---|
+| `APP_ENV` says exactly `development` | refuses | **No** |
+| the address is on this machine | refuses | **No** |
+| that address is the very container whose data will be deleted | refuses | **No** |
+| every schema is empty — not just `public` | refuses, listing each table | Yes |
+
+The third and fourth exist because of the Stage 0 review. The guard used to
+count rows in whatever `DATABASE_URL` pointed at and then delete the Docker
+volume regardless — two different databases — and it counted only `public`.
+From Stage 2 the extracted Access data lives in `stg` and the quarantine in
+`qc`, so `public` would have been empty and the whole extraction would have
+been destroyed without a word.
+
 ### What the guard cannot protect you from
 
 The guard lives in `npm run db:reset`. Running `docker compose down -v` by hand

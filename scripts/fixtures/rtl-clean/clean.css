@@ -1,0 +1,67 @@
+/*
+ * DELIBERATELY CORRECT. Every line here is the right way to do something the
+ * checker complains about elsewhere, so the self-test can prove the checker
+ * does not cry wolf. A check that fires on correct code gets switched off.
+ */
+
+.logical-margins {
+  margin-inline-start: 8px;
+  margin-inline-end: 8px;
+}
+
+.logical-padding {
+  padding-inline-start: 8px;
+  padding-inline-end: 8px;
+}
+
+.logical-borders {
+  border-inline-start: 1px solid red;
+  border-inline-end: 1px solid red;
+}
+
+.logical-corners {
+  border-start-start-radius: 4px;
+  border-start-end-radius: 4px;
+}
+
+.logical-inset {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+}
+
+.alignment {
+  text-align: start;
+}
+
+.floated {
+  float: inline-start;
+}
+
+/* Symmetrical shorthand is direction-safe: right and left are the same. */
+.symmetrical-shorthand {
+  margin: 0 8px 0 8px;
+}
+
+/* Two- and three-value shorthands cannot be directional. */
+.two-value {
+  padding: 4px 8px;
+}
+
+.three-value {
+  margin: 4px 8px 12px;
+}
+
+/* Vertical-only physical properties are fine; direction does not affect them. */
+.vertical {
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-top: 1px solid grey;
+}
+
+/* A genuine exception, declared. rtl-ok: a hex code is Latin and must read
+   left-to-right even inside an Arabic line. */
+.hex-code {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
