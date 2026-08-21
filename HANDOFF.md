@@ -4,11 +4,12 @@ Written 21 August 2026, end of session. Assumes you have no memory of the
 conversation that produced the state below.
 
 **Read first, in this order:** `CLAUDE.md` (15 durable rules — they are
-binding), `docs/DECISIONS.md` (D1–D19), `TASKS.md` (build order, current
+binding — **16** of them now), `docs/DECISIONS.md` (D1–D19), `TASKS.md` (current
 position), then this file.
 
-Last commit: `db0f187`. Working tree clean. All 17 `db:check` checks pass
-and all 10 `db:verify` checks pass.
+Last commit: `cd58163`. Working tree clean. All 21 `db:check` checks pass
+and all 10 `db:verify` checks pass. Stage 1 has been reviewed by Codex and
+all four findings are closed (task 1.2d).
 
 ---
 
@@ -54,8 +55,8 @@ the whole codebase for a right-to-left violation in one command.
 cp .env.example .env
 npm install                 # postinstall runs `prisma generate`
 npm run db:up               # PostgreSQL 17 in Docker, waits until healthy
-npm run db:migrate:deploy   # apply all 8 migrations
-npm run db:check            # 17 checks, all must read OK
+npm run db:migrate:deploy   # apply all 10 migrations
+npm run db:check            # 21 checks, all must read OK
 
 npm run dev                 # http://localhost:3000
 npm run build               # production build
@@ -75,7 +76,7 @@ npm run test:gate1          # 15 cases. Runs under pwsh AND Windows PowerShell 5
 # database
 npm run db:up / db:down / db:logs / db:psql / db:studio
 npm run db:verify           # 10 SQL-level checks inside the container
-npm run db:check            # 17 application-level checks through Prisma
+npm run db:check            # 21 application-level checks through Prisma
 npm run db:reset            # DESTRUCTIVE. Guarded. See §5 and CLAUDE.md rule 12.
 npm run db:migrate          # prisma migrate dev — use this locally, see §5
 ```
@@ -92,7 +93,7 @@ because the session began with an empty repository containing only documents.
 
 ```
 HANDOFF.md (*)              this file
-CLAUDE.md                   15 rules for the builder. DO NOT EDIT without owner approval.
+CLAUDE.md                   16 rules for the builder. DO NOT EDIT without owner approval.
 AGENTS.md                   reviewer brief for Codex. Codex may never edit it.
 README.md (*)               status and run commands
 TASKS.md (*)                build order; ticked through 1.2c
@@ -105,7 +106,7 @@ docker/postgres/
 
 prisma/
   schema.prisma (*)         13 models. Structure lives here; DATA lives in sql/
-  migrations/               8 applied migrations, listed in §3
+  migrations/               10 applied migrations, listed in §3
 prisma.config.ts (*)        Prisma 7 config; reads DATABASE_URL from .env
 
 src/
@@ -123,7 +124,11 @@ scripts/
   lib/gate1.ps1 (*)         Gate 1 decision, pure, testable without Access
   lib/inventory.ts (*)      parses+validates the db:reset inventory (JSON)
   db-reset.ts (*)           the guarded destructive reset. Read its header first
-  check-db.ts (*)           17 application-level checks
+  check-db.ts (*)           21 application-level checks
+  write-baseline.ts (*)     writes the reviewed-links baseline; refuses silent overwrites
+  lib/reviewed-links.ts (*) baseline parse/compare/digest. Pure, no database
+  lib/read-links.ts (*)     the one place that reads links out of the database
+  baselines/reviewed-links.json (*)  347 alias links + 20 crosswalk rules, as reviewed
   check-rtl.ts (*)          RTL + hardcoded-text checker, with a self-test
   check-gitignore.ts (*)    65 dangerous paths must be blocked, case-sensitively
   check-encoding.ts (*)     .ps1 must have a BOM; everything else must not
@@ -145,14 +150,14 @@ docs/
   PRD.md (*)                what the system must do
   DECISIONS.md (*)          D1–D19. Outranks any skill or plugin advice
   DATA-MODEL.md (*)         every table and column
-  MIGRATION.md (*)          the migration, the gates, and 10 hard-won rules
+  MIGRATION.md (*)          the migration, the gates, and 12 hard-won rules
   DATABASE.md (*)           running the database in plain language
   PERMISSIONS.md (*)        four roles
   BRAND.md (*)              colours, fonts, RTL rules
   GLOSSARY.md               Arabic legal terms. Never guess one
   REPORTS.md / REPORT-LAYOUTS.md   45 reports and their house style
   PATCHES.md (*)            applied 20 Aug; kept as a record. Do not re-apply
-  reviews/*.md (*)          three Codex reviews. All findings closed
+  reviews/*.md (*)          four Codex reviews. All findings closed
   report-samples/           nine real PDFs. Git-ignored
 
 public/fonts/ (*)           Noto Naskh Arabic woff2 + OFL licence
@@ -187,6 +192,8 @@ Two sources of truth, deliberately separated:
 | 0006 | `20260821121729_merge_name_variant_duplicates` | 3 merges; people 138 → 135 |
 | 0007 | `20260821151740_client_branch_resolution` | `client_branch` 31 → 15; 16 crosswalk rules added and the `جنح` chain collapsed; lookups 146 → 130, crosswalk 4 → 20 |
 | 0008 | `20260821154211_confirm_legal_opinion_is_a_matter_type` | one `reviewer_note`: the firm confirmed `آراء قانونية → matter_type رأي قانوني`. No mapping changed |
+| 0009 | `20260821202303_one_primary_alias_per_person` | demotes 2 surplus primary aliases; adds the **partial unique index** that makes a second primary impossible |
+| 0010 | `20260821203117_team_composition_postcondition` | asserts the 2 teams, their exact 4 + 4 membership as a set, and the reviewer — the postcondition migration 0004 should have had |
 
 Every migration ends in a `DO $$` block asserting its counts. A migration runs
 in a transaction, so a failed assertion rolls the whole thing back — there is
@@ -206,6 +213,12 @@ teams          2 — 8 members, 5 of them current; 16 current staff have none
 crosswalk      20 rules, 0 dangling, 0 unrecognised
   3 hearing_action · 9 matter_category · 1 matter_type · 1 degree
   1 quarantine · 3 separate_client · 2 discarded
+primaries      exactly 1 per person, each equal to people.name_ar,
+               enforced by a partial unique index
+teams          الفريق أ and الفريق ب, 4 named members each,
+               both reviewed by ناجي رمضان (correct — Access recorded it)
+baseline       347 alias links + 20 crosswalk rules, each verified to point
+               at the SAME target the firm reviewed
 ```
 
 ### Tables that exist
@@ -402,6 +415,7 @@ review. All findings closed; the three review files are in `docs/reviews/`.
 - **1.2c** `client_branch` resolved 31 → 15 (**D19**), lookups 146 → 130,
   crosswalk 4 → 20. Done before 1.3 because 1.3 builds
   `clients.legacy_branch_raw` on top of it.
+- **1.2d** All four Codex Stage 1 findings closed. db:check 17 → 21.
 
 Every assertion above was **proved by deliberately breaking it** — see the
 commit messages for the exact error text each produced. For 1.2c the four
@@ -537,10 +551,10 @@ Nothing in Stage 2 can run without both.
    matter belongs to. Until then those matters are quarantined at task 2.6.
    **No action needed now**; flagged so it is not forgotten.
 
-2. **Codex has not reviewed anything after `fcbbf97`.** Sixteen commits,
-   including all of Stage 1, are unreviewed. **The owner has ruled: Codex
-   reviews Stage 1 BEFORE task 1.3.** Do not start 1.3 until that review has
-   run and its findings are closed.
+2. **Stage 1 has been reviewed and all findings are closed** (task 1.2d,
+   `docs/reviews/2026-08-21-stage-1.md`). The firm is out of Codex quota until
+   Monday. **The next review point is the end of Stage 1** — do not wait for a
+   re-review of 1.2d before starting 1.3.
 
 3. **`npm run test:guard` refuses to run**, for the same reason `db:reset`
    always needs `--force-i-know`: the database holds 130 lookup rows, 135
