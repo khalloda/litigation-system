@@ -149,6 +149,24 @@ trade-off unless you explain it in ordinary language.
     this project and created two duplicate people, one of them carrying 1,309
     hearings. Full rule in `docs/MIGRATION.md`.
 
+16. **An assertion that runs once is a snapshot, not an invariant.** If
+    something must stay true forever, put it in a **database constraint** or
+    in **`npm run db:check`** — never only in the migration that first
+    established it. A constraint refuses the mistake as it happens; a check
+    catches it next time anyone looks; a migration assertion proves only that
+    one moment.
+
+    Migration 0005 asserted that nobody had two primary aliases. It was true.
+    Migration 0006 broke it twenty-nine minutes later, and every check passed
+    for a day.
+
+    **And counting a mapping is not checking it.** A check that counts links
+    and proves their destinations exist has not looked at whether any link is
+    *correct*. Repointing a crosswalk rule or an alias at the wrong target
+    leaves every count unchanged and nothing dangling. Reviewed links have a
+    baseline for exactly this reason — `scripts/baselines/reviewed-links.json`.
+    Full rules and the audit in `docs/MIGRATION.md`.
+
 ## Technical baseline
 
 - **Next.js** (App Router) + **TypeScript** — one language for the whole app
