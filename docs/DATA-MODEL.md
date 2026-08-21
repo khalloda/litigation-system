@@ -43,6 +43,11 @@ Login accounts. Linked to `people`. Role is one of the four in
 ## Clients
 
 ### `clients` — 313 rows
+
+**`legacy_branch_raw`** — the original clientBranch text, byte for byte.
+Same reason as `hearings.legacy_action_raw`: جنح was merged into الجنح on
+21 August 2026, affecting 2 clients, so the mapping is no longer one to one.
+
 `name_ar` (100% filled), `name_en` (73%), `full_name`, `branch`,
 `cash_or_probono`, `status`, `poa_location`, `documents_location`,
 `contact_person_id`, `client_start`, `client_end`.
@@ -132,6 +137,16 @@ one field (92% and 83% multi-line).
 Largest table. `matter_id`, `hearing_date`, `next_hearing_date`, `action_id`,
 `decision`, `outcome` (صالح / ضد), `court`, `circuit`, `client_notified`.
 
+**`legacy_action_raw`** — the original الإجراء text, byte for byte.
+
+Added 21 August 2026, and it is not optional. Three hearing actions were
+merged into two that day (محكمه and مجكمة into محكمة, رفع الدعوي into
+رفع الدعوى), which affects 18 hearings. Before that merge the mapping was one
+to one and nothing could be lost; now it is many to one, and without this
+column the original text is **unrecoverable** — the merge could never be
+reversed if it were later judged wrong. See D10 and the `_raw` rule in
+`docs/MIGRATION.md`.
+
 ### `hearing_attendees`
 Replaces `الحاضر` and `حاضر 1`–`حاضر 4`, which held free text — 373 distinct
 spellings for 140 people, plus multi-person strings with no consistent
@@ -217,8 +232,12 @@ All are **tables, not enums**, each with `label_ar`, `label_en`, `sort_order`,
 `is_active`. Seed data is in `sql/lookups-and-crosswalk.sql`.
 
 `matter_type` (14) · `matter_category` (21) · `degree` (12) · `venue` (7) ·
-`importance` (3) · `party_role` (11) · `hearing_action` (23) ·
-`matter_destination` (27) · `client_branch` (32)
+`importance` (3) · `party_role` (11) · `hearing_action` (20) ·
+`matter_destination` (27) · `client_branch` (31) — **146 rows total**
+
+Was 150. Four values were merged on 21 August 2026 after three lists were
+found to have been marked "already clean" without inspection. See
+`sql/lookup-corrections.sql`.
 
 ---
 

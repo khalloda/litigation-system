@@ -37,12 +37,13 @@ be bigger than expected, split it and tell the owner.
 ## Stage 1 — Database
 
 - [x] **1.1 Lookup tables + seed**
-      Nine lookups, 150 rows, tables never enums (D8). Seeded by the
+      Nine lookups, 146 rows, tables never enums (D8). Seeded by the
       migration, not a seed script, so a fresh database on any machine
       arrives complete.
       `matter_type` 14 · `matter_category` 21 · `degree` 12 · `venue` 7 ·
-      `importance` 3 · `party_role` 11 · `hearing_action` 23 ·
-      `matter_destination` 27 · `client_branch` 32
+      `importance` 3 · `party_role` 11 · `hearing_action` 20 ·
+      `matter_destination` 27 · `client_branch` 31 — **146 rows**
+      (was 150; four values merged 21 Aug 2026, migration 0003)
       Seed generated from the two reviewed SQL files by
       `npm run generate:lookup-seed` — not retyped. Counts asserted in the
       migration and again by `npm run db:check`.
@@ -64,6 +65,11 @@ be bigger than expected, split it and tell the owner.
 - [ ] **1.3 Core schema**
       clients, contacts, matters, hearings, admin_tasks, task_actions,
       powers_of_attorney, documents, fee_letters. Per `docs/DATA-MODEL.md`.
+      **Must include `hearings.legacy_action_raw` and
+      `clients.legacy_branch_raw`.** Four lookup values were merged on
+      21 August 2026, so those two mappings are now many-to-one and the
+      original text is unrecoverable without them. Assert both columns exist
+      before task 2.8 loads a single hearing.
 
 - [ ] **1.4 Junction tables**
       matter_lawyers, matter_parties, matter_party_roles, hearing_attendees,
@@ -73,15 +79,14 @@ be bigger than expected, split it and tell the owner.
       invoices, payments (read-only in the app), attendance,
       invoice_allocations. Empty but correctly keyed — see D3.
 
-- [ ] **1.6 Arabic search** — **BLOCKED. Do not start.**
-      Waiting on corrected values for three lookup lists:
-      `hearing_action` (23), `matter_destination` (27), `client_branch` (32).
-      All three were marked "already clean" without inspection, and at least
-      three hearing actions are one word typed three ways (محكمة / محكمه /
-      مجكمة). The firm is re-analysing them against the real Access data.
-      Building the normaliser and its trigram indexes on values that are
-      about to change would mean redoing the indexes and re-testing every
-      search case. Wait.
+- [ ] **1.6 Arabic search** — unblocked 21 August 2026.
+      The three lists that were marked "already clean" without inspection
+      have been re-analysed and corrected: `hearing_action` 23 → 20,
+      `client_branch` 32 → 31, `matter_destination` unchanged at 27.
+      Total 146. The values are settled, so the normaliser and its trigram
+      indexes can be built on them.
+      One open question remains on what `client_branch` MEANS, but that
+      affects reporting, not search — see 6.2.
       The normaliser as a PostgreSQL function, generated normalised columns on
       every searchable Arabic field, `pg_trgm` indexes.
       **Test:** searching `احمد` finds `أحمد`; `140J` finds `140ق`.
@@ -199,6 +204,16 @@ allows. Test with real volumes.
       branch, lawyer), Excel via ExcelJS with `rightToLeft`, PDF via Playwright
       with bundled fonts and the firm letterhead.
 - [ ] **6.2 Client reports**
+      **RAISE WITH THE FIRM FIRST: what is `client_branch` for?**
+      The 31 values hold at least three different concepts — genuine branches
+      (تويوتا إيجيبت, فرع المنصورة), practice areas that duplicate
+      `matter_category` (مدني, ضرائب, تعويضات), and two numbered headings
+      pasted from a document, e.g.
+      `أولاً: طلب وشكوى أمام الهيئة العامة للاستثمار` (1 matter).
+      The same overloaded-column pattern as `matterDegree` (D8), affecting
+      560 matters. Branch is a report parameter, so "filter by branch" cannot
+      be built until the firm decides what a branch is. Deliberately left
+      alone in Stage 1.
       `تقرير عملاء 2` / `6` / `8` and
       `تقرير عملاء -جميع الدعاوى سارية ومنتهية` are **one parameterised
       report** (D17). Build it once.

@@ -31,11 +31,18 @@ datasource db {
 //  Seed data comes from sql/lookups-and-crosswalk.sql and
 //  sql/lookups-part2-and-teams.sql.
 //
-//  SIX of the nine lists were genuinely reviewed value by value. THREE were
-//  not: hearing_action, matter_destination and client_branch were marked
+//  Six of the nine lists were reviewed value by value from the start. Three
+//  — hearing_action, matter_destination and client_branch — had been marked
 //  "already clean" without inspection, and that default was mistaken for a
-//  decision. They are seeded, marked PROVISIONAL below, and being re-analysed
-//  against the real Access data. Task 1.6 is blocked until they are settled.
+//  decision. The firm re-analysed all three on 21 August 2026:
+//
+//    hearing_action       23 -> 20   three typos merged
+//    client_branch        32 -> 31   جنح merged into الجنح
+//    matter_destination   27         unchanged, nothing found
+//    TOTAL               150 -> 146
+//
+//  See sql/lookup-corrections.sql and migration 0003. One question remains
+//  open on client_branch — see its model below.
 //
 //  The seed is loaded by the migration, not by a seed script, because the
 //  application cannot function without these lists — a fresh database must
@@ -151,19 +158,24 @@ model LookupPartyRole {
   @@map("lookup_party_role")
 }
 
-/// What happened at a hearing (الإجراء)? 23 values — **PROVISIONAL**.
+/// What happened at a hearing (الإجراء)? 20 values, sorted by how often each
+/// appears in the live data.
 ///
-/// The seeded values are NOT yet confirmed. The review sheet marked all 23
-/// "already clean" without inspecting them, and that default was mistaken for
-/// a decision.
+/// Was 23. Three were keyboard slips of other values in the same list, merged
+/// on 21 August 2026 after the firm re-analysed them:
 ///
-/// At least three of the 23 are the same word: محكمة, محكمه (ه for ة) and
-/// مجكمة (ج for ح, adjacent keys) are one court action typed three ways, not
-/// three actions. This list is being re-analysed against the real Access data
-/// and corrected values will follow.
+///   محكمه       ه for ة                      -> محكمة
+///   مجكمة       ج for ح, adjacent keys       -> محكمة
+///   رفع الدعوي  ي for ى                      -> رفع الدعوى
 ///
-/// **Do not build task 1.6 (Arabic search) on this list until it is
-/// corrected** — see TASKS.md.
+/// Scale: محكمة is on 11,210 hearings, its two misspellings on 17 between
+/// them. Typos, not distinctions.
+///
+/// تحكيم (arbitration) and تحقيق (investigation) are NOT merged. They look
+/// similar to an algorithm and are different words.
+///
+/// Nothing is lost by merging: every hearing keeps its original text in
+/// hearings.legacy_action_raw, so a merge can be reversed.
 model LookupHearingAction {
   id        Int     @id @default(autoincrement()) @db.SmallInt
   labelAr   String  @unique @map("label_ar")
@@ -179,9 +191,10 @@ model LookupHearingAction {
   @@map("lookup_hearing_action")
 }
 
-/// Which authority the matter sits with (الجهة)? 27 values —
-/// **PROVISIONAL**, same reason as lookup_hearing_action. Marked "already
-/// clean" without inspection; being re-analysed.
+/// Which authority the matter sits with (الجهة)? 27 values.
+///
+/// Re-analysed 21 August 2026 with the other two unexamined lists. Nothing
+/// needed changing.
 model LookupMatterDestination {
   id        Int     @id @default(autoincrement()) @db.SmallInt
   labelAr   String  @unique @map("label_ar")
@@ -197,9 +210,21 @@ model LookupMatterDestination {
   @@map("lookup_matter_destination")
 }
 
-/// Client branch or group. 32 values — **PROVISIONAL**, same reason as
-/// lookup_hearing_action. Marked "already clean" without inspection; being
-/// re-analysed.
+/// Client branch or group. 31 values. Was 32: جنح merged into الجنح on
+/// 21 August 2026, the same value without its definite article.
+///
+/// **OPEN QUESTION — raise with the firm before task 6.2.** The values are
+/// settled; what the column MEANS is not. It holds at least three different
+/// concepts:
+///
+///   * genuine client branches — تويوتا إيجيبت, فرع المنصورة
+///   * practice areas duplicating matter_category — مدني, ضرائب, تعويضات
+///   * two numbered headings pasted from a document, e.g.
+///     'أولاً: طلب وشكوى أمام الهيئة العامة للاستثمار' (1 matter)
+///
+/// The same overloaded-column pattern as matterDegree (D8), but affecting 560
+/// matters rather than 13,279 hearings, and untangling it means deciding what
+/// a branch is FOR. Deliberately not fixed now.
 model LookupClientBranch {
   id        Int     @id @default(autoincrement()) @db.SmallInt
   labelAr   String  @unique @map("label_ar")
@@ -224,3 +249,39 @@ model LookupClientBranch {
 //  migration_crosswalk belongs to Stage 2 and is created there, with the
 //  crosswalk rows, rather than sitting empty until then.
 // ---------------------------------------------------------------------------
+
+// ===========================================================================
+//  MIGRATION CROSSWALK
+//
+//  Every distinct Access value and where it goes. This table IS the mapping
+//  logic: it is data, not code, so a correction is an UPDATE and a re-run
+//  rather than a code change.
+//
+//  Created here rather than in Stage 2, which is where it was originally
+//  planned. The reason for deferring it was that it would sit empty until
+//  then. It no longer would: the four lookup merges confirmed on 21 August
+//  2026 are real mapping rules today, and a note saying "remember to add
+//  these in Stage 2" is the kind of dependency on memory this project keeps
+//  removing.
+//
+//  Not an application table, so it carries created_at only rather than the
+//  full audit set — nobody edits it through the interface.
+// ===========================================================================
+model MigrationCrosswalk {
+  id           Int     @id @default(autoincrement())
+  /// Which Access column the value came from, e.g. hearing_action.
+  sourceField  String  @map("source_field")
+  /// The value exactly as typed in Access. Never altered.
+  sourceValue  String  @map("source_value")
+  /// How many rows in the live data carry this value.
+  rowsAffected Int?    @map("rows_affected")
+  /// Where it goes. NULL target_field means the value is discarded.
+  targetField  String? @map("target_field")
+  targetValue  String? @map("target_value")
+  reviewerNote String? @map("reviewer_note")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([sourceField, sourceValue])
+  @@map("migration_crosswalk")
+}

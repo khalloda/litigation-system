@@ -93,9 +93,9 @@ async function main() {
     ['venue', () => db.lookupVenue.count(), 7],
     ['importance', () => db.lookupImportance.count(), 3],
     ['party_role', () => db.lookupPartyRole.count(), 11],
-    ['hearing_action', () => db.lookupHearingAction.count(), 23],
+    ['hearing_action', () => db.lookupHearingAction.count(), 20],
     ['matter_destination', () => db.lookupMatterDestination.count(), 27],
-    ['client_branch', () => db.lookupClientBranch.count(), 32],
+    ['client_branch', () => db.lookupClientBranch.count(), 31],
   ];
 
   let lookupTotal = 0;
@@ -107,14 +107,66 @@ async function main() {
   }
   record(
     'Lookup lists (9)',
-    '150 rows',
+    '146 rows',
     wrong.length === 0 ? `${lookupTotal} rows` : wrong.join(', '),
-    wrong.length === 0 && lookupTotal === 150,
+    wrong.length === 0 && lookupTotal === 146,
   );
 
   // The default matter type is what a matter falls back to. Exactly one.
   const defaults = await db.lookupMatterType.count({ where: { isDefault: true } });
   record('One default matter type', '1', String(defaults), defaults === 1);
+
+  // 7. The four merges of 21 August 2026 (migration 0003).
+  //
+  //    Checked from both sides. "The typo is gone" alone would also be
+  //    satisfied by deleting both spellings, so the value each one merged
+  //    INTO is checked too.
+  const mergedAway = await db.lookupHearingAction.count({
+    where: { labelAr: { in: ['محكمه', 'مجكمة', 'رفع الدعوي'] } },
+  });
+  const branchMergedAway = await db.lookupClientBranch.count({ where: { labelAr: 'جنح' } });
+  record(
+    'Merged spellings removed',
+    '0',
+    String(mergedAway + branchMergedAway),
+    mergedAway + branchMergedAway === 0,
+  );
+
+  const mergeTargets = await db.lookupHearingAction.count({
+    where: { labelAr: { in: ['محكمة', 'رفع الدعوى'] } },
+  });
+  const branchTarget = await db.lookupClientBranch.count({ where: { labelAr: 'الجنح' } });
+  record(
+    'Merge targets present',
+    '3',
+    String(mergeTargets + branchTarget),
+    mergeTargets + branchTarget === 3,
+  );
+
+  //    تحكيم (arbitration) and تحقيق (investigation) look similar to an
+  //    algorithm and are different words. Both must survive.
+  const kept = await db.lookupHearingAction.count({
+    where: { labelAr: { in: ['تحكيم', 'تحقيق'] } },
+  });
+  record('تحكيم and تحقيق both kept', '2', String(kept), kept === 2);
+
+  //    The crosswalk is what lets Stage 2 map the old text. Every target must
+  //    name a value that exists, or a hearing maps to a list entry that is
+  //    not there.
+  const crosswalk = await db.migrationCrosswalk.findMany();
+  const actions = new Set((await db.lookupHearingAction.findMany()).map((r) => r.labelAr));
+  const branches = new Set((await db.lookupClientBranch.findMany()).map((r) => r.labelAr));
+  const dangling = crosswalk.filter(
+    (c) =>
+      (c.targetField === 'hearing_action' && !actions.has(c.targetValue ?? '')) ||
+      (c.targetField === 'client_branch' && !branches.has(c.targetValue ?? '')),
+  );
+  record(
+    'Crosswalk rules resolve',
+    '4 rules, 0 dangling',
+    `${crosswalk.length} rules, ${dangling.length} dangling`,
+    crosswalk.length === 4 && dangling.length === 0,
+  );
 
   // ---- report --------------------------------------------------------------
   const width = Math.max(...checks.map((c) => c.name.length));

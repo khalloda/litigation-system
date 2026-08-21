@@ -278,7 +278,15 @@ Known items, with measured volumes:
 ## The `_raw` rule
 
 Every normalised column keeps the original text beside it —
-`legacy_category_raw`, `legacy_degree_raw`, `capacity_raw`. Even where 50
+`legacy_category_raw`, `legacy_degree_raw`, `capacity_raw`,
+`legacy_action_raw` (hearings) and `legacy_branch_raw` (clients).
+
+**The last two were added on 21 August 2026 and show why the rule is not
+optional.** Those two columns mapped one to one until four lookup values were
+merged that day. A one-to-one mapping loses nothing; a many-to-one mapping
+loses the original unless it is kept. **Whenever a lookup gains a merge, the
+column that uses it needs a `_raw` partner, or the merge becomes
+irreversible.** Even where 50
 spellings collapse into one list entry, the byte-exact original stays
 queryable. A wrong mapping can be corrected and re-derived without going back to
 the Access file.

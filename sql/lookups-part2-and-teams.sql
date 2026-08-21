@@ -70,29 +70,26 @@ CREATE TABLE lookup_hearing_action (
     is_active   boolean     NOT NULL DEFAULT true
 );
 
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('محكمة', 10);   -- 11210 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('خبير', 20);   -- 1278 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('لجنة', 30);   -- 259 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('نيابة', 40);   -- 64 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('هيئة', 50);   -- 27 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('خبراء', 60);   -- 26 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('لجنة خبراء', 70);   -- 18 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('تحكيم', 80);   -- 11 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('طب شرعي', 90);   -- 10 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('محكمه', 100);   -- 9 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('مفوضين', 110);   -- 8 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('مجكمة', 120);   -- 8 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('لجنة تفتيش', 130);   -- 6 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('قسم', 140);   -- 3 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('محكمة مجلس الدولة بالرحاب', 150);   -- 3 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('محضر', 160);   -- 2 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('معاينة', 170);   -- 2 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('قسم شرطة', 180);   -- 1 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('تحقيق', 190);   -- 1 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('حضور جلسة', 200);   -- 1 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('رفع الدعوى', 210);   -- 1 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('أول جلسة', 220);   -- 1 rows
-INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('رفع الدعوي', 230);   -- 1 rows
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('محكمة',                        10);   -- 11,227 hearings (incl. 17 merged)
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('خبير',                         20);   -- 1,278
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('لجنة',                         30);   -- 259
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('نيابة',                        40);   -- 64
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('هيئة',                         50);   -- 27
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('خبراء',                        60);   -- 26
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('لجنة خبراء',                   70);   -- 18
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('تحكيم',                        80);   -- 11
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('طب شرعي',                      90);   -- 10
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('مفوضين',                      100);   -- 8
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('لجنة تفتيش',                  110);   -- 6
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('قسم',                         120);   -- 3
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('محكمة مجلس الدولة بالرحاب',   130);   -- 3
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('محضر',                        140);   -- 2
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('معاينة',                      150);   -- 2
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('رفع الدعوى',                  160);   -- 2 (incl. 1 merged)
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('قسم شرطة',                    170);   -- 1
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('تحقيق',                       180);   -- 1  NOT the same as تحكيم
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('حضور جلسة',                   190);   -- 1
+INSERT INTO lookup_hearing_action (label_ar, sort_order) VALUES ('أول جلسة',                    200);   -- 1
 
 
 -- ---------------------------------------------------------------------------
@@ -176,7 +173,6 @@ INSERT INTO lookup_client_branch (label_ar, sort_order) VALUES ('الفطيم ل
 INSERT INTO lookup_client_branch (label_ar, sort_order) VALUES ('مدني', 230);   -- 3 rows
 INSERT INTO lookup_client_branch (label_ar, sort_order) VALUES ('الفطيم مصر للبيع بالتجزئة', 240);   -- 3 rows
 INSERT INTO lookup_client_branch (label_ar, sort_order) VALUES ('القضاء الإداري', 250);   -- 2 rows
-INSERT INTO lookup_client_branch (label_ar, sort_order) VALUES ('جنح', 260);   -- 2 rows
 INSERT INTO lookup_client_branch (label_ar, sort_order) VALUES ('أوراسكوم للاتصالات', 270);   -- 1 rows
 INSERT INTO lookup_client_branch (label_ar, sort_order) VALUES ('فرع الإسكندرية', 280);   -- 1 rows
 INSERT INTO lookup_client_branch (label_ar, sort_order) VALUES ('تعويضات', 290);   -- 1 rows
