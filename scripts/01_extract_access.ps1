@@ -617,119 +617,46 @@ Write-Log ("  mvf values   : {0}" -f $summary.total_mvf_values)
 Write-Log ("  warnings     : {0}" -f $summary.warnings)
 Write-Log "=========================================================="
 
+
 # ===========================================================================
-#  GATE 1 -- assert, do not advise
+#  GATE 1
 #
-#  This used to print the expected numbers and leave a human to compare them,
-#  with a note saying "if attachments = 0 the extraction FAILED silently".
-#  A printed hint is not a gate. Nobody reads the twelfth line of a successful
-#  run, and a complex-column read that fails is recorded as a warning and the
-#  script carries on to report success.
-#
-#  Now: any mismatch, and any warning at all, is a hard failure with a
-#  non-zero exit code. The whole point of Stage A is that it either produced
-#  a complete copy or it did not.
-#
-#  Counts are per docs/MIGRATION.md, Gate 1. If the firm's data has genuinely
-#  changed -- it is in daily use, and it drifts about 100 records a day --
-#  update these numbers deliberately, in the same commit as the reason.
+#  The decision lives in scripts/lib/gate1.ps1, deliberately apart from the
+#  extraction. Three of its holes came from the expected values being bent to
+#  match whichever mode the script happened to be running in, so the gate is
+#  now independent of that -- and testable without an Access database.
+#  See scripts/test-gate1.ps1.
 # ===========================================================================
+. (Join-Path $PSScriptRoot 'lib/gate1.ps1')
 
-$ExpectedRows = [ordered]@{
-    'الجلسات'          = 13279
-    'admin work table' = 4207
-    'إجراءات المهام'   = 4130
-    'Attendance'       = 4022
-    'الدعاوى'          = 1730
-    'التوكيلات'        = 735
-    'السداد'           = 597
-    'الفواتير'         = 543
-    'المستندات'        = 405
-    'خطابات الأتعاب'   = 331
-    'العملاء'          = 313
-    'Contacts'         = 188
-    'تقسيم التحصيلات'  = 47
-    'lawyers'          = 23
-    'فريق العمل'       = 3
+$tableRows = @($Manifest | Where-Object { $_.object_type -eq 'table' } |
+                Select-Object name, row_count)
+
+$gate = Test-Gate1 -TableRows $tableRows `
+                   -TotalRows    ([int]$summary.total_rows) `
+                   -Attachments  ([int]$summary.total_attachments) `
+                   -MvfValues    ([int]$summary.total_mvf_values) `
+                   -WarningCount $Warnings.Count `
+                   -SelectedTables $Tables `
+                   -IncludeArchiveTables:$IncludeArchiveTables
+
+$code = Write-Gate1Result -Result $gate `
+                          -TotalRows    ([int]$summary.total_rows) `
+                          -Attachments  ([int]$summary.total_attachments) `
+                          -MvfValues    ([int]$summary.total_mvf_values) `
+                          -WarningCount $Warnings.Count `
+                          -TableCount   $summary.tables_extracted `
+                          -ManifestPath $manifestPath `
+                          -WarningsPath $warnPath
+
+if (-not $gate.Gated) {
+    Write-Log ('DIAGNOSTIC RUN -- Gate 1 not evaluated ({0}).' -f $gate.Reason)
 }
-$ExpectedTotalRows   = 30553   # the sum of the table above
-$ExpectedAttachments = 54      # العملاء.logo -- the 54 client logos
-$ExpectedMvfValues   = 288     # خطابات الأتعاب.Matter, across 195 parents
-
-$gateFailures = [System.Collections.Generic.List[string]]::new()
-
-# --- every table that was extracted must have the expected number of rows ---
-foreach ($name in $ExpectedRows.Keys) {
-    $row = $Manifest | Where-Object { $_.object_type -eq 'table' -and $_.name -eq $name }
-    if (-not $row) {
-        # Only a problem if it was meant to be in this run.
-        if ($targetTables -contains $name) {
-            $gateFailures.Add("table '$name' was selected but is missing from the manifest")
-        }
-        continue
-    }
-    if ([int]$row.row_count -ne $ExpectedRows[$name]) {
-        $gateFailures.Add(
-            ("table '{0}': {1:N0} rows, expected {2:N0}" -f $name, [int]$row.row_count, $ExpectedRows[$name]))
-    }
+elseif ($code -ne 0) {
+    Write-Log ('GATE 1 FAILED with {0} problem(s).' -f $gate.Failures.Count) 'ERROR'
+}
+else {
+    Write-Log 'GATE 1 PASSED.'
 }
 
-# --- the complex columns: the whole reason this script exists ---------------
-$fullRun = ($Tables.Count -eq 0)
-
-if ($fullRun) {
-    if ([int]$summary.total_rows -ne $ExpectedTotalRows -and -not $IncludeArchiveTables) {
-        $gateFailures.Add(
-            ("total rows {0:N0}, expected {1:N0}" -f [int]$summary.total_rows, $ExpectedTotalRows))
-    }
-
-    # 108, not 54, when archive tables are included: 'Copy Of العملاء' holds
-    # the same images again.
-    $expectAtt = if ($IncludeArchiveTables) { $ExpectedAttachments * 2 } else { $ExpectedAttachments }
-    if ([int]$summary.total_attachments -ne $expectAtt) {
-        $gateFailures.Add(
-            ("attachments {0}, expected {1}. A CSV export destroys these; if this is 0 the complex-column read failed silently" -f `
-                [int]$summary.total_attachments, $expectAtt))
-    }
-
-    if ([int]$summary.total_mvf_values -ne $ExpectedMvfValues) {
-        $gateFailures.Add(
-            ("multi-value entries {0}, expected {1}" -f `
-                [int]$summary.total_mvf_values, $ExpectedMvfValues))
-    }
-}
-
-# --- any warning at all is a failure ---------------------------------------
-# A complex-column read that threw was previously recorded here and forgotten.
-# There is no such thing as an acceptable warning in a lossless extraction.
-if ($Warnings.Count -gt 0) {
-    $gateFailures.Add(("{0} warning(s) were recorded -- see {1}" -f $Warnings.Count, $warnPath))
-    foreach ($w in $Warnings) {
-        $gateFailures.Add(("    {0}.{1} -- {2}" -f $w.table, $w.column, $w.message))
-    }
-}
-
-Write-Host ""
-if ($gateFailures.Count -gt 0) {
-    Write-Host "==========================================================" -ForegroundColor Red
-    Write-Host " GATE 1 FAILED -- DO NOT PROCEED TO STAGE B" -ForegroundColor Red
-    Write-Host "==========================================================" -ForegroundColor Red
-    foreach ($f in $gateFailures) { Write-Host "  $f" -ForegroundColor Red }
-    Write-Host ""
-    Write-Host "  The extraction is not a complete copy of the database." -ForegroundColor Red
-    Write-Host "  Loading it would lose data silently. See docs/MIGRATION.md." -ForegroundColor Red
-    Write-Host ""
-    Write-Log ("GATE 1 FAILED with {0} problem(s)." -f $gateFailures.Count) 'ERROR'
-    exit 1
-}
-
-Write-Host "==========================================================" -ForegroundColor Green
-Write-Host " GATE 1 PASSED" -ForegroundColor Green
-Write-Host "==========================================================" -ForegroundColor Green
-Write-Host ("  rows         : {0:N0}  (expected {1:N0})" -f [int]$summary.total_rows, $ExpectedTotalRows)
-Write-Host ("  attachments  : {0}  (expected {1})" -f [int]$summary.total_attachments, $ExpectedAttachments)
-Write-Host ("  mvf values   : {0}  (expected {1})" -f [int]$summary.total_mvf_values, $ExpectedMvfValues)
-Write-Host ("  warnings     : 0")
-Write-Host ""
-Write-Log "GATE 1 PASSED."
-Write-Host "Manifest: $manifestPath"
+exit $code

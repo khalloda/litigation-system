@@ -32,7 +32,8 @@
     "check:rtl": "tsx scripts/check-rtl.ts && tsx scripts/check-rtl.ts --self-test",
     "check:gitignore": "tsx scripts/check-gitignore.ts",
     "check:encoding": "tsx scripts/check-encoding.ts",
-    "test:guard": "tsx scripts/test-db-reset-guard.ts"
+    "test:guard": "tsx scripts/test-db-reset-guard.ts",
+    "test:gate1": "pwsh -NoProfile -File scripts/test-gate1.ps1"
   },
   "dependencies": {
     "@fontsource-variable/noto-naskh-arabic": "^5.3.0",
