@@ -76,19 +76,38 @@ through. This is set up as part of task 7.1.
 
 ### What the guard checks
 
+`npm run db:reset` deletes the whole Docker **volume**. A volume holds a
+PostgreSQL cluster, and a cluster holds several databases — `litigation`, the
+built-in `postgres`, and anything else in there. All of them go.
+
+So the guard asks the **container** what is inside, rather than trusting the
+address in `.env`:
+
 | It checks | If it fails | Override? |
 |---|---|---|
 | `APP_ENV` says exactly `development` | refuses | **No** |
 | the address is on this machine | refuses | **No** |
-| that address is the very container whose data will be deleted | refuses | **No** |
-| every schema is empty — not just `public` | refuses, listing each table | Yes |
+| the address names the expected database | refuses | **No** |
+| the container can be listed at all | refuses | **No** |
+| the address reaches that same container | refuses | **No** |
+| **every database in the volume is empty** — every schema of every one | refuses, listing each table | Yes |
 
-The third and fourth exist because of the Stage 0 review. The guard used to
-count rows in whatever `DATABASE_URL` pointed at and then delete the Docker
-volume regardless — two different databases — and it counted only `public`.
-From Stage 2 the extracted Access data lives in `stg` and the quarantine in
-`qc`, so `public` would have been empty and the whole extraction would have
-been destroyed without a word.
+**Why it is built this way.** This guard was wrong three times, and each time
+it inspected something *next to* what it destroys:
+
+1. It counted only the `public` schema — so data staged in `stg` was
+   invisible, and from Stage 2 that is where the extracted Access data lives.
+2. It counted whatever `DATABASE_URL` reached, which could be a different
+   server, then deleted this container anyway.
+3. It compared the cluster identifier, which fixed (2) — but every database
+   inside one cluster shares that identifier. Aiming `DATABASE_URL` at the
+   empty built-in `postgres` database, in this very container, passed every
+   check and destroyed five rows in `litigation`.
+
+`npm run test:guard` runs nine cases covering all three, and never destroys
+anything: it uses `--dry-run` for the one case where a reset should be
+allowed, and it refuses to run at all if the database holds data it did not
+create itself.
 
 ### What the guard cannot protect you from
 
