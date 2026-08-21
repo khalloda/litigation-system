@@ -41,8 +41,11 @@ datasource db {
 //    matter_destination   27         unchanged, nothing found
 //    TOTAL               150 -> 146
 //
-//  See sql/lookup-corrections.sql and migration 0003. One question remains
-//  open on client_branch — see its model below.
+//  Then the client branch resolution of the same day (D19) took client_branch
+//  from 31 to 15 and the total from 146 to 130. See that model below.
+//
+//  See sql/lookup-corrections.sql and migration 0003, then
+//  sql/client-branch-resolution.sql and migration 0007. Nothing is open.
 //
 //  The seed is loaded by the migration, not by a seed script, because the
 //  application cannot function without these lists — a fresh database must
@@ -317,15 +320,20 @@ model MigrationCrosswalk {
 //  One roster for every human the system knows about, replacing Access's two
 //  lawyer tables (D5). Names are NEVER used as keys: everything joins by id.
 //
-//  138 people, from 373 distinct spellings typed by hand into 18 columns over
+//  135 people, from 373 distinct spellings typed by hand into 18 columns over
 //  six years. That collapse is the highest-ratio mapping in the project and
 //  the one that has already gone wrong twice — a single missing hamza made
 //  أحمد إسماعيل into two people, one carrying 1,309 hearings. Which is why
 //  person_name_alias exists, and why every match goes through it.
 // ===========================================================================
 
-/// Every human the system knows about. 138 rows:
-/// 67 firm staff (21 current, 46 former) + 71 external.
+/// Every human the system knows about. 135 rows:
+/// 64 firm staff (21 current, 43 former) + 71 external.
+///
+/// Was 140, then 138, then 135 — two hamza duplicates merged out at task 1.2,
+/// three generator artefacts at 1.2b. Every figure here is asserted by
+/// npm run db:check, which is the authority; if this comment and that check
+/// ever disagree, the check is right.
 model Person {
   id     Int     @id @default(autoincrement())
   nameAr String  @unique @map("name_ar")
@@ -367,7 +375,7 @@ model Person {
   @@map("people")
 }
 
-/// Every spelling ever typed, mapped to one person. 339 rows.
+/// Every spelling ever typed, mapped to one person. 347 rows.
 ///
 /// This is what makes the migration safe and historical search work: any raw
 /// Access string is looked up here to find the right person, and searching

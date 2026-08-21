@@ -11,6 +11,8 @@
 
 import 'dotenv/config';
 import { db } from '../src/lib/db';
+import { readLinksFromDatabase } from './lib/read-links';
+import { additions, compare, readBaseline } from './lib/reviewed-links';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
 
@@ -247,6 +249,40 @@ async function main() {
     separateClients.length === 3,
   );
 
+  // 7b. THE REVIEWED LINKS ARE STILL THE REVIEWED LINKS.
+  //
+  //     Everything above counts mappings and proves their destinations exist.
+  //     None of it proves a mapping points at the RIGHT destination. Repoint
+  //     دعاوى عمالية from عمال to مدني and every check above still passes:
+  //     the count is unchanged, the destination exists, nothing dangles.
+  //
+  //     At Stage 2 that silently files matters under the wrong practice area,
+  //     or — on the alias side — attaches a lawyer's historical work to
+  //     somebody else. Neither shows up as an error, and the numbers agree.
+  //
+  //     The baseline records every pair the firm reviewed. Adding links is
+  //     allowed; changing one is not. See scripts/lib/reviewed-links.ts.
+  const baseline = readBaseline();
+  const links = await readLinksFromDatabase();
+  const drift = compare(baseline, links);
+  const added = additions(baseline, links);
+  record(
+    'Reviewed links unchanged',
+    `${baseline.counts.aliases} aliases + ${baseline.counts.crosswalk} rules, 0 changed`,
+    drift.length === 0
+      ? `${baseline.counts.aliases} + ${baseline.counts.crosswalk} verified` +
+          (added.aliases + added.crosswalk > 0
+            ? `, ${added.aliases + added.crosswalk} new since`
+            : '')
+      : `${drift.length} CHANGED — ` +
+        drift
+          .slice(0, 3)
+          .map((d) => `${d.subject}: ${d.actual}`)
+          .join('; ') +
+        (drift.length > 3 ? ` (+${drift.length - 3} more)` : ''),
+    drift.length === 0,
+  );
+
   // 8. The roster — task 1.2.
   //
   //    Every derived figure, not just the headline two. These moved together
@@ -345,6 +381,107 @@ async function main() {
     '2 pairs, 0 problems',
     hamzaProblems.length === 0 ? '2 pairs, 0 problems' : hamzaProblems.join('; '),
     hamzaProblems.length === 0,
+  );
+
+  // 8a. Exactly one primary alias per person, and it is their own name.
+  //
+  //     Migration 0005 asserted this and it was true that afternoon; 0006
+  //     broke it an hour later by moving three phantom people's primary
+  //     aliases onto the survivors without demoting them, and nothing
+  //     noticed for a day. An assertion that runs once is a snapshot, not an
+  //     invariant.
+  //
+  //     Counted from BOTH sides. "Nobody has two" is also satisfied by
+  //     somebody having none, and a person with no primary has no name to
+  //     display.
+  const primaryCounts = await db.$queryRaw<{ person_id: number; n: bigint }[]>`
+    SELECT p.id AS person_id, count(*) FILTER (WHERE a.is_primary) AS n
+      FROM people p LEFT JOIN person_name_alias a ON a.person_id = p.id
+     GROUP BY p.id HAVING count(*) FILTER (WHERE a.is_primary) <> 1`;
+  const notOwnName = await db.$queryRaw<{ alias_ar: string; name_ar: string }[]>`
+    SELECT a.alias_ar, p.name_ar
+      FROM person_name_alias a JOIN people p ON p.id = a.person_id
+     WHERE a.is_primary AND a.alias_ar <> p.name_ar`;
+  record(
+    'One primary alias per person',
+    'every person exactly 1, and it is their own name',
+    primaryCounts.length === 0 && notOwnName.length === 0
+      ? 'all 135 correct'
+      : `${primaryCounts.length} with the wrong number, ` +
+        `${notOwnName.length} not the person's own name`,
+    primaryCounts.length === 0 && notOwnName.length === 0,
+  );
+
+  //     ...and the index that makes a second primary impossible must still be
+  //     there. The Prisma schema language cannot express a filtered index, so
+  //     it is created in raw SQL and is invisible to schema.prisma — which
+  //     means nothing but this line would notice it being dropped.
+  const primaryIndex = await db.$queryRaw<{ indexname: string }[]>`
+    SELECT indexname FROM pg_indexes
+     WHERE schemaname = 'public'
+       AND indexname = 'person_name_alias_one_primary_per_person'`;
+  record(
+    'The one-primary index still exists',
+    'present',
+    primaryIndex.length === 1 ? 'present' : 'MISSING — a second primary is possible again',
+    primaryIndex.length === 1,
+  );
+
+  // 8b. The two teams, by exact membership and exact reviewer.
+  //
+  //     Migration 0004 looked its reviewers up through people.name_ar while
+  //     its own comment said it matched through the alias table — which D5
+  //     and rule 15 forbid, and which is worse than a plain mistake because
+  //     the comment would stop the next reader checking. The migration is
+  //     history and is not rewritten; this asserts the result it should have
+  //     produced, every time anyone checks.
+  //
+  //     Membership is compared as a SET, not counted. "4 members" is
+  //     satisfied by four of the wrong people.
+  const teams = await db.lookupTeam.findMany({
+    select: {
+      labelAr: true,
+      reviewer: { select: { nameAr: true } },
+      members: { select: { nameAr: true } },
+    },
+    orderBy: { labelAr: 'asc' },
+  });
+  //     Both teams have the SAME reviewer — ناجي رمضان — which is what Access
+  //     recorded and what sql/lookups-part2-and-teams.sql carries. It looks
+  //     like an error and is not one. (Access "team 3" had a different
+  //     reviewer, د. هاني سري الدين, and is deliberately not created — D6.)
+  //     هاني الدالي is a MEMBER of team ب, not its reviewer.
+  const expectedTeams: Record<string, { reviewer: string; members: string[] }> = {
+    'الفريق أ': {
+      reviewer: 'ناجي رمضان',
+      members: ['إيهاب حمدي', 'مؤمن سليم', 'أحمد إسماعيل', 'أحمد سيف'],
+    },
+    'الفريق ب': {
+      reviewer: 'ناجي رمضان',
+      members: ['محمد عبد العزيز عبد الحافظ', 'أحمد سعيد', 'هاني الدالي', 'محمود شعبان'],
+    },
+  };
+  const teamProblems: string[] = [];
+  for (const [label, expected] of Object.entries(expectedTeams)) {
+    const team = teams.find((t) => t.labelAr === label);
+    if (team === undefined) {
+      teamProblems.push(`${label} is missing`);
+      continue;
+    }
+    if (team.reviewer?.nameAr !== expected.reviewer) {
+      teamProblems.push(`${label} reviewer is ${team.reviewer?.nameAr ?? '(nobody)'}`);
+    }
+    const actual = new Set(team.members.map((m) => m.nameAr));
+    const missing = expected.members.filter((m) => !actual.has(m));
+    const extra = [...actual].filter((m) => !expected.members.includes(m));
+    if (missing.length > 0) teamProblems.push(`${label} is missing ${missing.join(', ')}`);
+    if (extra.length > 0) teamProblems.push(`${label} also holds ${extra.join(', ')}`);
+  }
+  record(
+    'Teams: exact reviewer and membership',
+    '2 teams, 4 named members each, reviewer ناجي رمضان',
+    teamProblems.length === 0 ? '2 teams, 4 + 4, both reviewers correct' : teamProblems.join('; '),
+    teamProblems.length === 0,
   );
 
   // ---- report --------------------------------------------------------------

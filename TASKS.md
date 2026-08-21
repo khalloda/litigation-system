@@ -124,6 +124,43 @@ be bigger than expected, split it and tell the owner.
       a misspelled KEEP value, a short DELETE list, the `matter_category`
       target as originally stated, and a misspelled `target_field`.
 
+- [x] **1.2d Stage 1 review findings closed** — 21 August 2026, migrations
+      0009 and 0010. From the Codex review of Stage 1; all four were real.
+
+      **Two people had two primary aliases each** — أحمد عبد الله and
+      أحمد فرحات. Migration 0005 asserted nobody did; 0006 moved the phantom
+      people's primary aliases onto the survivors without demoting them and
+      never re-checked. All 17 checks passed while it was wrong.
+      Both demoted, neither deleted — the spellings still resolve.
+      **A partial unique index now makes a second primary impossible**, and
+      `db:check` asserts the invariant, that the primary equals the person's
+      own name, and that the index still exists.
+
+      **The checks counted mappings but never verified them.** Nothing proved
+      that a spelling pointed at the right person or a crosswalk rule at the
+      right target — repoint `دعاوى عمالية` from `عمال` to `مدني` and every
+      check still passed. **`scripts/baselines/reviewed-links.json`** now
+      records all 347 alias links and 20 crosswalk rules; `db:check` proves
+      each still holds. Adding links is allowed, changing one fails by name.
+      Deliberate change: `npm run baseline:write -- --accept-changes`.
+
+      **Team reviewers were matched on `people.name_ar`**, not through the
+      alias table, in a migration whose own comment claimed otherwise — D5 and
+      rule 15. The migration is history, so **0010 asserts the result**: two
+      teams, the exact 4 + 4 membership as a set, and the reviewer named.
+      Both teams' reviewer is `ناجي رمضان` — that is what Access recorded, not
+      an error.
+
+      **`schema.prisma` still said 146 / 138 / 339.** Corrected to 130 / 135 /
+      347. The cascade rule, again.
+
+      **Every one-time assertion in migrations 0001–0008 was then audited** —
+      could a later migration break it without anything noticing? Three gaps,
+      all closed above; everything else was already a constraint or a standing
+      check. Audit table in `docs/MIGRATION.md`. **New rule 16 in
+      `CLAUDE.md`.**
+      db:check 17 → **21 checks**. Each new one proved by breaking it.
+
 - [ ] **1.3 Core schema**
       clients, contacts, matters, hearings, admin_tasks, task_actions,
       powers_of_attorney, documents, fee_letters. Per `docs/DATA-MODEL.md`.

@@ -377,6 +377,123 @@ Task 2.7's assertions must therefore cover all three: every rule has at least
 one member, every member resolves to exactly one person, and ordinals run
 from 1 without gaps.
 
+### An assertion that runs once is a snapshot, not an invariant
+
+**Anything that must stay true forever belongs in `db:check` or in a database
+constraint — never only in the migration that first established it.**
+
+Migration 0005 asserted that no person had more than one primary alias. It was
+true when it ran. Migration 0006, twenty-nine minutes later, merged three
+phantom people into their real counterparts with
+
+```sql
+UPDATE person_name_alias SET person_id = target_id WHERE person_id = phantom_id;
+```
+
+which carried each phantom's **primary** alias onto the survivor without
+demoting it. Two people ended up with two primary aliases each — two different
+answers to "what is this person called?" — and **all seventeen checks passed**
+for a day. The third merge escaped only by luck: that spelling already existed
+on the target as a non-primary row.
+
+0005's assertion was not wrong. It was *momentary*. It proved something about
+21 August at 11:48 and could say nothing about 21 August at 12:17.
+
+**A constraint outranks a check, and a check outranks a migration assertion:**
+
+| | Tells you | Catches |
+|---|---|---|
+| Database constraint | at the moment of the mistake | everything, forever |
+| `db:check` | next time anyone looks | anything already committed |
+| Migration assertion | once, when it ran | only that moment |
+
+Use the strongest one the fault allows. The one-primary rule is now a partial
+unique index — `CREATE UNIQUE INDEX … ON person_name_alias (person_id) WHERE
+is_primary` — so a second primary is *impossible* regardless of what a future
+migration attempts. Re-running migration 0006's exact `UPDATE` against it now
+fails with a unique violation instead of silently corrupting.
+
+Keep the check as well. The Prisma schema language cannot express a filtered
+index, so it is created in raw SQL and is invisible to `schema.prisma` —
+nothing but `db:check` would notice it being dropped. (Verified: `prisma
+migrate dev` leaves it alone and reports the schema in sync.)
+
+#### The audit — every one-time assertion, and where its invariant now lives
+
+Done 21 August 2026 after the review. Every `RAISE EXCEPTION` in migrations
+0001–0008, asked one question: *could a later migration break this without
+anything noticing?*
+
+| Asserted once in a migration | Where it lives now |
+|---|---|
+| One primary alias per person | **Partial unique index** + `db:check` |
+| Primary alias equals `people.name_ar` | `db:check` (new) |
+| The one-primary index exists | `db:check` (new) |
+| Team reviewers are the right people | **Migration 0010 postcondition** + `db:check` (new) |
+| Team membership is exactly those 8 people | **Migration 0010 postcondition** + `db:check` (new) |
+| Each alias points at the *correct* person | **Baseline** + `db:check` (new) — see below |
+| Each crosswalk rule points at the *correct* target | **Baseline** + `db:check` (new) |
+| No spelling maps to two people | Already a `UNIQUE` constraint on `alias_ar` |
+| No orphaned spellings | Already a foreign key with `ON DELETE CASCADE` |
+| Lookup labels are unique | Already a `UNIQUE` constraint |
+| All nine lookup counts, the nine roster figures | Already in `db:check` |
+| Crosswalk targets resolve; no unrecognised `target_field` | Already in `db:check` |
+| Extensions and the `arabic` collation | Already in `db:check` |
+| Exactly one default matter type | Already in `db:check` |
+| Merged spellings gone **and** their targets present | Already in `db:check` |
+
+Three gaps, all now closed. Everything else was already either a database
+constraint or a standing check.
+
+**One figure was invisible to every existing check:** total people with a
+team. Removing a *former* staff member from a team changes none of the nine
+roster figures, because those count current staff. It was only caught once
+the team check compared membership as a set.
+
+### Counting a mapping is not checking it
+
+**A check that counts links, and proves their destinations exist, has not
+looked at whether any link is correct.**
+
+Every check in this project counted the 347 alias links and the 20 crosswalk
+rules, and proved that each pointed at something real. Change
+
+```
+client_branch دعاوى عمالية  →  matter_category عمال
+```
+
+to point at `مدني` instead and **everything still passes**: the count is
+unchanged, `مدني` exists, nothing dangles. The same is true of repointing a
+spelling at the wrong person.
+
+At Stage 2 the first mistake files matters under the wrong practice area and
+the second attaches a lawyer's historical work to somebody else. Neither
+raises an error. Neither leaves a gap. Nobody finds it for months, because
+every number agrees.
+
+**The reviewed links therefore have a baseline** —
+`scripts/baselines/reviewed-links.json`, one row per pair the firm actually
+reviewed. `db:check` proves every recorded pair still holds. It is
+deliberately one-directional:
+
+- **Adding** a link is allowed. New people, spellings and rules arrive all
+  through Stage 2, and a baseline that forbade them would be edited into
+  uselessness in a week.
+- **Changing** one fails the check, by name, saying what it was and what it is
+  now.
+
+Changing one deliberately takes `npm run baseline:write -- --accept-changes`,
+which prints every difference before writing. That is the point: a decision
+the firm made should only be revised by a visible decision with a new
+baseline, committed on its own — not by a silent edit nobody reviews.
+
+The baseline identifies people by **name, not by id**. ids are an
+implementation detail and have already been renumbered once by the 0006
+merges; a name is also what makes the file readable by the people who reviewed
+the data. The trade-off is that renaming a person breaks every baseline row
+mentioning them, which is correct — a rename of a reviewed person *is* a
+decision.
+
 ### Prove the check catches a failure
 
 **Before trusting any gate or assertion, break something on purpose and confirm
