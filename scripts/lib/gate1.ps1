@@ -106,6 +106,22 @@ function Test-Gate1 {
         }
     }
 
+    # -- 2b. each table must appear EXACTLY ONCE ----------------------------
+    #
+    # "Every expected name is present" and "nothing unexpected appears" both
+    # held for a manifest carrying the correct 15 entries PLUS a second, empty
+    # `lawyers`. The gate reported exact. A later loader reading that manifest
+    # could act on either entry, and one of them holds no rows.
+    #
+    # Present-and-not-unexpected is not the same as correct. Count them.
+    foreach ($group in ($names | Group-Object)) {
+        if ($group.Count -gt 1) {
+            $failures.Add(
+                ("table '{0}' appears {1} times in the manifest -- expected exactly once" -f `
+                    $group.Name, $group.Count))
+        }
+    }
+
     # -- 3. every expected table must have the expected count ---------------
     foreach ($name in $script:Gate1ExpectedRows.Keys) {
         $row = $TableRows | Where-Object { $_.name -eq $name } | Select-Object -First 1

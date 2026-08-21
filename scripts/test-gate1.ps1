@@ -152,10 +152,25 @@ Test-Case 'a single warning fails' $run 'fail' 'warning'
 $run = New-PerfectRun; $run.TotalRows = 30554
 Test-Case 'a total that disagrees with the per-table counts fails' $run 'fail' 'total rows'
 
+# --- RED TEAM: a duplicate expected table ----------------------------------
+# The correct 15 entries plus a second, EMPTY `lawyers`. Every name is
+# present and nothing unexpected appears, so the gate reported "exact" -- but
+# a loader reading this manifest could act on the empty duplicate.
+$run = New-PerfectRun
+$run.TableRows += [pscustomobject]@{ name = 'lawyers'; row_count = 0 }
+Test-Case 'RED TEAM: a duplicate, empty `lawyers` entry fails' $run 'fail' 'appears 2 times'
+
+# ...and a duplicate that carries the right count is still wrong: the
+# manifest must describe the extraction once, not twice.
+$run = New-PerfectRun
+$run.TableRows += [pscustomobject]@{ name = 'lawyers'; row_count = 23 }
+$run.TotalRows = 30576
+Test-Case 'a duplicate with the correct count also fails' $run 'fail' 'appears 2 times'
+
 Write-Host ""
 if ($failed -gt 0) {
     Write-Host ("{0} gate test(s) failed." -f $failed) -ForegroundColor Red
     exit 1
 }
-Write-Host "test:gate1 -- 13 cases, all correct." -ForegroundColor Green
+Write-Host "test:gate1 -- 15 cases, all correct." -ForegroundColor Green
 exit 0
