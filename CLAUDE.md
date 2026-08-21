@@ -115,7 +115,18 @@ trade-off unless you explain it in ordinary language.
     for an agent to reach for. If a guard is stopping you, that is the guard
     working — report what it said and wait.
 
-14. **Never match an Arabic name without asserting the row count.** Match
+14. **Destructive tests only against your own fixtures.** You may run a
+    destructive command only against data you created yourself in this
+    session, and only after confirming the database holds no project data. If
+    any table outside your own fixtures has rows, do not run the test —
+    report the concern and let the owner decide. **From Stage 2 onward,
+    assume the database contains irreplaceable data unless you have proved
+    otherwise:** 30,553 extracted rows and 54 client logos that cost a full
+    extraction run to produce. `npm run db:reset` refusing *is* the answer —
+    it means there is data, so stop. The same rule is in `AGENTS.md` for the
+    reviewer.
+
+15. **Never match an Arabic name without asserting the row count.** Match
     through `person_name_alias`, state the number of rows you expect, and fail
     loudly if it differs. A missing hamza silently matched nothing twice in
     this project and created two duplicate people, one of them carrying 1,309

@@ -174,6 +174,34 @@ build — ask before assuming it is wrong.
 
 ---
 
+## Destructive tests during a review
+
+Proving a guard by breaking something is the right instinct, and it found a
+real fault that reading the code did not. This rule is about **when** that is
+safe, not whether to do it.
+
+**You may run destructive commands only against data you created yourself in
+this session, and only after confirming the database contains no project
+data.** If any table outside your own fixtures has rows, you may **not** run a
+destructive test — report the concern instead and let the owner decide.
+
+**From Stage 2 onward, assume the database contains irreplaceable data unless
+you have proved otherwise.** By then it holds 30,553 extracted rows and 54
+client logos that took a full extraction run to produce. The same test that is
+harmless today destroys all of it.
+
+Checking is cheap:
+
+```bash
+npm run db:reset          # refuses, and lists every table that has rows
+```
+
+If it refuses, that is your answer: there is data, so do not run the
+destructive test. Report what you wanted to prove and why, and let the owner
+decide.
+
+---
+
 ## Confidentiality
 
 The database holds real client names, case records and billing for a working
