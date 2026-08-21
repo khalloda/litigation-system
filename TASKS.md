@@ -50,17 +50,38 @@ be bigger than expected, split it and tell the owner.
       **Note:** `lookup_team` moved to 1.2 — it references `people`.
       `migration_crosswalk` moved to Stage 2, where its rows come from.
 
-- [ ] **1.2 People + aliases**
-      From `sql/people-roster-and-aliases.sql`.
-      **Assert these exactly — fail the seed if any differs:**
-      `people` = **138** · `person_name_alias` = **339**
-      staff = 67 (current 21, former 46) · external = 71
-      teams: الفريق أ = 4, الفريق ب = 4 (8 distinct, 5 of them current)
-      current staff with no team = 16
-      Every statement matching an Arabic name goes through
-      `person_name_alias` and asserts its row count — see
-      "Never match an Arabic name without asserting the count" in
-      `docs/MIGRATION.md`.
+- [x] **1.2 People + aliases**
+      138 people · 339 aliases · staff 67 (current 21, former 46) ·
+      external 71 · teams 2 (8 members, 5 of them current) ·
+      current staff with no team 16. Every figure asserted in the migration
+      and again by `npm run db:check`, plus the arithmetic between them.
+      Both hamza pairs proved to resolve to one person each.
+      `people.email` added — nullable, unique where present, for Milestone 4.
+      **Deferred to 2.7:** `migration_multi_person_rule` / `_member` /
+      `migration_excluded_name`. Writing the assertion for them found 4 of
+      the 66 member names resolve to nobody — see below.
+
+- [ ] **1.2a Two corrections found while building 1.2** — need the firm
+
+      **(a) Four split-rule member names resolve to nobody.** At Stage 2 each
+      would silently drop a lawyer from a matter.
+        `محمد عبدالعزيز عبد الحافظ` ×2 — roster spells it
+              `محمد عبد العزيز عبد الحافظ` (space in عبد العزيز)
+        `عبدالرحمن البنا` ×1 — roster spells it `عبد الرحمن البنا`
+        one rule was **never split**: its single member is the whole
+              eight-lawyer string pasted from the reviewer's note, so that
+              matter would lose all eight lawyers
+      Not fixed here: deciding two spellings are the same person is an
+      identity judgement, and the unsplit rule needs the firm to say who its
+      members are.
+
+      **(b) Six people's own `name_ar` is not in `person_name_alias`**, so
+      rule 15's "match through the alias table" finds nothing for them:
+        `سامي إبراهيم خطاب` (a Milestone 4 test user), `احمد أبو العباس الاتربي`,
+        `احمد عبدالله`, `احمد فرحات`, `عبد الله الشهابي`, `حسني حمزة عبدالله`
+      Recommend adding each person's own name as an alias — 339 → 345 — so
+      the alias table is a complete index and rule 15 always works. Until
+      then any lookup must try `alias_ar` **and** `name_ar`.
 
 - [ ] **1.3 Core schema**
       clients, contacts, matters, hearings, admin_tasks, task_actions,
@@ -148,6 +169,28 @@ only ever seen good data is not known to work.
 ## Stage 3 — Login and permissions
 
 - [ ] **3.1 Auth.js login**, Arabic screen, firm logo.
+      **Four test users supplied by the firm** (do not build until this task):
+      | Name | Username | Email | Role |
+      |---|---|---|---|
+      | Khaled Helmy | KHelmy | khelmy@sarieldin.com | Administrator |
+      | Mohamed Hussien | MHussien | mhussien@sarieldin.com | Litigation Assistant |
+      | Ihab Hamdy | IHamdy | ihamdy@sarieldin.com | Lawyer |
+      | Samy Khattab | SKhattab | skhattab@sarieldin.com | Paralegal |
+
+      **Two are existing people and their accounts MUST link to those
+      records**, or their historical work detaches from them:
+        Ihab Hamdy  → `إيهاب حمدي` (person 4, 2,792 mentions, current, team أ)
+        Samy Khattab → `سامي إبراهيم خطاب` (2,211 mentions, current)
+      **Match through `person_name_alias`, never by typing the Arabic** —
+      rule 15. Note `سامي إبراهيم خطاب` is one of the six people whose own
+      name is not yet an alias (task 1.2a); that must be fixed first or the
+      match returns nothing.
+
+      Khaled Helmy and Mohamed Hussien are **new people** — confirmed absent
+      from the roster.
+
+      `people.email` already exists (task 1.2). `can_login` is false for all
+      138 and is set per account here.
 
 - [ ] **3.2 The four roles**, enforced **server-side** on every route.
 

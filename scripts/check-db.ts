@@ -168,6 +168,76 @@ async function main() {
     crosswalk.length === 4 && dangling.length === 0,
   );
 
+  // 8. The roster — task 1.2.
+  //
+  //    Every derived figure, not just the headline two. These moved together
+  //    once already: merging two duplicate people changed five numbers at
+  //    once, one was corrected and four were left stale, and the assertion
+  //    written at the time would have failed on correct data.
+  const roster: Array<[string, number, number]> = [
+    ['people', await db.person.count(), 138],
+    ['aliases', await db.personNameAlias.count(), 339],
+    ['staff', await db.person.count({ where: { isStaff: true } }), 67],
+    ['current', await db.person.count({ where: { isStaff: true, isActive: true } }), 21],
+    ['former', await db.person.count({ where: { isStaff: true, isActive: false } }), 46],
+    ['external', await db.person.count({ where: { isStaff: false } }), 71],
+    ['teams', await db.lookupTeam.count(), 2],
+    [
+      'current with a team',
+      await db.person.count({ where: { isStaff: true, isActive: true, teamId: { not: null } } }),
+      5,
+    ],
+    [
+      'current without a team',
+      await db.person.count({ where: { isStaff: true, isActive: true, teamId: null } }),
+      16,
+    ],
+  ];
+  const rosterWrong = roster.filter(([, actual, expected]) => actual !== expected);
+  record(
+    'Roster figures (9)',
+    '138/339/67/21/46/71/2/5/16',
+    rosterWrong.length === 0
+      ? roster.map(([, actual]) => actual).join('/')
+      : rosterWrong.map(([n, a2, e]) => `${n} ${a2}/${e}`).join(', '),
+    rosterWrong.length === 0,
+  );
+
+  //    The two hamza pairs. Each hamza-less spelling must be an ALIAS of the
+  //    correct person, and must NOT be a person in its own right — which is
+  //    exactly what went wrong before, creating a duplicate carrying 1,309
+  //    hearings. Checked from both sides: absent from people AND absent from
+  //    aliases would also satisfy "not a duplicate", and would lose every row
+  //    that used the spelling.
+  const hamzaPairs: Array<[string, string]> = [
+    ['احمد إسماعيل', 'أحمد إسماعيل'],
+    ['احمد سعيد', 'أحمد سعيد'],
+  ];
+  const hamzaProblems: string[] = [];
+  for (const [variant, canonical] of hamzaPairs) {
+    const asPerson = await db.person.count({ where: { nameAr: variant } });
+    if (asPerson !== 0) hamzaProblems.push(`${variant} is a person again`);
+
+    const canonicalCount = await db.person.count({ where: { nameAr: canonical } });
+    if (canonicalCount !== 1) {
+      hamzaProblems.push(`${canonical} appears ${canonicalCount} times, expected 1`);
+    }
+
+    const resolved = await db.personNameAlias.findUnique({
+      where: { aliasAr: variant },
+      include: { person: true },
+    });
+    if (resolved?.person.nameAr !== canonical) {
+      hamzaProblems.push(`${variant} does not resolve to ${canonical}`);
+    }
+  }
+  record(
+    'Hamza pairs resolve to one person',
+    '2 pairs, 0 problems',
+    hamzaProblems.length === 0 ? '2 pairs, 0 problems' : hamzaProblems.join('; '),
+    hamzaProblems.length === 0,
+  );
+
   // ---- report --------------------------------------------------------------
   const width = Math.max(...checks.map((c) => c.name.length));
   for (const c of checks) {

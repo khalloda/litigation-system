@@ -285,3 +285,133 @@ model MigrationCrosswalk {
   @@unique([sourceField, sourceValue])
   @@map("migration_crosswalk")
 }
+
+// ===========================================================================
+//  PEOPLE — task 1.2
+//
+//  One roster for every human the system knows about, replacing Access's two
+//  lawyer tables (D5). Names are NEVER used as keys: everything joins by id.
+//
+//  138 people, from 373 distinct spellings typed by hand into 18 columns over
+//  six years. That collapse is the highest-ratio mapping in the project and
+//  the one that has already gone wrong twice — a single missing hamza made
+//  أحمد إسماعيل into two people, one carrying 1,309 hearings. Which is why
+//  person_name_alias exists, and why every match goes through it.
+// ===========================================================================
+
+/// Every human the system knows about. 138 rows:
+/// 67 firm staff (21 current, 46 former) + 71 external.
+model Person {
+  id     Int     @id @default(autoincrement())
+  nameAr String  @unique @map("name_ar")
+  nameEn String? @map("name_en")
+
+  /// Login address. Nullable because only a handful of people ever log in;
+  /// unique where present, which a UNIQUE constraint gives for free since
+  /// PostgreSQL allows many NULLs. Needed by Milestone 4.
+  email String? @unique
+
+  /// false = external counsel, mostly named on powers of attorney. Real
+  /// people who must be recorded, but never log in, are never assigned
+  /// matters, and never appear in staff pick-lists.
+  isStaff   Boolean @default(true) @map("is_staff")
+  /// false = has left the firm. Kept so historical hearings and matters still
+  /// show who did the work. Excluded from new-entry dropdowns.
+  isActive  Boolean @default(true) @map("is_active")
+  isTrainee Boolean @default(false) @map("is_trainee")
+  /// Former staff never log in. Set per account at Milestone 4.
+  canLogin  Boolean @default(false) @map("can_login")
+
+  /// Which work team. NULL is valid and common — 16 of the 21 current staff
+  /// have none. Team-grouped reports must show those under an "unassigned"
+  /// heading, never drop them. Deliberately NOT on the matter (D6).
+  teamId Int?        @map("team_id") @db.SmallInt
+  team   LookupTeam? @relation("TeamMembers", fields: [teamId], references: [id])
+
+  /// Teams this person reviews (المراجع).
+  reviews LookupTeam[] @relation("TeamReviewer")
+
+  aliases PersonNameAlias[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([isStaff, isActive])
+  @@map("people")
+}
+
+/// Every spelling ever typed, mapped to one person. 339 rows.
+///
+/// This is what makes the migration safe and historical search work: any raw
+/// Access string is looked up here to find the right person, and searching
+/// for a spelling nobody uses any more still finds them.
+///
+/// **Match through this table, never through people.name_ar** — rule 15.
+model PersonNameAlias {
+  id        Int     @id @default(autoincrement())
+  personId  Int     @map("person_id")
+  person    Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// The spelling exactly as it appeared. Unique across the whole roster: one
+  /// spelling cannot belong to two people.
+  aliasAr   String  @unique @map("alias_ar")
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([personId])
+  @@map("person_name_alias")
+}
+
+/// Work teams. The label lives on the PERSON, never on the matter (D6): 87%
+/// of matters were all on "team 1", so the field carried no information.
+///
+/// Two teams. Access "team 3" overlapped teams 1 and 2, was used by 3 matters
+/// and had a different reviewer — an abandoned duplicate, deliberately not
+/// created.
+model LookupTeam {
+  id          Int     @id @default(autoincrement()) @db.SmallInt
+  code        String?
+  labelAr     String  @unique @map("label_ar")
+  /// التخصصات, free text.
+  specialisms String?
+  /// المراجع — the partner who reviews this team's work.
+  reviewerId  Int?    @map("reviewer_id")
+  reviewer    Person? @relation("TeamReviewer", fields: [reviewerId], references: [id])
+  sortOrder   Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive    Boolean @default(true) @map("is_active")
+
+  members Person[] @relation("TeamMembers")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_team")
+}
+
+// ---------------------------------------------------------------------------
+//  DEFERRED to Stage 2, task 2.7 — the multi-person split rules
+//
+//  migration_multi_person_rule (33), _member (66) and migration_excluded_name
+//  (38) were going to be created here with the roster, on the same reasoning
+//  as migration_crosswalk: they hold reviewed data now, so a note saying
+//  "add them later" is a dependency on memory.
+//
+//  They are NOT created, because building the assertion found the data is not
+//  ready. Four of the 66 member names resolve to nobody:
+//
+//    محمد عبدالعزيز عبد الحافظ   (2 rows)  the roster spells it
+//                                          محمد عبد العزيز عبد الحافظ
+//    عبدالرحمن البنا             (1 row)   the roster spells it
+//                                          عبد الرحمن البنا
+//    an entire eight-lawyer string pasted in as ONE member name (1 row) —
+//    that rule was never split, so the matter using it would lose all eight
+//
+//  Each would silently drop a lawyer from a matter during Stage 2, which is
+//  precisely what these rules exist to prevent. Loading them would mean
+//  either weakening the assertion or seeding data known to be wrong.
+//  Raised with the firm; they load at task 2.7 once corrected.
+// ---------------------------------------------------------------------------

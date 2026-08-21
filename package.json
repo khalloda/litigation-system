@@ -34,7 +34,8 @@
     "check:encoding": "tsx scripts/check-encoding.ts",
     "test:guard": "tsx scripts/test-db-reset-guard.ts",
     "test:gate1": "pwsh -NoProfile -File scripts/test-gate1.ps1",
-    "generate:lookup-seed": "tsx scripts/generate-lookup-seed.ts"
+    "generate:lookup-seed": "tsx scripts/generate-lookup-seed.ts",
+    "generate:roster-seed": "tsx scripts/generate-roster-seed.ts"
   },
   "dependencies": {
     "@fontsource-variable/noto-naskh-arabic": "^5.3.0",
