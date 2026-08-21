@@ -27,6 +27,19 @@ export function Clean() {
       <span>—</span>
       <span>0 1 2 3</span>
 
+      {/*
+        A template literal in className is a machine value, not a label. This
+        was briefly reported as visible text; it is here so it stays fixed.
+      */}
+      <span className={`${'chip'} multiline`}>{t.common.none}</span>
+      <div id={'main-panel'} role={'region'}>
+        {t.common.loading}
+      </div>
+
+      {/* Symmetrical and short shorthands carry no direction. */}
+      <p style={{ margin: '0 8px 0 8px' }}>{t.common.save}</p>
+      <p style={{ padding: '4px 8px' }}>{t.common.cancel}</p>
+
       {tokens.map((token) => (
         <span key={token.name}>{token.hex}</span>
       ))}

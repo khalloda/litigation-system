@@ -70,23 +70,72 @@ const PHYSICAL_CSS: Array<[RegExp, string, string]> = [
 ];
 
 /*
- * Four-value margin/padding shorthand is written top-right-bottom-left. When
- * the right and left values differ it is directional, and it silently stays
+ * Four-value shorthands. Most are written top-right-bottom-left, so they are
+ * directional when the right and left values differ — and they silently stay
  * pointing the same way when the page is right-to-left.
+ *
+ * `border-radius` is the odd one: top-left, top-right, bottom-right,
+ * bottom-left. Mirroring swaps the first with the second and the fourth with
+ * the third, so it is directional when either of those pairs differs.
  */
-const FOUR_VALUE = /\b(margin|padding)\s*:\s*([^;{}]+)/;
+type Sides = 'trbl' | 'corners';
+
+const FOUR_VALUE_PROPERTIES: Array<[string, Sides, string]> = [
+  ['margin', 'trbl', 'margin-block and margin-inline'],
+  ['padding', 'trbl', 'padding-block and padding-inline'],
+  ['inset', 'trbl', 'inset-block and inset-inline'],
+  ['border-width', 'trbl', 'border-block-width and border-inline-width'],
+  ['border-color', 'trbl', 'border-block-color and border-inline-color'],
+  ['border-style', 'trbl', 'border-block-style and border-inline-style'],
+  ['scroll-margin', 'trbl', 'scroll-margin-block and scroll-margin-inline'],
+  ['scroll-padding', 'trbl', 'scroll-padding-block and scroll-padding-inline'],
+  ['border-radius', 'corners', 'the logical corner properties'],
+];
+
+function directionalShorthand(property: string, sides: Sides, value: string): string | null {
+  const parts = value.trim().split(/\s+/);
+  if (parts.length !== 4) return null;
+
+  if (sides === 'trbl') {
+    if (parts[1] === parts[3]) return null; // symmetrical, so direction-safe
+    return `right ${parts[1]}, left ${parts[3]}`;
+  }
+  // corners: top-left / top-right / bottom-right / bottom-left
+  if (parts[0] === parts[1] && parts[3] === parts[2]) return null;
+  return `top-left ${parts[0]}, top-right ${parts[1]}, bottom-right ${parts[2]}, bottom-left ${parts[3]}`;
+}
 
 function checkFourValueShorthand(code: string): string | null {
-  const match = FOUR_VALUE.exec(code);
-  if (!match) return null;
-  const property = match[1];
-  const parts = (match[2] ?? '').trim().split(/\s+/);
-  if (parts.length !== 4) return null;
-  if (parts[1] === parts[3]) return null; // symmetrical, so direction-safe
-  return (
-    `directional four-value ${property} shorthand (${parts[1]} right, ${parts[3]} left) — ` +
-    `use ${property}-block and ${property}-inline`
-  );
+  for (const [property, sides, replacement] of FOUR_VALUE_PROPERTIES) {
+    // Match the property name only when it is not part of a longer one
+    // (`border-radius` must not match inside `border-top-left-radius`).
+    const pattern = new RegExp(`(?<![-\\w])${property}\\s*:\\s*([^;{}]+)`);
+    const match = pattern.exec(code);
+    if (!match) continue;
+    const detail = directionalShorthand(property, sides, match[1] ?? '');
+    if (detail) {
+      return `directional four-value ${property} shorthand (${detail}) — use ${replacement}`;
+    }
+  }
+  return null;
+}
+
+/*
+ * The same shorthands written inside a JSX inline style, where the value is a
+ * quoted string: style={{ margin: '0 4px 0 16px' }}
+ */
+function checkFourValueInline(code: string): string | null {
+  for (const [property, sides, replacement] of FOUR_VALUE_PROPERTIES) {
+    const camel = property.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    const pattern = new RegExp(`(?<![-\\w.])${camel}\\s*:\\s*['"\`]([^'"\`]+)['"\`]`);
+    const match = pattern.exec(code);
+    if (!match) continue;
+    const detail = directionalShorthand(property, sides, match[1] ?? '');
+    if (detail) {
+      return `directional four-value ${camel} in an inline style (${detail}) — use ${replacement}`;
+    }
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -120,13 +169,22 @@ const PHYSICAL_JSX: Array<[RegExp, string, string]> = [
  * Props whose value a user reads. A literal string in any of these is
  * interface text and belongs in src/strings.ts.
  */
-const VISIBLE_PROPS = /\b(?:title|alt|placeholder|aria-label|aria-description|label)\s*=\s*["']/;
+const VISIBLE_PROPS =
+  /\b(?:title|alt|placeholder|aria-label|aria-description|label)\s*=\s*\{?\s*["'`]/;
+
+/*
+ * A bare string literal inside a JSX expression: {'Save'} or {`Save`}.
+ * Written that way it renders exactly like text between tags, and the
+ * original check — which only looked between > and < — never saw it.
+ */
+const JSX_EXPR_STRING = /\{\s*["'`]([^"'`]{2,})["'`]\s*\}/;
 
 /*
  * Object keys that name something displayed. This is what catches a table of
  * data defined inside a component — the shape our own colour palette used.
  */
-const LABEL_KEY = /\b(?:name|label|title|heading|caption|text|description)\s*:\s*['"]([^'"]{2,})['"]/;
+const LABEL_KEY =
+  /\b(?:name|label|title|heading|caption|text|description)\s*:\s*['"`]([^'"`]{2,})['"`]/;
 
 /* Text sitting directly between JSX tags: <p>Hello</p> */
 const JSX_TEXT = />\s*([^<>{}\n][^<>{}]*?)\s*</;
@@ -144,9 +202,18 @@ function looksTechnical(value: string): boolean {
   if (/^#[0-9a-fA-F]{3,8}$/.test(v)) return true; // hex colour
   if (/^--[\w-]+$/.test(v)) return true; // CSS custom property
   if (/^[\d\s.,:/+-]+$/.test(v)) return true; // digits and punctuation only
+  if (v.includes('${')) return true; // an interpolation, e.g. a class list
   if (!HAS_LETTERS.test(v)) return true;
   return false;
 }
+
+/*
+ * Props that carry machine values, not words. A string in one of these is
+ * never interface text, so a template literal in className must not be
+ * mistaken for a label.
+ */
+const TECHNICAL_PROPS =
+  /\b(?:className|class|key|id|htmlFor|href|src|srcSet|type|role|name|rel|target|style|data-[\w-]+)\s*=/;
 
 /* ------------------------------------------------------------------------ */
 
@@ -230,8 +297,20 @@ function checkFile(file: string): Problem[] {
         }
       }
 
+      const inlineShorthand = checkFourValueInline(code);
+      if (inlineShorthand) add(inlineShorthand, 'four-value-inline');
+
       if (VISIBLE_PROPS.test(code)) {
         add('literal text in a visible prop — move it to src/strings.ts (D12)', 'visible-prop');
+      }
+
+      const exprString = JSX_EXPR_STRING.exec(code);
+      const beforeExpr = exprString ? code.slice(0, exprString.index) : '';
+      if (exprString && !looksTechnical(exprString[1] ?? '') && !TECHNICAL_PROPS.test(beforeExpr)) {
+        add(
+          `string literal rendered as text "${exprString[1]}" — move it to src/strings.ts (D12)`,
+          'jsx-expression-string',
+        );
       }
 
       const labelMatch = LABEL_KEY.exec(code);
@@ -284,6 +363,7 @@ const MUST_CATCH = [
   'clear: left',
   'border-top-left-radius',
   'four-value-shorthand',
+  'four-value-inline',
   'jsx:marginLeft',
   'jsx:paddingRight',
   'jsx:borderLeft',
@@ -292,6 +372,24 @@ const MUST_CATCH = [
   'visible-prop',
   'label-key',
   'jsx-text',
+  'jsx-expression-string',
+];
+
+/*
+ * Known gaps: fixtures that exist, that the checker does NOT yet catch, and
+ * that are deliberately not being fixed now.
+ *
+ * Both need the checker to understand the structure of a file rather than
+ * read it a line at a time — real parsing, a few hours' work. There are no
+ * real screens yet, so these are theoretical today. Task 4.0 revisits them at
+ * the start of Stage 4, when there is actual interface to check.
+ *
+ * They are REPORTED on every run and never fail the build. A test that fails
+ * when someone improves the checker would teach people to delete the test.
+ */
+const KNOWN_GAPS = [
+  'JSX text spread over several lines',
+  'a visible prop whose string sits on its own line',
 ];
 
 async function selfTest() {
@@ -326,6 +424,11 @@ async function selfTest() {
       `broken fixture (${broken.problems.length} findings), and ${clean.files.length} ` +
       `correct files produced none.`,
   );
+  console.log(
+    `                     ${KNOWN_GAPS.length} known gaps not yet caught, ` +
+      `deferred to TASKS.md 4.0:`,
+  );
+  for (const gap of KNOWN_GAPS) console.log(`                       - ${gap}`);
 }
 
 async function main() {

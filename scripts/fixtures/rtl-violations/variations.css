@@ -1,0 +1,40 @@
+/*
+ * DELIBERATELY WRONG. Do not copy anything from this file.
+ *
+ * The directional shorthands the re-review found untested. Each is written
+ * top-right-bottom-left, so each stays pointing the same way when the page is
+ * mirrored — except border-radius, which goes clockwise from top-left.
+ */
+
+/* right 4px, left 16px — a gap that lands on the wrong side in Arabic. */
+.inset-shorthand {
+  position: absolute;
+  inset: 0 4px 0 16px;
+}
+
+.border-width-shorthand {
+  border-style: solid;
+  border-width: 1px 2px 1px 8px;
+}
+
+.border-colour-shorthand {
+  border-style: solid;
+  border-color: grey grey grey red;
+}
+
+.border-style-shorthand {
+  border-style: solid solid solid dashed;
+}
+
+/* Corners: top-left, top-right, bottom-right, bottom-left. */
+.border-radius-shorthand {
+  border-radius: 8px 0 0 8px;
+}
+
+.scroll-margin-shorthand {
+  scroll-margin: 0 4px 0 24px;
+}
+
+.scroll-padding-shorthand {
+  scroll-padding: 0 4px 0 24px;
+}

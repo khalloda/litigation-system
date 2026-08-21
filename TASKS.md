@@ -134,6 +134,18 @@ only ever seen good data is not known to work.
 Each screen: list with Arabic search, detail view, create/edit where the role
 allows. Test with real volumes.
 
+- [ ] **4.0 Revisit the right-to-left checker**
+      Do this **before** the first real screen. `npm run check:rtl` works one
+      line at a time, which was enough for Stage 0 but will not be enough for
+      real interface code. Two known gaps are already fixtured in
+      `scripts/fixtures/rtl-violations/Variations.tsx` and reported by every
+      self-test run:
+        - JSX text spread over several lines
+        - a visible prop whose string sits on its own line
+      Both need the checker to parse TSX and CSS structurally rather than
+      pattern-match lines. Roughly 2–4 hours. Deferred from the Stage 0
+      re-review because there were no screens yet to check.
+
 - [ ] **4.1 Clients** — list, detail, contacts, logo
 
 - [ ] **4.1a Client logo upload**
