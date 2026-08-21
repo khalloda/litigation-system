@@ -37,13 +37,14 @@ be bigger than expected, split it and tell the owner.
 ## Stage 1 — Database
 
 - [x] **1.1 Lookup tables + seed**
-      Nine lookups, 146 rows, tables never enums (D8). Seeded by the
+      Nine lookups, 130 rows, tables never enums (D8). Seeded by the
       migration, not a seed script, so a fresh database on any machine
       arrives complete.
       `matter_type` 14 · `matter_category` 21 · `degree` 12 · `venue` 7 ·
       `importance` 3 · `party_role` 11 · `hearing_action` 20 ·
-      `matter_destination` 27 · `client_branch` 31 — **146 rows**
-      (was 150; four values merged 21 Aug 2026, migration 0003)
+      `matter_destination` 27 · `client_branch` 15 — **130 rows**
+      (was 150; four values merged 21 Aug 2026, migration 0003 → 146;
+      then 16 non-branches removed by the branch resolution → 130. See 1.2c)
       Seed generated from the two reviewed SQL files by
       `npm run generate:lookup-seed` — not retyped. Counts asserted in the
       migration and again by `npm run db:check`.
@@ -89,6 +90,38 @@ be bigger than expected, split it and tell the owner.
       names that are not identical once normalised, so a mistyped row cannot
       merge two genuinely different people.
 
+- [x] **1.2c Client branch resolved** — 21 August 2026, migration 0007
+      **`client_branch` 31 → 15 · lookups 146 → 130 · crosswalk 4 → 20.**
+      Decision **D19**: a branch is a site or subsidiary of a client, nothing
+      else. Source: `sql/client-branch-resolution.sql`.
+
+      Done before 1.3 deliberately. Task 1.3 creates `clients.legacy_branch_raw`,
+      and the branch mapping is what that column exists to protect; correcting
+      the list afterwards would mean correcting a table already built on it.
+
+      The 16 values that were not branches each got a `migration_crosswalk`
+      row, so Stage 2 still maps the old text: 9 to `matter_category`, 1 to
+      `matter_type`, 1 to `degree`, 1 quarantined, 3 flagged as separate
+      clients, 2 discarded. The `جنح → الجنح → جنح` chain was collapsed to one
+      step.
+
+      `المنطقة الحرة` **is a branch** — the third site of أدخنة النخلة, 193
+      matters. An earlier note had it moving to `venue`; the firm corrected
+      that and `lookup_venue` stays at 7. The migration asserts that.
+
+      **One field corrected and flagged:** `آراء قانونية` was given as
+      `matter_category → رأي قانوني`, but that value is a `matter_type`, not a
+      category. Written as `matter_type` with a `reviewer_note` saying so.
+      Awaiting the firm — it is one UPDATE either way.
+
+      Counts were counted, not trusted: 15 + 16 = 31 byte-exact against the
+      seeded rows, both directions, no duplicates. See "A count in an
+      instruction is a claim, not a fact" in `docs/MIGRATION.md`.
+
+      Four assertions proved by deliberately breaking them, each rolled back:
+      a misspelled KEEP value, a short DELETE list, the `matter_category`
+      target as originally stated, and a misspelled `target_field`.
+
 - [ ] **1.3 Core schema**
       clients, contacts, matters, hearings, admin_tasks, task_actions,
       powers_of_attorney, documents, fee_letters. Per `docs/DATA-MODEL.md`.
@@ -96,8 +129,8 @@ be bigger than expected, split it and tell the owner.
       one or the mapping is irreversible — see the audit table in
       `docs/MIGRATION.md`. Assert all five exist before Stage 2 loads a row.
         `hearings.legacy_action_raw`      — 23 actions merged to 20
-        `clients.legacy_branch_raw`       — 32 branches merged to 31
-        `hearing_attendees.legacy_name_raw` — **373 spellings → 138 people**,
+        `clients.legacy_branch_raw`       — 32 branches resolved to 15
+        `hearing_attendees.legacy_name_raw` — **373 spellings → 135 people**,
               the highest-ratio mapping in the project and the one that has
               already gone wrong twice
         `admin_tasks.legacy_assignee_raw`  — a typed name
@@ -114,11 +147,10 @@ be bigger than expected, split it and tell the owner.
 - [ ] **1.6 Arabic search** — unblocked 21 August 2026.
       The three lists that were marked "already clean" without inspection
       have been re-analysed and corrected: `hearing_action` 23 → 20,
-      `client_branch` 32 → 31, `matter_destination` unchanged at 27.
-      Total 146. The values are settled, so the normaliser and its trigram
+      `client_branch` 32 → 15, `matter_destination` unchanged at 27.
+      Total 130. The values are settled, so the normaliser and its trigram
       indexes can be built on them.
-      One open question remains on what `client_branch` MEANS, but that
-      affects reporting, not search — see 6.2.
+      What `client_branch` MEANS is settled too — see 1.2c and **D19**.
       The normaliser as a PostgreSQL function, generated normalised columns on
       every searchable Arabic field, `pg_trgm` indexes.
       **Test:** searching `احمد` finds `أحمد`; `140J` finds `140ق`.
@@ -146,8 +178,26 @@ only ever seen good data is not known to work.
 
 - [ ] **2.5 Transform: people, lookups, clients, contacts**
 
+      **RULE (a) — NEVER OVERWRITE AN EXISTING `matter_category`.** Nine of
+      the branch values resolved by **D19** move into `matter_category`. Where
+      a matter already has one, **quarantine the conflict** for the firm — do
+      not replace it and do not silently keep the old one. Either way the
+      original branch text stays in `clients.legacy_branch_raw`.
+      Every affected `migration_crosswalk` row carries this in its
+      `reviewer_note`.
+
 - [ ] **2.6 Transform: matters** — including the four classification columns via
       the crosswalk, and `legacy_*_raw` preserved.
+
+      **RULE (b) — THE THREE `separate_client` VALUES ARE A CORRECTNESS
+      PROBLEM, NOT A MIS-LABEL.** `سيجما للإعلام (تليفزيون الحياة)`,
+      `ألفا مصر للتجارة` and `سيجما للصناعات الدوائية` are clients in their
+      own right. **Any matter carrying one of them is attached to the WRONG
+      CLIENT ENTIRELY.** Quarantine those matters. **Do not guess which client
+      they belong to** — the firm decides. `npm run db:check` asserts all
+      three rules are present so one cannot quietly go missing.
+
+      Rule (a) applies here too, for any branch value that reaches a matter.
 
 - [ ] **2.7 Transform: matter_lawyers and matter_parties**
       Split the combination strings using the rules in
@@ -293,16 +343,14 @@ allows. Test with real volumes.
       branch, lawyer), Excel via ExcelJS with `rightToLeft`, PDF via Playwright
       with bundled fonts and the firm letterhead.
 - [ ] **6.2 Client reports**
-      **RAISE WITH THE FIRM FIRST: what is `client_branch` for?**
-      The 31 values hold at least three different concepts — genuine branches
-      (تويوتا إيجيبت, فرع المنصورة), practice areas that duplicate
-      `matter_category` (مدني, ضرائب, تعويضات), and two numbered headings
-      pasted from a document, e.g.
-      `أولاً: طلب وشكوى أمام الهيئة العامة للاستثمار` (1 matter).
-      The same overloaded-column pattern as `matterDegree` (D8), affecting
-      560 matters. Branch is a report parameter, so "filter by branch" cannot
-      be built until the firm decides what a branch is. Deliberately left
-      alone in Stage 1.
+      **`client_branch` is settled — D19, task 1.2c.** A branch is a site or
+      subsidiary of a client. 15 values, all genuine sites. "Filter by branch"
+      can be built as a straightforward report parameter.
+      Two things to carry into the report: a matter may legitimately have **no**
+      branch — including the 14 whose branch was a document heading and was
+      discarded — so an "unassigned" grouping is required, never a dropped
+      row; and any matter still quarantined under rule (b) is on the wrong
+      client and must not appear under it.
       `تقرير عملاء 2` / `6` / `8` and
       `تقرير عملاء -جميع الدعاوى سارية ومنتهية` are **one parameterised
       report** (D17). Build it once.

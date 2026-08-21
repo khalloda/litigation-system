@@ -43,7 +43,7 @@ degrees, venues, party roles).
 2. **Record who changed what.** Every table carries `created_by`, `created_at`,
    `updated_by`, `updated_at`. The old system had no audit trail at all; this is
    one of the main reasons for replacing it.
-3. **Former staff cannot log in.** 46 of 140 people have left the firm. They
+3. **Former staff cannot log in.** 43 of 135 people have left the firm. They
    remain in the roster so historical records still show who did the work, but
    `can_login` is false and they do not appear in dropdowns for new entries.
 4. **Roles are fixed in Phase 1.** No custom role builder. Four roles, hardcoded.

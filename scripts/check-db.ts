@@ -95,7 +95,7 @@ async function main() {
     ['party_role', () => db.lookupPartyRole.count(), 11],
     ['hearing_action', () => db.lookupHearingAction.count(), 20],
     ['matter_destination', () => db.lookupMatterDestination.count(), 27],
-    ['client_branch', () => db.lookupClientBranch.count(), 31],
+    ['client_branch', () => db.lookupClientBranch.count(), 15],
   ];
 
   let lookupTotal = 0;
@@ -107,9 +107,9 @@ async function main() {
   }
   record(
     'Lookup lists (9)',
-    '146 rows',
+    '130 rows',
     wrong.length === 0 ? `${lookupTotal} rows` : wrong.join(', '),
-    wrong.length === 0 && lookupTotal === 146,
+    wrong.length === 0 && lookupTotal === 130,
   );
 
   // The default matter type is what a matter falls back to. Exactly one.
@@ -135,7 +135,10 @@ async function main() {
   const mergeTargets = await db.lookupHearingAction.count({
     where: { labelAr: { in: ['محكمة', 'رفع الدعوى'] } },
   });
-  const branchTarget = await db.lookupClientBranch.count({ where: { labelAr: 'الجنح' } });
+  //    جنح used to merge into client_branch الجنح. Since the branch
+  //    resolution (D19) الجنح is itself gone and both spellings land in
+  //    matter_category جنح, so that is where the surviving target now lives.
+  const branchTarget = await db.lookupMatterCategory.count({ where: { labelAr: 'جنح' } });
   record(
     'Merge targets present',
     '3',
@@ -150,22 +153,98 @@ async function main() {
   });
   record('تحكيم and تحقيق both kept', '2', String(kept), kept === 2);
 
-  //    The crosswalk is what lets Stage 2 map the old text. Every target must
-  //    name a value that exists, or a hearing maps to a list entry that is
-  //    not there.
-  const crosswalk = await db.migrationCrosswalk.findMany();
-  const actions = new Set((await db.lookupHearingAction.findMany()).map((r) => r.labelAr));
-  const branches = new Set((await db.lookupClientBranch.findMany()).map((r) => r.labelAr));
-  const dangling = crosswalk.filter(
-    (c) =>
-      (c.targetField === 'hearing_action' && !actions.has(c.targetValue ?? '')) ||
-      (c.targetField === 'client_branch' && !branches.has(c.targetValue ?? '')),
+  // 7a. The client branch resolution — decision D19, 21 August 2026.
+  //
+  //     A branch is a site or subsidiary of a client and nothing else. The 16
+  //     values that were something else were removed and crosswalked.
+  //
+  //     Checked from both sides, as ever. "15 rows" alone would be satisfied
+  //     by fifteen rows that are not these fifteen, so the value that had to
+  //     survive and the whole set that had to go are both named. المنطقة
+  //     الحرة is named because it is the one value that changed side during
+  //     the decision — an earlier note moved it to venue, wrongly.
+  const freeZone = await db.lookupClientBranch.count({ where: { labelAr: 'المنطقة الحرة' } });
+  const notBranches = await db.lookupClientBranch.count({
+    where: {
+      labelAr: {
+        in: [
+          'دعاوى عمالية',
+          'الجنح',
+          'قضاء إداري',
+          'القضاء الإداري',
+          'مدني',
+          'ضرائب',
+          'تعويضات',
+          'إقتصادي',
+          'آراء قانونية',
+          'النقض',
+          'دعاوى قضائية',
+          'سيجما للإعلام (تليفزيون الحياة)',
+          'سيجما للصناعات الدوائية',
+          'ألفا مصر للتجارة',
+          'أولاً: طلب وشكوى أمام الهيئة العامة للاستثمار',
+          'ثانياً: النزاعات القضائية المقامة من وضد شركتي الإمارات هايتس ويافا ماك',
+        ],
+      },
+    },
+  });
+  record(
+    'Client branch is 15 sites only',
+    'free zone kept, 0 non-branches',
+    `free zone ${freeZone === 1 ? 'kept' : 'MISSING'}, ${notBranches} non-branches`,
+    freeZone === 1 && notBranches === 0,
   );
+
+  //    The crosswalk is what lets Stage 2 map the old text. Every rule that
+  //    names a list must resolve to a value that exists, or a matter maps to
+  //    a list entry that is not there.
+  //
+  //    target_field is validated first. A misspelled one — 'seperate_client'
+  //    — would otherwise be skipped by every resolve check below and look
+  //    perfectly healthy: the same shape of fault as an assertion over member
+  //    rows that cannot see a rule with no members at all.
+  const crosswalk = await db.migrationCrosswalk.findMany();
+
+  const listTargets: Record<string, Set<string>> = {
+    hearing_action: new Set((await db.lookupHearingAction.findMany()).map((r) => r.labelAr)),
+    client_branch: new Set((await db.lookupClientBranch.findMany()).map((r) => r.labelAr)),
+    matter_category: new Set((await db.lookupMatterCategory.findMany()).map((r) => r.labelAr)),
+    matter_type: new Set((await db.lookupMatterType.findMany()).map((r) => r.labelAr)),
+    degree: new Set((await db.lookupDegree.findMany()).map((r) => r.labelAr)),
+    venue: new Set((await db.lookupVenue.findMany()).map((r) => r.labelAr)),
+  };
+  //    Markers are not lists: they carry no target_value and resolve to
+  //    nothing. NULL means the value is discarded.
+  const markers = new Set(['quarantine', 'separate_client']);
+
+  const unrecognised = crosswalk.filter(
+    (c) => c.targetField !== null && !(c.targetField in listTargets) && !markers.has(c.targetField),
+  );
+  const dangling = crosswalk.filter((c) => {
+    const field = c.targetField;
+    if (field === null || markers.has(field)) return false;
+    const list = listTargets[field];
+    if (list === undefined) return false; // already counted as unrecognised
+    //  A missing value on a list rule is dangling too. There is nothing to
+    //  look up, and "nothing to resolve" must never read as "resolved".
+    return c.targetValue === null || !list.has(c.targetValue);
+  });
   record(
     'Crosswalk rules resolve',
-    '4 rules, 0 dangling',
-    `${crosswalk.length} rules, ${dangling.length} dangling`,
-    crosswalk.length === 4 && dangling.length === 0,
+    '20 rules, 0 dangling, 0 unrecognised',
+    `${crosswalk.length} rules, ${dangling.length} dangling, ${unrecognised.length} unrecognised`,
+    crosswalk.length === 20 && dangling.length === 0 && unrecognised.length === 0,
+  );
+
+  //    Rule (b) of the branch resolution: three values are separate CLIENTS,
+  //    so any matter carrying one is attached to the wrong client entirely.
+  //    Named here so that losing one of them is loud rather than silent.
+  const separateClients = crosswalk.filter((c) => c.targetField === 'separate_client');
+  record(
+    'Separate-client rules (rule b)',
+    '3',
+    String(separateClients.length),
+    separateClients.length === 3,
   );
 
   // 8. The roster — task 1.2.

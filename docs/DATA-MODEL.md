@@ -14,25 +14,34 @@ Every table carries: `id`, `created_at`, `created_by`, `updated_at`,
 
 ## People and organisation
 
-### `people` — 138 rows
+### `people` — 135 rows
 The single roster. Replaces both Access lawyer tables.
 
-**67 firm staff (21 current, 46 former) + 71 external.** Was 140 until two
-hamza duplicates — `احمد إسماعيل`/`أحمد إسماعيل` and `احمد سعيد`/`أحمد سعيد`,
-differing only at character 0 — were merged. Both were *current* staff, so
-current staff is **21**, not 23. Their old spellings survive as aliases.
+**64 firm staff (21 current, 43 former) + 71 external.**
+
+Was 140, then 138, now 135. Two hamza duplicates went first —
+`احمد إسماعيل`/`أحمد إسماعيل` and `احمد سعيد`/`أحمد سعيد`, differing only at
+character 0. Both were *current* staff, so current staff is **21**, not 23.
+Three more went at task 1.2b: `احمد عبدالله`, `احمد فرحات` and `خالد عطية`,
+all created by a generator that matched a merge target as an exact string
+instead of through the alias table. Every old spelling survives as an alias.
 
 | Column | Type | Notes |
 |---|---|---|
 | `name_ar` | text, unique | |
 | `name_en` | text, null | Partially filled in the old data |
 | `is_staff` | boolean | false = external counsel from powers of attorney (71) |
-| `is_active` | boolean | false = has left the firm (46 of 140) |
+| `is_active` | boolean | false = has left the firm (43 of 135) |
 | `is_trainee` | boolean | |
 | `can_login` | boolean | Former staff never log in |
 
-### `person_name_alias` — 339 rows
+### `person_name_alias` — 347 rows
 Every spelling ever typed, mapped to one person. Makes historical search work.
+
+339 originals + 6 people whose own name was missing from the table + 2 spacing
+variants the firm confirmed (task 1.2a). **Zero people are now unfindable by
+their own name**, which rule 15 depends on: matching through the alias table
+only works if every name is in it.
 
 ### `users`
 Login accounts. Linked to `people`. Role is one of the four in
@@ -45,8 +54,11 @@ Login accounts. Linked to `people`. Role is one of the four in
 ### `clients` — 313 rows
 
 **`legacy_branch_raw`** — the original clientBranch text, byte for byte.
-Same reason as `hearings.legacy_action_raw`: جنح was merged into الجنح on
-21 August 2026, affecting 2 clients, so the mapping is no longer one to one.
+Not optional. The 32 original values resolve to 15 (**D19**): 9 move to
+`matter_category`, 1 to `matter_type`, 1 to `degree`, 4 are quarantined and 2
+are discarded. That is heavily many-to-one, and without this column the
+original text is unrecoverable — including for the 14 matters whose branch was
+a document heading and is deliberately dropped.
 
 `name_ar` (100% filled), `name_en` (73%), `full_name`, `branch`,
 `cash_or_probono`, `status`, `poa_location`, `documents_location`,
@@ -149,7 +161,7 @@ reversed if it were later judged wrong. See D10 and the `_raw` rule in
 
 ### `hearing_attendees`
 Replaces `الحاضر` and `حاضر 1`–`حاضر 4`, which held free text — 373 distinct
-spellings for 140 people, plus multi-person strings with no consistent
+spellings for 135 people, plus multi-person strings with no consistent
 separator.
 
 `hearing_id`, `person_id`, `ordinal`.
@@ -233,11 +245,13 @@ All are **tables, not enums**, each with `label_ar`, `label_en`, `sort_order`,
 
 `matter_type` (14) · `matter_category` (21) · `degree` (12) · `venue` (7) ·
 `importance` (3) · `party_role` (11) · `hearing_action` (20) ·
-`matter_destination` (27) · `client_branch` (31) — **146 rows total**
+`matter_destination` (27) · `client_branch` (15) — **130 rows total**
 
-Was 150. Four values were merged on 21 August 2026 after three lists were
-found to have been marked "already clean" without inspection. See
-`sql/lookup-corrections.sql`.
+Was 150, then 146, now 130. Four values were merged on 21 August 2026 after
+three lists were found to have been marked "already clean" without inspection
+(`sql/lookup-corrections.sql`). Then `client_branch` was resolved from 31
+values to 15 — a branch is a site or subsidiary of a client and nothing else
+(**D19**, `sql/client-branch-resolution.sql`).
 
 ---
 

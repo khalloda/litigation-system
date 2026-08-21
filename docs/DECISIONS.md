@@ -237,3 +237,53 @@ all** (active is the default), and **lawyer**. One report, one filter form —
 not a copy per combination.
 
 Every list report gets a **count row** at the foot (`إجمالي عدد الدعاوى`).
+
+## D19 — A client branch is a site, not a practice area
+
+`clientBranch` had become a box people typed anything into. Its 31 values held
+at least four different concepts at once — the same overloaded-column pattern
+as `matterDegree` (D8), affecting 560 matters.
+
+**A branch is a site or subsidiary of a client. Nothing else.**
+
+`lookup_client_branch` is reduced from 31 values to **15**, all of them genuine
+sites: the Toyota, Al-Futtaim and Orascom subsidiaries, the Mansoura and
+Alexandria offices, and the three sites of أدخنة النخلة — `المصنع المحلي`,
+`المركز الرئيسي` and `المنطقة الحرة`.
+
+**`المنطقة الحرة` is a branch**, not a venue. An earlier note had it moving to
+`lookup_venue`; the firm corrected that. `lookup_venue` stays at 7 values.
+
+The other 16 values move, each recorded in `migration_crosswalk` so Stage 2
+still maps the old text:
+
+| What it really was | Values | Where it goes |
+|---|---:|---|
+| Practice areas | 9 | `matter_category` |
+| A kind of work | 1 | `matter_type` |
+| A court instance | 1 | `degree` |
+| Too vague to map | 1 | quarantine |
+| **Separate clients** | 3 | **quarantine — see below** |
+| Headings pasted from a document | 2 | discarded |
+
+Nothing is lost. Every client keeps its original branch text byte for byte in
+`clients.legacy_branch_raw`. Fourteen matters lose their branch outright — the
+two document headings — and the firm has agreed to that.
+
+**Two rules that are correctness, not tidying:**
+
+1. **Never overwrite an existing `matter_category`.** Where a branch moves to
+   `matter_category` and the matter already has one, **quarantine the
+   conflict** for the firm.
+
+2. **The three "separate client" values are a correctness problem.**
+   `سيجما للإعلام (تليفزيون الحياة)`, `ألفا مصر للتجارة` and
+   `سيجما للصناعات الدوائية` are clients in their own right. **Any matter
+   carrying one of them is attached to the wrong client entirely.** Those
+   matters are quarantined at task 2.6. **Do not guess** which client they
+   belong to.
+
+Both rules are recorded on tasks 2.5 and 2.6 and in the `reviewer_note` of
+every affected crosswalk row.
+
+Full detail and reasoning: `sql/client-branch-resolution.sql`.

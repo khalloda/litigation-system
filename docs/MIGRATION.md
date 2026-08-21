@@ -242,6 +242,54 @@ Re-derive figures **by parsing the data**, never by reading the comment that
 describes it. Twice in one day the description was wrong and the data was
 right.
 
+### A count in an instruction is a claim, not a fact
+
+**Count the items yourself and report the difference. Never let a stated total
+stand in for the content it describes.**
+
+This has now gone wrong four times in this project, and the pattern is always
+the same: the *list* was right and the *number attached to it* was wrong.
+
+| Where | The claim | The truth |
+|---|---|---|
+| Gate 1 | a manifest total that added up | a table was missing; the total added up anyway |
+| The roster generator | "0 mentions" | the name had failed to match, and two duplicate people were created |
+| The `db:reset` inventory | a table with 0 rows | the row count had failed to parse |
+| `client_branch` | "13 KEEP and 19 WRONG", then "15 and 17" | the enumerated values were 15 and 16, and were right both times |
+
+A total is a *summary* of the content. When the two disagree, the content is
+the evidence and the total is a description of it — and this project has never
+once found the content to be the wrong half.
+
+The danger is not that a number is wrong. It is that a number **agrees with
+itself**. `13 + 19 = 32` looks like arithmetic that has been checked, and a
+manifest whose totals add up looks like a complete extraction. A self-
+consistent wrong number is more convincing than an obviously wrong one, which
+is exactly why it survives review.
+
+In practice:
+
+1. **Count the items in the list.** Not the number written above the list.
+2. **Compare in both directions.** How many stated values are not in the data,
+   and how many values in the data were never stated. One direction alone
+   misses half the failures — the branch resolution was checked both ways and
+   both came back zero, which is what made 15 and 16 trustworthy.
+3. **Compare byte for byte.** These are Arabic strings; a hamza or a space
+   makes two values that look identical on screen. Match through the
+   normaliser or through `person_name_alias`, and print the code points when
+   something does not match.
+4. **Report the difference and let the owner rule.** Do not quietly adopt the
+   count, and do not quietly adopt the list either. Say which one the data
+   supports and why.
+
+The same applies to a *field name* in an instruction, not only a count. The
+branch resolution said `آراء قانونية` moves to `matter_category رأي قانوني`;
+that value does not exist in `matter_category` and exists exactly so in
+`matter_type`. The value was right and the list name was a slip — but the
+migration's own assertion refused to apply it either way, which is the point.
+**An instruction is evidence, not authority.** Check it against the data,
+apply what the data supports, and flag what you changed.
+
 ### A check must be tested where it will actually run
 
 **A safety check must be tested against the failure it exists to prevent, in
@@ -405,16 +453,16 @@ Done 21 August 2026 after `hearings.legacy_action_raw` was found missing.
 |---|---|---|
 | `matters.matter_type_id` / `matter_category_id` / `degree_id` / `venue_id` | `matterCategory` (50) + `matterDegree` (40) | ✅ `legacy_category_raw`, `legacy_degree_raw` |
 | `hearings.action_id` | `الإجراء` (23 → 20) | ✅ `legacy_action_raw` |
-| `clients.branch_id` | `clientBranch` (32 → 31) | ✅ `legacy_branch_raw` |
+| `clients.branch_id` | `clientBranch` (32 → 15) | ✅ `legacy_branch_raw` |
 | `matter_parties` + `matter_party_roles` | `client&Cap` / `opponent&Cap`, 242 capacity strings | ✅ `legacy_raw` |
 | `matter_lawyers.person_id` | `lawyerA` / `lawyerB` + combination strings | ✅ `legacy_source` holds the exact source string |
-| **`hearing_attendees.person_id`** | `الحاضر` + `حاضر 1`–`حاضر 4`, **373 spellings → 138 people**, multi-person strings split into rows | ❌ **NOTHING** |
+| **`hearing_attendees.person_id`** | `الحاضر` + `حاضر 1`–`حاضر 4`, **373 spellings → 135 people**, multi-person strings split into rows | ❌ **NOTHING** |
 | **`admin_tasks.assigned_to_person_id`** | a typed name | ❌ **NOTHING** |
 | **`powers_of_attorney`** lawyers | `المحامون الصادر لهم التوكيل`, up to twelve names in one field | ❌ **NOTHING** |
 
 **The three gaps are all person-name mappings, which is the worst place for
 them.** Names are the highest-ratio mapping in this project — 373 spellings
-collapse to 138 people — and the one that has already gone wrong twice: a
+collapse to 135 people — and the one that has already gone wrong twice: a
 missing hamza made `أحمد إسماعيل` into two people, one carrying 1,309
 hearings. If such a merge is later judged wrong, splitting it back apart
 needs to know which spelling stood in each row. `person_name_alias` records
