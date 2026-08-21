@@ -281,8 +281,35 @@ Every normalised column keeps the original text beside it —
 `legacy_category_raw`, `legacy_degree_raw`, `capacity_raw`,
 `legacy_action_raw` (hearings) and `legacy_branch_raw` (clients).
 
-**The last two were added on 21 August 2026 and show why the rule is not
-optional.** Those two columns mapped one to one until four lookup values were
+### The audit — every many-to-one mapping, and whether it keeps the original
+
+Done 21 August 2026 after `hearings.legacy_action_raw` was found missing.
+
+| Target | Source | Keeps the original? |
+|---|---|---|
+| `matters.matter_type_id` / `matter_category_id` / `degree_id` / `venue_id` | `matterCategory` (50) + `matterDegree` (40) | ✅ `legacy_category_raw`, `legacy_degree_raw` |
+| `hearings.action_id` | `الإجراء` (23 → 20) | ✅ `legacy_action_raw` |
+| `clients.branch_id` | `clientBranch` (32 → 31) | ✅ `legacy_branch_raw` |
+| `matter_parties` + `matter_party_roles` | `client&Cap` / `opponent&Cap`, 242 capacity strings | ✅ `legacy_raw` |
+| `matter_lawyers.person_id` | `lawyerA` / `lawyerB` + combination strings | ✅ `legacy_source` holds the exact source string |
+| **`hearing_attendees.person_id`** | `الحاضر` + `حاضر 1`–`حاضر 4`, **373 spellings → 138 people**, multi-person strings split into rows | ❌ **NOTHING** |
+| **`admin_tasks.assigned_to_person_id`** | a typed name | ❌ **NOTHING** |
+| **`powers_of_attorney`** lawyers | `المحامون الصادر لهم التوكيل`, up to twelve names in one field | ❌ **NOTHING** |
+
+**The three gaps are all person-name mappings, which is the worst place for
+them.** Names are the highest-ratio mapping in this project — 373 spellings
+collapse to 138 people — and the one that has already gone wrong twice: a
+missing hamza made `أحمد إسماعيل` into two people, one carrying 1,309
+hearings. If such a merge is later judged wrong, splitting it back apart
+needs to know which spelling stood in each row. `person_name_alias` records
+that a spelling exists; it does not record which hearing used it.
+
+Fix in task 1.3, before any of these tables is loaded:
+`hearing_attendees.legacy_name_raw`, `admin_tasks.legacy_assignee_raw`, and
+a raw column on whatever table holds the POA lawyer list.
+
+**`legacy_action_raw` and `legacy_branch_raw` were added on 21 August 2026
+and show why the rule is not optional.** Those two columns mapped one to one until four lookup values were
 merged that day. A one-to-one mapping loses nothing; a many-to-one mapping
 loses the original unless it is kept. **Whenever a lookup gains a merge, the
 column that uses it needs a `_raw` partner, or the merge becomes

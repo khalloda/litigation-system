@@ -65,11 +65,16 @@ be bigger than expected, split it and tell the owner.
 - [ ] **1.3 Core schema**
       clients, contacts, matters, hearings, admin_tasks, task_actions,
       powers_of_attorney, documents, fee_letters. Per `docs/DATA-MODEL.md`.
-      **Must include `hearings.legacy_action_raw` and
-      `clients.legacy_branch_raw`.** Four lookup values were merged on
-      21 August 2026, so those two mappings are now many-to-one and the
-      original text is unrecoverable without them. Assert both columns exist
-      before task 2.8 loads a single hearing.
+      **Must include five `_raw` columns.** Every many-to-one mapping needs
+      one or the mapping is irreversible — see the audit table in
+      `docs/MIGRATION.md`. Assert all five exist before Stage 2 loads a row.
+        `hearings.legacy_action_raw`      — 23 actions merged to 20
+        `clients.legacy_branch_raw`       — 32 branches merged to 31
+        `hearing_attendees.legacy_name_raw` — **373 spellings → 138 people**,
+              the highest-ratio mapping in the project and the one that has
+              already gone wrong twice
+        `admin_tasks.legacy_assignee_raw`  — a typed name
+        a raw column on the POA lawyer list — up to twelve names per field
 
 - [ ] **1.4 Junction tables**
       matter_lawyers, matter_parties, matter_party_roles, hearing_attendees,
