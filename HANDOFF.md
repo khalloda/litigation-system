@@ -7,7 +7,7 @@ conversation that produced the state below.
 binding), `docs/DECISIONS.md` (D1–D19), `TASKS.md` (build order, current
 position), then this file.
 
-Last commit: `0c1342c`. Working tree clean. All 17 `db:check` checks pass
+Last commit: `db0f187`. Working tree clean. All 17 `db:check` checks pass
 and all 10 `db:verify` checks pass.
 
 ---
