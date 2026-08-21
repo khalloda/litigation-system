@@ -21,13 +21,187 @@ datasource db {
   provider = "postgresql"
 }
 
+// ===========================================================================
+//  LOOKUPS — task 1.1
+//
+//  Nine editable lists. TABLES, NEVER ENUMS (decision D8): an administrator
+//  must be able to add a court or a practice area without a code change, and
+//  a PostgreSQL enum cannot be changed without a migration.
+//
+//  Seed data comes from sql/lookups-and-crosswalk.sql and
+//  sql/lookups-part2-and-teams.sql, which the firm reviewed value by value.
+//  It is loaded by the migration, not by a seed script, because the
+//  application cannot function without these lists — a fresh database must
+//  arrive complete. Row counts are asserted in the migration itself.
+//
+//  Audit columns are on every table per docs/DATA-MODEL.md. created_by and
+//  updated_by are plain integers for now and gain their foreign key to
+//  `users` in Stage 3, when that table exists.
+// ===========================================================================
+
+/// What kind of work is this? 14 values. تقاضي is the default.
+model LookupMatterType {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  labelAr   String  @unique @map("label_ar")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+  isDefault Boolean @default(false) @map("is_default")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_matter_type")
+}
+
+/// Which practice area? 21 values.
+model LookupMatterCategory {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  labelAr   String  @unique @map("label_ar")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_matter_category")
+}
+
+/// Which court instance? 12 values. أول درجة and ابتدائي are DIFFERENT —
+/// confirmed by the firm. See docs/GLOSSARY.md.
+model LookupDegree {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  labelAr   String  @unique @map("label_ar")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_degree")
+}
+
+/// Which forum? 7 values.
+model LookupVenue {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  labelAr   String  @unique @map("label_ar")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_venue")
+}
+
+/// How important is the matter? 3 values.
+model LookupImportance {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  labelAr   String  @unique @map("label_ar")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_importance")
+}
+
+/// A party's legal capacity. 11 roles (decision D7), replacing 242 distinct
+/// capacity strings that were mostly grammatical inflections of these.
+///
+/// Masculine and feminine forms are stored so the right word can be rendered
+/// from the role plus the party's gender. طاعن and متظلم are DIFFERENT roles
+/// and must never be merged.
+model LookupPartyRole {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  code      String  @unique
+  labelArM  String  @map("label_ar_m")
+  labelArF  String  @map("label_ar_f")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_party_role")
+}
+
+/// What happened at a hearing (الإجراء)? 23 values.
+///
+/// Includes obvious misspellings from the Access data — محكمه and مجكمة
+/// beside محكمة — accepted as-is by the firm. They are real values in real
+/// records and are not silently merged.
+model LookupHearingAction {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  labelAr   String  @unique @map("label_ar")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_hearing_action")
+}
+
+/// Which authority the matter sits with (الجهة)? 27 values.
+model LookupMatterDestination {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  labelAr   String  @unique @map("label_ar")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_matter_destination")
+}
+
+/// Client branch or group. 32 values.
+model LookupClientBranch {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  labelAr   String  @unique @map("label_ar")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("lookup_client_branch")
+}
+
 // ---------------------------------------------------------------------------
-//  No models yet.
+//  Still to come in Stage 1:
+//    1.2 people + aliases, and lookup_team (which references people)
+//    1.3 core       1.4 junctions
+//    1.5 billing and deferred          1.6 Arabic search
 //
-//  The tables arrive in Stage 1, in this order:
-//    1.1 lookups   1.2 people + aliases   1.3 core   1.4 junctions
-//    1.5 billing and deferred             1.6 Arabic search
-//
-//  Migration 0001 below carries the PostgreSQL extensions and the Arabic
-//  collation that everything else depends on.
+//  migration_crosswalk belongs to Stage 2 and is created there, with the
+//  crosswalk rows, rather than sitting empty until then.
 // ---------------------------------------------------------------------------

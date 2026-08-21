@@ -80,6 +80,42 @@ async function main() {
   const order = sorted.map((r) => r.word);
   record('Arabic sorts correctly', '… ,… ,بسام last', order.join(' '), order[2] === 'بسام');
 
+  // 6. The nine lookup lists, through Prisma rather than raw SQL — so this
+  //    also proves the generated client matches the tables that exist.
+  //
+  //    Rule 15: state the count, fail loudly if it differs. The migration
+  //    asserts these once, when it runs; this asserts them every time anyone
+  //    checks the database, which is when a later mistake would show up.
+  const expectedLookups: Array<[string, () => Promise<number>, number]> = [
+    ['matter_type', () => db.lookupMatterType.count(), 14],
+    ['matter_category', () => db.lookupMatterCategory.count(), 21],
+    ['degree', () => db.lookupDegree.count(), 12],
+    ['venue', () => db.lookupVenue.count(), 7],
+    ['importance', () => db.lookupImportance.count(), 3],
+    ['party_role', () => db.lookupPartyRole.count(), 11],
+    ['hearing_action', () => db.lookupHearingAction.count(), 23],
+    ['matter_destination', () => db.lookupMatterDestination.count(), 27],
+    ['client_branch', () => db.lookupClientBranch.count(), 32],
+  ];
+
+  let lookupTotal = 0;
+  const wrong: string[] = [];
+  for (const [name, count, expected] of expectedLookups) {
+    const actual = await count();
+    lookupTotal += actual;
+    if (actual !== expected) wrong.push(`${name} ${actual}/${expected}`);
+  }
+  record(
+    'Lookup lists (9)',
+    '150 rows',
+    wrong.length === 0 ? `${lookupTotal} rows` : wrong.join(', '),
+    wrong.length === 0 && lookupTotal === 150,
+  );
+
+  // The default matter type is what a matter falls back to. Exactly one.
+  const defaults = await db.lookupMatterType.count({ where: { isDefault: true } });
+  record('One default matter type', '1', String(defaults), defaults === 1);
+
   // ---- report --------------------------------------------------------------
   const width = Math.max(...checks.map((c) => c.name.length));
   for (const c of checks) {

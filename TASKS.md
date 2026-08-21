@@ -36,8 +36,18 @@ be bigger than expected, split it and tell the owner.
 
 ## Stage 1 — Database
 
-- [ ] **1.1 Lookup tables + seed**
-      Nine lookups from `sql/lookups-and-crosswalk.sql`. Tables, never enums.
+- [x] **1.1 Lookup tables + seed**
+      Nine lookups, 150 rows, tables never enums (D8). Seeded by the
+      migration, not a seed script, so a fresh database on any machine
+      arrives complete.
+      `matter_type` 14 · `matter_category` 21 · `degree` 12 · `venue` 7 ·
+      `importance` 3 · `party_role` 11 · `hearing_action` 23 ·
+      `matter_destination` 27 · `client_branch` 32
+      Seed generated from the two reviewed SQL files by
+      `npm run generate:lookup-seed` — not retyped. Counts asserted in the
+      migration and again by `npm run db:check`.
+      **Note:** `lookup_team` moved to 1.2 — it references `people`.
+      `migration_crosswalk` moved to Stage 2, where its rows come from.
 
 - [ ] **1.2 People + aliases**
       From `sql/people-roster-and-aliases.sql`.

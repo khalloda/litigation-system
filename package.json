@@ -33,7 +33,8 @@
     "check:gitignore": "tsx scripts/check-gitignore.ts",
     "check:encoding": "tsx scripts/check-encoding.ts",
     "test:guard": "tsx scripts/test-db-reset-guard.ts",
-    "test:gate1": "pwsh -NoProfile -File scripts/test-gate1.ps1"
+    "test:gate1": "pwsh -NoProfile -File scripts/test-gate1.ps1",
+    "generate:lookup-seed": "tsx scripts/generate-lookup-seed.ts"
   },
   "dependencies": {
     "@fontsource-variable/noto-naskh-arabic": "^5.3.0",
