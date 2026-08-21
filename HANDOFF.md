@@ -4,10 +4,10 @@ Written 21 August 2026, end of session. Assumes you have no memory of the
 conversation that produced the state below.
 
 **Read first, in this order:** `CLAUDE.md` (15 durable rules — they are
-binding), `docs/DECISIONS.md` (D1–D18), `TASKS.md` (build order, current
+binding), `docs/DECISIONS.md` (D1–D19), `TASKS.md` (build order, current
 position), then this file.
 
-Last commit: `a118b51`. Working tree clean. All 15 `db:check` checks pass.
+Last commit: `dec9d52`. Working tree clean. All 17 `db:check` checks pass.
 
 ---
 
@@ -53,8 +53,8 @@ the whole codebase for a right-to-left violation in one command.
 cp .env.example .env
 npm install                 # postinstall runs `prisma generate`
 npm run db:up               # PostgreSQL 17 in Docker, waits until healthy
-npm run db:migrate:deploy   # apply all 6 migrations
-npm run db:check            # 15 checks, all must read OK
+npm run db:migrate:deploy   # apply all 7 migrations
+npm run db:check            # 17 checks, all must read OK
 
 npm run dev                 # http://localhost:3000
 npm run build               # production build
@@ -66,7 +66,7 @@ npm run check               # typecheck + lint + format:check + check:rtl
                             #   + check:gitignore + check:encoding
 
 # the two test suites (not in `check` — they need Docker / PowerShell)
-npm run test:guard          # 12 parser + 10 guard cases. Destroys nothing.
+npm run test:guard          # 12 parser + 10 guard cases. REFUSES now — see §6.
 npm run test:gate1          # 15 cases. Runs under pwsh AND Windows PowerShell 5.1.
 ```
 
@@ -74,7 +74,7 @@ npm run test:gate1          # 15 cases. Runs under pwsh AND Windows PowerShell 5
 # database
 npm run db:up / db:down / db:logs / db:psql / db:studio
 npm run db:verify           # 10 SQL-level checks inside the container
-npm run db:check            # 15 application-level checks through Prisma
+npm run db:check            # 17 application-level checks through Prisma
 npm run db:reset            # DESTRUCTIVE. Guarded. See §5 and CLAUDE.md rule 12.
 npm run db:migrate          # prisma migrate dev — use this locally, see §5
 ```
@@ -94,7 +94,7 @@ HANDOFF.md (*)              this file
 CLAUDE.md                   15 rules for the builder. DO NOT EDIT without owner approval.
 AGENTS.md                   reviewer brief for Codex. Codex may never edit it.
 README.md (*)               status and run commands
-TASKS.md (*)                build order; ticked through 1.2b
+TASKS.md (*)                build order; ticked through 1.2c
 
 docker-compose.yml (*)      PostgreSQL 17, port 5433, named volume, health check
 docker/postgres/
@@ -104,7 +104,7 @@ docker/postgres/
 
 prisma/
   schema.prisma (*)         13 models. Structure lives here; DATA lives in sql/
-  migrations/               6 applied migrations, listed in §3
+  migrations/               7 applied migrations, listed in §3
 prisma.config.ts (*)        Prisma 7 config; reads DATABASE_URL from .env
 
 src/
@@ -122,7 +122,7 @@ scripts/
   lib/gate1.ps1 (*)         Gate 1 decision, pure, testable without Access
   lib/inventory.ts (*)      parses+validates the db:reset inventory (JSON)
   db-reset.ts (*)           the guarded destructive reset. Read its header first
-  check-db.ts (*)           15 application-level checks
+  check-db.ts (*)           17 application-level checks
   check-rtl.ts (*)          RTL + hardcoded-text checker, with a self-test
   check-gitignore.ts (*)    65 dangerous paths must be blocked, case-sensitively
   check-encoding.ts (*)     .ps1 must have a BOM; everything else must not
@@ -134,6 +134,7 @@ scripts/
   fixtures/rtl-clean/       (*) deliberately correct files it must stay silent on
 
 sql/                        THE SOURCE OF TRUTH FOR DATA. Reviewed by the firm.
+  client-branch-resolution.sql (*) the firm's 21 Aug branch ruling. D19
   lookups-and-crosswalk.sql       5 lookups + the crosswalk table definition
   lookups-part2-and-teams.sql (*) 4 lookups + teams. Edited by the 21 Aug corrections
   people-roster-and-aliases.sql   135 people, 339 aliases, split rules
@@ -141,10 +142,9 @@ sql/                        THE SOURCE OF TRUTH FOR DATA. Reviewed by the firm.
 
 docs/
   PRD.md (*)                what the system must do
-  DECISIONS.md (*)          D1–D18. Outranks any skill or plugin advice
-  DECISIONS-ADDENDUM.md (*) merged into DECISIONS.md; kept as a pointer
+  DECISIONS.md (*)          D1–D19. Outranks any skill or plugin advice
   DATA-MODEL.md (*)         every table and column
-  MIGRATION.md (*)          the migration, the gates, and 9 hard-won rules
+  MIGRATION.md (*)          the migration, the gates, and 10 hard-won rules
   DATABASE.md (*)           running the database in plain language
   PERMISSIONS.md (*)        four roles
   BRAND.md (*)              colours, fonts, RTL rules
@@ -184,6 +184,7 @@ Two sources of truth, deliberately separated:
 | 0004 | `20260821082308_people_roster_and_teams` | `people` (138), `person_name_alias` (339), `lookup_team` (2) |
 | 0005 | `20260821114832_alias_completeness` | 339 → 347 aliases; every person now findable by their own name |
 | 0006 | `20260821121729_merge_name_variant_duplicates` | 3 merges; people 138 → 135 |
+| 0007 | `20260821151740_client_branch_resolution` | `client_branch` 31 → 15; 16 crosswalk rules added and the `جنح` chain collapsed; lookups 146 → 130, crosswalk 4 → 20 |
 
 Every migration ends in a `DO $$` block asserting its counts. A migration runs
 in a transaction, so a failed assertion rolls the whole thing back — there is
@@ -192,15 +193,17 @@ no half-seeded state to discover later.
 ### Live figures — asserted by `npm run db:check`
 
 ```
-lookups        146 rows across 9 lists
+lookups        130 rows across 9 lists
   matter_type 14 · matter_category 21 · degree 12 · venue 7 · importance 3
-  party_role 11 · hearing_action 20 · matter_destination 27 · client_branch 31
+  party_role 11 · hearing_action 20 · matter_destination 27 · client_branch 15
 
 people         135
   staff 64 (current 21, former 43) · external 71
 aliases        347
 teams          2 — 8 members, 5 of them current; 16 current staff have none
-crosswalk      4 rules, 0 dangling
+crosswalk      20 rules, 0 dangling, 0 unrecognised
+  3 hearing_action · 9 matter_category · 1 matter_type · 1 degree
+  1 quarantine · 3 separate_client · 2 discarded
 ```
 
 ### Tables that exist
@@ -252,7 +255,7 @@ the server (D15), not cloud storage.
 
 ## 4. Decisions Made — this session only
 
-`docs/DECISIONS.md` holds **D1–D18** and is the authority. Do not duplicate it
+`docs/DECISIONS.md` holds **D1–D19** and is the authority. Do not duplicate it
 here. The decisions below are engineering choices made during this session that
 are *not* in that file.
 
@@ -290,8 +293,8 @@ are *not* in that file.
    through `@prisma/config` — the Prisma CLI, a dev dependency never shipped.
    The offered fix downgrades to Prisma 6. **Not taken.** Re-assess at task 7.1.
 
-10. **Nine rules were added to `docs/MIGRATION.md`** during this session, each
-    from a real failure. Read that file before Stage 2. Summarised:
+10. **Ten rules were added to `docs/MIGRATION.md`**, each from a real failure.
+    Read that file before Stage 2. Summarised:
     - Never match an Arabic name without asserting the row count
     - The four classes of Arabic name variation — and class four
       (dropped middle name) can **never** be folded by a normaliser
@@ -302,6 +305,9 @@ are *not* in that file.
     - Prove the check catches a failure
     - A merge instruction is Arabic text too, and must be normalised
     - A many-to-one mapping needs a `_raw` partner or it is irreversible
+    - A count in an instruction is a claim, not a fact — count the items and
+      report the difference (added 21 Aug with the branch resolution, after
+      the fourth time a stated total was wrong and its list was right)
 
 ---
 
@@ -391,15 +397,22 @@ review. All findings closed; the three review files are in `docs/reviews/`.
 - **1.2** People roster: 135 people, 347 aliases, 2 teams.
 - **1.2a** Alias completeness — every person is now findable by their own name.
 - **1.2b** Three name-variant duplicates merged.
+- **1.2c** `client_branch` resolved 31 → 15 (**D19**), lookups 146 → 130,
+  crosswalk 4 → 20. Done before 1.3 because 1.3 builds
+  `clients.legacy_branch_raw` on top of it.
 
 Every assertion above was **proved by deliberately breaking it** — see the
-commit messages for the exact error text each produced.
+commit messages for the exact error text each produced. For 1.2c the four
+breaks were run against the live database inside a transaction and rolled
+back; the database was unchanged before and after.
 
 ### Done but not independently verified
 
 - Nothing in the code. **But note:** no Codex review has run since commit
-  `a118b51`. The last review covered up to `fcbbf97`. Commits `d16b5bf`
-  onwards (the lookup work, the roster, the merges) are unreviewed.
+  `dec9d52`. The last review covered up to `fcbbf97`. Commits `d16b5bf`
+  onwards (the lookup work, the roster, the merges, the branch resolution)
+  are unreviewed. **The owner has ruled that Codex reviews Stage 1 before
+  task 1.3 begins.**
 - The reconciliation between `db:verify` (10 SQL checks) and `db:check` (15
   application checks) is by inspection, not by a test. They overlap
   deliberately but nothing asserts they agree.
@@ -407,7 +420,8 @@ commit messages for the exact error text each produced.
 ### In progress
 
 **Nothing is half-finished.** The working tree is clean and every migration is
-applied. Task 1.3 has not been started — no file exists for it.
+applied. Task 1.3 has not been started — no file exists for it, and it is
+**blocked on the Codex review of Stage 1** by the owner's decision.
 
 ### Known problems, all recorded in `TASKS.md`
 
@@ -428,8 +442,9 @@ applied. Task 1.3 has not been started — no file exists for it.
    `hearing_attendees` is the serious one: 373 spellings collapse to 135
    people and nothing currently records which spelling a given hearing used.
 
-3. **`client_branch` holds three different concepts.** Resolved by the firm;
-   the mapping is in §7. Not yet applied.
+3. **`client_branch` holds three different concepts.** **RESOLVED and
+   applied** — task 1.2c, migration 0007, decision **D19**. 31 values → 15.
+   One field correction is still open; see §8, question 1.
 
 4. **The design hook flags the accent stripe** on
    `src/app/page.module.css:44` on every write to that file. The owner ruled:
@@ -437,10 +452,18 @@ applied. Task 1.3 has not been started — no file exists for it.
    and Stage 5 deletes it. Do not suppress it either — the ignore command was
    blocked, and a suppression outliving the page is worse than the warning.
 
-5. **`npm run db:reset` now always needs `--force-i-know`**, because the 146
+5. **`npm run db:reset` now always needs `--force-i-know`**, because the 130
    lookup rows and 135 people mean the database is never empty. That is
    correct behaviour. `CLAUDE.md` rule 13 requires asking the owner first. The
    owner's ruling: leave it, revisit at task 2.3.
+
+6. **`npm run test:guard` refuses to run** for the same reason — the guard
+   tests write fixture tables into a database that now holds project data.
+   Rule 14 working as designed. See §8, question 5.
+
+7. **`npm run db:verify` reports one FAIL**, and has since 21 Aug 08:20 — a
+   cleanly rolled-back migration row that the check reads as "did not finish".
+   Pre-existing, harmless, and misleading. See §8, question 4.
 
 ### No known bugs in committed code.
 
@@ -448,91 +471,20 @@ applied. Task 1.3 has not been started — no file exists for it.
 
 ## 7. Next Steps
 
-### 1. Apply the `client_branch` resolution — DO THIS FIRST
+### 1. Apply the `client_branch` resolution — DONE, migration 0007
 
-The firm has settled it. Create a new migration
-(`npx prisma migrate dev --create-only --name client_branch_resolution`) that:
+Applied 21 August 2026 as task **1.2c**, commit `ca306f3`. Decision **D19**;
+the full mapping and reasoning are in `sql/client-branch-resolution.sql`, and
+the applied version is the migration. Do not redo it.
 
-- **Reduces `lookup_client_branch` to the KEEP values only.**
-- **Adds one `migration_crosswalk` row per moved value**, so Stage 2 maps the
-  old text.
-- **Updates the existing `جنح` crosswalk row.** It currently maps
-  `client_branch جنح → client_branch الجنح`. Since `الجنح` itself now moves to
-  `matter_category جنح`, that becomes a two-step chain. Collapse it: point
-  `جنح` directly at `matter_category جنح`.
-- Asserts the new count and that every crosswalk target resolves.
+`client_branch` 31 → 15, lookups 146 → 130, crosswalk 4 → 20, the `جنح` chain
+collapsed. The two Stage 2 rules it carries — never overwrite an existing
+`matter_category`, and the three `separate_client` values mean the matter is on
+the wrong client — are on tasks 2.5 and 2.6, in D19, and in the `reviewer_note`
+of every affected crosswalk row. `npm run db:check` asserts all three
+`separate_client` rules are present.
 
-#### The mapping
-
-Values are quoted exactly as stored. All 31 current values are accounted for.
-
-**KEEP — genuine subsidiaries and sites (14 values present in the database):**
-
-| Value |
-|---|
-| `تويوتا إيجيبت` |
-| `تويوتا مصر للتجارة` |
-| `تويوتا إيجيبت لصناعة السيارات` |
-| `الفطيم للتنمية العقارية` |
-| `الفطيم للسيارات` |
-| `الفطيم مصر للبيع بالتجزئة` |
-| `الفطيم لإنشاء وتنمية المنتجعات السكنية` |
-| `الفطيم لإقامة المراكز التجارية والإدارية` |
-| `أوراسكوم للفنادق` |
-| `أوراسكوم للاتصالات` |
-| `المصنع المحلي` |
-| `المركز الرئيسي` |
-| `فرع المنصورة` |
-| `فرع الإسكندرية` |
-
-**WRONG — move each, and record the move in the crosswalk (17 values present,
-plus `جنح` which was already merged away in migration 0003):**
-
-| Value | Belongs in | Target value |
-|---|---|---|
-| `المنطقة الحرة` | `venue` | (firm to confirm the venue entry) |
-| `دعاوى عمالية` | `matter_category` | `عمال` |
-| `الجنح` | `matter_category` | `جنح` |
-| `جنح` *(already merged into `الجنح`)* | `matter_category` | `جنح` — collapse the chain |
-| `قضاء إداري` | `matter_category` | `قضاء إداري` |
-| `القضاء الإداري` | `matter_category` | `قضاء إداري` |
-| `مدني` | `matter_category` | `مدني` |
-| `ضرائب` | `matter_category` | `ضرائب` |
-| `تعويضات` | `matter_category` | `تعويضات` |
-| `إقتصادي` | `matter_category` | `اقتصادي` |
-| `آراء قانونية` | `matter_category` | `رأي قانوني` |
-| `النقض` | `degree` | `نقض` |
-| `دعاوى قضائية` | **quarantine** | a work type, not a branch |
-| `سيجما للإعلام (تليفزيون الحياة)` | **separate client** | see the warning below |
-| `ألفا مصر للتجارة` | **separate client** | see the warning below |
-| `سيجما للصناعات الدوائية` | **separate client** | see the warning below |
-| `أولاً: طلب وشكوى أمام الهيئة العامة للاستثمار` | **delete** | document heading; 1 matter loses its branch |
-| `ثانياً: النزاعات القضائية المقامة من وضد شركتي الإمارات هايتس ويافا ماك` | **delete** | document heading; 13 matters lose their branch |
-
-Losing the branch on those 14 matters is **allowed** — the owner has said so.
-
-**Two rules that are correctness, not tidying:**
-
-> **(a) Never overwrite an existing `matter_category`.** Where a branch moves
-> to `matter_category` and the matter already has one, **quarantine the
-> conflict** for the firm. Keep the original in `legacy_branch_raw` either way.
-
-> **(b) The three "separate client" values are a correctness problem, not a
-> mis-label.** `سيجما للإعلام (تليفزيون الحياة)`, `ألفا مصر للتجارة` and
-> `سيجما للصناعات الدوائية` are clients in their own right. **Any matter
-> carrying one of those values is attached to the wrong client entirely.**
-> Those matters must be **quarantined at the matters load** (task 2.6). **Do
-> not guess which client they belong to** — the firm will decide.
-
-Record (a) and (b) on tasks **2.5/2.6** in `TASKS.md` as well as in the
-crosswalk `reviewer_note`, so Stage 2 cannot miss them.
-
-**One discrepancy to resolve with the owner before or while doing this — see
-§8, question 1.** The counts the owner gave (13 KEEP / 19 WRONG) do not
-reconcile with the values they enumerated (14 KEEP, and `ألفا مصر للتجارة`
-already listed under WRONG). The **enumerated values above are complete and
-consistent with the 31 rows in the database**; only the summary counts differ.
-Proceed on the enumerated values, and confirm the counts.
+One field correction is still open — see §8, question 1.
 
 ### 2. Task 1.3 — core schema
 
@@ -578,39 +530,53 @@ Nothing in Stage 2 can run without both.
 
 ## 8. Open Questions
 
-1. **`client_branch` counts do not reconcile.** The owner said "13 KEEP and 19
-   WRONG" after correcting `ألفا مصر للتجارة` from KEEP to WRONG. But `ألفا
-   مصر للتجارة` was already in the WRONG list they sent, under "separate
-   clients", and their enumerated KEEP list contains **14** values, not 13 or
-   14-minus-one. The enumerated values reconcile exactly with the 31 rows in
-   the database (14 KEEP + 17 present WRONG = 31, plus `جنح` already merged =
-   the original 32). **Ask which is authoritative before applying.** The
-   mapping in §7 uses the enumerated values.
+1. **`آراء قانونية` — `matter_type` or a new `matter_category`?**
+   The branch resolution gave it as `matter_category → رأي قانوني`. That value
+   does not exist in `lookup_matter_category`; it exists, spelled exactly so,
+   in `lookup_matter_type` (id 3), and D8 defines `matter_type` as "what kind
+   of work?". It is applied as `matter_type`, with a `reviewer_note` on the row
+   saying so. **Ask the firm to confirm.** If they meant a new
+   `matter_category` value instead, it is one UPDATE plus a new list entry —
+   nothing has loaded against it. The migration would have refused the mapping
+   as originally written; that was proved deliberately (break test C).
 
-2. **`المنطقة الحرة` moves to `venue` — but which venue entry?** The owner
-   said "belongs in venue" without naming a target value. `lookup_venue` has 7
-   entries (`قضاء إداري`, `إدارية عليا`, `مجلس الدولة`,
-   `المحكمة الدستورية العليا`, `نيابة`, `لجنة`, `تحكيم`) and none is
-   obviously "free zone". It may need a new venue entry. **Ask.**
+2. **The three "separate client" values need new client records.**
+   `سيجما للإعلام (تليفزيون الحياة)`, `ألفا مصر للتجارة` and
+   `سيجما للصناعات الدوائية`. The firm decides which client each affected
+   matter belongs to. Until then those matters are quarantined at task 2.6.
+   **No action needed now**; flagged so it is not forgotten.
 
-3. **The three "separate client" values need new client records.** The firm
-   will decide which client each affected matter belongs to. Until then those
-   matters are quarantined. **No action needed now**; flagged so it is not
-   forgotten at task 2.6.
+3. **Codex has not reviewed anything after `fcbbf97`.** Fourteen commits,
+   including all of Stage 1, are unreviewed. **The owner has ruled: Codex
+   reviews Stage 1 BEFORE task 1.3.** Do not start 1.3 until that review has
+   run and its findings are closed.
 
-4. **Task 1.2a is applied but the owner has not confirmed the resulting
-   figure** of 347 aliases in writing beyond approving the change. The
-   arithmetic is asserted and consistent; noting it only because every other
-   figure in this project has been explicitly confirmed.
+4. **`npm run db:verify` reports one FAIL, and has since 21 Aug 08:20.**
+   Not caused by any recent work. `_prisma_migrations` holds a row for
+   `20260821081746_people_roster_and_teams` with `finished_at` NULL and
+   `rolled_back_at` set — the failed attempt described under "Choosing a
+   migration folder" in §5. It was cleanly rolled back and superseded by
+   `20260821082308_people_roster_and_teams`; `prisma migrate status` says the
+   schema is up to date, and `db:check` counts only finished migrations.
+   The check reads *any* unfinished row as "a migration did not finish", which
+   does not distinguish a **cleanly rolled-back** migration from one that
+   **died half-way** — and only the second is dangerous.
+   **Left alone deliberately**, because it touches migration-history semantics
+   and was outside the task. **My recommendation:** separate the two cases, so
+   a rolled-back-and-superseded row reads as history rather than as a failure.
+   A check that is permanently red teaches people to ignore a red line.
 
-5. **Codex has not reviewed anything after `fcbbf97`.** Twelve commits,
-   including all of Stage 1, are unreviewed. The owner may want a review
-   before 1.3 rather than after.
+5. **`npm run test:guard` now refuses to run**, for the same reason
+   `db:reset` always needs `--force-i-know`: the database holds 130 lookup
+   rows, 135 people and 347 aliases, and the guard tests write fixture tables
+   into it. **This is CLAUDE.md rule 14 working, not a bug** — but it means
+   the 22 guard cases have not run since task 1.1, and the handoff previously
+   described the suite as "destroys nothing", which is no longer the way it
+   behaves. Worth deciding before Stage 2: give the guard tests their own
+   throwaway database, or accept that they only run on an empty one.
 
-6. **`docs/DECISIONS-ADDENDUM.md` is a stub** pointing at `DECISIONS.md`. It
-   is kept so links resolve. It can be deleted whenever the owner prefers.
-
----
+6. **Task 1.2a's 347 aliases** — confirmed by the owner in writing:
+   339 originals + 6 self-references + 2 spacing variants. Closed.
 
 ## A note on `CLAUDE.md`
 
