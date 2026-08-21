@@ -135,7 +135,21 @@ Every line must read **PASS**:
 | Extension pg_trgm           | 1.6      | PASS |
 | Extension btree_gin         | 1.3      | PASS |
 | Extension unaccent          | 1.1      | PASS |
+| Migrations applied          | 7 applied, 1 rolled back | PASS |
 ```
+
+### About that last line
+
+"**7 applied, 1 rolled back**" is normal and it says **PASS**. A rolled-back
+migration is one that was attempted, refused, and cleanly undone — it left
+nothing behind and a later migration did the job properly. It is a record of
+something that happened, not a problem. This database has one, from 21 August
+2026.
+
+The line only says **FAIL** when a migration **started and never finished**,
+which is different and is dangerous: the schema may be half-built. If you ever
+see `UNFINISHED` on this line, stop and say so — do not run anything else
+against the database.
 
 It then prints the same four Arabic names sorted two ways, which shows why this
 matters:

@@ -74,12 +74,50 @@ UNION ALL SELECT
      * query_to_xml takes the inner query as TEXT, so nothing is resolved at
      * planning time, and CASE only evaluates the branch it needs. On a fresh
      * database the branch simply is not taken.
+     *
+     * ----------------------------------------------------------------------
+     *  A ROLLED-BACK MIGRATION IS NOT A FAILED ONE
+     * ----------------------------------------------------------------------
+     *  Prisma leaves three kinds of row here, and only one of them is
+     *  dangerous:
+     *
+     *    finished_at SET,  rolled_back_at NULL  applied. Normal.
+     *    finished_at NULL, rolled_back_at SET   attempted, cleanly rolled
+     *                                           back, and superseded by a
+     *                                           later migration. History.
+     *    finished_at NULL, rolled_back_at NULL  STARTED AND NEVER FINISHED.
+     *                                           The schema may be half-built.
+     *                                           This is the dangerous one.
+     *
+     *  This check used to fail on the middle case as well, and had been
+     *  reporting FAIL continuously since 21 August 2026 because of one
+     *  genuinely rolled-back attempt (20260821081746_people_roster_and_teams,
+     *  the migration folder chosen with `find | sort | tail -1`). Prisma
+     *  itself reported the schema as up to date throughout.
+     *
+     *  A check that is permanently red is worse than no check: the only thing
+     *  it teaches is to ignore a red line. Ruled by the owner, 21 Aug 2026.
+     *  The rolled-back count is still SHOWN, because it is worth knowing —
+     *  it just does not fail.
      */
     CASE WHEN to_regclass('public._prisma_migrations') IS NULL THEN '(none)'
          ELSE (xpath('/row/n/text()',
-                     query_to_xml('SELECT count(*) AS n FROM public._prisma_migrations
-                                    WHERE finished_at IS NOT NULL
-                                      AND rolled_back_at IS NULL',
+                     query_to_xml($q$
+                        SELECT applied::text
+                            || CASE WHEN rolled_back > 0
+                                    THEN ' applied, ' || rolled_back || ' rolled back'
+                                    ELSE '' END
+                            || CASE WHEN unfinished > 0
+                                    THEN CASE WHEN rolled_back > 0 THEN ', ' ELSE ' applied, ' END
+                                         || unfinished || ' UNFINISHED'
+                                    ELSE '' END AS n
+                        FROM (SELECT
+                                count(*) FILTER (WHERE finished_at IS NOT NULL
+                                                   AND rolled_back_at IS NULL) AS applied,
+                                count(*) FILTER (WHERE rolled_back_at IS NOT NULL) AS rolled_back,
+                                count(*) FILTER (WHERE finished_at IS NULL
+                                                   AND rolled_back_at IS NULL) AS unfinished
+                              FROM public._prisma_migrations) c$q$,
                                   false, true, '')))[1]::text
     END,
     CASE WHEN to_regclass('public._prisma_migrations') IS NULL
@@ -87,9 +125,9 @@ UNION ALL SELECT
          WHEN (xpath('/row/n/text()',
                      query_to_xml('SELECT count(*) AS n FROM public._prisma_migrations
                                     WHERE finished_at IS NULL
-                                       OR rolled_back_at IS NOT NULL',
+                                      AND rolled_back_at IS NULL',
                                   false, true, '')))[1]::text::int > 0
-              THEN 'FAIL — a migration did not finish'
+              THEN 'FAIL — a migration started and never finished'
          ELSE 'PASS' END;
 
 
