@@ -59,10 +59,6 @@ trade-off unless you explain it in ordinary language.
    plugin contradicts a decision, raise it with the owner rather than following
    it.**
 
-   **`docs/DECISIONS.md` outranks any skill or plugin advice. If a skill or
-   plugin contradicts a decision, raise it with the owner rather than following
-   it.**
-
 2. **Work through `TASKS.md` in order.** Each task is sized to one session.
    Do not jump ahead. Do not do three tasks at once.
 
@@ -109,6 +105,19 @@ trade-off unless you explain it in ordinary language.
     - **No tool may edit either file automatically.**
 
     Additions strengthen the guardrails. Removals need a human.
+
+    **These two files are maintained by Claude Code only, on the owner's
+    instruction.** Codex may not edit them at all — not even if the owner asks
+    it to; its own brief says so, and it must report the problem instead. **If
+    Codex has edited either file, restore the intended wording and tell the
+    owner.** It has happened once: commit `95e42cb` was made by Codex after a
+    prompt intended for Claude Code, and it removed the owner's "fix this
+    yourself" exception without approval.
+
+    Before editing either file, **re-read it first.** These two are the files
+    most likely to have been changed since you last saw them, and an edit
+    anchored on remembered text will silently duplicate a paragraph rather
+    than replace it — which is exactly what commit `d16b5bf` did.
 
 12. **Never destroy a database except through `npm run db:reset`.** That
     command has guards: it refuses on a production machine, refuses a
