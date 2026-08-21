@@ -176,7 +176,7 @@ async function main() {
   //    written at the time would have failed on correct data.
   const roster: Array<[string, number, number]> = [
     ['people', await db.person.count(), 138],
-    ['aliases', await db.personNameAlias.count(), 339],
+    ['aliases', await db.personNameAlias.count(), 347],
     ['staff', await db.person.count({ where: { isStaff: true } }), 67],
     ['current', await db.person.count({ where: { isStaff: true, isActive: true } }), 21],
     ['former', await db.person.count({ where: { isStaff: true, isActive: false } }), 46],
@@ -196,7 +196,7 @@ async function main() {
   const rosterWrong = roster.filter(([, actual, expected]) => actual !== expected);
   record(
     'Roster figures (9)',
-    '138/339/67/21/46/71/2/5/16',
+    '138/347/67/21/46/71/2/5/16',
     rosterWrong.length === 0
       ? roster.map(([, actual]) => actual).join('/')
       : rosterWrong.map(([n, a2, e]) => `${n} ${a2}/${e}`).join(', '),
@@ -231,6 +231,20 @@ async function main() {
       hamzaProblems.push(`${variant} does not resolve to ${canonical}`);
     }
   }
+  //    The alias table must be a COMPLETE index: rule 15 says match through
+  //    it, so a person with no alias equal to their own name is silently
+  //    unfindable. Six were, including a Milestone 4 test user.
+  const unfindable = await db.$queryRaw<{ count: bigint }[]>`
+    SELECT count(*) AS count FROM people p
+     WHERE NOT EXISTS (SELECT 1 FROM person_name_alias a WHERE a.alias_ar = p.name_ar)`;
+  const unfindableCount = Number(one(unfindable, 'unfindable people').count);
+  record(
+    'Every person findable by their own name',
+    '0 unfindable',
+    `${unfindableCount} unfindable`,
+    unfindableCount === 0,
+  );
+
   record(
     'Hamza pairs resolve to one person',
     '2 pairs, 0 problems',

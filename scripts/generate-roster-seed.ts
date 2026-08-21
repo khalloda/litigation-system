@@ -37,6 +37,11 @@ const TEAMS = 'sql/lookups-part2-and-teams.sql';
  */
 const EXPECTED = {
   people: 138,
+  /*
+   * 339 is what THIS migration loads. Migration 0005 (alias_completeness)
+   * then adds 8 more — six people's own names, which were missing, plus two
+   * spacing variants — taking the live total to 347. db:check asserts 347.
+   */
   aliases: 339,
   staff: 67,
   currentStaff: 21,

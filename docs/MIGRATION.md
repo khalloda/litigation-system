@@ -143,6 +143,42 @@ later when a report comes up short.
    the expected figure and throw. Never log a warning and carry on.
 Apply this to seeds, transforms and reconciliation queries alike.
 
+### The four classes of Arabic name variation
+
+**They are not equal, and the difference decides what a machine may do.**
+
+| Class | Example | Can a normaliser fold it? |
+|---|---|---|
+| Hamza | `احمد` / `أحمد` | **Yes** |
+| Ta marbuta | `محكمه` / `محكمة` | **Yes** |
+| Space in a compound name | `عبدالعزيز` / `عبد العزيز` | **Yes** |
+| Dropped middle name | `سامي خطاب` / `سامي إبراهيم خطاب` | **No — never** |
+
+The first three are mechanical: the same characters, written differently. A
+normaliser folds them and is right every time.
+
+**The fourth cannot be folded by any rule, and must never be attempted.** A
+normaliser that dropped middle names would merge genuinely different people
+who share a first and last name — which in a firm this size is a matter of
+time, not chance. It can only be handled by human-recorded aliases, which is
+exactly what the firm's review produced: `سامي إبراهيم خطاب` carries
+`سامي خطاب`, `سامي إبراهيم`, `سامي إبراهيم محمد يوسف` and `سامي خطب`
+because a person decided each one.
+
+**Never extend the normaliser to guess at name shortening, however tempting
+the pattern looks.** A fold that is right 95% of the time silently merges two
+people the other 5%, and merging two people is the failure this project has
+already suffered twice.
+
+#### Why the third class was added
+
+The space fold was added on 21 August 2026, and finding it immediately found
+something else. Folding hamza, ta marbuta and spaces together across the
+roster surfaced **three pairs of people whose fully-normalised names are
+identical** — probable duplicates that neither fold alone would have caught.
+`أحمد عبد الله` and `احمد عبدالله` differ by a hamza AND a space; either
+fold on its own leaves them apart.
+
 ### The cascade rule
 
 **When an expected count changes, re-derive every figure that depends on it.
@@ -229,6 +265,32 @@ In practice:
 4. **A parse failure is a refusal.** Never a default value, never a warning
    that the run continues past.
 
+### An assertion tests what it looks at, and nothing else
+
+Two examples from the same afternoon, both about the multi-person split rules.
+
+The assertion written was *"every member name resolves to exactly one
+person"*. It fired, and found one rule whose member name resolved to nobody —
+one matter, whose lawyers would have been lost.
+
+**It could not have found the other two.** Two rules had NO MEMBER ROWS AT
+ALL, because the extractor's bracket capture returned nothing. A rule with no
+members has no member row to fail, so an assertion over member rows sees
+perfection. Ten more matters would have lost every lawyer, silently.
+
+So when writing an assertion, ask what it CANNOT see:
+
+- *"every row that exists is valid"* says nothing about rows that should
+  exist and do not. Assert the count as well as the content.
+- *"every child resolves to a parent"* says nothing about a parent with no
+  children. Assert that every parent has at least one.
+- *"the typo is gone"* is satisfied by deleting both spellings. Assert the
+  surviving value is present too.
+
+Task 2.7's assertions must therefore cover all three: every rule has at least
+one member, every member resolves to exactly one person, and ordinals run
+from 1 without gaps.
+
 ### Prove the check catches a failure
 
 **Before trusting any gate or assertion, break something on purpose and confirm
@@ -251,6 +313,22 @@ Apply this to **every one of the four migration gates**:
 
 Record the result of each deliberate break next to the gate. "We ran it and it
 passed" is not evidence that a gate works.
+
+### A safety net we did not build, and must not disable
+
+The roster seed was once written into an **already-applied migration** by
+mistake — the target was chosen with `find … | sort | tail -1`, and the
+folder it assumed existed had not been created because the command before it
+had failed.
+
+Nothing in this project caught that. **Prisma's shadow database did**: on the
+next `migrate dev`, it replays every migration from scratch to compute a
+diff, hit `INSERT INTO people` before `people` existed, and refused.
+
+That replay is a real safety net and it is free. Anything that disables it —
+`migrate deploy` alone in development, a shadow-database URL pointing at the
+live database, or skipping `migrate dev` because `deploy` is quicker — throws
+it away. Keep using `migrate dev` locally.
 
 ## Quarantine, don't delete
 

@@ -61,27 +61,41 @@ be bigger than expected, split it and tell the owner.
       `migration_excluded_name`. Writing the assertion for them found 4 of
       the 66 member names resolve to nobody — see below.
 
-- [ ] **1.2a Two corrections found while building 1.2** — need the firm
+- [x] **1.2a Alias completeness** — resolved 21 August 2026, migration 0005
+      339 → 347 aliases. Six people's own names were missing from the alias
+      table, so rule 15's "match through the alias" found nothing for them —
+      including سامي إبراهيم خطاب, a Milestone 4 test user. Plus the two
+      spacing variants the firm confirmed:
+      `محمد عبدالعزيز عبد الحافظ` → `محمد عبد العزيز عبد الحافظ`
+      `عبدالرحمن البنا` → `عبد الرحمن البنا`
+      Asserted: 347 rows, **zero** people unfindable by their own name, no
+      duplicate primaries, no spelling owned by two people.
 
-      **(a) Four split-rule member names resolve to nobody.** At Stage 2 each
-      would silently drop a lawyer from a matter.
-        `محمد عبدالعزيز عبد الحافظ` ×2 — roster spells it
-              `محمد عبد العزيز عبد الحافظ` (space in عبد العزيز)
-        `عبدالرحمن البنا` ×1 — roster spells it `عبد الرحمن البنا`
-        one rule was **never split**: its single member is the whole
-              eight-lawyer string pasted from the reviewer's note, so that
-              matter would lose all eight lawyers
-      Not fixed here: deciding two spellings are the same person is an
-      identity judgement, and the unsplit rule needs the firm to say who its
-      members are.
+- [ ] **1.2b Three probable duplicate people** — needs the firm
 
-      **(b) Six people's own `name_ar` is not in `person_name_alias`**, so
-      rule 15's "match through the alias table" finds nothing for them:
-        `سامي إبراهيم خطاب` (a Milestone 4 test user), `احمد أبو العباس الاتربي`,
-        `احمد عبدالله`, `احمد فرحات`, `عبد الله الشهابي`, `حسني حمزة عبدالله`
-      Recommend adding each person's own name as an alias — 339 → 345 — so
-      the alias table is a complete index and rule 15 always works. Until
-      then any lookup must try `alias_ar` **and** `name_ar`.
+      Found by adding the space fold and running the full normaliser (hamza +
+      ta marbuta + space) across all 138 names and 347 aliases. Three pairs
+      normalise to the same string:
+
+      | Kept | Probable duplicate | Class |
+      |---|---|---|
+      | `أحمد عبد الله` (id 25, Dr. Ahmed Abdullah, 7 spellings) | `احمد عبدالله` (id 57, 2 spellings) | hamza **and** space |
+      | `أحمد فرحات` (id 33, 4 spellings) | `احمد فرحات` (id 61, 1 spelling) | hamza |
+      | `خالد عطيه` (id 28, 13 spellings) | `خالد عطية` (id 67, 1 spelling) | ta marbuta |
+
+      **All three look like the same mistake.** In every pair the second
+      person holds only conjunction-prefixed variants — `وأحمد عبد الله محمد`,
+      `والأساتذه أحمد عبد الله محمد علي`, `ود. خالد محمود حمدي عبد العزيز عطية`.
+      A leading و ("and") or ود. ("and Dr.") was never stripped, so the string
+      became a person of its own.
+
+      Not merged: deciding two records are one person is the firm's call, and
+      it is the judgement that went wrong twice before. If confirmed, people
+      goes 138 → 135 and every derived figure moves with it — see the cascade
+      rule in `docs/MIGRATION.md`.
+
+      Note the ta marbuta pair would NOT have been caught by the hamza fold
+      alone, and the first pair needed both folds at once.
 
 - [ ] **1.3 Core schema**
       clients, contacts, matters, hearings, admin_tasks, task_actions,
@@ -146,6 +160,41 @@ only ever seen good data is not known to work.
 - [ ] **2.7 Transform: matter_lawyers and matter_parties**
       Split the combination strings using the rules in
       `migration_multi_person_rule`.
+
+      **Load the three deferred tables here** — `migration_multi_person_rule`
+      (33), `_member` (66) and `migration_excluded_name` (38). They were held
+      back from task 1.2 because three rules were broken.
+
+      **THREE RULES ARE MIS-PARSED IN THE SOURCE — corrected membership below,
+      supplied by the firm 21 August 2026.** The firm's review notes were
+      correct throughout; the extractor lost them. Two rules had a missing
+      closing bracket so the capture returned nothing and they have **no
+      members at all**; a third used `-` as its separator so the whole string
+      came through as one name. **Left unfixed, 11 matters lose every lawyer.**
+
+      Rule 1 — 8 matters — `خالد محمود حمدي عبد العزيز وأحمد عبد الله محمد ومحمد عبد العزيز عبد الحافظ وشريف أبو المكارم صالح وأحمد سعيد أحمد ومحمد مجدي أحمد الغرابلي`
+      members: خالد عطيه · أحمد عبد الله · محمد عبد العزيز عبد الحافظ ·
+               شريف أبو المكارم · أحمد سعيد · محمد الغرابلي
+
+      Rule 2 — 2 matters — `خالد محمود حمدي عبد العزيز وأحمد عبد الله محمد ومحمد عبد العزيز عبد الحافظ وأحمد سعيد أحمد ومحمد مجدي أحمد الغرابلي`
+      members: خالد عطيه · أحمد عبد الله · محمد عبد العزيز عبد الحافظ ·
+               أحمد سعيد · محمد الغرابلي
+
+      Rule 3 — 1 matter — `هاني سري الدين - أميرة شريف - إيهاب حمدي - محمد عبد العزيز - أحمد سعيد - محمد حمدي - هاني الدالي - عبد الرحمن البنا`
+      members: those eight, with محمد عبد العزيز resolving to
+               محمد عبد العزيز عبد الحافظ
+
+      Every member above is already in the roster. Match through
+      `person_name_alias`, never by typing the Arabic — and if a name here has
+      been mistyped, the assertions below will catch it.
+
+      **Assertions — all three, because the first two are blind to each
+      other** (see "An assertion tests what it looks at" in
+      `docs/MIGRATION.md`):
+        1. every rule has **at least one** member — a rule with none has no
+           row to fail, which is how 10 of the 11 matters stayed hidden
+        2. every member name resolves to **exactly one** person
+        3. ordinals run from 1 with no gaps
 
 - [ ] **2.8 Transform: hearings and attendees**
       13,279 hearings. `**` becomes no rows, not a person.
