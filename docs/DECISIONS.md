@@ -286,4 +286,11 @@ two document headings — and the firm has agreed to that.
 Both rules are recorded on tasks 2.5 and 2.6 and in the `reviewer_note` of
 every affected crosswalk row.
 
+**`آراء قانونية` is a `matter_type`, not a `matter_category`.** The written
+instruction said category; `رأي قانوني` does not exist in that list and does
+exist in `matter_type`. The firm confirmed: a legal opinion is a kind of work,
+which is exactly the distinction **D8** draws, and `رأي قانوني` is distinct
+from `استشارات` — settled during the classification review. **No new practice
+area was created.**
+
 Full detail and reasoning: `sql/client-branch-resolution.sql`.

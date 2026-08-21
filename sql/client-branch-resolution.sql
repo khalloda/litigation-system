@@ -29,8 +29,8 @@
 --  أدخنة النخلة, alongside المصنع المحلي and المركز الرئيسي, and it carries
 --  193 matters. lookup_venue stays at 7 values — no new entry.
 --
---  ONE DISCREPANCY, FLAGGED NOT SILENTLY ABSORBED
---  ----------------------------------------------
+--  ONE DISCREPANCY, FLAGGED AND SINCE CONFIRMED
+--  --------------------------------------------
 --  آراء قانونية was given as moving to matter_category -> رأي قانوني.
 --  رأي قانوني does not exist in lookup_matter_category. It exists, spelled
 --  exactly that way, in lookup_matter_TYPE (id 3).
@@ -38,11 +38,16 @@
 --  Written here as matter_type, because that is the only list in the database
 --  holding the value, and because D8 defines matter_type as "what kind of
 --  work?" — a legal opinion is a kind of work, not a practice area. The list
---  name looks like a slip of the pen; the value itself is right.
+--  name was a slip of the pen; the value itself was right.
 --
---  The row carries a reviewer_note saying exactly this. If the firm meant a
---  NEW matter_category value instead, it is one UPDATE — nothing has loaded
---  against it yet.
+--  CONFIRMED BY THE FIRM the same day: a legal opinion is a kind of work, and
+--  رأي قانوني is distinct from استشارات — settled during the classification
+--  review. NO NEW matter_category IS CREATED. The reviewer_note on the row was
+--  updated to say so in migration 0008.
+--
+--  The assertion caught this before it applied. Written as instructed, the
+--  migration refuses: "1 crosswalk rows point at a matter category that does
+--  not exist".
 --
 --  TWO RULES FOR STAGE 2 — CORRECTNESS, NOT TIDYING
 --  ------------------------------------------------
@@ -138,7 +143,7 @@ VALUES
 
     -- A kind of work, not a practice area. SEE THE DISCREPANCY NOTE ABOVE.
     ('client_branch', 'آراء قانونية',   NULL, 'matter_type', 'رأي قانوني',
-     'FIELD CORRECTED — CONFIRM WITH THE FIRM. Given as matter_category -> رأي قانوني, but that value does not exist in lookup_matter_category; it exists exactly so in lookup_matter_type (id 3), and D8 defines matter_type as "what kind of work?". Written as matter_type. One UPDATE to change if the firm meant a new matter_category value.'),
+     'CONFIRMED BY THE FIRM 21 Aug 2026. A legal opinion is a kind of work, not a practice area (D8), and رأي قانوني is distinct from استشارات — settled during the classification review. The original instruction said matter_category; that was a slip and no such category exists. No new matter_category was created.'),
 
     -- A court instance, not a branch.
     ('client_branch', 'النقض',          NULL, 'degree', 'نقض',

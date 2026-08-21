@@ -109,10 +109,12 @@ be bigger than expected, split it and tell the owner.
       matters. An earlier note had it moving to `venue`; the firm corrected
       that and `lookup_venue` stays at 7. The migration asserts that.
 
-      **One field corrected and flagged:** `آراء قانونية` was given as
-      `matter_category → رأي قانوني`, but that value is a `matter_type`, not a
-      category. Written as `matter_type` with a `reviewer_note` saying so.
-      Awaiting the firm — it is one UPDATE either way.
+      **One field corrected, and since confirmed:** `آراء قانونية` was given
+      as `matter_category → رأي قانوني`, but that value is a `matter_type`,
+      not a category. Applied as `matter_type`; the firm confirmed the same
+      day — a legal opinion is a kind of work (D8), and `رأي قانوني` is
+      distinct from `استشارات`. **No new practice area was created.** The
+      `reviewer_note` records the confirmation, migration 0008.
 
       Counts were counted, not trusted: 15 + 16 = 31 byte-exact against the
       seeded rows, both directions, no duplicates. See "A count in an
@@ -173,6 +175,14 @@ only ever seen good data is not known to work.
 - [ ] **2.2 Staging schema** — every column `text`, plus `src_row_num`.
 
 - [ ] **2.3 Load to staging** — Gate 2: counts match the manifest.
+
+      **Also at this task: give `npm run test:guard` its own database.**
+      The guard suite writes fixture tables, so it refuses to run against a
+      database holding project data — CLAUDE.md rule 14 working as intended.
+      But that means its 22 cases have not run since task 1.1 and the gap
+      widens with every migration. The firm's ruling: create and destroy a
+      throwaway database per run, so the suite never touches the project one.
+      Do not build it before this task.
 
 - [ ] **2.4 Quarantine tables + profiling** — Gate 3.
 
