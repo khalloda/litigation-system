@@ -52,6 +52,7 @@
 import 'dotenv/config';
 import { execFileSync } from 'node:child_process';
 import { Client } from 'pg';
+import { parseDatabaseList, parseTableCounts, type TableCount } from './lib/inventory';
 
 const OVERRIDE_FLAG = '--force-i-know';
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1'];
@@ -187,8 +188,6 @@ if (namedDatabase !== EXPECTED_DATABASE) {
 // ---------------------------------------------------------------------------
 //  Helpers
 // ---------------------------------------------------------------------------
-type TableCount = { database: string; schema: string; table: string; rows: number };
-
 /*
  * Run psql INSIDE the container. `docker compose exec` targets the `db`
  * service in this project's compose file — the same service whose volume the
@@ -205,57 +204,53 @@ function inContainer(database: string, sql: string): string {
 }
 
 /*
+ * The inventory arrives as JSON and every field is validated on arrival —
+ * see scripts/lib/inventory.ts for why, and for the three-row table that
+ * proved it necessary. A count this guard cannot understand is a refusal,
+ * never a zero.
+ */
+
+/*
  * Every database in the cluster except the two templates. `postgres` — the
  * built-in maintenance database — is deliberately included: it is a real
  * database in this volume, and it was the one used to slip past the guard.
  */
 function listDatabases(): string[] {
-  const out = inContainer(
-    'postgres',
-    'SELECT datname FROM pg_database WHERE NOT datistemplate ORDER BY datname',
+  return parseDatabaseList(
+    inContainer(
+      'postgres',
+      `SELECT coalesce(json_agg(datname ORDER BY datname), '[]'::json)
+         FROM pg_database WHERE NOT datistemplate`,
+    ),
   );
-  return out
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
 }
 
 /*
  * Exact row counts for every table in every non-system schema of one
- * database, in a single round trip.
+ * database, in a single round trip, as JSON.
  *
  * query_to_xml takes its query as text, so the table names do not have to
  * exist when this statement is planned — which is what makes one generic
  * query work against any database.
  */
 const COUNT_SQL = `
-SELECT t.table_schema || '|' || t.table_name || '|' ||
-       (xpath('/row/c/text()',
-              query_to_xml(format('SELECT count(*) AS c FROM %I.%I',
-                                  t.table_schema, t.table_name),
-                           false, true, '')))[1]::text
+SELECT coalesce(json_agg(json_build_object(
+           'schema', t.table_schema,
+           'table',  t.table_name,
+           'rows',   (xpath('/row/c/text()',
+                            query_to_xml(format('SELECT count(*) AS c FROM %I.%I',
+                                                t.table_schema, t.table_name),
+                                         false, true, '')))[1]::text::bigint
+       ) ORDER BY t.table_schema, t.table_name), '[]'::json)
   FROM information_schema.tables t
  WHERE t.table_type = 'BASE TABLE'
    AND t.table_schema NOT IN ('pg_catalog', 'information_schema')
    AND t.table_schema NOT LIKE 'pg_toast%'
    AND t.table_schema NOT LIKE 'pg_temp%'
-   AND NOT (t.table_schema = 'public' AND t.table_name = '_prisma_migrations')
- ORDER BY 1`;
+   AND NOT (t.table_schema = 'public' AND t.table_name = '_prisma_migrations')`;
 
 function countDatabase(database: string): TableCount[] {
-  const out = inContainer(database, COUNT_SQL);
-  if (out === '') return [];
-  return out
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [schema, table, rows] = line.split('|');
-      if (schema === undefined || table === undefined || rows === undefined) {
-        throw new Error(`could not read the row count for "${line}" in ${database}`);
-      }
-      return { database, schema, table, rows: Number(rows) };
-    });
+  return parseTableCounts(inContainer(database, COUNT_SQL), database);
 }
 
 function clusterIdentifier(): string {

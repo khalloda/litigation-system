@@ -26,12 +26,13 @@
 
 import 'dotenv/config';
 import { execFileSync } from 'node:child_process';
+import { parseDatabaseList, parseTableCounts } from './lib/inventory';
 
 const POSTGRES_USER = process.env['POSTGRES_USER'] ?? 'litigation';
 const DATABASE = process.env['POSTGRES_DB'] ?? 'litigation';
 
 /* Every table this suite creates. Nothing else is ever touched. */
-const FIXTURE_TABLES = ['guard_fixture_rows', 'stray_data'];
+const FIXTURE_TABLES = ['guard_fixture_rows', 'stray_data', 'review|guard_fixture'];
 const FIXTURE_SCHEMAS = ['guard_stg', 'guard_qc'];
 
 function psql(database: string, sql: string): string {
@@ -69,35 +70,47 @@ function runGuard(extraEnv: Record<string, string>, args: string[] = []): Result
 //  Rule 14: prove there is nothing here but our own fixtures.
 // ---------------------------------------------------------------------------
 function assertNoProjectData() {
-  const databases = psql(
-    'postgres',
-    'SELECT datname FROM pg_database WHERE NOT datistemplate ORDER BY datname',
-  )
-    .split('\n')
-    .map((d) => d.trim())
-    .filter(Boolean);
+  /*
+   * JSON, not a delimited string. This function had the identical fault the
+   * guard did: it split on '=' and a table name containing one would have made
+   * its rows read as zero — so the safety check protecting the firm's data
+   * would itself have said "nothing here" and let the fixtures be written.
+   */
+  const databases = parseDatabaseList(
+    psql(
+      'postgres',
+      `SELECT coalesce(json_agg(datname ORDER BY datname), '[]'::json)
+         FROM pg_database WHERE NOT datistemplate`,
+    ),
+  );
 
   const foreign: string[] = [];
   for (const db of databases) {
-    const rows = psql(
+    const counts = parseTableCounts(
+      psql(
+        db,
+        `SELECT coalesce(json_agg(json_build_object(
+                    'schema', t.table_schema,
+                    'table',  t.table_name,
+                    'rows',   (xpath('/row/c/text()',
+                                     query_to_xml(format('SELECT count(*) AS c FROM %I.%I',
+                                                         t.table_schema, t.table_name),
+                                                  false, true, '')))[1]::text::bigint
+                ) ORDER BY t.table_schema, t.table_name), '[]'::json)
+           FROM information_schema.tables t
+          WHERE t.table_type = 'BASE TABLE'
+            AND t.table_schema NOT IN ('pg_catalog', 'information_schema')
+            AND t.table_schema NOT LIKE 'pg_toast%'
+            AND NOT (t.table_schema = 'public' AND t.table_name = '_prisma_migrations')`,
+      ),
       db,
-      `SELECT t.table_schema || '.' || t.table_name || '=' ||
-              (xpath('/row/c/text()',
-                     query_to_xml(format('SELECT count(*) AS c FROM %I.%I',
-                                         t.table_schema, t.table_name),
-                                  false, true, '')))[1]::text
-         FROM information_schema.tables t
-        WHERE t.table_type = 'BASE TABLE'
-          AND t.table_schema NOT IN ('pg_catalog', 'information_schema')
-          AND t.table_schema NOT LIKE 'pg_toast%'
-          AND NOT (t.table_schema = 'public' AND t.table_name = '_prisma_migrations')`,
     );
-    for (const line of rows.split('\n').map((l) => l.trim()).filter(Boolean)) {
-      const [name, count] = line.split('=');
-      const table = (name ?? '').split('.').pop() ?? '';
-      const schema = (name ?? '').split('.')[0] ?? '';
-      const isOurs = FIXTURE_TABLES.includes(table) || FIXTURE_SCHEMAS.includes(schema);
-      if (!isOurs && Number(count) > 0) foreign.push(`${db}.${name} — ${count} rows`);
+
+    for (const c of counts) {
+      const isOurs = FIXTURE_TABLES.includes(c.table) || FIXTURE_SCHEMAS.includes(c.schema);
+      if (!isOurs && c.rows > 0) {
+        foreign.push(`${db}.${c.schema}.${c.table} — ${c.rows} rows`);
+      }
     }
   }
 
@@ -113,10 +126,14 @@ function assertNoProjectData() {
 }
 
 // ---------------------------------------------------------------------------
+/* Quoted, because one fixture name deliberately contains a pipe. */
+const quoted = (name: string) => '"' + name.replace(/"/g, '""') + '"';
+
 function cleanup() {
-  psql(DATABASE, `DROP TABLE IF EXISTS ${FIXTURE_TABLES.join(', ')} CASCADE`);
+  const tables = FIXTURE_TABLES.map(quoted).join(', ');
+  psql(DATABASE, `DROP TABLE IF EXISTS ${tables} CASCADE`);
   psql(DATABASE, FIXTURE_SCHEMAS.map((s) => `DROP SCHEMA IF EXISTS ${s} CASCADE`).join('; '));
-  psql('postgres', `DROP TABLE IF EXISTS ${FIXTURE_TABLES.join(', ')} CASCADE`);
+  psql('postgres', `DROP TABLE IF EXISTS ${tables} CASCADE`);
 }
 
 type Case = {
@@ -223,6 +240,23 @@ const cases: Case[] = [
   },
   {
     /*
+     * The red-team case: a table whose NAME contains the character the
+     * inventory used to be delimited by. The count landed in the wrong field,
+     * Number('guard_fixture') gave NaN, and three real rows were reported as
+     * an empty table with deletion permitted.
+     */
+    name: 'a table name containing the old delimiter is still counted',
+    setUp: () => {
+      psql(DATABASE, 'CREATE TABLE IF NOT EXISTS "review|guard_fixture" (id int)');
+      psql(DATABASE, 'TRUNCATE "review|guard_fixture"');
+      psql(DATABASE, 'INSERT INTO "review|guard_fixture" VALUES (1),(2),(3)');
+    },
+    args: ['--dry-run'],
+    expect: 'refuse',
+    because: 'review|guard_fixture',
+  },
+  {
+    /*
      * The passing path. --dry-run so proving the guard ALLOWS a legitimate
      * reset does not require performing one.
      */
@@ -234,11 +268,75 @@ const cases: Case[] = [
 ];
 
 // ---------------------------------------------------------------------------
+//  The inventory parser, tested directly.
+//
+//  These feed it replies a real database is awkward to produce. Every one must
+//  THROW — because the rule is that a value the guard cannot understand is a
+//  refusal, never a zero. Reading an unparseable count as an empty table is
+//  precisely how three real rows were reported as nothing to lose.
+// ---------------------------------------------------------------------------
+const MALFORMED: Array<[string, string]> = [
+  ['nothing at all', ''],
+  ['not JSON', 'ERROR:  permission denied'],
+  ['not an array', '{"schema":"public"}'],
+  ['an entry that is not an object', '["public.clients"]'],
+  ['a missing count', '[{"schema":"public","table":"clients"}]'],
+  ['a count that is a string', '[{"schema":"public","table":"clients","rows":"12"}]'],
+  ['a count that is null', '[{"schema":"public","table":"clients","rows":null}]'],
+  ['a count that is not whole', '[{"schema":"public","table":"clients","rows":1.5}]'],
+  ['a negative count', '[{"schema":"public","table":"clients","rows":-1}]'],
+  ['a missing table name', '[{"schema":"public","rows":3}]'],
+  ['an empty table name', '[{"schema":"public","table":"","rows":3}]'],
+];
+
+function testParser(): number {
+  let bad = 0;
+
+  for (const [name, raw] of MALFORMED) {
+    let threw = false;
+    try {
+      parseTableCounts(raw, 'litigation');
+    } catch {
+      threw = true;
+    }
+    if (threw) {
+      console.log(`  ok    parser refuses ${name}`);
+    } else {
+      bad += 1;
+      console.log(`  FAIL  parser ACCEPTED ${name} — it must refuse, not read it as zero`);
+    }
+  }
+
+  /* And the well-formed case, including names that would break a delimiter. */
+  const awkward = JSON.stringify([
+    { schema: 'public', table: 'review|guard_fixture', rows: 3 },
+    { schema: 'stg', table: 'a=b', rows: 0 },
+    { schema: 'qc', table: 'الجلسات', rows: 13279 },
+  ]);
+  try {
+    const parsed = parseTableCounts(awkward, 'litigation');
+    const total = parsed.reduce((sum, c) => sum + c.rows, 0);
+    if (parsed.length === 3 && total === 13282) {
+      console.log('  ok    parser reads names containing | and = and Arabic');
+    } else {
+      bad += 1;
+      console.log(`  FAIL  parser misread the awkward names — ${parsed.length} rows, ${total} total`);
+    }
+  } catch (error) {
+    bad += 1;
+    console.log(`  FAIL  parser rejected a well-formed reply — ${String(error)}`);
+  }
+
+  return bad;
+}
+
+// ---------------------------------------------------------------------------
 function main() {
+  let failed = testParser();
+
   assertNoProjectData();
   cleanup();
 
-  let failed = 0;
   for (const c of cases) {
     cleanup();
     c.setUp?.();
@@ -279,7 +377,10 @@ function main() {
     process.exitCode = 1;
     return;
   }
-  console.log(`test:guard — ${cases.length} cases, all correct. Nothing was destroyed.`);
+  console.log(
+    `test:guard — ${MALFORMED.length + 1} parser cases and ${cases.length} guard cases, ` +
+      'all correct. Nothing was destroyed.',
+  );
 }
 
 main();
