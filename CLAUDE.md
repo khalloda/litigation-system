@@ -59,6 +59,10 @@ trade-off unless you explain it in ordinary language.
    plugin contradicts a decision, raise it with the owner rather than following
    it.**
 
+   **`docs/DECISIONS.md` outranks any skill or plugin advice. If a skill or
+   plugin contradicts a decision, raise it with the owner rather than following
+   it.**
+
 2. **Work through `TASKS.md` in order.** Each task is sized to one session.
    Do not jump ahead. Do not do three tasks at once.
 

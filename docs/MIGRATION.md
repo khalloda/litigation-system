@@ -198,6 +198,37 @@ Two more from the same review, both of the same shape:
   5.1**, the version needed for Access. It reads a file without a byte-order
   mark as Windows-1252, so every Arabic table name in it was corrupt.
 
+### Validate what you receive, never assume its shape
+
+**A check must validate what it receives, not assume its shape. Any value the
+check cannot parse is a refusal — never a zero, and never a pass.**
+
+Three faults in this project are the same fault:
+
+| Where | What arrived | What it was read as |
+|---|---|---|
+| The roster generator | a name it had failed to match | **"0 mentions"** — and two duplicate people were created, one carrying 1,309 hearings |
+| Gate 1 | a manifest with a table missing | a **total that happened to add up**, so the extraction looked complete |
+| The reset guard | `review|guard_fixture|3`, split on the pipe | `Number('guard_fixture')` → NaN → **an empty table**, and deletion was permitted |
+
+Each time, something unreadable was silently treated as nothing. Nothing is
+the most dangerous default a safety check can have, because "nothing here" is
+exactly the answer that lets the dangerous thing proceed.
+
+In practice:
+
+1. **Do not use delimited text for anything whose values you do not control.**
+   A delimited string cannot carry a value containing its own delimiter, so
+   escaping only moves the problem. Use JSON — PostgreSQL emits it directly
+   with `json_agg` and `json_build_object`.
+2. **Check every field on arrival.** A count must be a whole number, zero or
+   more. A name must be a non-empty string. Anything else throws.
+3. **Present is not the same as correct.** Gate 1 checked that every expected
+   table was present and nothing unexpected appeared, and still accepted a
+   duplicate. Count what you find; do not merely look for it.
+4. **A parse failure is a refusal.** Never a default value, never a warning
+   that the run continues past.
+
 ### Prove the check catches a failure
 
 **Before trusting any gate or assertion, break something on purpose and confirm
