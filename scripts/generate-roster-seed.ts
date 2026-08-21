@@ -35,6 +35,13 @@ const TEAMS = 'sql/lookups-part2-and-teams.sql';
  * figures at once and four were left stale. So all of them are stated, and
  * the arithmetic between them is checked too.
  */
+/*
+ * These are the figures THIS migration loads. Two later migrations change
+ * them, and db:check asserts the live values:
+ *   0005 alias_completeness            aliases 339 -> 347
+ *   0006 merge_name_variant_duplicates people  138 -> 135, staff 67 -> 64,
+ *                                      former  46 -> 43
+ */
 const EXPECTED = {
   people: 138,
   /*

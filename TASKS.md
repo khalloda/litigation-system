@@ -71,31 +71,23 @@ be bigger than expected, split it and tell the owner.
       Asserted: 347 rows, **zero** people unfindable by their own name, no
       duplicate primaries, no spelling owned by two people.
 
-- [ ] **1.2b Three probable duplicate people** — needs the firm
+- [x] **1.2b Three name-variant duplicates merged** — migration 0006
+      **people 138 → 135** · staff 67 → 64 · former 46 → 43 ·
+      current 21, external 71, aliases 347 all unchanged.
 
-      Found by adding the space fold and running the full normaliser (hamza +
-      ta marbuta + space) across all 138 names and 347 aliases. Three pairs
-      normalise to the same string:
+      Not duplicates in the data — an artefact of the generator. The firm's
+      workbook had already resolved all four fragments; the generator matched
+      each merge target as an exact string, found no such person, and created
+      one. See "A merge instruction is Arabic text too" in
+      `docs/MIGRATION.md`.
 
-      | Kept | Probable duplicate | Class |
-      |---|---|---|
-      | `أحمد عبد الله` (id 25, Dr. Ahmed Abdullah, 7 spellings) | `احمد عبدالله` (id 57, 2 spellings) | hamza **and** space |
-      | `أحمد فرحات` (id 33, 4 spellings) | `احمد فرحات` (id 61, 1 spelling) | hamza |
-      | `خالد عطيه` (id 28, 13 spellings) | `خالد عطية` (id 67, 1 spelling) | ta marbuta |
+        `احمد عبدالله` → `أحمد عبد الله`  (hamza and the space in عبد الله)
+        `احمد فرحات`   → `أحمد فرحات`     (hamza)
+        `خالد عطية`    → `خالد عطيه`      (ta marbuta)
 
-      **All three look like the same mistake.** In every pair the second
-      person holds only conjunction-prefixed variants — `وأحمد عبد الله محمد`,
-      `والأساتذه أحمد عبد الله محمد علي`, `ود. خالد محمود حمدي عبد العزيز عطية`.
-      A leading و ("and") or ود. ("and Dr.") was never stripped, so the string
-      became a person of its own.
-
-      Not merged: deciding two records are one person is the firm's call, and
-      it is the judgement that went wrong twice before. If confirmed, people
-      goes 138 → 135 and every derived figure moves with it — see the cascade
-      rule in `docs/MIGRATION.md`.
-
-      Note the ta marbuta pair would NOT have been caught by the hamza fold
-      alone, and the first pair needed both folds at once.
+      Every spelling moved, none dropped. The migration refuses to merge two
+      names that are not identical once normalised, so a mistyped row cannot
+      merge two genuinely different people.
 
 - [ ] **1.3 Core schema**
       clients, contacts, matters, hearings, admin_tasks, task_actions,

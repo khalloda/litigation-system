@@ -175,11 +175,11 @@ async function main() {
   //    once, one was corrected and four were left stale, and the assertion
   //    written at the time would have failed on correct data.
   const roster: Array<[string, number, number]> = [
-    ['people', await db.person.count(), 138],
+    ['people', await db.person.count(), 135],
     ['aliases', await db.personNameAlias.count(), 347],
-    ['staff', await db.person.count({ where: { isStaff: true } }), 67],
+    ['staff', await db.person.count({ where: { isStaff: true } }), 64],
     ['current', await db.person.count({ where: { isStaff: true, isActive: true } }), 21],
-    ['former', await db.person.count({ where: { isStaff: true, isActive: false } }), 46],
+    ['former', await db.person.count({ where: { isStaff: true, isActive: false } }), 43],
     ['external', await db.person.count({ where: { isStaff: false } }), 71],
     ['teams', await db.lookupTeam.count(), 2],
     [
@@ -196,7 +196,7 @@ async function main() {
   const rosterWrong = roster.filter(([, actual, expected]) => actual !== expected);
   record(
     'Roster figures (9)',
-    '138/347/67/21/46/71/2/5/16',
+    '135/347/64/21/43/71/2/5/16',
     rosterWrong.length === 0
       ? roster.map(([, actual]) => actual).join('/')
       : rosterWrong.map(([n, a2, e]) => `${n} ${a2}/${e}`).join(', '),
@@ -238,6 +238,22 @@ async function main() {
     SELECT count(*) AS count FROM people p
      WHERE NOT EXISTS (SELECT 1 FROM person_name_alias a WHERE a.alias_ar = p.name_ar)`;
   const unfindableCount = Number(one(unfindable, 'unfindable people').count);
+  //    After the three name-variant merges, no two people may share a
+  //    fully-normalised name. This is the check that found them, kept so it
+  //    can find the next one.
+  const collisions = await db.$queryRaw<{ count: bigint }[]>`
+    SELECT count(*) AS count FROM (
+      SELECT replace(translate(regexp_replace(name_ar, '[ًٌٍَُِّْـ]', '', 'g'),
+                               'أإآٱةىؤئ', 'ااااهيوي'), ' ', '') AS folded
+        FROM people GROUP BY 1 HAVING count(*) > 1) d`;
+  const collisionCount = Number(one(collisions, 'normalised collisions').count);
+  record(
+    'No two people share a normalised name',
+    '0 collisions',
+    `${collisionCount} collisions`,
+    collisionCount === 0,
+  );
+
   record(
     'Every person findable by their own name',
     '0 unfindable',

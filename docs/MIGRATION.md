@@ -179,6 +179,44 @@ identical** — probable duplicates that neither fold alone would have caught.
 `أحمد عبد الله` and `احمد عبدالله` differ by a hamza AND a space; either
 fold on its own leaves them apart.
 
+### A merge instruction is Arabic text too
+
+**Normalise both sides when resolving a merge target.**
+
+Whoever writes "merge X into Y" will spell Y however *they* spell it —
+without the hamza, without the space in a compound name, with ة for ه.
+Matching that target exactly finds no such person, and a generator that then
+creates one has manufactured the very duplicate the merge was meant to
+prevent.
+
+That is what happened. The firm's reviewed workbook resolved four fragments
+correctly:
+
+| Fragment | Target the reviewer typed | The person they meant |
+|---|---|---|
+| `وأحمد عبد الله محمد` | `احمد عبدالله` | `أحمد عبد الله` |
+| `والأساتذه أحمد عبد الله محمد علي` | `احمد عبدالله` | `أحمد عبد الله` |
+| `ود. خالد محمود حمدي عبد العزيز عطية` | `خالد عطية` | `خالد عطيه` |
+| `نبيل فرحات` | `احمد فرحات` | `أحمد فرحات` |
+
+Three people were created that should never have existed, and both of the
+first two explanations offered for them — unstripped conjunctions, a
+reviewer error — were wrong. The review was right; the matching was exact
+where it needed to be normalised.
+
+**This is the third time the same fault has appeared**, after the roster
+generator's "0 mentions" and the pipe-delimited inventory. Here it was in the
+one file whose entire purpose is resolving name variants.
+
+Two things follow:
+
+- `نبيل فرحات` → `احمد فرحات` is a **dropped-name** merge. No normaliser
+  could ever infer it — see the four classes above. A human made that
+  judgement, which is what the alias table is for.
+- Do **not** add conjunction-stripping. The و-prefixed spellings genuinely
+  appeared in the source and the review already assigned each to the right
+  person; they are correct as aliases and must stay.
+
 ### The cascade rule
 
 **When an expected count changes, re-derive every figure that depends on it.
