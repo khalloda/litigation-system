@@ -86,6 +86,30 @@ const MUST_BE_IGNORED = [
   'src/generated/prisma/client.ts',
   'postgres-data/base/1',
   'pgdata/x',
+
+  /*
+   * UPPERCASE AND MIXED CASE.
+   *
+   * Every one of these was committable on a case-sensitive checkout while the
+   * lowercase versions above were correctly blocked. Windows hid it.
+   */
+  'macros/TRACKER.XLSM',
+  'exports/CLIENTS.XLSX',
+  'exports/Clients.Csv',
+  'legacy/DATABASE.ACCDB',
+  'legacy/Database.AccDb',
+  'legacy/OLD.MDB',
+  'archive/EXPORT.ZIP',
+  'archive/EXPORT.7Z',
+  'archive/BACKUP.TGZ',
+  'archive/Backup.Tar',
+  'scratch/LOCAL.SQLITE',
+  'scratch/Local.Sqlite3',
+  'scratch/DATA.DB',
+  'reports/STATEMENT.PDF',
+  'dump/SNAPSHOT.BAK',
+  'keys/SERVER.PEM',
+  'keys/Server.Key',
 ];
 
 /* Must NOT be blocked — the repository would be useless without these. */
@@ -106,9 +130,23 @@ const MUST_BE_TRACKABLE = [
   'docker-compose.yml',
 ];
 
+/*
+ * -c core.ignorecase=false is the whole point of this function.
+ *
+ * Windows treats FILE.XLSM and file.xlsm as the same name, so a
+ * lowercase-only .gitignore rule LOOKS correct on this machine. The Ubuntu
+ * server is case-sensitive, and there .XLSM, .ZIP, .SQLITE and .TGZ were all
+ * committable while this check reported everything blocked.
+ *
+ * Forcing case sensitivity here means the check answers the question that
+ * matters — "would this be blocked on the server?" — rather than the easier
+ * one this laptop happens to ask.
+ */
 function isIgnored(path: string): boolean {
   try {
-    execFileSync('git', ['check-ignore', '-q', '--', path], { stdio: 'ignore' });
+    execFileSync('git', ['-c', 'core.ignorecase=false', 'check-ignore', '-q', '--', path], {
+      stdio: 'ignore',
+    });
     return true;
   } catch {
     return false;

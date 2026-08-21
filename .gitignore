@@ -6,18 +6,30 @@
 #  Anything matching the patterns below stays on the local machine only.
 # ===========================================================================
 
+# NOTE ON THE ODD-LOOKING PATTERNS BELOW
+#
+# [aA][cC][cC][dD][bB] is just "accdb", spelled so that case does not matter.
+#
+# This is not decoration. Windows treats FILE.XLSM and file.xlsm as the same
+# name, so a lowercase-only rule LOOKS like it works here. The Ubuntu server
+# does not, and there .XLSM, .ZIP and .SQLITE were all committable.
+# .gitignore has no "ignore case" switch, so each letter is spelled both ways.
+#
+# scripts/check-gitignore.ts runs with case sensitivity forced on, so this
+# cannot silently rot back.
+
 # Microsoft Access databases
-*.accdb
-*.mdb
-*.accde
-*.mde
-*.laccdb
-*.ldb
+*.[aA][cC][cC][dD][bB]
+*.[mM][dD][bB]
+*.[aA][cC][cC][dD][eE]
+*.[mM][dD][eE]
+*.[lL][aA][cC][cC][dD][bB]
+*.[lL][dD][bB]
 
 # Database dumps and backups
-*.sql.gz
-*.dump
-*.bak
+*.[sS][qQ][lL].[gG][zZ]
+*.[dD][uU][mM][pP]
+*.[bB][aA][kK]
 *.backup
 dump/
 backups/
@@ -39,28 +51,28 @@ attachments/
 # of every file for ever. The Access database is 46 MB compacted. Commit it
 # once and the repository carries it permanently — deleting it later does not
 # shrink the history, and every future clone pays for it.
-*.csv
-*.tsv
-*.xlsx
-*.xlsm
-*.xlsb
-*.xls
-*.ods
-!docs/**/*.xlsx          # except blank templates deliberately kept in docs
+*.[cC][sS][vV]
+*.[tT][sS][vV]
+*.[xX][lL][sS][xX]
+*.[xX][lL][sS][mM]
+*.[xX][lL][sS][bB]
+*.[xX][lL][sS]
+*.[oO][dD][sS]
+!docs/**/*.[xX][lL][sS][xX]   # except blank templates deliberately kept in docs
 
 # Other databases. Anything holding rows belongs outside the repository.
-*.sqlite
-*.sqlite3
-*.db
+*.[sS][qQ][lL][iI][tT][eE]
+*.[sS][qQ][lL][iI][tT][eE]3
+*.[dD][bB]
 
 # Archives. Usually an export of something large that is already excluded
 # above, smuggled past these rules by being compressed.
-*.zip
-*.7z
-*.rar
-*.tar
-*.gz
-*.tgz
+*.[zZ][iI][pP]
+*.7[zZ]
+*.[rR][aA][rR]
+*.[tT][aA][rR]
+*.[gG][zZ]
+*.[tT][gG][zZ]
 
 # Extracted client logos and documents
 uploads/
@@ -71,7 +83,7 @@ media/
 # carries real client names, case numbers and figures. Blanket rule: no PDF
 # in this repository. If a genuinely blank template is ever needed, add an
 # exception for it here deliberately.
-*.pdf
+*.[pP][dD][fF]
 
 # Report samples supplied by the firm — real client data, kept locally only.
 docs/report-samples/
@@ -83,9 +95,9 @@ docs/report-samples/
 .env
 .env.*
 !.env.example
-*.pem
-*.key
-*.p12
+*.[pP][eE][mM]
+*.[kK][eE][yY]
+*.[pP]12
 credentials.json
 secrets.json
 
