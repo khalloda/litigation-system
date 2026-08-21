@@ -55,6 +55,10 @@ trade-off unless you explain it in ordinary language.
    made after long analysis of the real data. If you think one is wrong, say so
    and explain — but do not silently do something different.
 
+   **`docs/DECISIONS.md` outranks any skill or plugin advice. If a skill or
+   plugin contradicts a decision, raise it with the owner rather than following
+   it.**
+
 2. **Work through `TASKS.md` in order.** Each task is sized to one session.
    Do not jump ahead. Do not do three tasks at once.
 
