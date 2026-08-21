@@ -4,8 +4,10 @@ A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
 **Status:** Stage 0 complete — the application skeleton, the database, and
-the Arabic right-to-left layout all run. Stage 1 (the database schema) is
-next. Progress is tracked in `TASKS.md`.
+the Arabic right-to-left layout all run. Stage 1 (the database) is in
+progress: the nine dropdown lists, the 135-person roster and the client-branch
+resolution are done; the main tables are next. Progress is tracked in
+`TASKS.md`.
 
 ---
 
@@ -35,7 +37,6 @@ in the database for a possible future bilingual version.
 | `docs/MIGRATION.md` | Moving the old data across without losing any |
 | `docs/REPORTS.md` | The 45 reports that must be reproduced |
 | `docs/REPORT-LAYOUTS.md` | House style for printed reports, from real samples |
-| `docs/DECISIONS-ADDENDUM.md` | Merged into `DECISIONS.md` — kept as a pointer |
 | `docs/PERMISSIONS.md` | The four user roles |
 | `docs/BRAND.md` | Colours, fonts, right-to-left rules |
 | `docs/DATABASE.md` | Running the database, and what to do when it complains |
