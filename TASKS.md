@@ -73,7 +73,15 @@ be bigger than expected, split it and tell the owner.
       invoices, payments (read-only in the app), attendance,
       invoice_allocations. Empty but correctly keyed — see D3.
 
-- [ ] **1.6 Arabic search**
+- [ ] **1.6 Arabic search** — **BLOCKED. Do not start.**
+      Waiting on corrected values for three lookup lists:
+      `hearing_action` (23), `matter_destination` (27), `client_branch` (32).
+      All three were marked "already clean" without inspection, and at least
+      three hearing actions are one word typed three ways (محكمة / محكمه /
+      مجكمة). The firm is re-analysing them against the real Access data.
+      Building the normaliser and its trigram indexes on values that are
+      about to change would mean redoing the indexes and re-testing every
+      search case. Wait.
       The normaliser as a PostgreSQL function, generated normalised columns on
       every searchable Arabic field, `pg_trgm` indexes.
       **Test:** searching `احمد` finds `أحمد`; `140J` finds `140ق`.

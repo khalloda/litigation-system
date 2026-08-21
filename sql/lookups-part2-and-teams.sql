@@ -55,7 +55,12 @@ INSERT INTO lookup_party_role (code, label_ar_m, label_ar_f, label_en, sort_orde
 
 -- ---------------------------------------------------------------------------
 --  lookup_hearing_action
---  What happened at a hearing (الإجراء). 23 values, all accepted as-is by the firm.
+--  What happened at a hearing (الإجراء). 23 values -- PROVISIONAL.
+--
+--  NOT reviewed value by value. The review sheet marked all 23 "already
+--  clean" without inspection. At least محكمة, محكمه and مجكمة are one word
+--  typed three ways. Being re-analysed against the Access data; corrected
+--  values will replace these.
 -- ---------------------------------------------------------------------------
 CREATE TABLE lookup_hearing_action (
     id          smallserial PRIMARY KEY,
