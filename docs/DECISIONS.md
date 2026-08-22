@@ -294,3 +294,53 @@ from `استشارات` — settled during the classification review. **No new p
 area was created.**
 
 Full detail and reasoning: `sql/client-branch-resolution.sql`.
+
+## D20 — A court is a list, a circuit is text
+
+Two facts that look alike and behave nothing alike. The firm counted both in
+the real data before deciding.
+
+**The court is a list.** `lookup_court`, Administrator-managed, filled at
+Stage 2.
+
+305 distinct court names across 13,205 hearings, repeating heavily —
+`القاهرة الاقتصادية` 1,982 times, `شبين الكوم` 1,192, `شمال القاهرة` 1,134.
+Egypt has a finite number of courts, `docs/PERMISSIONS.md` already promises
+the Administrator manages the court dropdown, and "which court" is a report
+filter the firm needs.
+
+Expect roughly 300 entries needing a spelling-variant cleanup at Stage 2, the
+same as every other Arabic list in this project — `القضاء الإداري` and
+`القضاء الإداري بالعباسية` may be one court with a location suffix. **Every
+table that references a court therefore keeps `legacy_court_raw`**, so that
+cleanup stays reversible.
+
+**The circuit is text. Do not make it a list.**
+
+1,281 distinct values in the hearings table alone. More telling than the
+count is what they are: `1 عمال`, `12 عمال`, `8 تجاري`, `7 استئناف`,
+`4 أفراد` — a circuit *number* plus a *specialism*, two facts in one field,
+varying by court. A 1,281-option dropdown is unusable, and a list would fight
+the data.
+
+**Splitting it into number + specialism is a question for after the data
+lands**, not before. That would give perhaps 15 specialisms and a free number,
+which is a real improvement — but it is a decision to take with the values in
+front of us. Recorded on task 2.6. **Do not attempt the split now.**
+
+**Court and circuit are stored apart and joined for display.** Reports render
+them together — `الإدارية العليا (11 موضوع)`,
+`المحكمة الاقتصادية (الدائرة: (9) استئناف)` — but they are two columns.
+Source: `docs/REPORT-LAYOUTS.md`, "Type 4 — Client status report".
+
+## D21 — Court detail columns stay on the matter
+
+Floor, hall, shelf and secretary room stay as four columns on `matters`. They
+are not moved to a `matter_court_details` table.
+
+Four columns on one row per matter. A separate table buys nothing until
+something needs many of them per matter, and it would add a join to every
+matter screen and every matter report.
+
+`docs/DATA-MODEL.md` carried this as "optional, discuss before doing it".
+It is now decided and the note is removed, so it stops reappearing.

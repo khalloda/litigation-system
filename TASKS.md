@@ -161,23 +161,54 @@ be bigger than expected, split it and tell the owner.
       `CLAUDE.md`.**
       db:check 17 → **21 checks**. Each new one proved by breaking it.
 
-- [ ] **1.3 Core schema**
-      clients, contacts, matters, hearings, admin_tasks, task_actions,
-      powers_of_attorney, documents, fee_letters. Per `docs/DATA-MODEL.md`.
-      **Must include five `_raw` columns.** Every many-to-one mapping needs
-      one or the mapping is irreversible — see the audit table in
-      `docs/MIGRATION.md`. Assert all five exist before Stage 2 loads a row.
-        `hearings.legacy_action_raw`      — 23 actions merged to 20
-        `clients.legacy_branch_raw`       — 32 branches resolved to 15
-        `hearing_attendees.legacy_name_raw` — **373 spellings → 135 people**,
-              the highest-ratio mapping in the project and the one that has
-              already gone wrong twice
-        `admin_tasks.legacy_assignee_raw`  — a typed name
-        a raw column on the POA lawyer list — up to twelve names per field
+- [x] **1.3 Core schema** — 22 August 2026, migration 0011
+      **11 tables, all empty.** clients, client_logos, contacts, matters,
+      hearings, admin_tasks, task_actions, powers_of_attorney, documents,
+      fee_letters — plus **`lookup_court`**, a tenth list (**D20**).
+      `client_logos` was built here rather than left homeless: it is a child
+      of clients and task 2.11 needs it.
+
+      **Four of the five `_raw` columns are in**, with seven more from the
+      same audit — 11 in total, asserted by the migration and by `db:check`:
+        `clients.legacy_branch_raw`         — 32 branches resolved to 15
+        `hearings.legacy_action_raw`        — 23 actions merged to 20
+        `admin_tasks.legacy_assignee_raw`   — a typed name
+        `powers_of_attorney.legacy_lawyers_raw` — up to twelve names per field
+        `matters.legacy_category_raw` / `legacy_degree_raw` — 50 + 40 values
+        `matters`/`hearings`/`admin_tasks`.`legacy_court_raw` — **new**, ~305
+              court spellings clean up to a list at 2.5, so the court is a
+              many-to-one mapping from the start
+        `documents.legacy_responsible_raw`, `task_actions.legacy_task_id_raw`
+      **The fifth, `hearing_attendees.legacy_name_raw`, arrives with its table
+      at task 1.4** — that table is not built until then. All five are
+      asserted together before Stage 2 loads a row.
+
+      **D20** court is a list, circuit is text. **D21** court detail columns
+      stay on the matter. `legacy_id` on every migrated table, unique where
+      present, so Gate 4 can reconcile row for row.
+
+      **Four tables are deliberately incomplete** — `contacts`,
+      `task_actions`, `powers_of_attorney`, `fee_letters`. Their Access column
+      lists have never been written down, and nothing was invented. See
+      "Columns not yet known" in `docs/DATA-MODEL.md`. **They must be
+      completed before task 2.3 loads a row.**
+
+      Six assertions proved by breaking them: a dropped `_raw` column, a
+      `NOT NULL` on a link that must stay nullable, a binary column on
+      `client_logos` (D15), `case_number_ar` narrowed to `varchar(50)` (D9), a
+      dropped hearings index, and a lost `contract_id` unique.
+      db:check 21 → **24 checks**.
 
 - [ ] **1.4 Junction tables**
       matter_lawyers, matter_parties, matter_party_roles, hearing_attendees,
       fee_letter_matters.
+      **`hearing_attendees.legacy_name_raw` is the fifth of the five `_raw`
+      columns** — **373 spellings → 135 people**, the highest-ratio mapping in
+      the project and the one that has already gone wrong twice. Add it to the
+      list in the migration assertion AND in `scripts/check-db.ts`, which
+      names the other ten.
+      Also from the audit: `matter_parties.legacy_raw` and
+      `matter_lawyers.legacy_source`.
 
 - [ ] **1.5 Billing + deferred tables**
       invoices, payments (read-only in the app), attendance,
@@ -225,6 +256,12 @@ only ever seen good data is not known to work.
 
 - [ ] **2.5 Transform: people, lookups, clients, contacts**
 
+      **Fill `lookup_court` and clean it.** ~305 distinct court names arrive
+      from the data and will need the same spelling-variant pass as every
+      other Arabic list — `القضاء الإداري` and `القضاء الإداري بالعباسية` may
+      be one court with a location suffix (**D20**). Every court reference
+      keeps `legacy_court_raw`, so the cleanup is reversible.
+
       **RULE (a) — NEVER OVERWRITE AN EXISTING `matter_category`.** Nine of
       the branch values resolved by **D19** move into `matter_category`. Where
       a matter already has one, **quarantine the conflict** for the firm — do
@@ -235,6 +272,14 @@ only ever seen good data is not known to work.
 
 - [ ] **2.6 Transform: matters** — including the four classification columns via
       the crosswalk, and `legacy_*_raw` preserved.
+
+      **QUESTION FOR ONCE THE DATA HAS LANDED: split the circuit?**
+      `circuit` is text by **D20** — 1,281 distinct values that are a circuit
+      number plus a specialism (`1 عمال`, `12 عمال`, `8 تجاري`, `7 استئناف`,
+      `4 أفراد`), varying by court. Splitting it into number + specialism
+      would give perhaps 15 specialisms and a free number, which is a real
+      improvement. **Do not attempt it before the values are loaded** — decide
+      it with them in front of you.
 
       **RULE (b) — THE THREE `separate_client` VALUES ARE A CORRECTNESS
       PROBLEM, NOT A MIS-LABEL.** `سيجما للإعلام (تليفزيون الحياة)`,

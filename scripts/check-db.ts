@@ -484,6 +484,108 @@ async function main() {
     teamProblems.length === 0,
   );
 
+  // 9. The core schema — task 1.3.
+  //
+  //    These tables are EMPTY until Stage 2, so there is no data to check.
+  //    A schema is data too, and it is what Stage 2 will land on: a missing
+  //    raw column makes a mapping irreversible, and a NOT NULL added by
+  //    someone tidying up turns a known, handled fact into a failed load.
+  //
+  //    Migration 0011 asserts all of this when it runs. Rule 16: that is a
+  //    snapshot, so it is asserted here too.
+  const columnsExist = async (pairs: Array<[string, string]>): Promise<string[]> => {
+    const rows = await db.$queryRaw<{ table_name: string; column_name: string }[]>`
+      SELECT table_name, column_name FROM information_schema.columns
+       WHERE table_schema = 'public'`;
+    const have = new Set(rows.map((r) => `${r.table_name}.${r.column_name}`));
+    return pairs.filter(([t, c]) => !have.has(`${t}.${c}`)).map(([t, c]) => `${t}.${c}`);
+  };
+
+  const coreTables = [
+    'lookup_court',
+    'clients',
+    'client_logos',
+    'contacts',
+    'matters',
+    'hearings',
+    'admin_tasks',
+    'task_actions',
+    'powers_of_attorney',
+    'documents',
+    'fee_letters',
+  ];
+  const tableRows = await db.$queryRaw<{ table_name: string }[]>`
+    SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
+  const haveTables = new Set(tableRows.map((r) => r.table_name));
+  const missingTables = coreTables.filter((t) => !haveTables.has(t));
+
+  //    D10 and the audit table in docs/MIGRATION.md. hearing_attendees
+  //    .legacy_name_raw is the fifth of the five task 1.3 names and arrives
+  //    with its table at task 1.4 — add it to this list then.
+  const missingRaw = await columnsExist([
+    ['clients', 'legacy_branch_raw'],
+    ['hearings', 'legacy_action_raw'],
+    ['admin_tasks', 'legacy_assignee_raw'],
+    ['powers_of_attorney', 'legacy_lawyers_raw'],
+    ['matters', 'legacy_category_raw'],
+    ['matters', 'legacy_degree_raw'],
+    ['matters', 'legacy_court_raw'],
+    ['hearings', 'legacy_court_raw'],
+    ['admin_tasks', 'legacy_court_raw'],
+    ['documents', 'legacy_responsible_raw'],
+    ['task_actions', 'legacy_task_id_raw'],
+  ]);
+  record(
+    'Core schema: 11 tables, 11 raw columns',
+    'all present',
+    missingTables.length === 0 && missingRaw.length === 0
+      ? '11 tables, 11 raw columns'
+      : `missing ${[...missingTables, ...missingRaw].join(', ')}`,
+    missingTables.length === 0 && missingRaw.length === 0,
+  );
+
+  //    Nothing is deleted during migration (D10). The firm already knows the
+  //    counts — 4 hearings with no matter, 1 POA with no client, 75 task
+  //    actions with a broken or absent parent. A NOT NULL on any of these
+  //    would turn a handled fact into a rejected row.
+  const notNullable = await db.$queryRaw<{ table_name: string; column_name: string }[]>`
+    SELECT table_name, column_name FROM information_schema.columns
+     WHERE table_schema = 'public' AND is_nullable = 'NO'
+       AND (table_name, column_name) IN (
+            ('matters', 'client_id'), ('hearings', 'matter_id'),
+            ('admin_tasks', 'matter_id'), ('task_actions', 'task_id'),
+            ('powers_of_attorney', 'client_id'), ('contacts', 'client_id'),
+            ('documents', 'matter_id'), ('fee_letters', 'client_id'))`;
+  record(
+    'Stage 2 can never reject a row',
+    '8 links all nullable',
+    notNullable.length === 0
+      ? '8 links all nullable'
+      : `NOT NULL on ${notNullable.map((r) => `${r.table_name}.${r.column_name}`).join(', ')}`,
+    notNullable.length === 0,
+  );
+
+  //    Two decisions that live in the shape of the schema rather than in the
+  //    data, and would be reversed silently by an ordinary-looking change.
+  const caseNumber = await db.$queryRaw<{ data_type: string }[]>`
+    SELECT data_type FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'matters'
+       AND column_name = 'case_number_ar'`;
+  const logoBinary = await db.$queryRaw<{ column_name: string }[]>`
+    SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'client_logos'
+       AND data_type IN ('bytea', 'oid')`;
+  const caseIsText = caseNumber[0]?.data_type === 'text';
+  record(
+    'D9 case numbers, D15 logos as files',
+    'case_number_ar is text, client_logos holds no binary',
+    caseIsText && logoBinary.length === 0
+      ? 'text, no binary'
+      : `${caseIsText ? 'text' : `case_number_ar is ${caseNumber[0]?.data_type ?? 'absent'}`}` +
+        `${logoBinary.length > 0 ? `, client_logos holds ${logoBinary.map((r) => r.column_name).join(', ')}` : ''}`,
+    caseIsText && logoBinary.length === 0,
+  );
+
   // ---- report --------------------------------------------------------------
   const width = Math.max(...checks.map((c) => c.name.length));
   for (const c of checks) {

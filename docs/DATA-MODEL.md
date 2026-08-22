@@ -111,10 +111,14 @@ logistics, money, classification and free text.
 | `status` | سارية 493 / منتهية 1,223 / null 14 |
 | `legacy_category_raw` | Original Access text, never overwritten |
 | `legacy_degree_raw` | Original Access text, never overwritten |
-| `court_id` | FK — court name |
-| `circuit_id` | FK — court circuit, stored **separately** from the court |
+| `court_id` | FK to `lookup_court` — **D20** |
+| `legacy_court_raw` | The original court text. ~305 spellings clean up to a list at 2.5 |
+| `circuit` | **Text, not a list — D20.** 1,281 distinct values, a number plus a specialism |
+| `court_floor`, `court_hall`, `court_shelf`, `court_secretary_room` | Court logistics — **D21**, they stay here |
+| `fee_letter_ref` | `الدعاوى.[خطاب الأتعاب]`, text not a FK. 412 carry a value, 289 match nothing |
+| `legacy_id` | The Access `matterID`. See "Legacy identifiers" below |
 
-`court_id` and `circuit_id` are two columns, not one. Reports join them for
+`court_id` and `circuit` are two columns, not one. Reports join them for
 display: `الإدارية العليا (11 موضوع)`,
 `المحكمة الاقتصادية (الدائرة: (9) استئناف)`.
 
@@ -123,8 +127,8 @@ records that the samples show court and circuit rendered together but stored
 apart. **This is not D18** — D18 is the parameterised client report. Earlier
 drafts cited D18 here and were wrong.
 
-Court detail columns (floor, hall, shelf, secretary room) may move to a
-`matter_court_details` table — optional, discuss before doing it.
+**Court detail columns stay on the matter — D21.** They were previously marked
+"optional, discuss before doing it"; that is settled.
 
 ### `matter_lawyers`
 Replaces `lawyerA` / `lawyerB` and the combination strings.
@@ -147,7 +151,13 @@ one field (92% and 83% multi-line).
 
 ### `hearings` — 13,279 rows
 Largest table. `matter_id`, `hearing_date`, `next_hearing_date`, `action_id`,
-`decision`, `outcome` (صالح / ضد), `court`, `circuit`, `client_notified`.
+`decision`, `outcome` (صالح / ضد), `court_id` + `legacy_court_raw`, `circuit`,
+`client_notified`.
+
+`matter_id` is **nullable** — 4 hearings have no matter and must still load.
+
+Indexed on `matter_id`, `hearing_date` and `next_hearing_date`: 13,279 rows,
+and the dashboard reads the next date every time anyone opens it.
 
 **`legacy_action_raw`** — the original الإجراء text, byte for byte.
 
@@ -238,6 +248,40 @@ Replaces `تقسيم التحصيلات` (47 rows) and `LawyerShare4Invoices` (e
 
 ---
 
+## Legacy identifiers
+
+Every migrated table carries **`legacy_id`** — the Access primary key —
+**unique where present**. PostgreSQL allows many NULLs in a unique column, so
+rows the firm creates in the new system simply have none.
+
+It exists because Gate 4 must reconcile **row for row** against Access rather
+than merely count (`docs/MIGRATION.md`), and because a re-run of a transform
+has to be able to find the row it wrote last time. The Access key names are
+`ID_client`, `matterID`, `ID_hearings`, `ID_Task` and `contractID`.
+
+`fee_letters.contract_id` is the exception that is not merely useful:
+**it must survive migration unchanged** because Phase 2 invoicing attaches to
+those records and the Excel kept since Dec 2021 refers to them by that number
+(D3).
+
+## Columns not yet known
+
+Four tables are built with their keys and only the columns the documents
+actually name. **The rest is not invented.** The Access column list for these
+has never been written down, and they are completed before Stage 2 loads a
+row:
+
+| Table | What is modelled | What is missing |
+|---|---|---|
+| `contacts` | keys, `name_ar`, `name_en` | telephone, e-mail, job title — whatever Access holds |
+| `task_actions` | keys, the parent link and its raw value | the step itself |
+| `powers_of_attorney` | keys, client, `legacy_lawyers_raw` | number, date, type, location |
+| `fee_letters` | keys, `contract_id`, `mfiles_id` | date, subject, amounts |
+
+Nothing is at risk in the meantime: staging holds **every** source column as
+text, so a column that has no home yet sits there and is visible at Gate 3
+rather than being lost (`docs/MIGRATION.md`).
+
 ## Lookups
 
 All are **tables, not enums**, each with `label_ar`, `label_en`, `sort_order`,
@@ -246,6 +290,10 @@ All are **tables, not enums**, each with `label_ar`, `label_en`, `sort_order`,
 `matter_type` (14) · `matter_category` (21) · `degree` (12) · `venue` (7) ·
 `importance` (3) · `party_role` (11) · `hearing_action` (20) ·
 `matter_destination` (27) · `client_branch` (15) — **130 rows total**
+
+A tenth list, **`lookup_court`**, was added at task 1.3 and is **empty** until
+Stage 2 fills it with roughly 305 values (**D20**). It is not counted in the
+130.
 
 Was 150, then 146, now 130. Four values were merged on 21 August 2026 after
 three lists were found to have been marked "already clean" without inspection

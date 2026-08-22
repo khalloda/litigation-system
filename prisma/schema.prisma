@@ -70,6 +70,8 @@ model LookupMatterType {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  matters Matter[]
+
   @@map("lookup_matter_type")
 }
 
@@ -85,6 +87,8 @@ model LookupMatterCategory {
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
+
+  matters Matter[]
 
   @@map("lookup_matter_category")
 }
@@ -103,6 +107,8 @@ model LookupDegree {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  matters Matter[]
+
   @@map("lookup_degree")
 }
 
@@ -119,6 +125,8 @@ model LookupVenue {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  matters Matter[]
+
   @@map("lookup_venue")
 }
 
@@ -134,6 +142,8 @@ model LookupImportance {
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
+
+  matters Matter[]
 
   @@map("lookup_importance")
 }
@@ -191,6 +201,8 @@ model LookupHearingAction {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  hearings Hearing[]
+
   @@map("lookup_hearing_action")
 }
 
@@ -209,6 +221,9 @@ model LookupMatterDestination {
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
+
+  matters    Matter[]
+  adminTasks AdminTask[]
 
   @@map("lookup_matter_destination")
 }
@@ -247,6 +262,8 @@ model LookupClientBranch {
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
+
+  clients Client[]
 
   @@map("lookup_client_branch")
 }
@@ -371,6 +388,11 @@ model Person {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  /// Administrative tasks assigned to this person (المسئول).
+  adminTasks AdminTask[]
+  /// Paper documents this person is responsible for.
+  documents  Document[]
+
   @@index([isStaff, isActive])
   @@map("people")
 }
@@ -448,3 +470,528 @@ model LookupTeam {
 //  either weakening the assertion or seeding data known to be wrong.
 //  Raised with the firm; they load at task 2.7 once corrected.
 // ---------------------------------------------------------------------------
+
+// ===========================================================================
+//  COURTS — task 1.3
+//
+//  A tenth lookup list, added here rather than at 1.1 because nothing needed
+//  it until matters and hearings arrived.
+//
+//  A LIST, not free text. The firm counted: 305 distinct court names across
+//  13,205 hearings, repeating heavily — القاهرة الاقتصادية 1,982 times,
+//  شبين الكوم 1,192, شمال القاهرة 1,134. Egypt has a finite number of courts,
+//  and docs/PERMISSIONS.md already promises the Administrator manages the
+//  court dropdown.
+//
+//  EMPTY UNTIL STAGE 2. The values come from the Access data, and about 300
+//  of them will need the same spelling-variant cleanup as every other Arabic
+//  list — القضاء الإداري and القضاء الإداري بالعباسية may be one court with a
+//  location suffix. That is a task 2.5 job, and every table that references a
+//  court keeps its original text in a legacy_court_raw column so the cleanup
+//  stays reversible.
+//
+//  THE CIRCUIT (الدائرة) IS DELIBERATELY NOT A LIST — see the Matter model.
+// ===========================================================================
+
+/// Courts. Administrator-managed. Filled at Stage 2, ~305 values before the
+/// spelling cleanup.
+model LookupCourt {
+  id        Int     @id @default(autoincrement()) @db.SmallInt
+  labelAr   String  @unique @map("label_ar")
+  labelEn   String? @map("label_en")
+  sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
+  isActive  Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  matters    Matter[]
+  hearings   Hearing[]
+  adminTasks AdminTask[]
+
+  @@map("lookup_court")
+}
+
+// ===========================================================================
+//  CORE TABLES — task 1.3
+//
+//  Nine tables from docs/DATA-MODEL.md, plus client_logos (a child of clients
+//  that task 2.11 needs) and lookup_court above.
+//
+//  ALL EMPTY. Stage 2 fills them. They are built now, with correct keys, so
+//  that adding the data later is a load and not a schema migration — the same
+//  reasoning D3 gives for the billing tables.
+//
+//  TWO CONVENTIONS THAT APPLY TO EVERY TABLE BELOW
+//
+//  1. legacy_id — the Access primary key, kept for good.
+//     Gate 4 has to reconcile row for row against Access, not merely count
+//     (docs/MIGRATION.md), and a re-run of a transform has to be able to find
+//     the row it wrote last time. Unique WHERE PRESENT: PostgreSQL allows many
+//     NULLs in a unique column, so rows the firm creates in the new system
+//     simply have none. The Access key names are ID_client, matterID,
+//     ID_hearings, ID_Task and contractID — see scripts/01_extract_access.ps1.
+//
+//  2. _raw columns — the original text beside every many-to-one mapping.
+//     D10 and the audit table in docs/MIGRATION.md. Four of the five that task
+//     1.3 must create live here; the fifth, hearing_attendees.legacy_name_raw,
+//     arrives with its table at task 1.4, and all five are asserted before
+//     Stage 2 loads a row.
+//     A COURT IS NOW ONE OF THEM: ~305 spellings collapsing to a cleaned list
+//     is a many-to-one mapping, so every court_id has a legacy_court_raw
+//     partner. Without it the Stage 2 cleanup would be irreversible.
+//
+//  NOTHING IS NOT-NULL THAT THE ACCESS DATA CANNOT GUARANTEE. A load must
+//  never reject a row (docs/MIGRATION.md): 834 matters have no lawyer, 4
+//  hearings have no matter, 1 power of attorney has no client, 14 matters will
+//  lose their branch. Those all have to arrive and be dealt with visibly,
+//  which a NOT NULL constraint would prevent.
+// ===========================================================================
+
+/// The firm and its clients. 313 rows at Stage 2.
+model Client {
+  id       Int  @id @default(autoincrement())
+  /// Access ID_client. See the legacy_id convention above.
+  legacyId Int? @unique @map("legacy_id")
+
+  /// 100% filled in the Access data.
+  nameAr   String  @map("name_ar")
+  /// 73% filled. Kept for a possible future bilingual version (D12).
+  nameEn   String? @map("name_en")
+  fullName String? @map("full_name")
+
+  branchId Int?                @map("branch_id") @db.SmallInt
+  branch   LookupClientBranch? @relation(fields: [branchId], references: [id])
+  /// The original clientBranch text, byte for byte. NOT OPTIONAL as a design
+  /// choice: the 32 original values resolve to 15 (D19) — 9 move to
+  /// matter_category, 1 to matter_type, 1 to degree, 4 are quarantined and 2
+  /// are discarded. Without this column that resolution could never be
+  /// reversed or re-derived.
+  legacyBranchRaw String? @map("legacy_branch_raw")
+
+  cashOrProbono     String?   @map("cash_or_probono")
+  status            String?
+  poaLocation       String?   @map("poa_location")
+  documentsLocation String?   @map("documents_location")
+  clientStart       DateTime? @map("client_start") @db.Date
+  clientEnd         DateTime? @map("client_end") @db.Date
+
+  /// The main person to contact. Nullable, and deliberately a plain optional
+  /// relation rather than a required one: clients and contacts point at each
+  /// other, so one side has to be able to arrive first.
+  contactPersonId Int?     @map("contact_person_id")
+  contactPerson   Contact? @relation("ClientPrimaryContact", fields: [contactPersonId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  contacts   Contact[]         @relation("ClientContacts")
+  logo       ClientLogo?
+  matters    Matter[]
+  poas       PowerOfAttorney[]
+  feeLetters FeeLetter[]
+
+  @@index([nameAr])
+  @@map("clients")
+}
+
+/// Where a client logo file lives. 54 rows at Stage 2.
+///
+/// D15: the image is a FILE ON THE SERVER, never in the database and never in
+/// cloud storage — /var/lib/litigation/client-logos/{client_id}/{filename}
+///
+/// One logo per client, so client_id is unique. A missing file must print the
+/// client name in text and never break a report (D15).
+model ClientLogo {
+  id       Int    @id @default(autoincrement())
+  clientId Int    @unique @map("client_id")
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// Relative to the logo root, never an absolute path — the root differs
+  /// between the laptop and the Ubuntu server.
+  relativePath String  @map("relative_path")
+  fileName     String  @map("file_name")
+  contentType  String  @map("content_type")
+  byteSize     Int     @map("byte_size")
+  /// Checksum of the file as extracted from Access. Task 2.11 verifies it
+  /// before and after writing, Gate 4 compares all 54, and it is what lets
+  /// the weekly integrity job required by D15 report a CHANGED file rather
+  /// than only a missing one.
+  sha256       String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("client_logos")
+}
+
+/// People to contact at a client. 188 rows at Stage 2.
+///
+/// **THE COLUMN LIST BELOW IS INCOMPLETE AND KNOWN TO BE.** docs/DATA-MODEL.md
+/// describes this table in one line and never names its Access columns, so
+/// only the keys and the name are modelled here. Anything else the Access
+/// table holds — telephone, e-mail, job title — is NOT invented here; it is
+/// added once the firm supplies the column list, before Stage 2 loads a row.
+/// Staging holds every source column as text, so nothing is at risk in the
+/// meantime (docs/MIGRATION.md).
+///
+/// Contacts.Attachments in Access is EMPTY — do not build for it (D11).
+model Contact {
+  id       Int  @id @default(autoincrement())
+  legacyId Int? @unique @map("legacy_id")
+
+  /// Nullable: a contact whose client cannot be resolved loads with a null
+  /// link and is queued for review, never dropped.
+  clientId Int?    @map("client_id")
+  client   Client? @relation("ClientContacts", fields: [clientId], references: [id])
+
+  nameAr String? @map("name_ar")
+  nameEn String? @map("name_en")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  /// The clients for whom this person is the main contact.
+  primaryFor Client[] @relation("ClientPrimaryContact")
+
+  @@index([clientId])
+  @@map("contacts")
+}
+
+/// Matters — the central table. 1,730 rows at Stage 2.
+///
+/// In Access this was 47 columns mixing identity, court logistics, money,
+/// classification and free text. Only what the Dashboard actually reaches is
+/// built (D1), and the classification is split into four independent lists
+/// (D8) instead of the two overloaded ones Access had.
+model Matter {
+  id       Int  @id @default(autoincrement())
+  /// Access matterID.
+  legacyId Int? @unique @map("legacy_id")
+
+  /// **MULTI-LINE. NEVER SPLIT, NEVER COLLAPSED TO ONE LINE — D9.**
+  /// 308 matters (18%) hold several case numbers stacked with line breaks:
+  /// the journey of the matter up through the courts. The firm decided not to
+  /// parse them; every screen and every report must render all the lines.
+  caseNumberAr String? @map("case_number_ar")
+  /// 98% filled.
+  subject      String?
+
+  clientId Int?    @map("client_id")
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  // ---- classification: four independent lists, D8 ------------------------
+  matterTypeId     Int?                     @map("matter_type_id") @db.SmallInt
+  matterType       LookupMatterType?        @relation(fields: [matterTypeId], references: [id])
+  matterCategoryId Int?                     @map("matter_category_id") @db.SmallInt
+  matterCategory   LookupMatterCategory?    @relation(fields: [matterCategoryId], references: [id])
+  degreeId         Int?                     @map("degree_id") @db.SmallInt
+  degree           LookupDegree?            @relation(fields: [degreeId], references: [id])
+  venueId          Int?                     @map("venue_id") @db.SmallInt
+  venue            LookupVenue?             @relation(fields: [venueId], references: [id])
+  importanceId     Int?                     @map("importance_id") @db.SmallInt
+  importance       LookupImportance?        @relation(fields: [importanceId], references: [id])
+  destinationId    Int?                     @map("destination_id") @db.SmallInt
+  destination      LookupMatterDestination? @relation(fields: [destinationId], references: [id])
+
+  /// The original matterCategory and matterDegree text, byte for byte. 50 and
+  /// 40 values collapse into the four lists above; without these the split
+  /// could not be re-derived or corrected (D10).
+  legacyCategoryRaw String? @map("legacy_category_raw")
+  legacyDegreeRaw   String? @map("legacy_degree_raw")
+
+  /// سارية 493 / منتهية 1,223 / null 14.
+  status String?
+
+  // ---- where it is heard -------------------------------------------------
+  /// court and circuit are TWO SEPARATE FIELDS, not one. Reports join them
+  /// for display — الإدارية العليا (11 موضوع),
+  /// المحكمة الاقتصادية (الدائرة: (9) استئناف) — but they are stored apart.
+  /// Source: docs/REPORT-LAYOUTS.md, "Type 4 — Client status report".
+  courtId        Int?         @map("court_id") @db.SmallInt
+  court          LookupCourt? @relation(fields: [courtId], references: [id])
+  legacyCourtRaw String?      @map("legacy_court_raw")
+
+  /// **TEXT, DELIBERATELY NOT A LIST.** 1,281 distinct values in the hearings
+  /// table alone. They are two facts in one field — a circuit number and a
+  /// specialism (1 عمال, 12 عمال, 8 تجاري, 7 استئناف, 4 أفراد) — varying by
+  /// court. A 1,281-option dropdown is unusable and a list would fight the
+  /// data. Whether to split it into number + specialism is a question for
+  /// AFTER the data lands: see task 2.6. Do not attempt the split now.
+  circuit String?
+
+  // ---- court logistics ---------------------------------------------------
+  /// Kept on the matter rather than in a matter_court_details table. Four
+  /// columns on one row per matter; a separate table buys nothing until
+  /// something needs many of them per matter, and it would add a join to
+  /// every matter screen. Settled 22 August 2026 — the open question in
+  /// docs/DATA-MODEL.md is closed.
+  courtFloor         String? @map("court_floor")
+  courtHall          String? @map("court_hall")
+  courtShelf         String? @map("court_shelf")
+  courtSecretaryRoom String? @map("court_secretary_room")
+
+  /// الدعاوى.[خطاب الأتعاب] — a reference to the mfiles_id of a fee letter,
+  /// NOT a foreign key. 412 matters carry a value and 289 of them match no
+  /// fee letter. This is a DIFFERENT relationship from fee_letter_matters
+  /// (288 values across 195 parents, task 1.4) and the two numbers must not
+  /// be reconciled against each other. Kept as text so the unmatched ones can
+  /// be quarantined with their original value intact.
+  feeLetterRef String? @map("fee_letter_ref")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  hearings   Hearing[]
+  adminTasks AdminTask[]
+  documents  Document[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([courtId])
+  @@map("matters")
+}
+
+/// Hearings and their decisions. 13,279 rows at Stage 2 — the largest table.
+///
+/// Every list screen and report over this table needs paging and indexed
+/// filters (task 4.3). The indexes at the foot are the ones the traced screens
+/// and reports actually use: by matter, by date, and the "today's hearings"
+/// panel on the dashboard, which reads the next date.
+model Hearing {
+  id       Int  @id @default(autoincrement())
+  /// Access ID_hearings.
+  legacyId Int? @unique @map("legacy_id")
+
+  /// Nullable: 4 hearings in the Access data have no matter. They load into an
+  /// unassigned bucket rather than being rejected (docs/MIGRATION.md).
+  matterId Int?    @map("matter_id")
+  matter   Matter? @relation(fields: [matterId], references: [id])
+
+  hearingDate     DateTime? @map("hearing_date") @db.Date
+  nextHearingDate DateTime? @map("next_hearing_date") @db.Date
+
+  actionId Int?                 @map("action_id") @db.SmallInt
+  action   LookupHearingAction? @relation(fields: [actionId], references: [id])
+  /// The original الإجراء text. 23 actions merged to 20 on 21 August 2026
+  /// (محكمه and مجكمة into محكمة, رفع الدعوي into رفع الدعوى), which affects
+  /// 18 hearings and makes the mapping many-to-one. Without this the merge
+  /// could never be reversed.
+  legacyActionRaw String? @map("legacy_action_raw")
+
+  decision String?
+  /// صالح / ضد. Drives the for-and-against reports and the dashboard charts.
+  outcome  String?
+
+  courtId        Int?         @map("court_id") @db.SmallInt
+  court          LookupCourt? @relation(fields: [courtId], references: [id])
+  legacyCourtRaw String?      @map("legacy_court_raw")
+  /// Text, for the same reason as Matter.circuit.
+  circuit        String?
+
+  clientNotified Boolean? @map("client_notified")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([matterId])
+  @@index([hearingDate])
+  @@index([nextHearingDate])
+  @@index([courtId])
+  @@map("hearings")
+}
+
+/// Administrative works. 4,207 rows at Stage 2.
+///
+/// **The only area Paralegals can edit** (docs/PERMISSIONS.md).
+model AdminTask {
+  id       Int  @id @default(autoincrement())
+  /// Access ID_Task.
+  legacyId Int? @unique @map("legacy_id")
+
+  matterId Int?    @map("matter_id")
+  matter   Matter? @relation(fields: [matterId], references: [id])
+
+  requiredWork String? @map("required_work")
+
+  /// The person responsible. Resolved through person_name_alias at Stage 2,
+  /// never by matching people.name_ar — rule 15.
+  assignedToPersonId Int?    @map("assigned_to_person_id")
+  assignedTo         Person? @relation(fields: [assignedToPersonId], references: [id])
+  /// The typed name exactly as it appeared. One of the three person-name
+  /// mappings that had NO raw column until the 21 August audit — and names are
+  /// the highest-ratio mapping in this project, the one that has already gone
+  /// wrong twice. person_name_alias records that a spelling exists; only this
+  /// records which spelling THIS row used.
+  legacyAssigneeRaw String? @map("legacy_assignee_raw")
+
+  executionDate    DateTime? @map("execution_date") @db.Date
+  result           String?
+  previousDecision String?   @map("previous_decision")
+  lastFollowup     DateTime? @map("last_followup") @db.Date
+  deadline         DateTime? @db.Date
+
+  courtId        Int?         @map("court_id") @db.SmallInt
+  court          LookupCourt? @relation(fields: [courtId], references: [id])
+  legacyCourtRaw String?      @map("legacy_court_raw")
+  circuit        String?
+
+  destinationId Int?                     @map("destination_id") @db.SmallInt
+  destination   LookupMatterDestination? @relation(fields: [destinationId], references: [id])
+
+  status String?
+  alert  String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  actions TaskAction[]
+
+  @@index([matterId])
+  @@index([assignedToPersonId])
+  @@index([executionDate])
+  @@index([status])
+  @@map("admin_tasks")
+}
+
+/// Steps within an administrative task. 4,130 rows at Stage 2.
+///
+/// **THE COLUMN LIST BELOW IS INCOMPLETE AND KNOWN TO BE.** Only the parent
+/// link is named in docs/DATA-MODEL.md. The rest is added once the firm
+/// supplies the Access column list, before Stage 2 loads a row.
+///
+/// task_id is nullable on purpose and the numbers are known in advance: 36
+/// rows have an ID_Task matching no task and 39 have none at all. All 75 load
+/// with a null link and go to the review queue. **Do not discard them.**
+model TaskAction {
+  id       Int  @id @default(autoincrement())
+  legacyId Int? @unique @map("legacy_id")
+
+  taskId Int?       @map("task_id")
+  task   AdminTask? @relation(fields: [taskId], references: [id])
+  /// The original ID_Task, kept even when it resolves to nothing — that is
+  /// what makes the 36 orphans investigable rather than merely lost.
+  legacyTaskIdRaw String? @map("legacy_task_id_raw")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([taskId])
+  @@map("task_actions")
+}
+
+/// Powers of attorney. 735 rows at Stage 2.
+///
+/// **THE COLUMN LIST BELOW IS INCOMPLETE AND KNOWN TO BE.** Only the client
+/// link and the lawyer field are named in docs/DATA-MODEL.md.
+model PowerOfAttorney {
+  id       Int  @id @default(autoincrement())
+  legacyId Int? @unique @map("legacy_id")
+
+  /// Nullable: 1 power of attorney in the Access data has no client.
+  clientId Int?    @map("client_id")
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  /// المحامون الصادر لهم التوكيل — up to twelve names in one field, and the
+  /// main source of the 71 external people in the roster.
+  ///
+  /// The names are split into rows at task 1.4; THIS holds the field exactly
+  /// as typed. The third of the three person-name mappings that had no raw
+  /// column until the 21 August audit.
+  legacyLawyersRaw String? @map("legacy_lawyers_raw")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([clientId])
+  @@map("powers_of_attorney")
+}
+
+/// The paper document register. 405 rows at Stage 2.
+///
+/// This records DESCRIPTIONS of paper documents and where the hard copy is
+/// filed. **The system does not store files** (docs/PRD.md).
+model Document {
+  id       Int  @id @default(autoincrement())
+  legacyId Int? @unique @map("legacy_id")
+
+  matterId Int?    @map("matter_id")
+  matter   Matter? @relation(fields: [matterId], references: [id])
+
+  description String?
+  pageCount   Int?      @map("page_count")
+  depositDate DateTime? @map("deposit_date") @db.Date
+
+  /// Who is responsible for the paper. Resolved through person_name_alias.
+  responsiblePersonId  Int?    @map("responsible_person_id")
+  responsiblePerson    Person? @relation(fields: [responsiblePersonId], references: [id])
+  legacyResponsibleRaw String? @map("legacy_responsible_raw")
+
+  movementCard    String? @map("movement_card")
+  storageLocation String? @map("storage_location")
+
+  /// Optional reference into M-Files, the existing document system of the
+  /// firm. Precedent: خطابات الأتعاب.mfilesID is filled on 306 of 331 rows.
+  mfilesId String? @map("mfiles_id")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([matterId])
+  @@index([responsiblePersonId])
+  @@map("documents")
+}
+
+/// Fee letters and engagement contracts. 331 rows at Stage 2.
+///
+/// Still actively used in Access as of November 2025, while invoices stop in
+/// December 2021 — four years of billing has run in Excel, detached from the
+/// contracts it belongs to (D3).
+///
+/// **contract_id MUST SURVIVE MIGRATION UNCHANGED.** Phase 2 invoicing
+/// attaches to these records, and the Excel the firm has kept in the meantime
+/// refers to them by that number. It is the one legacy identifier in this
+/// project that is not merely useful for reconciliation.
+///
+/// **THE COLUMN LIST BELOW IS INCOMPLETE AND KNOWN TO BE.** Only contract_id
+/// and mfilesID are named in docs/DATA-MODEL.md.
+model FeeLetter {
+  id Int @id @default(autoincrement())
+
+  /// Access contractID. Unique and preserved exactly — see above.
+  contractId Int? @unique @map("contract_id")
+
+  clientId Int?    @map("client_id")
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  /// Filled on 306 of 331 rows in Access.
+  mfilesId String? @map("mfiles_id")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([clientId])
+  @@map("fee_letters")
+}
