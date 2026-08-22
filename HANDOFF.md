@@ -7,7 +7,7 @@ conversation that produced the state below.
 binding — **16** of them now), `docs/DECISIONS.md` (D1–D21), `TASKS.md` (current
 position), then this file.
 
-Last commit: `aea70e5`. Working tree clean. **STAGE 1 IS COMPLETE.**
+Last commit: `6c19369`. Working tree clean. **STAGE 1 IS COMPLETE.**
 All 31 `db:check` checks pass
 and all 10 `db:verify` checks pass. Stage 1 has been reviewed by Codex and
 all four findings are closed (task 1.2d).
@@ -56,7 +56,7 @@ the whole codebase for a right-to-left violation in one command.
 cp .env.example .env
 npm install                 # postinstall runs `prisma generate`
 npm run db:up               # PostgreSQL 17 in Docker, waits until healthy
-npm run db:migrate:deploy   # apply all 16 migrations
+npm run db:migrate:deploy   # apply all 18 migrations
 npm run db:check            # 31 checks, all must read OK
 
 npm run dev                 # http://localhost:3000
@@ -107,7 +107,7 @@ docker/postgres/
 
 prisma/
   schema.prisma (*)         13 models. Structure lives here; DATA lives in sql/
-  migrations/               16 applied migrations, listed in §3
+  migrations/               18 applied migrations, listed in §3
 prisma.config.ts (*)        Prisma 7 config; reads DATABASE_URL from .env
 
 src/
@@ -201,6 +201,8 @@ Two sources of truth, deliberately separated:
 | 0014 | `20260822082441_poa_capacity_and_inventory` | `الصفة` is live and `صفة الموكل بالتوكيل` an abandoned duplicate; `مسلسل`/`حرف` text, `جرد` boolean |
 | 0015 | `20260822082711_billing_and_deferred` | task 1.5 — invoices, payments, invoice_allocations, attendance; exact numerics, no `Pay-Date` |
 | 0016 | `20260822083141_arabic_search` | task 1.6 — `ar_normalise()`, 7 shadow columns, 7 triggers, 6 trigram indexes |
+| 0017 | `20260822124335_billing_column_lists` | the real Access columns for the four billing tables; 3 Latin lookups; drops 3 invented placeholders |
+| 0018 | `…_restore_trigram_indexes` | restores the 6 trigram indexes 0017 dropped, now declared in `schema.prisma` so Prisma owns them |
 
 Every migration ends in a `DO $$` block asserting its counts. A migration runs
 in a transaction, so a failed assertion rolls the whole thing back — there is
@@ -432,6 +434,12 @@ review. All findings closed; the three review files are in `docs/reviews/`.
 - **1.5** Billing and deferred tables. Exact numerics, no `Pay-Date` (D4).
 - **1.6** Arabic search. `ar_normalise()` is the ONE definition of
   normalised in the system. db:check → **31**.
+- **1.5a** The billing column lists, with fill rates. Three invented
+  placeholders dropped; two NOT NULLs that would have rejected rows fixed;
+  three Latin lookups seeded, Arabic labels deliberately not invented.
+  **A regression caught by db:check:** migration 0017 dropped all six
+  trigram indexes, because Prisma removes an index whose columns it
+  manages but which is not in `schema.prisma`. Restored and declared there.
 
 **Stage 1 is complete.** Every table in `docs/DATA-MODEL.md` exists except
 `users`, which belongs to Stage 3. **This is the review point.**
@@ -564,33 +572,41 @@ Nothing in Stage 2 can run without both.
 
 ## 8. Open Questions
 
-1. **What the two states of `جرد` MEAN.** It is a yes/no flag — 1 on 680 rows
-   and 0 on 55 — and is typed as a boolean, but which state means what is not
-   recoverable from the data. The firm is supplying it. **Build nothing on it
-   until then.** (`الصفة`, `صفة الموكل بالتوكيل`, `حرف` and `مسلسل` are all
-   answered and now in `docs/GLOSSARY.md`.)
+1. **`جرد` is PROBABLE, not confirmed.** The firm reads it as "does it pass
+   the periodical inventory check", which fits 680 passing and 55 failing —
+   but they said "I think". Recorded as probable in `docs/GLOSSARY.md`.
+   **Nothing may depend on it until it is confirmed.**
 
-2. **The Access column lists for the four billing and deferred tables** —
-   `الفواتير`, `السداد`, `Attendance` and `تقسيم التحصيلات`. Built at task 1.5
-   with their keys and only the columns the documents name; nothing invented,
-   the same position task 1.3 took and for the same reason. **Needed before
-   task 2.3 loads a row.** Staging holds every source column as text
-   meanwhile, so nothing is at risk.
+2. **Three readings on `invoices` need confirming:** `VAT?`, `R-#` and `R-$`.
+   `vat` is text rather than boolean because text cannot lose information
+   whatever the source holds, and narrowing it later is safe; `R-#` and `R-$`
+   are read as a receipt number and amount. The Access names are recorded
+   against each column, so the mapping is unambiguous whatever the English
+   turns out to be.
 
-3. **The three "separate client" values need new client records.**
+3. **`LawyerA+` — meaning unclear.** 7 of the 47 collection-split rows. Seeded
+   because the value exists (D10); **nothing may display or branch on it**
+   until the firm says what it means.
+
+4. **The Arabic labels for the three Latin billing lookups.** `Inv-Status`,
+   `Inv-Type` and `LawyerAs` keep their Access values, with a nullable
+   `label_ar` for the word shown on screen. Those are financial terms and were
+   NOT invented (rule 5). Needed before **task 4.8**, not before Stage 2.
+
+5. **The three "separate client" values need new client records.**
    `سيجما للإعلام (تليفزيون الحياة)`, `ألفا مصر للتجارة` and
    `سيجما للصناعات الدوائية`. The firm decides which client each affected
    matter belongs to. Until then those matters are quarantined at task 2.6.
    **No action needed now**; flagged so it is not forgotten.
 
-4. **Stage 1 is finished and is the agreed review point.** The 21 August
+6. **Stage 1 is finished and is the agreed review point.** The 21 August
    review (`docs/reviews/2026-08-21-stage-1.md`) covered up to task 1.2 and
    all four of its findings are closed. Tasks 1.2c onwards — the branch
    resolution, the core schema, the junction tables, billing and Arabic
    search — are **unreviewed**. The firm was out of Codex quota until Monday
    23 August.
 
-5. **`npm run test:guard` refuses to run**, for the same reason `db:reset`
+7. **`npm run test:guard` refuses to run**, for the same reason `db:reset`
    always needs `--force-i-know`: the database holds 130 lookup rows, 135
    people and 347 aliases, and the guard tests write fixture tables into it.
    **This is CLAUDE.md rule 14 working, not a bug.** The owner has ruled:
