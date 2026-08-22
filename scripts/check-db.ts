@@ -525,6 +525,10 @@ async function main() {
     'payments',
     'invoice_allocations',
     'attendance',
+    // task 1.5a — the three Latin lookups
+    'lookup_invoice_status',
+    'lookup_invoice_type',
+    'lookup_lawyer_share_role',
   ];
   const tableRows = await db.$queryRaw<{ table_name: string }[]>`
     SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
@@ -559,12 +563,23 @@ async function main() {
     ['powers_of_attorney', 'poa_capacity_duplicate'],
     //  A fifth person-name mapping, on the leave register.
     ['attendance', 'legacy_person_raw'],
+    //  AttSituation is a free-text daily log, 865 distinct values. The raw
+    //  column keeps the original when a Phase 2 review folds `At the Office`
+    //  and `At the office` together.
+    ['attendance', 'legacy_situation_raw'],
+    //  The only Latin person column in the database — English names resolved
+    //  through people.name_en, not the alias table.
+    ['invoice_allocations', 'legacy_lawyer_raw'],
+    //  Access holds a PERCENTAGE; share holds a fraction. The conversion has
+    //  to stay visible.
+    ['invoice_allocations', 'legacy_percent_raw'],
+    ['invoice_allocations', 'legacy_lawyer_as_raw'],
   ]);
   record(
-    'Core schema: 20 tables, 18 raw columns',
+    'Core schema: 23 tables, 21 raw columns',
     'all present',
     missingTables.length === 0 && missingRaw.length === 0
-      ? '20 tables, 18 raw columns'
+      ? '23 tables, 21 raw columns'
       : `missing ${[...missingTables, ...missingRaw].join(', ')}`,
     missingTables.length === 0 && missingRaw.length === 0,
   );
@@ -579,6 +594,12 @@ async function main() {
        AND (table_name, column_name) IN (
             ('contacts', 'attachments'), ('contacts', 'name_ar'),
             ('contacts', 'name_en'),
+            -- Three placeholders invented at task 1.5 before the firm sent
+            -- the column lists. الفواتير has contractID not clientID, السداد
+            -- has Credit and Debit not one Amount, and AttSituation is a
+            -- free-text log rather than a status.
+            ('invoices', 'client_id'), ('payments', 'amount'),
+            ('attendance', 'status'),
             -- Replaced once the firm read its own columns: الصفة is the live
             -- capacity and صفة الموكل بالتوكيل is an abandoned duplicate.
             -- Both old names must be gone, or a transform could pick either.
@@ -607,12 +628,14 @@ async function main() {
             ('documents', 'matter_id'), ('fee_letters', 'client_id'),
             ('hearing_attendees', 'person_id'), ('fee_letter_matters', 'matter_id'),
             ('payments', 'invoice_id'), ('attendance', 'person_id'),
-            ('invoices', 'client_id'))`;
+            ('invoices', 'fee_letter_id'), ('payments', 'payment_date'),
+            ('invoice_allocations', 'person_id'),
+            ('invoice_allocations', 'invoice_id'))`;
   record(
     'Stage 2 can never reject a row',
-    '13 links all nullable',
+    '16 links all nullable',
     notNullable.length === 0
-      ? '13 links all nullable'
+      ? '16 links all nullable'
       : `NOT NULL on ${notNullable.map((r) => `${r.table_name}.${r.column_name}`).join(', ')}`,
     notNullable.length === 0,
   );
@@ -677,7 +700,9 @@ async function main() {
     SELECT table_name, column_name, data_type FROM information_schema.columns
      WHERE table_schema = 'public' AND data_type <> 'numeric'
        AND (table_name, column_name) IN (
-            ('invoices', 'amount'), ('payments', 'amount'),
+            ('invoices', 'amount'), ('invoices', 'amount_usd'),
+            ('invoices', 'receipt_amount'),
+            ('payments', 'credit'), ('payments', 'debit'),
             ('invoice_allocations', 'share'))`;
   //     D4: Pay-Date is not migrated. Asserted ABSENT — it stopped in Sept
   //     2019 and holds 126 stale values the payments table supersedes.
@@ -698,9 +723,12 @@ async function main() {
   );
 
   //     The shares on one invoice must sum to 1. That is a rule ACROSS rows,
-  //     which no CHECK constraint can express, so it lives here. Vacuously
-  //     true while the table is empty and meaningful from the first Phase 2
-  //     split — which is the point: the check exists BEFORE the data does.
+  //     which no CHECK constraint can express, so it lives here.
+  //
+  //     NOT a vacuous check. The firm verified against the Access data: 15
+  //     invoices carry splits and all 15 sum to exactly 1. So it has 15
+  //     genuine cases to validate when Stage 2 loads تقسيم التحصيلات, and any
+  //     failure would be a real finding rather than a bad rule.
   const badSplits = await db.$queryRaw<{ invoice_id: number; total: string }[]>`
     SELECT invoice_id, sum(share)::text AS total
       FROM invoice_allocations
@@ -777,11 +805,17 @@ async function main() {
                       'contacts_contact_name_normalise')
     UNION ALL
     SELECT indexname FROM pg_indexes
-     WHERE schemaname = 'public' AND indexname IN (
-            'clients_name_ar_normalised_trgm', 'matters_case_number_ar_normalised_trgm',
-            'matters_subject_normalised_trgm', 'people_name_ar_normalised_trgm',
-            'person_name_alias_alias_ar_normalised_trgm',
-            'contacts_contact_name_normalised_trgm')`;
+     WHERE schemaname = 'public' AND indexdef LIKE '%gin_trgm_ops%'
+       AND indexname IN (
+            'clients_name_ar_normalised_idx', 'matters_case_number_ar_normalised_idx',
+            'matters_subject_normalised_idx', 'people_name_ar_normalised_idx',
+            'person_name_alias_alias_ar_normalised_idx',
+            'contacts_contact_name_normalised_idx')`;
+  //     The index names are Prisma's own since they were declared in
+  //     schema.prisma. They were briefly created in raw SQL instead, and the
+  //     next migration dropped all six — THIS CHECK is what caught it. The
+  //     indexdef test matters as much as the name: a plain btree called the
+  //     right thing would satisfy a name check and do nothing for LIKE '%…%'.
   record(
     'Search triggers and trigram indexes',
     '7 triggers + 6 indexes',

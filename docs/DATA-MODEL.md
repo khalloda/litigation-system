@@ -229,8 +229,37 @@ reconcile 288 against 289.
 
 ## Billing — historical, read-only
 
-### `invoices` — 543 rows (2010 – Dec 2021)
-**Do not migrate `Pay-Date`** (D4).
+### `invoices` — 543 rows (2010 – Dec 2021), 14 Access columns
+
+**An invoice attaches to a FEE LETTER, not to a client.** `الفواتير` holds
+`contractID` and no `clientID`; the client comes through the fee letter. That
+is the link **D3** requires so Phase 2 invoicing can attach to the existing
+contracts.
+
+| Column | Access | Filled |
+|---|---|---:|
+| `invoice_no` | `Inv-No` | 100% |
+| `fee_letter_id` + `legacy_contract_id` | `contractID` | 100% |
+| `invoice_date` | `Inv-Date` | 100% |
+| `amount` | `Amount` | 100% |
+| `currency` | `Currency` | 100% |
+| `details` | `Inv-Details` | 100% |
+| `status_id` | `Inv-Status` | 100% |
+| `type_id` | `Inv-Type` | 100% |
+| `vat` | `VAT?` | 100% |
+| `report` | `report` | 100% |
+| `receipt_no` | `R-#` | 49% |
+| `amount_usd` | `USD$` | 4% |
+| `receipt_amount` | `R-$` | 4% |
+| — | `Pay-Date` | 23%, **not migrated (D4)** |
+
+**Do not migrate `Pay-Date`** (D4) despite it being 23% filled: it stops in
+September 2019 while payments run to December 2021.
+
+**`VAT?`, `R-#` and `R-$` have assumed readings and need confirming.** The
+Access names are recorded against each column so the mapping is unambiguous
+whatever the English turns out to be. `vat` is text, because text cannot lose
+information whatever the source holds and narrowing it later is safe.
 
 ### `payments` — 597 rows (2013 – Dec 2021)
 

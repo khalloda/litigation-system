@@ -311,6 +311,26 @@ and already passed its own tests. So when writing a check, ask two questions:
    A different schema. A different PowerShell. A live server whose database is
    also on `localhost`. An `.env` with one line missing.
 
+**A third, from 22 August 2026, and the same shape again.** Task 1.6 created
+six `pg_trgm` indexes in raw SQL, because Prisma is not told about
+`gin_trgm_ops` in the ordinary way. **The very next migration dropped all
+six.** Prisma removes an index whose columns it manages but which is not in
+`schema.prisma`.
+
+The partial unique indexes — one primary alias per person, one lead lawyer per
+matter — had survived exactly that treatment, and I generalised from them.
+Wrong generalisation: Prisma ignores a *filtered* index it cannot represent,
+and removes a *plain* one it can see.
+
+Nothing was lost — an index is a speed feature and searching still worked, only
+slowly. What caught it was `db:check` asserting the indexes **exist**, added
+for precisely this reason: `schema.prisma` cannot see them, so nothing else
+would notice. **Verifying that `migrate dev` left one kind of index alone was
+not evidence about a different kind.** They are now declared in
+`schema.prisma` with `type: Gin` and `ops: raw("gin_trgm_ops")`, and the check
+also asserts each one really is a trigram index — a plain btree with the right
+name would satisfy a name check and do nothing for `LIKE '%…%'`.
+
 Two more from the same review, both of the same shape:
 
 - The production guard was tested with `APP_ENV=production` and refused

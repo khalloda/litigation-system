@@ -277,9 +277,31 @@ be bigger than expected, split it and tell the owner.
       D2 drops those entirely. Its person link is a fifth person-name mapping
       and gets `legacy_person_raw`.
 
-      **Column lists still incomplete** for `الفواتير`, `السداد`, `Attendance`
-      and `تقسيم التحصيلات` — same position as 1.3 took, nothing invented.
-      Needed before task 2.3.
+- [x] **1.5a The billing column lists** — 22 August 2026, migration 0017
+      `الفواتير` (14), `السداد` (7), `Attendance` (4), `تقسيم التحصيلات` (5),
+      with fill rates, plus **three Latin lookups** seeded 5 / 2 / 4 from
+      `sql/billing-lookups.sql`.
+
+      **Three columns I invented at 1.5 are dropped, and their absence
+      asserted:**
+        `invoices.client_id`   — `الفواتير` has `contractID`, not `clientID`.
+              An invoice attaches to a **fee letter**, which is the link
+              **D3** requires; the client comes through it.
+        `payments.amount`      — `السداد` has `Credit` and `Debit`. Two.
+        `attendance.status`    — `AttSituation` is a free-text daily log.
+
+      **Two NOT NULLs would have rejected rows at Stage 2.**
+      `invoice_allocations.person_id` and `.invoice_id` are now nullable.
+      `Lawyer` holds **English** names — the only Latin person column in the
+      database — resolved through `people.name_en`, **not** the alias table.
+      Where `name_en` is null the row quarantines.
+
+      `Percent` is a percentage and `share` is a fraction; Stage 2 divides by
+      100 and keeps `legacy_percent_raw`. `AttSituation` keeps a raw partner
+      so a Phase 2 case-fold stays reversible.
+      **Arabic labels for the three Latin lookups are NOT invented** — they
+      are financial terms (rule 5) and are needed before task 4.8, not before
+      Stage 2. `db:check` asserts none has been filled in.
 
 - [x] **1.6 Arabic search** — 22 August 2026, migration 0016
       **`ar_normalise(text)`** — one database function, the only definition of
@@ -538,6 +560,16 @@ allows. Test with real volumes.
 - [ ] **6.5 Hearing reports**
 - [ ] **6.6 Administrative works reports**
 - [ ] **6.7 Document and POA reports**
+      **The POA and document movement cards are the paper half of a
+      stock-control system.** `عدد النسخ` is a live count of copies in the
+      safe; a lawyer signs one out to attend court and the count drops, and
+      `ملاحظات` records who has it (`عهدة إيهاب حمدي`). The report highlights
+      **zero** in yellow — none available.
+      **Phase 1 reproduces the blank card, nothing more.** Replacing the paper
+      loop with real check-in / check-out is an obvious **Phase 2** candidate,
+      and it must handle **several copies of one power of attorney held by
+      different lawyers at once** — which a simple in/out flag could not.
+      **Do not build it now.**
 - [ ] **6.8 The one report with an unknown layout** — do not start until the
       firm supplies the sample.
       Only `صالح-ضد مفصل حسب المحامي` remains unknown.
@@ -574,6 +606,11 @@ allows. Test with real volumes.
 ## Phase 2 — after go-live
 
 - [ ] Attendance screens
+      **`AttSituation` needs its own review first.** 865 distinct values, and
+      it is a free-text daily log rather than a status list — `At the Office`
+      749, `At the office` 327 (the same value, different case), then hundreds
+      of one-offs. Do not design a dropdown until the firm has been through
+      the values.
 - [ ] Invoice and payment entry
 - [ ] Collection splitting between lawyers
 - [ ] Excel import for the attendance and billing history kept outside Access

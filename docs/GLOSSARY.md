@@ -104,11 +104,32 @@ For anyone reading the data or the schema. Do not guess at these.
 | السنة | Year | The year part |
 | مسلسل | Sequence | **Latin letters — A, B, C. Not a number** |
 | جهة الإصدار | Issuing authority | |
-| عدد النسخ | Number of copies | Drives the yellow-row highlighting on the POA report |
-| جرد | Inventory flag | Yes/no. 1 on 680 rows, 0 on 55. **What the two states mean is not yet confirmed by the firm** |
+| عدد النسخ | Copies in the safe | **A LIVE COUNT, not a static figure.** See below |
+| جرد | Inventory check | Yes/no. 1 on 680 rows, 0 on 55. **PROBABLE, NOT CONFIRMED:** the firm reads it as "does it pass the periodical inventory check", which fits the split — but they said "I think". **Nothing may depend on it until confirmed.** |
 
 The powers-of-attorney report prints the reference as **`982 / أ / 2009`** —
 number / letter / year.
+
+### `عدد النسخ` is a live count, and zero is meaningful
+
+It is **the number of copies currently in the safe**, not a static figure and
+not a flag. A lawyer takes a copy out to attend court and the count drops; it
+rises when the copy comes back.
+
+That is why the report highlights **zero** in yellow — "none available" — and
+why `ملاحظات` on those rows reads `عهدة إيهاب حمدي`. **Those rows are
+documents signed out, not errors.**
+
+Across the 735 rows: 0 on 113, 1 on 577, 2 on 29, 3 on 7, 4 on 2, 8 on one,
+and 6 blank. So 39 rows (5%) hold more than one copy — normal practice, usually
+because the original was deposited at the Cassation court and certified copies
+were extracted (`تم إيداعة بالنقض وتم استخراج نسختين طبق الأصل`).
+
+- Plain integer, nullable, **no upper bound**. Never a boolean, never a CHECK
+  capping it at 1.
+- **Zero is a valid state**, never missing data and never an error.
+- The six blanks are **genuinely unknown** and stay NULL — a different thing
+  from zero.
 
 **`الصفة` here is not the same idea as a party's capacity under D7.**
 D7 is a party's *procedural role in a matter* — plaintiff, appellant — from a
@@ -125,6 +146,44 @@ attorney*: `شخصي` (personally), or a corporate office such as
 | النتيجة | Result |
 | تقرير | Report |
 | الموعد القادم | Next appointment — 7 rows in 4,130, effectively dead |
+
+## Billing (الفواتير / السداد / تقسيم التحصيلات)
+
+These are the **only** lookups in the system whose values are Latin. They stay
+exactly as Access holds them — the value is what Stage 2 matches on. The Arabic
+words to show on screen are **not yet supplied and were not invented**.
+
+| Access | Values |
+|---|---|
+| `Inv-Status` | Paid 460 · Unpaid 60 · Partially Paid 12 · Later 10 · Canceled 1 |
+| `Inv-Type` | Service 379 · Expenses 162 |
+| `LawyerAs` | Reviewer 16 · LawyerA 16 · LawyerB 8 · **LawyerA+ 7 — meaning unclear, ask before surfacing it** |
+
+| Arabic | English | Notes |
+|---|---|---|
+| رقم الفاتورة | Invoice number | On the payment, as written |
+| التاريخ | Date | **Only 67% filled** — a third of payments have no date |
+| العملة | Currency | Gate 4 reconciles per currency |
+| بيان السداد | Payment details | |
+
+`تقسيم التحصيلات.Lawyer` holds **English names** — `Ahmed Abdullah`,
+`Nagy Ramadan`. Nine distinct people, and **the only Latin person column in the
+database**. It resolves through `people.name_en`, not through
+`person_name_alias`, which holds Arabic. Where `name_en` is null, quarantine —
+never guess.
+
+## Attendance (the leave register)
+
+**Not meeting attendance** — D2 drops those entirely.
+
+`AttSituation` is **free text, not a status list**: 865 distinct values.
+`At the Office` 749 · `Nothing` 498 · `At the office` 327 (the same value in
+different case) · `Annual Vacation` 132, then hundreds of one-offs like
+`Admin work at Cairo economical court`. It is a daily log somebody typed into.
+**Do not make it a lookup.** It needs its own review before any dropdown is
+designed.
+
+`المحامي` is a person name — resolve through the alias table, rule 15.
 
 ## Case number suffixes
 
