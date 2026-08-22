@@ -221,16 +221,36 @@ be bigger than expected, split it and tell the owner.
       dropped hearings index, and a lost `contract_id` unique.
       db:check 21 → **24 checks**.
 
-- [ ] **1.4 Junction tables**
+- [x] **1.4 Junction tables** — 22 August 2026, migration 0013
       matter_lawyers, matter_parties, matter_party_roles, hearing_attendees,
-      fee_letter_matters.
-      **`hearing_attendees.legacy_name_raw` is the fifth of the five `_raw`
-      columns** — **373 spellings → 135 people**, the highest-ratio mapping in
-      the project and the one that has already gone wrong twice. Add it to the
-      list in the migration assertion AND in `scripts/check-db.ts`, which
-      names the other ten.
-      Also from the audit: `matter_parties.legacy_raw` and
-      `matter_lawyers.legacy_source`.
+      fee_letter_matters. **All empty**; Stage 2 fills them at 2.7–2.9.
+
+      **The five `_raw` columns task 1.3 required are now all present and
+      asserted together** — `hearing_attendees.legacy_name_raw` was the fifth
+      and could not exist until its table did. 373 spellings collapse to 135
+      people, the highest-ratio mapping in the project. Plus
+      `matter_lawyers.legacy_source`, `matter_parties.legacy_raw` and
+      `fee_letter_matters.legacy_matter_ref`. **16 raw columns in total.**
+
+      **Four constraints Prisma cannot express, so all raw SQL:**
+        `matter_lawyers.role`     CHECK lead / co_lead / support
+        `matter_parties.side`     CHECK client / opponent
+        `matter_parties.gender`   CHECK NULL / m / f
+        **at most one `lead` per matter** — a partial unique index
+      Not lookup tables, because nobody adds a lawyer role or a third side to
+      a case without a code change — the opposite of D8's case for courts.
+      `db:check` asserts all four exist, since `schema.prisma` cannot see them.
+
+      **One lead per matter is the ONE constraint that can stop a Stage 2
+      load, deliberately.** Two leads cannot come from the source — `lawyerA`
+      and `lawyerB` are separate columns — so only a transform bug produces
+      it. If it fires: quarantine the matter and ask the firm. Do not relax it.
+
+      Proved by breaking: two leads refused, an invented role refused, a third
+      `side` refused, a bad gender refused — and, from the other direction, a
+      `co_lead` alongside a `lead` allowed and a NULL gender allowed, so the
+      constraints do not over-reach. Nothing left behind.
+      db:check 25 → **26 checks**.
 
 - [ ] **1.5 Billing + deferred tables**
       invoices, payments (read-only in the app), attendance,

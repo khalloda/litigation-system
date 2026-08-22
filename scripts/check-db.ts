@@ -513,6 +513,12 @@ async function main() {
     'powers_of_attorney',
     'documents',
     'fee_letters',
+    // task 1.4
+    'matter_lawyers',
+    'matter_parties',
+    'matter_party_roles',
+    'hearing_attendees',
+    'fee_letter_matters',
   ];
   const tableRows = await db.$queryRaw<{ table_name: string }[]>`
     SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
@@ -536,12 +542,18 @@ async function main() {
     ['task_actions', 'legacy_task_id_raw'],
     //  القائم بالعمل — the fourth person-name mapping, 96% of 4,130 rows.
     ['task_actions', 'legacy_performed_by_raw'],
+    //  The fifth of the five task 1.3 named — 373 spellings to 135 people,
+    //  the highest-ratio mapping in the project.
+    ['hearing_attendees', 'legacy_name_raw'],
+    ['matter_lawyers', 'legacy_source'],
+    ['matter_parties', 'legacy_raw'],
+    ['fee_letter_matters', 'legacy_matter_ref'],
   ]);
   record(
-    'Core schema: 11 tables, 12 raw columns',
+    'Core schema: 16 tables, 16 raw columns',
     'all present',
     missingTables.length === 0 && missingRaw.length === 0
-      ? '11 tables, 12 raw columns'
+      ? '16 tables, 16 raw columns'
       : `missing ${[...missingTables, ...missingRaw].join(', ')}`,
     missingTables.length === 0 && missingRaw.length === 0,
   );
@@ -576,12 +588,13 @@ async function main() {
             ('matters', 'client_id'), ('hearings', 'matter_id'),
             ('admin_tasks', 'matter_id'), ('task_actions', 'task_id'),
             ('powers_of_attorney', 'client_id'), ('contacts', 'client_id'),
-            ('documents', 'matter_id'), ('fee_letters', 'client_id'))`;
+            ('documents', 'matter_id'), ('fee_letters', 'client_id'),
+            ('hearing_attendees', 'person_id'), ('fee_letter_matters', 'matter_id'))`;
   record(
     'Stage 2 can never reject a row',
-    '8 links all nullable',
+    '10 links all nullable',
     notNullable.length === 0
-      ? '8 links all nullable'
+      ? '10 links all nullable'
       : `NOT NULL on ${notNullable.map((r) => `${r.table_name}.${r.column_name}`).join(', ')}`,
     notNullable.length === 0,
   );
@@ -605,6 +618,33 @@ async function main() {
       : `${caseIsText ? 'text' : `case_number_ar is ${caseNumber[0]?.data_type ?? 'absent'}`}` +
         `${logoBinary.length > 0 ? `, client_logos holds ${logoBinary.map((r) => r.column_name).join(', ')}` : ''}`,
     caseIsText && logoBinary.length === 0,
+  );
+
+  // 9a. The junction constraints — task 1.4.
+  //
+  //     Prisma cannot express a CHECK constraint or a filtered index, so all
+  //     four are raw SQL and invisible to schema.prisma. Nothing but this
+  //     line would notice one being dropped.
+  //
+  //     matter_lawyers_one_lead_per_matter is the one constraint in Stage 2
+  //     that can stop a load, deliberately. If it ever fires, quarantine the
+  //     matter and ask the firm which lawyer leads it — do NOT relax it.
+  //     "Who leads this matter" having two answers is the ambiguity D5 exists
+  //     to remove.
+  const junctionGuards = await db.$queryRaw<{ name: string }[]>`
+    SELECT conname AS name FROM pg_constraint
+     WHERE conname IN ('matter_lawyers_role_check', 'matter_parties_side_check',
+                       'matter_parties_gender_check')
+    UNION ALL
+    SELECT indexname FROM pg_indexes
+     WHERE schemaname = 'public' AND indexname = 'matter_lawyers_one_lead_per_matter'`;
+  record(
+    'Junction constraints in place',
+    '3 checks + one lead per matter',
+    junctionGuards.length === 4
+      ? '3 checks + one lead per matter'
+      : `only ${junctionGuards.length} of 4: ${junctionGuards.map((g) => g.name).join(', ')}`,
+    junctionGuards.length === 4,
   );
 
   // ---- report --------------------------------------------------------------

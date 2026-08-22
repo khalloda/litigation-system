@@ -168,6 +168,8 @@ model LookupPartyRole {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  partyRoles MatterPartyRole[]
+
   @@map("lookup_party_role")
 }
 
@@ -394,6 +396,10 @@ model Person {
   documents  Document[]
   /// Administrative task steps this person carried out (القائم بالعمل).
   taskActions TaskAction[]
+  /// Matters this person is a lawyer on.
+  matterLawyers MatterLawyer[]
+  /// Hearings this person attended.
+  hearingAttendees HearingAttendee[]
 
   @@index([isStaff, isActive])
   @@map("people")
@@ -787,6 +793,9 @@ model Matter {
   hearings   Hearing[]
   adminTasks AdminTask[]
   documents  Document[]
+  lawyers    MatterLawyer[]
+  parties    MatterParty[]
+  feeLetters FeeLetterMatter[]
 
   @@index([clientId])
   @@index([status])
@@ -837,6 +846,8 @@ model Hearing {
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
+
+  attendees HearingAttendee[]
 
   @@index([matterId])
   @@index([hearingDate])
@@ -1107,6 +1118,222 @@ model FeeLetter {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  matters FeeLetterMatter[]
+
   @@index([clientId])
   @@map("fee_letters")
+}
+
+// ===========================================================================
+//  JUNCTION TABLES — task 1.4
+//
+//  The five tables that replace the places where Access put several facts in
+//  one field. Every one of them exists because a text column was doing the
+//  job of a relationship:
+//
+//    lawyerA / lawyerB and 38 combination strings  ->  matter_lawyers
+//    client&Cap / opponent&Cap, 242 capacity strings -> matter_parties
+//                                                     + matter_party_roles
+//    الحاضر and حاضر 1-4, 373 spellings            ->  hearing_attendees
+//    خطابات الأتعاب.Matter, a multi-value column    ->  fee_letter_matters
+//
+//  ALL EMPTY. Stage 2 fills them, at tasks 2.7 (lawyers and parties), 2.8
+//  (attendees) and 2.9 (fee letters).
+//
+//  THE FIFTH RAW COLUMN IS HERE. hearing_attendees.legacy_name_raw completes
+//  the five that task 1.3 required — 373 spellings collapse to 135 people,
+//  the highest-ratio mapping in the project and the one that has already gone
+//  wrong twice. All five are now present and asserted together.
+// ===========================================================================
+
+/// Which lawyers are on a matter, and in what capacity.
+///
+/// Replaces Access `lawyerA` / `lawyerB` and the 38 rows of `المحامين`, which
+/// were mostly COMBINATIONS of lawyers — a workaround for Access not
+/// supporting many-to-many (D5). **Names are never keys.**
+///
+/// Expected at Stage 2: 896 matters with a lead, 241 with support, 834 with
+/// no lawyer recorded at all. 896 + 834 = 1,730.
+///
+/// **A null lawyer is normal.** 834 of 1,730 matters have none, which is why
+/// D14 refuses to restrict billing to "the lawyer's own matters" — such a
+/// rule would hide half the firm from everybody.
+model MatterLawyer {
+  id       Int    @id @default(autoincrement())
+  matterId Int    @map("matter_id")
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  personId Int    @map("person_id")
+  person   Person @relation(fields: [personId], references: [id])
+
+  /// lead | co_lead | support. A CHECK constraint, not a lookup table and not
+  /// a PostgreSQL enum.
+  ///
+  /// Not a lookup table because nobody adds a lawyer role without a code
+  /// change — reports branch on `lead` — which is the exact opposite of the
+  /// case D8 makes for courts and categories being tables.
+  /// Not an enum because D8 rules those out project-wide.
+  role String
+
+  /// Order within the role, so "lawyerA then lawyerB" survives.
+  position Int?
+
+  /// The exact source string this row came from — including the combination
+  /// strings that split into several rows. Without it a split could never be
+  /// re-derived or corrected.
+  legacySource String? @map("legacy_source")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([matterId])
+  @@index([personId])
+  @@map("matter_lawyers")
+}
+
+/// The parties to a matter, on either side.
+///
+/// Replaces `client&Cap` and `opponent&Cap`, which held the party name AND
+/// their legal capacity in one field — 92% and 83% of them multi-line.
+model MatterParty {
+  id       Int    @id @default(autoincrement())
+  matterId Int    @map("matter_id")
+  matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  /// client | opponent. A CHECK constraint — see MatterLawyer.role.
+  side String
+
+  partyName String? @map("party_name")
+
+  /// m | f, or null when it is not known or the party is an organisation.
+  /// Used to render the right form of the role: D7 stores مدعي and مدعية and
+  /// picks between them, rather than storing 242 inflected capacity strings.
+  gender String?
+
+  /// Position within the side, so the first-named party stays first.
+  ordinal Int?
+
+  /// The `client&Cap` or `opponent&Cap` field exactly as typed, name and
+  /// capacity together. 242 distinct capacity strings collapse to 11 roles;
+  /// this is what makes that reversible.
+  legacyRaw String? @map("legacy_raw")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  roles MatterPartyRole[]
+
+  @@index([matterId])
+  @@map("matter_parties")
+}
+
+/// A party can hold more than one role. D7: `مستأنف ضده، مستأنف` becomes TWO
+/// ROWS, not one combined value.
+model MatterPartyRole {
+  id      Int         @id @default(autoincrement())
+  partyId Int         @map("party_id")
+  party   MatterParty @relation(fields: [partyId], references: [id], onDelete: Cascade)
+
+  roleId Int             @map("role_id") @db.SmallInt
+  role   LookupPartyRole @relation(fields: [roleId], references: [id])
+
+  /// Order the roles were written in.
+  ordinal Int?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([partyId])
+  @@map("matter_party_roles")
+}
+
+/// Who attended a hearing.
+///
+/// Replaces `الحاضر` and `حاضر 1`–`حاضر 4`: free text, **373 distinct
+/// spellings for 135 people**, plus multi-person strings with no consistent
+/// separator.
+///
+/// **`**` MEANS NO ATTENDANCE RECORDED AND BECOMES NO ROWS, NOT A PERSON.**
+/// It appears 4,143 times. The same for `لا يوجد حضور` and `متابعة`. A person
+/// called `**` would then appear in dropdowns and reports for ever.
+model HearingAttendee {
+  id        Int     @id @default(autoincrement())
+  hearingId Int     @map("hearing_id")
+  hearing   Hearing @relation(fields: [hearingId], references: [id], onDelete: Cascade)
+
+  /// Nullable: a spelling that resolves to nobody loads with a null person
+  /// and goes to the review queue — roughly 474 names appear only once and
+  /// need a human. It is never dropped, and never invented as a new person.
+  personId Int?    @map("person_id")
+  person   Person? @relation(fields: [personId], references: [id])
+
+  /// **THE FIFTH RAW COLUMN, and the one that matters most.**
+  ///
+  /// 373 spellings collapse to 135 people — the highest-ratio mapping in this
+  /// project, and the one that has already gone wrong twice: a single missing
+  /// hamza made أحمد إسماعيل into two people, one carrying 1,309 hearings.
+  ///
+  /// person_name_alias records that a spelling EXISTS. Only this records
+  /// which spelling THIS hearing used. Without it, a merge later judged wrong
+  /// could never be split back apart.
+  legacyNameRaw String? @map("legacy_name_raw")
+
+  /// Which of الحاضر, حاضر 1 … حاضر 4 this came from, and the order within a
+  /// multi-person string.
+  ordinal Int?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([hearingId])
+  @@index([personId])
+  @@map("hearing_attendees")
+}
+
+/// Which matters a fee letter covers.
+///
+/// From the Access multi-value column `خطابات الأتعاب.Matter` — **288 values
+/// across 195 parents** (D11). A normal CSV export of that column gives
+/// integers that look like data and are internal pointers.
+///
+/// **The values are case-number STRINGS (`1039 / 20ق`), not ids**, so
+/// matching them to matters will leave rows unmatched — 289 of them are
+/// already expected. Those load with a null matter_id and are quarantined.
+/// **Do not drop them.**
+///
+/// **This is NOT the same relationship as `matters.fee_letter_ref`**, which
+/// runs the other way — 412 matters carry a value and 289 match no fee
+/// letter. Two different links and two different numbers that happen to share
+/// a digit. Do not try to reconcile 288 against 289.
+model FeeLetterMatter {
+  id          Int       @id @default(autoincrement())
+  feeLetterId Int       @map("fee_letter_id")
+  feeLetter   FeeLetter @relation(fields: [feeLetterId], references: [id], onDelete: Cascade)
+
+  /// Nullable: the case-number string may match no matter.
+  matterId Int?    @map("matter_id")
+  matter   Matter? @relation(fields: [matterId], references: [id])
+
+  /// The case-number string exactly as it appeared in the multi-value column.
+  /// This is the only record of what an unmatched row was pointing at.
+  legacyMatterRef String? @map("legacy_matter_ref")
+
+  /// Order within the parent fee letter.
+  ordinal Int?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([feeLetterId])
+  @@index([matterId])
+  @@map("fee_letter_matters")
 }
