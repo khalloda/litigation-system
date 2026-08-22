@@ -4,10 +4,10 @@ Written 21 August 2026, end of session. Assumes you have no memory of the
 conversation that produced the state below.
 
 **Read first, in this order:** `CLAUDE.md` (15 durable rules — they are
-binding — **16** of them now), `docs/DECISIONS.md` (D1–D19), `TASKS.md` (current
+binding — **16** of them now), `docs/DECISIONS.md` (D1–D21), `TASKS.md` (current
 position), then this file.
 
-Last commit: `cd58163`. Working tree clean. All 21 `db:check` checks pass
+Last commit: `0675ca4`. Working tree clean. All 24 `db:check` checks pass
 and all 10 `db:verify` checks pass. Stage 1 has been reviewed by Codex and
 all four findings are closed (task 1.2d).
 
@@ -55,8 +55,8 @@ the whole codebase for a right-to-left violation in one command.
 cp .env.example .env
 npm install                 # postinstall runs `prisma generate`
 npm run db:up               # PostgreSQL 17 in Docker, waits until healthy
-npm run db:migrate:deploy   # apply all 10 migrations
-npm run db:check            # 21 checks, all must read OK
+npm run db:migrate:deploy   # apply all 11 migrations
+npm run db:check            # 24 checks, all must read OK
 
 npm run dev                 # http://localhost:3000
 npm run build               # production build
@@ -76,7 +76,7 @@ npm run test:gate1          # 15 cases. Runs under pwsh AND Windows PowerShell 5
 # database
 npm run db:up / db:down / db:logs / db:psql / db:studio
 npm run db:verify           # 10 SQL-level checks inside the container
-npm run db:check            # 21 application-level checks through Prisma
+npm run db:check            # 24 application-level checks through Prisma
 npm run db:reset            # DESTRUCTIVE. Guarded. See §5 and CLAUDE.md rule 12.
 npm run db:migrate          # prisma migrate dev — use this locally, see §5
 ```
@@ -106,7 +106,7 @@ docker/postgres/
 
 prisma/
   schema.prisma (*)         13 models. Structure lives here; DATA lives in sql/
-  migrations/               10 applied migrations, listed in §3
+  migrations/               11 applied migrations, listed in §3
 prisma.config.ts (*)        Prisma 7 config; reads DATABASE_URL from .env
 
 src/
@@ -124,7 +124,7 @@ scripts/
   lib/gate1.ps1 (*)         Gate 1 decision, pure, testable without Access
   lib/inventory.ts (*)      parses+validates the db:reset inventory (JSON)
   db-reset.ts (*)           the guarded destructive reset. Read its header first
-  check-db.ts (*)           21 application-level checks
+  check-db.ts (*)           24 application-level checks
   write-baseline.ts (*)     writes the reviewed-links baseline; refuses silent overwrites
   lib/reviewed-links.ts (*) baseline parse/compare/digest. Pure, no database
   lib/read-links.ts (*)     the one place that reads links out of the database
@@ -148,7 +148,7 @@ sql/                        THE SOURCE OF TRUTH FOR DATA. Reviewed by the firm.
 
 docs/
   PRD.md (*)                what the system must do
-  DECISIONS.md (*)          D1–D19. Outranks any skill or plugin advice
+  DECISIONS.md (*)          D1–D21. Outranks any skill or plugin advice
   DATA-MODEL.md (*)         every table and column
   MIGRATION.md (*)          the migration, the gates, and 12 hard-won rules
   DATABASE.md (*)           running the database in plain language
@@ -194,6 +194,7 @@ Two sources of truth, deliberately separated:
 | 0008 | `20260821154211_confirm_legal_opinion_is_a_matter_type` | one `reviewer_note`: the firm confirmed `آراء قانونية → matter_type رأي قانوني`. No mapping changed |
 | 0009 | `20260821202303_one_primary_alias_per_person` | demotes 2 surplus primary aliases; adds the **partial unique index** that makes a second primary impossible |
 | 0010 | `20260821203117_team_composition_postcondition` | asserts the 2 teams, their exact 4 + 4 membership as a set, and the reviewer — the postcondition migration 0004 should have had |
+| 0011 | `20260822065822_core_schema` | task 1.3 — 11 tables and `lookup_court`, all empty; 11 `_raw` columns, 8 nullable links and the D9/D15 schema shapes all asserted |
 
 Every migration ends in a `DO $$` block asserting its counts. A migration runs
 in a transaction, so a failed assertion rolls the whole thing back — there is
@@ -240,11 +241,16 @@ per account at Milestone 4. `team_id` is nullable and NULL is common and valid.
 
 ### Not yet built
 
-`clients`, `contacts`, `matters`, `hearings`, `hearing_attendees`,
-`admin_tasks`, `task_actions`, `powers_of_attorney`, `documents`,
-`fee_letters`, `matter_lawyers`, `matter_parties`, `matter_party_roles`,
-`fee_letter_matters`, `invoices`, `payments`, `attendance`,
-`invoice_allocations`, `client_logos`, `users`. Tasks 1.3–1.5.
+`hearing_attendees`, `matter_lawyers`, `matter_parties`,
+`matter_party_roles`, `fee_letter_matters` (task 1.4); `invoices`,
+`payments`, `attendance`, `invoice_allocations` (task 1.5); `users`
+(Stage 3).
+
+**Four tables built at 1.3 are deliberately INCOMPLETE** — `contacts`,
+`task_actions`, `powers_of_attorney`, `fee_letters`. Their Access column
+lists have never been written down and nothing was invented. See "Columns not
+yet known" in `docs/DATA-MODEL.md`. **They must be completed before task 2.3
+loads a row** — see §8.
 
 `migration_multi_person_rule`, `migration_multi_person_member`,
 `migration_excluded_name` — deliberately deferred to task 2.7, see §6.
@@ -270,7 +276,7 @@ the server (D15), not cloud storage.
 
 ## 4. Decisions Made — this session only
 
-`docs/DECISIONS.md` holds **D1–D19** and is the authority. Do not duplicate it
+`docs/DECISIONS.md` holds **D1–D21** and is the authority. Do not duplicate it
 here. The decisions below are engineering choices made during this session that
 are *not* in that file.
 
@@ -416,6 +422,8 @@ review. All findings closed; the three review files are in `docs/reviews/`.
   crosswalk 4 → 20. Done before 1.3 because 1.3 builds
   `clients.legacy_branch_raw` on top of it.
 - **1.2d** All four Codex Stage 1 findings closed. db:check 17 → 21.
+- **1.3** Core schema: 11 tables, all empty. **D20** court is a list and
+  circuit is text; **D21** court details stay on the matter. db:check → 24.
 
 Every assertion above was **proved by deliberately breaking it** — see the
 commit messages for the exact error text each produced. For 1.2c the four
@@ -545,18 +553,25 @@ Nothing in Stage 2 can run without both.
 
 ## 8. Open Questions
 
-1. **The three "separate client" values need new client records.**
+1. **The Access column lists for four tables.** `contacts`, `task_actions`,
+   `powers_of_attorney` and `fee_letters` are built with their keys and only
+   the columns the documents name. The firm needs to supply what those Access
+   tables actually hold, and the columns are added before task 2.3.
+   Nothing is at risk meanwhile — staging holds every source column as text —
+   but Stage 2 cannot finish without them.
+
+2. **The three "separate client" values need new client records.**
    `سيجما للإعلام (تليفزيون الحياة)`, `ألفا مصر للتجارة` and
    `سيجما للصناعات الدوائية`. The firm decides which client each affected
    matter belongs to. Until then those matters are quarantined at task 2.6.
    **No action needed now**; flagged so it is not forgotten.
 
-2. **Stage 1 has been reviewed and all findings are closed** (task 1.2d,
+3. **Stage 1 has been reviewed and all findings are closed** (task 1.2d,
    `docs/reviews/2026-08-21-stage-1.md`). The firm is out of Codex quota until
    Monday. **The next review point is the end of Stage 1** — do not wait for a
    re-review of 1.2d before starting 1.3.
 
-3. **`npm run test:guard` refuses to run**, for the same reason `db:reset`
+4. **`npm run test:guard` refuses to run**, for the same reason `db:reset`
    always needs `--force-i-know`: the database holds 130 lookup rows, 135
    people and 347 aliases, and the guard tests write fixture tables into it.
    **This is CLAUDE.md rule 14 working, not a bug.** The owner has ruled:
