@@ -303,13 +303,33 @@ day it mattered most the guard would have looked at an empty `public`, said
 "nothing to lose", and destroyed the entire extraction.
 
 Every finding in the Stage 0 review was a gap in a check that already existed
-and already passed its own tests. So when writing a check, ask two questions:
+and already passed its own tests. So when writing a check, ask **three**
+questions:
 
 1. **What is the failure this exists to prevent?** Reproduce that exact
    failure, not a convenient stand-in for it.
 2. **Where will this run, and what will be true there that is not true here?**
    A different schema. A different PowerShell. A live server whose database is
    also on `localhost`. An `.env` with one line missing.
+3. **What KIND of thing did I actually test, and is the thing I am relying on
+   the same kind?** This is the variant the trigram indexes found, and it is
+   the easiest of the three to miss, because the test genuinely passed — just
+   on a different kind of object. Two behaviours, one test.
+
+   `prisma migrate dev` was verified to leave a **partial unique index**
+   alone. The conclusion drawn was "Prisma leaves raw-SQL indexes alone". It
+   does not: it ignores a *filtered* index it cannot represent, and removes a
+   *plain* one it can see. The six trigram indexes were dropped by the next
+   migration.
+
+   Not the environment, and not the failure mode — **the kind of object.** Ask
+   it of anything asserted about a tool's behaviour: a constraint is not an
+   index, an index is not a column, a trigger is not a constraint, and a tool
+   may treat each of them differently.
+
+   Hardening that followed: the check now asserts the index **type**, not just
+   its name. A btree called `..._trgm_idx` would satisfy a name check and do
+   nothing for `LIKE '%…%'`.
 
 **A third, from 22 August 2026, and the same shape again.** Task 1.6 created
 six `pg_trgm` indexes in raw SQL, because Prisma is not told about

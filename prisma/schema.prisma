@@ -1494,9 +1494,11 @@ model LookupInvoiceType {
 /// purpose of splitting a collection. 4 values: Reviewer 16, LawyerA 16,
 /// LawyerB 8, LawyerA+ 7, which is all 47 rows.
 ///
-/// **`LawyerA+` MEANING UNCLEAR — ASK BEFORE SURFACING IT ANYWHERE.** Seeded
-/// because the value exists and nothing is deleted (D10), but nothing may
-/// display or branch on it until the firm says what it means.
+/// **`LawyerA+` is a CO-LEAD** — a second lead lawyer sharing the lead's
+/// allocation, always a different person from `LawyerA`. Confirmed from the
+/// data: every invoice carrying one splits Reviewer 0.250 / LawyerA 0.375 /
+/// LawyerA+ 0.375, against Reviewer 0.250 / LawyerA 0.750 where there is
+/// none. It maps to `matter_lawyers.role` = `co_lead` (D5).
 model LookupLawyerShareRole {
   id        Int     @id @default(autoincrement()) @db.SmallInt
   code      String  @unique
@@ -1588,21 +1590,35 @@ model Invoice {
 
   /// Access `Inv-Details`, 100%.
   details String?
-  /// Access `report`, 100%.
-  report  String?
 
-  /// Access `VAT?`, 100%. **TEXT, AND CONFIRM IT.** The name reads like an
-  /// Access Yes/No field, but the firm has not said so and no distribution
-  /// was given. Text cannot lose information whatever the source holds, and
-  /// narrowing it to a boolean later is safe; guessing boolean now and being
-  /// wrong is not.
-  vat String?
+  /// Access `VAT?`, 100% — **a yes/no flag, confirmed.** Only `1` (289 rows)
+  /// and `0` (254). The `1` rows are `Service` invoices with ordinary
+  /// amounts; nothing anywhere encodes a rate or a value. It means "VAT
+  /// applies to this invoice", nothing more.
+  vat Boolean?
 
-  /// Access `R-#` 49% and `R-$` 4%. **NAMES ASSUMED, CONFIRM THEM** — read as
-  /// a receipt number and a receipt amount. The Access names are recorded
-  /// here so the mapping is unambiguous whatever the English turns out to be.
-  receiptNo     String?  @map("receipt_no")
-  receiptAmount Decimal? @map("receipt_amount") @db.Decimal(14, 2)
+  /// Access `report`, 100% — **a flag on eight invoices.** 535 zeros and 8
+  /// ones. What it means is unknown and it is effectively unused. Migrated
+  /// because nothing is deleted (D10); **do not surface it.**
+  report Boolean?
+
+  /// Access `R-#` and `R-$`. **A receipt amount and its currency — and my
+  /// first reading of these was INVERTED.** The names suggest a number and an
+  /// amount; the content says otherwise, and the firm counted it:
+  ///
+  ///   `R-#`  278 blank, 244 zero, and 21 rows holding round figures —
+  ///          5000, 10000, 44000. Amounts, not receipt numbers.
+  ///   `R-$`  520 blank, 21 rows holding `EGP`, 2 holding `0`. The 21 line up
+  ///          exactly with the 21 populated `R-#` rows.
+  ///
+  /// So **21 invoices of 543 — under 4% — carry anything at all.** Migrated
+  /// per D10 and **not surfaced**.
+  ///
+  /// **The `R-` naming suggests "receipt". That is an INFERENCE, not a
+  /// fact** — the content only shows an amount and a currency travelling
+  /// together.
+  receiptAmount   Decimal? @map("receipt_amount") @db.Decimal(14, 2)
+  receiptCurrency String?  @map("receipt_currency")
 
   /// Access `Pay-Date` is **NOT MIGRATED** (D4) — 23% filled, but it stops in
   /// September 2019 while payments run to December 2021. Migrating it would
@@ -1699,7 +1715,23 @@ model InvoiceAllocation {
   /// The English name exactly as typed.
   legacyLawyerRaw String? @map("legacy_lawyer_raw")
 
-  /// Access `LawyerAs`, 100%.
+  /// Access `LawyerAs`, 100%. Four values, and they line up exactly with the
+  /// `matter_lawyers.role` set — see docs/GLOSSARY.md:
+  ///
+  ///   `Reviewer`  the partner who reviews (its own role, no matter_lawyers
+  ///               equivalent)
+  ///   `LawyerA`   -> lead
+  ///   `LawyerA+`  -> co_lead — **a SECOND LEAD sharing the lead's share**,
+  ///               always a different person from `LawyerA`. Not a variant of
+  ///               LawyerA.
+  ///   `LawyerB`   -> support
+  ///
+  /// The reviewer takes 25% and the remaining 75% goes either wholly to
+  /// `LawyerA` or evenly between `LawyerA` and `LawyerA+`.
+  ///
+  /// **Do not build a rule that assumes 0.375.** Invoice 21819 has
+  /// `LawyerA+` at 0.075. All 15 invoices with splits still sum to 1, so it
+  /// is deliberate rather than an error — nothing to quarantine.
   lawyerRoleId Int?                   @map("lawyer_role_id") @db.SmallInt
   lawyerRole   LookupLawyerShareRole? @relation(fields: [lawyerRoleId], references: [id])
   legacyLawyerAsRaw String?           @map("legacy_lawyer_as_raw")

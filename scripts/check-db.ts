@@ -600,6 +600,8 @@ async function main() {
             -- free-text log rather than a status.
             ('invoices', 'client_id'), ('payments', 'amount'),
             ('attendance', 'status'),
+            -- My reading of R-# was inverted: it is an amount, not a number.
+            ('invoices', 'receipt_no'),
             -- Replaced once the firm read its own columns: الصفة is the live
             -- capacity and صفة الموكل بالتوكيل is an abandoned duplicate.
             -- Both old names must be gone, or a transform could pick either.
@@ -701,6 +703,7 @@ async function main() {
      WHERE table_schema = 'public' AND data_type <> 'numeric'
        AND (table_name, column_name) IN (
             ('invoices', 'amount'), ('invoices', 'amount_usd'),
+            -- R-#, an AMOUNT despite the name; R-$ is its currency.
             ('invoices', 'receipt_amount'),
             ('payments', 'credit'), ('payments', 'debit'),
             ('invoice_allocations', 'share'))`;

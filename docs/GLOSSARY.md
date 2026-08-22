@@ -157,7 +157,7 @@ words to show on screen are **not yet supplied and were not invented**.
 |---|---|
 | `Inv-Status` | Paid 460 · Unpaid 60 · Partially Paid 12 · Later 10 · Canceled 1 |
 | `Inv-Type` | Service 379 · Expenses 162 |
-| `LawyerAs` | Reviewer 16 · LawyerA 16 · LawyerB 8 · **LawyerA+ 7 — meaning unclear, ask before surfacing it** |
+| `LawyerAs` | Reviewer 16 · LawyerA 16 · LawyerB 8 · LawyerA+ 7 — see below |
 
 | Arabic | English | Notes |
 |---|---|---|
@@ -171,6 +171,57 @@ words to show on screen are **not yet supplied and were not invented**.
 database**. It resolves through `people.name_en`, not through
 `person_name_alias`, which holds Arabic. Where `name_en` is null, quarantine —
 never guess.
+
+### `LawyerAs` and `matter_lawyers.role` are the same idea, named twice
+
+**Record the alignment or the two will be conflated.** A collection split and a
+matter assignment describe the same relationship from different sides.
+
+| `تقسيم التحصيلات.LawyerAs` | `matter_lawyers.role` | |
+|---|---|---|
+| `LawyerA` | `lead` | |
+| `LawyerA+` | `co_lead` | **a SECOND lead sharing the lead's allocation** |
+| `LawyerB` | `support` | |
+| `Reviewer` | — | the reviewing partner; no `matter_lawyers` equivalent |
+
+**`LawyerA+` is a co-lead, not a variant of `LawyerA`.** It is always a
+different person, and the structure is unambiguous — every invoice carrying one
+looks like this:
+
+```
+Reviewer   0.250
+LawyerA    0.375
+LawyerA+   0.375
+```
+
+against an invoice without one:
+
+```
+Reviewer   0.250
+LawyerA    0.750
+```
+
+The reviewer always takes 25%, and the remaining 75% goes either wholly to
+`LawyerA` or evenly between `LawyerA` and `LawyerA+`.
+
+**Do not build a rule that assumes 0.375.** Invoice 21819 has `LawyerA+` at
+0.075. All 15 invoices with splits still sum to exactly 1, so it is deliberate
+rather than an error — there is nothing to quarantine.
+
+### The three invoice flags
+
+| Access | Reading | Evidence |
+|---|---|---|
+| `VAT?` | **VAT applies to this invoice.** Boolean | Only `1` (289) and `0` (254). The `1` rows are `Service` invoices with ordinary amounts; nothing encodes a rate or a value |
+| `report` | Unknown, effectively unused. Boolean | 535 zeros, 8 ones. Migrated (D10), **never surfaced** |
+| `R-#` / `R-$` | A **receipt amount and its currency** | `R-#`: 278 blank, 244 zero, 21 round figures — 5000, 10000, 44000. `R-$`: 520 blank, 21 `EGP`, 2 `0`, on the same 21 rows |
+
+`R-#` is an **amount despite its name**, and `R-$` is a **currency despite
+its**. 21 invoices of 543 — under 4% — carry anything. Both migrated, neither
+surfaced.
+
+**The `R-` prefix suggesting "receipt" is an INFERENCE, not a fact.** The data
+shows only an amount and a currency travelling together.
 
 ## Attendance (the leave register)
 

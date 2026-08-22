@@ -246,20 +246,28 @@ contracts.
 | `details` | `Inv-Details` | 100% |
 | `status_id` | `Inv-Status` | 100% |
 | `type_id` | `Inv-Type` | 100% |
-| `vat` | `VAT?` | 100% |
-| `report` | `report` | 100% |
-| `receipt_no` | `R-#` | 49% |
+| `vat` | `VAT?` | 100% — **boolean**, 1 on 289 / 0 on 254 |
+| `report` | `report` | 100% — **boolean**, 535 zeros / 8 ones. Not surfaced |
+| `receipt_amount` | `R-#` | 49% nominally, but 278 blank + 244 zero — **21 real rows** |
 | `amount_usd` | `USD$` | 4% |
-| `receipt_amount` | `R-$` | 4% |
+| `receipt_currency` | `R-$` | 4% — the same 21 rows, `EGP` |
 | — | `Pay-Date` | 23%, **not migrated (D4)** |
 
 **Do not migrate `Pay-Date`** (D4) despite it being 23% filled: it stops in
 September 2019 while payments run to December 2021.
 
-**`VAT?`, `R-#` and `R-$` have assumed readings and need confirming.** The
-Access names are recorded against each column so the mapping is unambiguous
-whatever the English turns out to be. `vat` is text, because text cannot lose
-information whatever the source holds and narrowing it later is safe.
+**`VAT?` is a flag** — VAT applies to this invoice — and `report` is a flag on
+eight invoices whose meaning is unknown. Both boolean, both migrated (D10),
+`report` never surfaced.
+
+**`R-#` and `R-$` are a receipt amount and its currency, and the first reading
+of them here was inverted.** The names suggest a number and an amount; the
+content says otherwise — `R-#` holds round figures (5000, 10000, 44000) on 21
+rows, and `R-$` holds `EGP` on the same 21. Under 4% of invoices carry either.
+Neither is surfaced.
+
+**The `R-` prefix suggesting "receipt" is an inference, not a fact.** The data
+shows only an amount and a currency travelling together.
 
 ### `payments` — 597 rows (2013 – Dec 2021)
 
