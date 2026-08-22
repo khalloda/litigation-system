@@ -234,6 +234,52 @@ reconcile 288 against 289.
 
 ### `payments` — 597 rows (2013 – Dec 2021)
 
+**Money is `numeric(14,2)`, never a floating-point type.** A double cannot
+hold 0.1 exactly; summing 597 payments in one gives a total that is close and
+wrong, in a report a partner sends to a client. Gate 4 reconciles totals
+against Access and that comparison only means anything if both sides add up
+exactly. `currency` is kept on both tables because Gate 4 reconciles **per
+currency** — a total across mixed currencies is a meaningless number.
+
+`invoices.client_id` and `payments.invoice_id` are nullable: a row whose
+parent cannot be resolved loads with a null link and goes to the review queue.
+
+## Arabic search — `ar_normalise()`
+
+One database function, built at task 1.6. **It is the only definition of
+"normalised" in the system**; the copies that used to sit inline in
+`scripts/check-db.ts` and migration 0006 were removed when it arrived.
+
+Every searchable Arabic field has a shadow column holding its normalised form,
+kept in step by a **trigger**, with a `pg_trgm` GIN index on it. The user's
+query goes through the same function, so the two sides cannot drift.
+
+| Table | Field | Shadow column |
+|---|---|---|
+| `clients` | `name_ar`, `full_name` | `name_ar_normalised`, `full_name_normalised` |
+| `matters` | `case_number_ar`, `subject` | `case_number_ar_normalised`, `subject_normalised` |
+| `people` | `name_ar` | `name_ar_normalised` |
+| `person_name_alias` | `alias_ar` | `alias_ar_normalised` |
+| `contacts` | `contact_name` | `contact_name_normalised` |
+
+**Why a trigger and not a generated column.** Prisma does not know about
+generated columns, so it would include them in every `INSERT`, and PostgreSQL
+refuses an insert into a generated column — every create would fail. A trigger
+is invisible to Prisma in the way a CHECK constraint is, so the shadow column
+is an ordinary column Prisma can read and filter on while the database
+guarantees its content. `npm run db:check` asserts the triggers exist and that
+no stored value disagrees with the function.
+
+**Folded:** diacritics and tatweel · `أ إ آ ٱ → ا` · `ة → ه` · `ى → ي` ·
+`ؤ → و` · `ئ → ي` · Arabic-Indic digits `٠-٩ → 0-9` · Latin lowercased ·
+`J → ق` · the space inside a compound name.
+
+**Never folded: a dropped middle name.** `سامي خطاب` and
+`سامي إبراهيم خطاب` stay apart. Asserted as a negative test in the migration
+and in `db:check`, because it is the one property a future "improvement" would
+quietly destroy. See "The four classes of Arabic name variation" in
+`docs/MIGRATION.md`.
+
 ---
 
 ## Deferred — tables built, screens later

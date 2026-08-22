@@ -356,11 +356,12 @@ async function main() {
   //    After the three name-variant merges, no two people may share a
   //    fully-normalised name. This is the check that found them, kept so it
   //    can find the next one.
+  //    Through ar_normalise(), the one definition in the system since task
+  //    1.6. This used to repeat the fold inline here and in migration 0006 —
+  //    two copies of a rule that must never disagree.
   const collisions = await db.$queryRaw<{ count: bigint }[]>`
     SELECT count(*) AS count FROM (
-      SELECT replace(translate(regexp_replace(name_ar, '[ًٌٍَُِّْـ]', '', 'g'),
-                               'أإآٱةىؤئ', 'ااااهيوي'), ' ', '') AS folded
-        FROM people GROUP BY 1 HAVING count(*) > 1) d`;
+      SELECT ar_normalise(name_ar) FROM people GROUP BY 1 HAVING count(*) > 1) d`;
   const collisionCount = Number(one(collisions, 'normalised collisions').count);
   record(
     'No two people share a normalised name',
@@ -519,6 +520,11 @@ async function main() {
     'matter_party_roles',
     'hearing_attendees',
     'fee_letter_matters',
+    // task 1.5
+    'invoices',
+    'payments',
+    'invoice_allocations',
+    'attendance',
   ];
   const tableRows = await db.$queryRaw<{ table_name: string }[]>`
     SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
@@ -548,12 +554,17 @@ async function main() {
     ['matter_lawyers', 'legacy_source'],
     ['matter_parties', 'legacy_raw'],
     ['fee_letter_matters', 'legacy_matter_ref'],
+    //  Not a mapping raw column but the same idea: the abandoned duplicate of
+    //  الصفة, kept under D10 and never read.
+    ['powers_of_attorney', 'poa_capacity_duplicate'],
+    //  A fifth person-name mapping, on the leave register.
+    ['attendance', 'legacy_person_raw'],
   ]);
   record(
-    'Core schema: 16 tables, 16 raw columns',
+    'Core schema: 20 tables, 18 raw columns',
     'all present',
     missingTables.length === 0 && missingRaw.length === 0
-      ? '16 tables, 16 raw columns'
+      ? '20 tables, 18 raw columns'
       : `missing ${[...missingTables, ...missingRaw].join(', ')}`,
     missingTables.length === 0 && missingRaw.length === 0,
   );
@@ -567,7 +578,12 @@ async function main() {
      WHERE table_schema = 'public'
        AND (table_name, column_name) IN (
             ('contacts', 'attachments'), ('contacts', 'name_ar'),
-            ('contacts', 'name_en'))`;
+            ('contacts', 'name_en'),
+            -- Replaced once the firm read its own columns: الصفة is the live
+            -- capacity and صفة الموكل بالتوكيل is an abandoned duplicate.
+            -- Both old names must be gone, or a transform could pick either.
+            ('powers_of_attorney', 'capacity'),
+            ('powers_of_attorney', 'principal_capacity'))`;
   record(
     'No placeholder or complex columns',
     '0',
@@ -589,12 +605,14 @@ async function main() {
             ('admin_tasks', 'matter_id'), ('task_actions', 'task_id'),
             ('powers_of_attorney', 'client_id'), ('contacts', 'client_id'),
             ('documents', 'matter_id'), ('fee_letters', 'client_id'),
-            ('hearing_attendees', 'person_id'), ('fee_letter_matters', 'matter_id'))`;
+            ('hearing_attendees', 'person_id'), ('fee_letter_matters', 'matter_id'),
+            ('payments', 'invoice_id'), ('attendance', 'person_id'),
+            ('invoices', 'client_id'))`;
   record(
     'Stage 2 can never reject a row',
-    '10 links all nullable',
+    '13 links all nullable',
     notNullable.length === 0
-      ? '10 links all nullable'
+      ? '13 links all nullable'
       : `NOT NULL on ${notNullable.map((r) => `${r.table_name}.${r.column_name}`).join(', ')}`,
     notNullable.length === 0,
   );
@@ -645,6 +663,130 @@ async function main() {
       ? '3 checks + one lead per matter'
       : `only ${junctionGuards.length} of 4: ${junctionGuards.map((g) => g.name).join(', ')}`,
     junctionGuards.length === 4,
+  );
+
+  // 9b. Billing — task 1.5. Empty until Phase 2, and the shape is where the
+  //     money decisions live.
+  //
+  //     Money is NEVER a floating-point number. A double cannot hold 0.1
+  //     exactly, so summing 597 payments in one gives a total that is close
+  //     and wrong — in a report a partner sends to a client. Gate 4
+  //     reconciles totals against Access, and that only means something if
+  //     both sides add up exactly.
+  const inexactMoney = await db.$queryRaw<{ table_name: string; column_name: string; data_type: string }[]>`
+    SELECT table_name, column_name, data_type FROM information_schema.columns
+     WHERE table_schema = 'public' AND data_type <> 'numeric'
+       AND (table_name, column_name) IN (
+            ('invoices', 'amount'), ('payments', 'amount'),
+            ('invoice_allocations', 'share'))`;
+  //     D4: Pay-Date is not migrated. Asserted ABSENT — it stopped in Sept
+  //     2019 and holds 126 stale values the payments table supersedes.
+  const payDate = await db.$queryRaw<{ column_name: string }[]>`
+    SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'invoices'
+       AND column_name IN ('pay_date', 'paydate')`;
+  record(
+    'Billing: exact money, no Pay-Date',
+    'numeric amounts, Pay-Date absent',
+    inexactMoney.length === 0 && payDate.length === 0
+      ? 'numeric amounts, Pay-Date absent'
+      : [
+          ...inexactMoney.map((r) => `${r.table_name}.${r.column_name} is ${r.data_type}`),
+          ...payDate.map((r) => `invoices.${r.column_name} exists (D4)`),
+        ].join(', '),
+    inexactMoney.length === 0 && payDate.length === 0,
+  );
+
+  //     The shares on one invoice must sum to 1. That is a rule ACROSS rows,
+  //     which no CHECK constraint can express, so it lives here. Vacuously
+  //     true while the table is empty and meaningful from the first Phase 2
+  //     split — which is the point: the check exists BEFORE the data does.
+  const badSplits = await db.$queryRaw<{ invoice_id: number; total: string }[]>`
+    SELECT invoice_id, sum(share)::text AS total
+      FROM invoice_allocations
+     GROUP BY invoice_id
+    HAVING sum(share) <> 1`;
+  record(
+    'Invoice shares sum to 1',
+    '0 invoices out',
+    badSplits.length === 0
+      ? '0 invoices out'
+      : badSplits.map((b) => `invoice ${b.invoice_id} sums to ${b.total}`).join(', '),
+    badSplits.length === 0,
+  );
+
+  // 10. Arabic search — task 1.6.
+  //
+  //     A plain search fails on 49% of client names and 96% of matter
+  //     subjects, because users type without hamza and without diacritics.
+  //     ar_normalise() folds both the stored value and the query, so the two
+  //     sides cannot drift apart.
+  //
+  //     The POSITIVE tests are the two docs/PRD.md names. The NEGATIVE ones
+  //     matter more: every fold is a merge, and a fold that is right 95% of
+  //     the time silently merges two people the other 5%. This project has
+  //     merged two people by accident twice, one carrying 1,309 hearings.
+  const folds = await db.$queryRaw<{ label: string; pass: boolean }[]>`
+    SELECT 'احمد finds أحمد'  AS label, ar_normalise('احمد') = ar_normalise('أحمد') AS pass
+    UNION ALL SELECT '140J finds 140ق', ar_normalise('140J') = ar_normalise('140ق')
+    UNION ALL SELECT 'ta marbuta',      ar_normalise('محكمه') = ar_normalise('محكمة')
+    UNION ALL SELECT 'compound space',  ar_normalise('عبدالعزيز') = ar_normalise('عبد العزيز')
+    UNION ALL SELECT 'Arabic digits',   ar_normalise('١٤٠ق') = ar_normalise('140ق')
+    UNION ALL SELECT 'NOT a dropped middle name',
+                     ar_normalise('سامي خطاب') <> ar_normalise('سامي إبراهيم خطاب')
+    UNION ALL SELECT 'NOT تحكيم/تحقيق', ar_normalise('تحكيم') <> ar_normalise('تحقيق')
+    UNION ALL SELECT 'NOT طاعن/متظلم',  ar_normalise('طاعن') <> ar_normalise('متظلم')`;
+  const failedFolds = folds.filter((f) => !f.pass);
+  record(
+    'Arabic search folds, and does not over-fold',
+    '8 of 8',
+    failedFolds.length === 0
+      ? '8 of 8'
+      : `FAILED: ${failedFolds.map((f) => f.label).join(', ')}`,
+    failedFolds.length === 0,
+  );
+
+  //     The shadow columns are maintained by triggers, which schema.prisma
+  //     cannot see. A stored value that disagrees with the function is a
+  //     record that has quietly become unfindable.
+  const drifted = await db.$queryRaw<{ count: bigint }[]>`
+    SELECT (SELECT count(*) FROM people
+             WHERE name_ar_normalised IS DISTINCT FROM ar_normalise(name_ar))
+         + (SELECT count(*) FROM person_name_alias
+             WHERE alias_ar_normalised IS DISTINCT FROM ar_normalise(alias_ar))
+         + (SELECT count(*) FROM clients
+             WHERE name_ar_normalised IS DISTINCT FROM ar_normalise(name_ar))
+         + (SELECT count(*) FROM matters
+             WHERE case_number_ar_normalised IS DISTINCT FROM ar_normalise(case_number_ar))
+         + (SELECT count(*) FROM contacts
+             WHERE contact_name_normalised IS DISTINCT FROM ar_normalise(contact_name))
+      AS count`;
+  const driftCount = Number(one(drifted, 'normalised drift').count);
+  record(
+    'Normalised columns agree with the function',
+    '0 rows out of step',
+    `${driftCount} out of step`,
+    driftCount === 0,
+  );
+
+  const searchGuards = await db.$queryRaw<{ name: string }[]>`
+    SELECT tgname AS name FROM pg_trigger
+     WHERE tgname IN ('clients_name_ar_normalise', 'clients_full_name_normalise',
+                      'matters_case_number_ar_normalise', 'matters_subject_normalise',
+                      'people_name_ar_normalise', 'person_name_alias_alias_ar_normalise',
+                      'contacts_contact_name_normalise')
+    UNION ALL
+    SELECT indexname FROM pg_indexes
+     WHERE schemaname = 'public' AND indexname IN (
+            'clients_name_ar_normalised_trgm', 'matters_case_number_ar_normalised_trgm',
+            'matters_subject_normalised_trgm', 'people_name_ar_normalised_trgm',
+            'person_name_alias_alias_ar_normalised_trgm',
+            'contacts_contact_name_normalised_trgm')`;
+  record(
+    'Search triggers and trigram indexes',
+    '7 triggers + 6 indexes',
+    searchGuards.length === 13 ? '7 triggers + 6 indexes' : `only ${searchGuards.length} of 13`,
+    searchGuards.length === 13,
   );
 
   // ---- report --------------------------------------------------------------

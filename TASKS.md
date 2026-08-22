@@ -252,20 +252,63 @@ be bigger than expected, split it and tell the owner.
       constraints do not over-reach. Nothing left behind.
       db:check 25 → **26 checks**.
 
-- [ ] **1.5 Billing + deferred tables**
-      invoices, payments (read-only in the app), attendance,
-      invoice_allocations. Empty but correctly keyed — see D3.
+- [x] **1.5 Billing + deferred tables** — 22 August 2026, migration 0015
+      invoices, payments, invoice_allocations, attendance. **All empty**, with
+      correct keys and no screens (D3). Read-only for every role including the
+      Administrator (D4), visible to all four roles (D14).
 
-- [ ] **1.6 Arabic search** — unblocked 21 August 2026.
-      The three lists that were marked "already clean" without inspection
-      have been re-analysed and corrected: `hearing_action` 23 → 20,
-      `client_branch` 32 → 15, `matter_destination` unchanged at 27.
-      Total 130. The values are settled, so the normaliser and its trigram
-      indexes can be built on them.
-      What `client_branch` MEANS is settled too — see 1.2c and **D19**.
-      The normaliser as a PostgreSQL function, generated normalised columns on
-      every searchable Arabic field, `pg_trgm` indexes.
-      **Test:** searching `احمد` finds `أحمد`; `140J` finds `140ق`.
+      **Money is `numeric`, never floating point, and asserted to be.** A
+      double cannot hold 0.1 exactly, so summing 597 payments in one gives a
+      total that is close and wrong — in a report a partner sends to a client.
+      Gate 4 reconciles totals against Access, which only means something if
+      both sides add up exactly. `currency` survives on both tables because
+      Gate 4 reconciles **per currency**.
+
+      **`Pay-Date` is asserted ABSENT** (D4) — it stopped in Sept 2019 and
+      holds 126 stale values the payments table supersedes. A presence check
+      cannot see that.
+
+      **Shares on one invoice must sum to 1.** That is a rule across rows, so
+      no CHECK can express it: it lives in `db:check`, vacuously true today
+      and meaningful from the first Phase 2 split. A single share is
+      constrained to 0–1, which catches a percentage typed as 50.
+
+      `attendance` is the **staff leave register**, not meeting attendance —
+      D2 drops those entirely. Its person link is a fifth person-name mapping
+      and gets `legacy_person_raw`.
+
+      **Column lists still incomplete** for `الفواتير`, `السداد`, `Attendance`
+      and `تقسيم التحصيلات` — same position as 1.3 took, nothing invented.
+      Needed before task 2.3.
+
+- [x] **1.6 Arabic search** — 22 August 2026, migration 0016
+      **`ar_normalise(text)`** — one database function, the only definition of
+      "normalised" in the system. The inline copies in `db:check` and
+      migration 0006 are gone; two copies of a rule that must never disagree
+      is one too many.
+
+      Seven shadow columns, seven **triggers**, six `pg_trgm` GIN indexes.
+      **Triggers, not generated columns:** Prisma does not know about
+      generated columns, would include them in every INSERT, and PostgreSQL
+      refuses that — the application would fail on every create. A trigger is
+      invisible to Prisma the way a CHECK constraint is, so the shadow column
+      stays an ordinary column Prisma can filter on while the database
+      guarantees its content. Proved: an application writing rubbish into the
+      shadow column is overruled.
+
+      **Both named tests pass** — `احمد` finds `أحمد`, `140J` finds `140ق` —
+      and so do ta marbuta, alef maqsura, tatweel, diacritics, Arabic-Indic
+      digits, Latin case and the compound-name space.
+
+      **The negative tests matter more, and are asserted in the migration and
+      in `db:check`:** a dropped middle name is NEVER folded
+      (`سامي خطاب` ≠ `سامي إبراهيم خطاب`), `تحكيم` ≠ `تحقيق`, `طاعن` ≠
+      `متظلم`, `أول درجة` ≠ `ابتدائي`. Every fold is a merge, and a fold that
+      is right 95% of the time merges two people the other 5%.
+      The 135 roster names are asserted to remain 135 DISTINCT normalised
+      names — the check that caught the three duplicates at 1.2b, now standing
+      guard over the fold itself.
+      db:check 26 → **31 checks**.
 
 ---
 

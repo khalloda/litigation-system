@@ -356,6 +356,10 @@ model MigrationCrosswalk {
 model Person {
   id     Int     @id @default(autoincrement())
   nameAr String  @unique @map("name_ar")
+  /// Kept in step by a database TRIGGER, never written by the application —
+  /// see migration 0016. A generated column cannot be used because Prisma
+  /// would include it in every INSERT and PostgreSQL refuses that.
+  nameArNormalised String? @map("name_ar_normalised")
   nameEn String? @map("name_en")
 
   /// Login address. Nullable because only a handful of people ever log in;
@@ -400,6 +404,10 @@ model Person {
   matterLawyers MatterLawyer[]
   /// Hearings this person attended.
   hearingAttendees HearingAttendee[]
+  /// Shares of collections allocated to this person.
+  invoiceAllocations InvoiceAllocation[]
+  /// Leave register entries.
+  attendance Attendance[]
 
   @@index([isStaff, isActive])
   @@map("people")
@@ -419,6 +427,10 @@ model PersonNameAlias {
   /// The spelling exactly as it appeared. Unique across the whole roster: one
   /// spelling cannot belong to two people.
   aliasAr   String  @unique @map("alias_ar")
+  /// Kept in step by a database TRIGGER, never written by the application —
+  /// see migration 0016. A generated column cannot be used because Prisma
+  /// would include it in every INSERT and PostgreSQL refuses that.
+  aliasArNormalised String? @map("alias_ar_normalised")
   isPrimary Boolean @default(false) @map("is_primary")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -566,9 +578,14 @@ model Client {
 
   /// 100% filled in the Access data.
   nameAr   String  @map("name_ar")
+  /// Kept in step by a database TRIGGER, never written by the application —
+  /// see migration 0016. A generated column cannot be used because Prisma
+  /// would include it in every INSERT and PostgreSQL refuses that.
+  nameArNormalised String? @map("name_ar_normalised")
   /// 73% filled. Kept for a possible future bilingual version (D12).
   nameEn   String? @map("name_en")
   fullName String? @map("full_name")
+  fullNameNormalised String? @map("full_name_normalised")
 
   branchId Int?                @map("branch_id") @db.SmallInt
   branch   LookupClientBranch? @relation(fields: [branchId], references: [id])
@@ -602,6 +619,7 @@ model Client {
   matters    Matter[]
   poas       PowerOfAttorney[]
   feeLetters FeeLetter[]
+  invoices   Invoice[]
 
   @@index([nameAr])
   @@map("clients")
@@ -663,6 +681,10 @@ model Contact {
 
   /// Access `Contact1`, 97% filled. THE name field, despite the column name.
   contactName String? @map("contact_name")
+  /// Kept in step by a database TRIGGER, never written by the application —
+  /// see migration 0016. A generated column cannot be used because Prisma
+  /// would include it in every INSERT and PostgreSQL refuses that.
+  contactNameNormalised String? @map("contact_name_normalised")
   /// Access `Full_name`, 10% filled. Not the primary name — see above.
   fullName    String? @map("full_name")
   /// Access `Job Title`, 60%.
@@ -720,8 +742,13 @@ model Matter {
   /// the journey of the matter up through the courts. The firm decided not to
   /// parse them; every screen and every report must render all the lines.
   caseNumberAr String? @map("case_number_ar")
+  /// Kept in step by a database TRIGGER, never written by the application —
+  /// see migration 0016. A generated column cannot be used because Prisma
+  /// would include it in every INSERT and PostgreSQL refuses that.
+  caseNumberArNormalised String? @map("case_number_ar_normalised")
   /// 98% filled.
   subject      String?
+  subjectNormalised String? @map("subject_normalised")
 
   clientId Int?    @map("client_id")
   client   Client? @relation(fields: [clientId], references: [id])
@@ -965,13 +992,22 @@ model TaskAction {
 ///
 /// Complete: all 15 Access columns are accounted for.
 ///
-/// **THREE COLUMN NAMES ARE LITERAL TRANSLATIONS AND NEED THE FIRM TO
-/// CONFIRM THEM** — `الصفة` against `صفة الموكل بالتوكيل` (two capacity
-/// fields, and which is which is not obvious), `حرف`, and `جرد`. The Arabic
-/// source column is recorded against every field below, so the mapping is
-/// unambiguous whatever the English label turns out to be, and the tables are
-/// empty so a rename costs nothing. docs/GLOSSARY.md does not carry these
-/// terms; rule 5 says ask rather than guess.
+/// **`الصفة` AND `صفة الموكل بالتوكيل` ARE THE SAME FIELD, DUPLICATED.**
+/// The firm compared them row by row across all 735: 565 identical, 164
+/// filled in `الصفة` only, **zero filled in the other only**, 4 different —
+/// and three of those four are typos of each other. One column a strict
+/// superset and the other never uniquely populated is the signature of a copy
+/// that stopped being maintained.
+///
+/// `الصفة` is the live one and the application reads it. Both are migrated
+/// (D10) and the duplicate is never read.
+///
+/// **THIS IS NOT THE D7 PARTY CAPACITY, and the names keep them apart.**
+/// D7 covers a party's procedural ROLE in a matter — plaintiff, appellant —
+/// from a closed list of 11, and lives on matter_party_roles. This is the
+/// capacity in which a person GRANTED a power of attorney: `شخصي`
+/// (personally) or a corporate office. Free text, 306 distinct values, no
+/// list and no lookup table. Do not conflate them.
 model PowerOfAttorney {
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
@@ -993,20 +1029,32 @@ model PowerOfAttorney {
   /// no raw column until the 21 August audit.
   legacyLawyersRaw String? @map("legacy_lawyers_raw")
 
-  /// Access `مسلسل`, 82% — serial number.
+  /// Access `مسلسل`, 82% — the sequence column on the powers-of-attorney
+  /// report.
+  ///
+  /// **TEXT, NOT A NUMBER.** Despite the name, the values are Latin letters —
+  /// A, B, C. Typing it as an integer would fail the load on every row.
   serialNo String? @map("serial_no")
   /// Access `اسم الموكل`, 100% — the name of the principal granting the power.
   principalName String? @map("principal_name")
-  /// Access `صفة الموكل بالتوكيل`, 77%. **Confirm the reading — see above.**
-  principalCapacity String? @map("principal_capacity")
-  /// Access `الصفة`, 100%. **Confirm the reading — see above.**
-  capacity String? @map("capacity")
+  /// Access `الصفة`, 100% — **the live capacity field.** The capacity in
+  /// which the principal granted the power: `شخصي`, or a corporate office
+  /// such as `عضو منتدب لشركة أكيومن`. Free text, 306 distinct values.
+  poaCapacity String? @map("poa_capacity")
+  /// Access `صفة الموكل بالتوكيل`, 77% — **the abandoned duplicate of
+  /// poa_capacity.** Migrated because nothing is deleted (D10). **Never read
+  /// it**; every value it holds is either identical to poa_capacity, absent,
+  /// or stale.
+  poaCapacityDuplicate String? @map("poa_capacity_duplicate")
 
-  /// Access `رقم التوكيل`, 99%.
+  /// Access `رقم التوكيل`, 99% — the number part of the POA reference.
   poaNumber String? @map("poa_number")
-  /// Access `حرف`, 99%. Literally "letter". **Confirm the reading.**
+  /// Access `حرف`, 99% — the LETTER-SERIES part of the POA reference. 28
+  /// values, nearly all single Arabic letters: `أ` on 183, `ب` on 167.
+  /// The powers-of-attorney report prints the three parts together:
+  /// **982 / أ / 2009** is number / letter / year.
   poaLetter String? @map("poa_letter")
-  /// Access `السنة`, 99%.
+  /// Access `السنة`, 99% — the year part of the same reference.
   poaYear String? @map("poa_year")
 
   /// Access `جهة الإصدار`, 100% — the authority that issued it.
@@ -1021,8 +1069,15 @@ model PowerOfAttorney {
 
   /// Access `ملاحظات`, 53%.
   notes String? @map("notes")
-  /// Access `جرد`, 100%. Literally "inventory". **Confirm the reading.**
-  inventory String? @map("inventory")
+  /// Access `جرد`, 100% — a yes/no flag: 1 on 680 rows, 0 on 55.
+  ///
+  /// **WHAT IT MEANS IS STILL UNKNOWN AND IS NOT GUESSED.** "Inventory"
+  /// suggests a stock-check of the physical powers of attorney, but which
+  /// state means what cannot be recovered from the data — the firm is
+  /// supplying it. Named literally, typed as the boolean the data shows it
+  /// to be, with the Arabic recorded. Do not build anything on it until the
+  /// meaning arrives.
+  inventory Boolean? @map("inventory")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -1336,4 +1391,159 @@ model FeeLetterMatter {
   @@index([feeLetterId])
   @@index([matterId])
   @@map("fee_letter_matters")
+}
+
+// ===========================================================================
+//  BILLING AND DEFERRED TABLES — task 1.5
+//
+//  Four tables that exist in Phase 1 with correct keys and NO SCREENS (D3).
+//  The firm runs all four in Excel today. Building them now means adding the
+//  screens later is a feature, not a database migration.
+//
+//  INVOICES AND PAYMENTS ARE READ-ONLY FOR EVERY ROLE, INCLUDING THE
+//  ADMINISTRATOR (D4, docs/PERMISSIONS.md). 543 invoices (2010–Dec 2021) and
+//  597 payments (2013–Dec 2021) migrate so that old billing questions can be
+//  answered; nobody can create or edit one in Phase 1. That is enforced on
+//  the server in Stage 3, not by hiding a button.
+//
+//  BILLING IS VISIBLE TO ALL FOUR ROLES, for all clients (D14). Not
+//  restricted to a lawyer's own matters: 834 of 1,730 matters have no lawyer
+//  recorded, so such a rule would hide billing from everybody.
+//
+//  **THE COLUMN LISTS BELOW ARE INCOMPLETE AND KNOWN TO BE.** Only the keys
+//  and the columns the documents actually name are modelled. The Access
+//  column lists for الفواتير, السداد, Attendance and تقسيم التحصيلات have
+//  never been written down, and nothing is invented — the same position task
+//  1.3 took, and for the same reason. They are completed before Stage 2 loads
+//  a row. Staging holds every source column as text, so nothing is at risk in
+//  the meantime.
+// ===========================================================================
+
+/// Invoices. 543 rows at Stage 2, 2010 to December 2021. **Read-only.**
+///
+/// **DO NOT MIGRATE `الفواتير.Pay-Date` (D4).** It stopped in September 2019
+/// and holds 126 stale values that the payments table supersedes. Migrating
+/// it would put two disagreeing answers to "when was this paid" in front of a
+/// partner.
+model Invoice {
+  id       Int  @id @default(autoincrement())
+  legacyId Int? @unique @map("legacy_id")
+
+  /// Access `Inv-No`. The number the firm and the client both refer to.
+  invoiceNo String? @map("invoice_no")
+
+  clientId Int?    @map("client_id")
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  /// Gate 4 reconciles **total invoiced and total paid, per currency**
+  /// (docs/MIGRATION.md), so the currency has to survive the migration. A
+  /// total across mixed currencies is a meaningless number.
+  currency String?
+  /// Money is NEVER a floating-point number. Decimal(14,2) holds any figure
+  /// this firm will ever invoice and adds up exactly.
+  amount   Decimal? @db.Decimal(14, 2)
+
+  invoiceDate DateTime? @map("invoice_date") @db.Date
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  payments    Payment[]
+  allocations InvoiceAllocation[]
+
+  @@index([clientId])
+  @@index([invoiceDate])
+  @@map("invoices")
+}
+
+/// Payments against invoices. 597 rows at Stage 2, 2013 to December 2021.
+/// **Read-only.**
+model Payment {
+  id       Int  @id @default(autoincrement())
+  legacyId Int? @unique @map("legacy_id")
+
+  /// Nullable: a payment whose invoice cannot be resolved loads with a null
+  /// link and goes to the review queue, never dropped.
+  invoiceId Int?     @map("invoice_id")
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  currency    String?
+  amount      Decimal?  @db.Decimal(14, 2)
+  paymentDate DateTime? @map("payment_date") @db.Date
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([invoiceId])
+  @@index([paymentDate])
+  @@map("payments")
+}
+
+/// How a collection is split between lawyers. Empty at Stage 2.
+///
+/// Replaces `تقسيم التحصيلات` (47 rows) and `LawyerShare4Invoices` (empty).
+///
+/// **The shares on one invoice must sum to 1.** That is a rule ACROSS rows,
+/// which no CHECK constraint can express, so it lives in npm run db:check —
+/// where it is vacuously true today and becomes meaningful the moment Phase 2
+/// writes the first split. Rule 16: the strongest tool the rule allows.
+///
+/// A single share is constrained here to lie between 0 and 1, which a CHECK
+/// constraint CAN express and which catches a percentage typed as 50.
+model InvoiceAllocation {
+  id        Int     @id @default(autoincrement())
+  legacyId  Int?    @unique @map("legacy_id")
+  invoiceId Int     @map("invoice_id")
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  personId  Int     @map("person_id")
+  person    Person  @relation(fields: [personId], references: [id])
+
+  /// A fraction, not a percentage: 0.25, never 25. Decimal(6,5) so that
+  /// thirds round predictably and three shares still add to 1.
+  share Decimal? @db.Decimal(6, 5)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([invoiceId])
+  @@index([personId])
+  @@map("invoice_allocations")
+}
+
+/// The staff leave register. 4,022 rows at Stage 2.
+///
+/// **THIS IS NOT MEETING ATTENDANCE.** D2 drops meetings and their attendance
+/// entirely — three tables, 3,230 rows, archived and never migrated. This is
+/// a different feature: who was on leave, and when. Deferred, not dropped
+/// (D3), and the screens arrive in Phase 2.
+model Attendance {
+  id       Int  @id @default(autoincrement())
+  legacyId Int? @unique @map("legacy_id")
+
+  /// Resolved through person_name_alias at Stage 2, never by matching
+  /// people.name_ar — rule 15. Nullable so a name that resolves to nobody
+  /// goes to the review queue rather than being dropped.
+  personId Int?    @map("person_id")
+  person   Person? @relation(fields: [personId], references: [id])
+  /// The typed name exactly as it appeared — a fifth person-name mapping, and
+  /// it gets a raw partner for the same reason as the other four.
+  legacyPersonRaw String? @map("legacy_person_raw")
+
+  attendanceDate DateTime? @map("attendance_date") @db.Date
+  status         String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@index([personId])
+  @@index([attendanceDate])
+  @@map("attendance")
 }
