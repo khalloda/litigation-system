@@ -7,7 +7,8 @@ conversation that produced the state below.
 binding — **16** of them now), `docs/DECISIONS.md` (D1–D21), `TASKS.md` (current
 position), then this file.
 
-Last commit: `e0ac067`. Working tree clean. All 26 `db:check` checks pass
+Last commit: `aea70e5`. Working tree clean. **STAGE 1 IS COMPLETE.**
+All 31 `db:check` checks pass
 and all 10 `db:verify` checks pass. Stage 1 has been reviewed by Codex and
 all four findings are closed (task 1.2d).
 
@@ -55,8 +56,8 @@ the whole codebase for a right-to-left violation in one command.
 cp .env.example .env
 npm install                 # postinstall runs `prisma generate`
 npm run db:up               # PostgreSQL 17 in Docker, waits until healthy
-npm run db:migrate:deploy   # apply all 13 migrations
-npm run db:check            # 26 checks, all must read OK
+npm run db:migrate:deploy   # apply all 16 migrations
+npm run db:check            # 31 checks, all must read OK
 
 npm run dev                 # http://localhost:3000
 npm run build               # production build
@@ -76,7 +77,7 @@ npm run test:gate1          # 15 cases. Runs under pwsh AND Windows PowerShell 5
 # database
 npm run db:up / db:down / db:logs / db:psql / db:studio
 npm run db:verify           # 10 SQL-level checks inside the container
-npm run db:check            # 26 application-level checks through Prisma
+npm run db:check            # 31 application-level checks through Prisma
 npm run db:reset            # DESTRUCTIVE. Guarded. See §5 and CLAUDE.md rule 12.
 npm run db:migrate          # prisma migrate dev — use this locally, see §5
 ```
@@ -106,7 +107,7 @@ docker/postgres/
 
 prisma/
   schema.prisma (*)         13 models. Structure lives here; DATA lives in sql/
-  migrations/               13 applied migrations, listed in §3
+  migrations/               16 applied migrations, listed in §3
 prisma.config.ts (*)        Prisma 7 config; reads DATABASE_URL from .env
 
 src/
@@ -124,7 +125,7 @@ scripts/
   lib/gate1.ps1 (*)         Gate 1 decision, pure, testable without Access
   lib/inventory.ts (*)      parses+validates the db:reset inventory (JSON)
   db-reset.ts (*)           the guarded destructive reset. Read its header first
-  check-db.ts (*)           26 application-level checks
+  check-db.ts (*)           31 application-level checks
   write-baseline.ts (*)     writes the reviewed-links baseline; refuses silent overwrites
   lib/reviewed-links.ts (*) baseline parse/compare/digest. Pure, no database
   lib/read-links.ts (*)     the one place that reads links out of the database
@@ -197,6 +198,9 @@ Two sources of truth, deliberately separated:
 | 0011 | `20260822065822_core_schema` | task 1.3 — 11 tables and `lookup_court`, all empty; 11 `_raw` columns, 8 nullable links and the D9/D15 schema shapes all asserted |
 | 0012 | `20260822072541_complete_four_column_lists` | the real Access columns for `contacts` (17), `powers_of_attorney` (15), `fee_letters` (10), `task_actions` (7), with fill rates; a fourth person-name raw column |
 | 0013 | `20260822073021_junction_tables` | task 1.4 — 5 junction tables, the fifth `_raw` column, 3 CHECK constraints and one-lead-per-matter |
+| 0014 | `20260822082441_poa_capacity_and_inventory` | `الصفة` is live and `صفة الموكل بالتوكيل` an abandoned duplicate; `مسلسل`/`حرف` text, `جرد` boolean |
+| 0015 | `20260822082711_billing_and_deferred` | task 1.5 — invoices, payments, invoice_allocations, attendance; exact numerics, no `Pay-Date` |
+| 0016 | `20260822083141_arabic_search` | task 1.6 — `ar_normalise()`, 7 shadow columns, 7 triggers, 6 trigram indexes |
 
 Every migration ends in a `DO $$` block asserting its counts. A migration runs
 in a transaction, so a failed assertion rolls the whole thing back — there is
@@ -244,8 +248,8 @@ per account at Milestone 4. `team_id` is nullable and NULL is common and valid.
 ### Not yet built
 
 `invoices`, `payments`, `attendance`, `invoice_allocations` (task 1.5);
-`users` (Stage 3). Everything else in `docs/DATA-MODEL.md` now exists and is
-empty.
+`users` (Stage 3). **Every other table in `docs/DATA-MODEL.md` now exists**,
+empty and correctly keyed.
 
 `migration_multi_person_rule`, `migration_multi_person_member`,
 `migration_excluded_name` — deliberately deferred to task 2.7, see §6.
@@ -423,6 +427,14 @@ review. All findings closed; the three review files are in `docs/reviews/`.
   `contacts.name_ar`/`name_en` were placeholders and are gone. db:check → 25.
 - **1.4** Junction tables. **All five `_raw` columns now present** — 16 in
   total. Four constraints Prisma cannot express. db:check → 26.
+- **1.4a** The firm read its own POA columns: `الصفة` is live,
+  `صفة الموكل بالتوكيل` an abandoned duplicate. Glossary updated.
+- **1.5** Billing and deferred tables. Exact numerics, no `Pay-Date` (D4).
+- **1.6** Arabic search. `ar_normalise()` is the ONE definition of
+  normalised in the system. db:check → **31**.
+
+**Stage 1 is complete.** Every table in `docs/DATA-MODEL.md` exists except
+`users`, which belongs to Stage 3. **This is the review point.**
 
 Every assertion above was **proved by deliberately breaking it** — see the
 commit messages for the exact error text each produced. For 1.2c the four
@@ -552,25 +564,33 @@ Nothing in Stage 2 can run without both.
 
 ## 8. Open Questions
 
-1. **Three column names on `powers_of_attorney` need the firm to confirm
-   them:** `الصفة` against `صفة الموكل بالتوكيل` — two capacity fields on the
-   same table, and which is which is not obvious — plus `حرف` and `جرد`. None
-   is in `docs/GLOSSARY.md`, so they are translated literally with the Arabic
-   source column recorded against each field. The tables are empty, so a
-   rename costs nothing. Rule 5: ask rather than guess.
+1. **What the two states of `جرد` MEAN.** It is a yes/no flag — 1 on 680 rows
+   and 0 on 55 — and is typed as a boolean, but which state means what is not
+   recoverable from the data. The firm is supplying it. **Build nothing on it
+   until then.** (`الصفة`, `صفة الموكل بالتوكيل`, `حرف` and `مسلسل` are all
+   answered and now in `docs/GLOSSARY.md`.)
 
-2. **The three "separate client" values need new client records.**
+2. **The Access column lists for the four billing and deferred tables** —
+   `الفواتير`, `السداد`, `Attendance` and `تقسيم التحصيلات`. Built at task 1.5
+   with their keys and only the columns the documents name; nothing invented,
+   the same position task 1.3 took and for the same reason. **Needed before
+   task 2.3 loads a row.** Staging holds every source column as text
+   meanwhile, so nothing is at risk.
+
+3. **The three "separate client" values need new client records.**
    `سيجما للإعلام (تليفزيون الحياة)`, `ألفا مصر للتجارة` and
    `سيجما للصناعات الدوائية`. The firm decides which client each affected
    matter belongs to. Until then those matters are quarantined at task 2.6.
    **No action needed now**; flagged so it is not forgotten.
 
-3. **Stage 1 has been reviewed and all findings are closed** (task 1.2d,
-   `docs/reviews/2026-08-21-stage-1.md`). The firm is out of Codex quota until
-   Monday. **The next review point is the end of Stage 1** — do not wait for a
-   re-review of 1.2d before starting 1.3.
+4. **Stage 1 is finished and is the agreed review point.** The 21 August
+   review (`docs/reviews/2026-08-21-stage-1.md`) covered up to task 1.2 and
+   all four of its findings are closed. Tasks 1.2c onwards — the branch
+   resolution, the core schema, the junction tables, billing and Arabic
+   search — are **unreviewed**. The firm was out of Codex quota until Monday
+   23 August.
 
-4. **`npm run test:guard` refuses to run**, for the same reason `db:reset`
+5. **`npm run test:guard` refuses to run**, for the same reason `db:reset`
    always needs `--force-i-know`: the database holds 130 lookup rows, 135
    people and 347 aliases, and the guard tests write fixture tables into it.
    **This is CLAUDE.md rule 14 working, not a bug.** The owner has ruled:
