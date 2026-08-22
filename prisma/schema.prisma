@@ -392,6 +392,8 @@ model Person {
   adminTasks AdminTask[]
   /// Paper documents this person is responsible for.
   documents  Document[]
+  /// Administrative task steps this person carried out (القائم بالعمل).
+  taskActions TaskAction[]
 
   @@index([isStaff, isActive])
   @@map("people")
@@ -633,15 +635,17 @@ model ClientLogo {
 
 /// People to contact at a client. 188 rows at Stage 2.
 ///
-/// **THE COLUMN LIST BELOW IS INCOMPLETE AND KNOWN TO BE.** docs/DATA-MODEL.md
-/// describes this table in one line and never names its Access columns, so
-/// only the keys and the name are modelled here. Anything else the Access
-/// table holds — telephone, e-mail, job title — is NOT invented here; it is
-/// added once the firm supplies the column list, before Stage 2 loads a row.
-/// Staging holds every source column as text, so nothing is at risk in the
-/// meantime (docs/MIGRATION.md).
+/// Complete: all 17 Access columns are accounted for. The percentage on each
+/// column is HOW MUCH OF IT IS ACTUALLY FILLED in the live data, supplied by
+/// the firm. It is recorded because a fill rate is a design fact: Home Phone
+/// has ONE row in 188, and a screen or report built around it would be blank
+/// almost always.
 ///
-/// Contacts.Attachments in Access is EMPTY — do not build for it (D11).
+/// **Contact1 is the real name field at 97%; Full_name is 10%.** Do not
+/// assume from the names which one is primary — the firm checked.
+///
+/// Contacts.Attachments looks 100% populated and holds ZERO files. It is an
+/// Access complex column (D11) and is NOT migrated.
 model Contact {
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
@@ -651,8 +655,36 @@ model Contact {
   clientId Int?    @map("client_id")
   client   Client? @relation("ClientContacts", fields: [clientId], references: [id])
 
-  nameAr String? @map("name_ar")
-  nameEn String? @map("name_en")
+  /// Access `Contact1`, 97% filled. THE name field, despite the column name.
+  contactName String? @map("contact_name")
+  /// Access `Full_name`, 10% filled. Not the primary name — see above.
+  fullName    String? @map("full_name")
+  /// Access `Job Title`, 60%.
+  jobTitle    String? @map("job_title")
+
+  /// Access `E-mail Address`, 75%.
+  email         String? @map("email")
+  /// Access `Mobile Phone`, 73%.
+  mobilePhone   String? @map("mobile_phone")
+  /// Access `Business Phone`, 47%.
+  businessPhone String? @map("business_phone")
+  /// Access `Home Phone`, **1% — one row in 188.** Migrated, never surfaced.
+  homePhone     String? @map("home_phone")
+  /// Access `Fax Number`, 25%.
+  faxNumber     String? @map("fax_number")
+  /// Access `Web Page`, 14%.
+  webPage       String? @map("web_page")
+
+  /// Access `Address`, 67%.
+  address       String? @map("address")
+  /// Access `City`, 68%.
+  city          String? @map("city")
+  /// Access `State/Province`, 65%.
+  stateProvince String? @map("state_province")
+  /// Access `ZIP/Postal Code`, 6%.
+  zipPostalCode String? @map("zip_postal_code")
+  /// Access `Country/Region`, 65%.
+  countryRegion String? @map("country_region")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -870,9 +902,7 @@ model AdminTask {
 
 /// Steps within an administrative task. 4,130 rows at Stage 2.
 ///
-/// **THE COLUMN LIST BELOW IS INCOMPLETE AND KNOWN TO BE.** Only the parent
-/// link is named in docs/DATA-MODEL.md. The rest is added once the firm
-/// supplies the Access column list, before Stage 2 loads a row.
+/// Complete: all 7 Access columns are accounted for.
 ///
 /// task_id is nullable on purpose and the numbers are known in advance: 36
 /// rows have an ID_Task matching no task and 39 have none at all. All 75 load
@@ -885,7 +915,30 @@ model TaskAction {
   task   AdminTask? @relation(fields: [taskId], references: [id])
   /// The original ID_Task, kept even when it resolves to nothing — that is
   /// what makes the 36 orphans investigable rather than merely lost.
+  /// Access `ID_Task`, 99%.
   legacyTaskIdRaw String? @map("legacy_task_id_raw")
+
+  /// Access `تاريخ الإجراء`, 97%.
+  actionDate DateTime? @map("action_date") @db.Date
+
+  /// Access `القائم بالعمل`, 96% — the person who did the work.
+  ///
+  /// **A FOURTH PERSON-NAME MAPPING, and it needs its raw partner for the
+  /// same reason as the other three.** Resolved through person_name_alias at
+  /// Stage 2, never by matching people.name_ar — rule 15. The alias table
+  /// records that a spelling exists; only legacy_performed_by_raw records
+  /// which spelling THIS row used.
+  performedByPersonId  Int?    @map("performed_by_person_id")
+  performedBy          Person? @relation(fields: [performedByPersonId], references: [id])
+  legacyPerformedByRaw String? @map("legacy_performed_by_raw")
+
+  /// Access `النتيجة`, 99%.
+  result String? @map("result")
+  /// Access `تقرير`, 100%.
+  report String? @map("report")
+  /// Access `الموعد القادم`, **0% — seven rows in 4,130.** Migrated because
+  /// nothing is deleted (D10), but effectively dead. Do not surface it.
+  nextAppointment DateTime? @map("next_appointment") @db.Date
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -893,13 +946,21 @@ model TaskAction {
   updatedBy Int?     @map("updated_by")
 
   @@index([taskId])
+  @@index([performedByPersonId])
   @@map("task_actions")
 }
 
 /// Powers of attorney. 735 rows at Stage 2.
 ///
-/// **THE COLUMN LIST BELOW IS INCOMPLETE AND KNOWN TO BE.** Only the client
-/// link and the lawyer field are named in docs/DATA-MODEL.md.
+/// Complete: all 15 Access columns are accounted for.
+///
+/// **THREE COLUMN NAMES ARE LITERAL TRANSLATIONS AND NEED THE FIRM TO
+/// CONFIRM THEM** — `الصفة` against `صفة الموكل بالتوكيل` (two capacity
+/// fields, and which is which is not obvious), `حرف`, and `جرد`. The Arabic
+/// source column is recorded against every field below, so the mapping is
+/// unambiguous whatever the English label turns out to be, and the tables are
+/// empty so a rename costs nothing. docs/GLOSSARY.md does not carry these
+/// terms; rule 5 says ask rather than guess.
 model PowerOfAttorney {
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
@@ -908,13 +969,49 @@ model PowerOfAttorney {
   clientId Int?    @map("client_id")
   client   Client? @relation(fields: [clientId], references: [id])
 
-  /// المحامون الصادر لهم التوكيل — up to twelve names in one field, and the
-  /// main source of the 71 external people in the roster.
+  /// Access `العميل`, 84% — the client name as typed. `clientID` at 100% is
+  /// the authoritative link; this is kept as written.
+  clientName String? @map("client_name")
+
+  /// Access `المحامون الصادر لهم التوكيل`, 100% — up to twelve lawyers in one
+  /// string, and where the 71 external people in the roster came from.
   ///
-  /// The names are split into rows at task 1.4; THIS holds the field exactly
-  /// as typed. The third of the three person-name mappings that had no raw
-  /// column until the 21 August audit.
+  /// It stays TEXT here. The split into rows happens at task 2.9 and needs
+  /// the same treatment as the hearing attendees. This holds the field
+  /// exactly as typed — the third of the three person-name mappings that had
+  /// no raw column until the 21 August audit.
   legacyLawyersRaw String? @map("legacy_lawyers_raw")
+
+  /// Access `مسلسل`, 82% — serial number.
+  serialNo String? @map("serial_no")
+  /// Access `اسم الموكل`, 100% — the name of the principal granting the power.
+  principalName String? @map("principal_name")
+  /// Access `صفة الموكل بالتوكيل`, 77%. **Confirm the reading — see above.**
+  principalCapacity String? @map("principal_capacity")
+  /// Access `الصفة`, 100%. **Confirm the reading — see above.**
+  capacity String? @map("capacity")
+
+  /// Access `رقم التوكيل`, 99%.
+  poaNumber String? @map("poa_number")
+  /// Access `حرف`, 99%. Literally "letter". **Confirm the reading.**
+  poaLetter String? @map("poa_letter")
+  /// Access `السنة`, 99%.
+  poaYear String? @map("poa_year")
+
+  /// Access `جهة الإصدار`, 100% — the authority that issued it.
+  issuingAuthority String? @map("issuing_authority")
+  /// Access `تاريخ الإصدار`, 100%.
+  issueDate DateTime? @map("issue_date") @db.Date
+
+  /// Access `عدد النسخ`, 99% — number of copies.
+  /// **Drives the yellow-row highlighting on the powers-of-attorney report**
+  /// — see docs/REPORT-LAYOUTS.md. Not a decorative field.
+  copiesCount Int? @map("copies_count")
+
+  /// Access `ملاحظات`, 53%.
+  notes String? @map("notes")
+  /// Access `جرد`, 100%. Literally "inventory". **Confirm the reading.**
+  inventory String? @map("inventory")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -973,8 +1070,9 @@ model Document {
 /// refers to them by that number. It is the one legacy identifier in this
 /// project that is not merely useful for reconciliation.
 ///
-/// **THE COLUMN LIST BELOW IS INCOMPLETE AND KNOWN TO BE.** Only contract_id
-/// and mfilesID are named in docs/DATA-MODEL.md.
+/// Complete: all 10 Access columns are accounted for. `Matter` is the
+/// multi-value complex column — 288 values across 195 parents (D11) — and
+/// becomes the fee_letter_matters table at task 1.4, not a column here.
 model FeeLetter {
   id Int @id @default(autoincrement())
 
@@ -984,8 +1082,25 @@ model FeeLetter {
   clientId Int?    @map("client_id")
   client   Client? @relation(fields: [clientId], references: [id])
 
-  /// Filled on 306 of 331 rows in Access.
+  /// Access `mfilesID`, 92% — 306 of 331 rows.
   mfilesId String? @map("mfiles_id")
+
+  /// Access `Client`, 65% — the client name as typed. `clientID` at 100% is
+  /// the authoritative link.
+  clientName String? @map("client_name")
+
+  /// Access `Cont-Type`, 94%.
+  contractType String? @map("contract_type")
+  /// Access `Cont-Date`, 93%.
+  contractDate DateTime? @map("contract_date") @db.Date
+  /// Access `Cont-Details`, 98%.
+  contractDetails String? @map("contract_details")
+  /// Access `Cont-Structure`, 85%.
+  contractStructure String? @map("contract_structure")
+
+  /// Access `Status`, **1% — three rows in 331.** Migrated because nothing is
+  /// deleted (D10). **Do not build a screen around it.**
+  status String? @map("status")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")

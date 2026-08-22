@@ -187,11 +187,33 @@ be bigger than expected, split it and tell the owner.
       stay on the matter. `legacy_id` on every migrated table, unique where
       present, so Gate 4 can reconcile row for row.
 
-      **Four tables are deliberately incomplete** — `contacts`,
-      `task_actions`, `powers_of_attorney`, `fee_letters`. Their Access column
-      lists have never been written down, and nothing was invented. See
-      "Columns not yet known" in `docs/DATA-MODEL.md`. **They must be
-      completed before task 2.3 loads a row.**
+- [x] **1.3a The four missing column lists** — 22 August 2026, migration 0012
+      `contacts` (17), `powers_of_attorney` (15), `fee_letters` (10) and
+      `task_actions` (7) were built at 1.3 with their keys only, because their
+      Access column lists had never been written down and nothing was
+      invented. The firm supplied them, **with the fill rate of every column**.
+
+      Every rate is recorded in `docs/DATA-MODEL.md` beside its column, and
+      the rule is now general: **a fill rate is a design fact.**
+      `Home Phone` 1% (one row), `Status` 1% (three rows) and
+      `الموعد القادم` 0% (seven rows) are migrated and **never surfaced** — a
+      screen built on any of them would be blank almost always.
+
+      **`القائم بالعمل` is a FOURTH person-name mapping** (96% of 4,130 rows)
+      and gets `legacy_performed_by_raw`, the same as the other three. Raw
+      columns 11 → 12.
+
+      `contacts.name_ar` / `name_en` were placeholders and are **dropped** —
+      Access has `Contact1` (97%) and `Full_name` (10%), and neither is what
+      those names implied. `contacts.attachments` is **not created**: it looks
+      100% populated and holds zero files (D11). `db:check` asserts all three
+      are absent, which a presence check cannot see.
+
+      **Three POA column names need the firm to confirm them** — `الصفة`
+      against `صفة الموكل بالتوكيل`, `حرف`, and `جرد`. Not in
+      `docs/GLOSSARY.md`, so translated literally with the Arabic source
+      recorded against each. Renaming an empty table costs nothing.
+      db:check 24 → **25 checks**.
 
       Six assertions proved by breaking them: a dropped `_raw` column, a
       `NOT NULL` on a link that must stay nullable, a binary column on

@@ -264,23 +264,128 @@ has to be able to find the row it wrote last time. The Access key names are
 those records and the Excel kept since Dec 2021 refers to them by that number
 (D3).
 
-## Columns not yet known
+## Fill rates — record them beside the column
 
-Four tables are built with their keys and only the columns the documents
-actually name. **The rest is not invented.** The Access column list for these
-has never been written down, and they are completed before Stage 2 loads a
-row:
+**Every column here carries how much of it is actually filled in the live
+data.** A fill rate is a design fact, not trivia.
 
-| Table | What is modelled | What is missing |
-|---|---|---|
-| `contacts` | keys, `name_ar`, `name_en` | telephone, e-mail, job title — whatever Access holds |
-| `task_actions` | keys, the parent link and its raw value | the step itself |
-| `powers_of_attorney` | keys, client, `legacy_lawyers_raw` | number, date, type, location |
-| `fee_letters` | keys, `contract_id`, `mfiles_id` | date, subject, amounts |
+`Contacts.Home Phone` has **one row in 188**. `خطابات الأتعاب.Status` has
+**three rows in 331**. `إجراءات المهام.الموعد القادم` has **seven rows in
+4,130**. Those are not features. A screen or a report built around any of them
+would be blank almost always, and the only way to know that before building it
+is to have the number written down next to the column.
 
-Nothing is at risk in the meantime: staging holds **every** source column as
-text, so a column that has no home yet sits there and is visible at Gate 3
-rather than being lost (`docs/MIGRATION.md`).
+They are all still migrated — nothing is deleted (**D10**). They are simply
+never surfaced.
+
+The rates below were counted in the Access file by the firm. Add the
+percentage whenever a column is added.
+
+### `contacts` — 188 rows, 17 Access columns
+
+| Column | Access | Filled |
+|---|---|---:|
+| `legacy_id` | `ID` | 100% |
+| `client_id` | `clientID` | 100% |
+| `contact_name` | `Contact1` | **97%** |
+| `email` | `E-mail Address` | 75% |
+| `mobile_phone` | `Mobile Phone` | 73% |
+| `city` | `City` | 68% |
+| `address` | `Address` | 67% |
+| `country_region` | `Country/Region` | 65% |
+| `state_province` | `State/Province` | 65% |
+| `job_title` | `Job Title` | 60% |
+| `business_phone` | `Business Phone` | 47% |
+| `fax_number` | `Fax Number` | 25% |
+| `web_page` | `Web Page` | 14% |
+| `full_name` | `Full_name` | **10%** |
+| `zip_postal_code` | `ZIP/Postal Code` | 6% |
+| `home_phone` | `Home Phone` | **1% — one row** |
+| — | `Attachments` | 100%, **0 files** |
+
+**`Contact1` is the real name field at 97%; `Full_name` is 10%.** Do not
+assume from the names which is primary — the firm checked.
+
+`Attachments` looks fully populated and holds nothing. It is an Access complex
+column (**D11**) and is **not migrated**. `db:check` asserts the column does
+not exist.
+
+### `powers_of_attorney` — 735 rows, 15 Access columns
+
+| Column | Access | Filled |
+|---|---|---:|
+| `client_id` | `clientID` | 100% |
+| `client_name` | `العميل` | 84% |
+| `serial_no` | `مسلسل` | 82% |
+| `principal_name` | `اسم الموكل` | 100% |
+| `principal_capacity` | `صفة الموكل بالتوكيل` | 77% |
+| `capacity` | `الصفة` | 100% |
+| `poa_number` | `رقم التوكيل` | 99% |
+| `poa_letter` | `حرف` | 99% |
+| `poa_year` | `السنة` | 99% |
+| `issuing_authority` | `جهة الإصدار` | 100% |
+| `issue_date` | `تاريخ الإصدار` | 100% |
+| `copies_count` | `عدد النسخ` | 99% |
+| `notes` | `ملاحظات` | 53% |
+| `inventory` | `جرد` | 100% |
+| `legacy_lawyers_raw` | `المحامون الصادر لهم التوكيل` | 100% |
+
+`المحامون الصادر لهم التوكيل` holds **up to twelve lawyers in one string** and
+is where the 71 external people in the roster came from. It stays **text**;
+the split into rows happens at task **2.9** and needs the same treatment as
+the hearing attendees.
+
+`عدد النسخ` **drives the yellow-row highlighting on the powers-of-attorney
+report** (`docs/REPORT-LAYOUTS.md`). It is stored as an integer and asserted to
+be one — comparing it as text would order 10 before 2.
+
+**Three names need the firm to confirm them:** `الصفة` against
+`صفة الموكل بالتوكيل` (two capacity fields, and which is which is not
+obvious), `حرف`, and `جرد`. They are not in `docs/GLOSSARY.md`, so they are
+translated literally and the Arabic source column is recorded against each one
+— the mapping is unambiguous whatever the English label turns out to be.
+
+### `fee_letters` — 331 rows, 10 Access columns
+
+| Column | Access | Filled |
+|---|---|---:|
+| `contract_id` | `contractID` | 100% |
+| `client_id` | `clientID` | 100% |
+| `contract_details` | `Cont-Details` | 98% |
+| `contract_type` | `Cont-Type` | 94% |
+| `contract_date` | `Cont-Date` | 93% |
+| `mfiles_id` | `mfilesID` | 92% |
+| `contract_structure` | `Cont-Structure` | 85% |
+| `client_name` | `Client` | 65% |
+| `status` | `Status` | **1% — three rows** |
+| — | `Matter` | 100%, multi-value |
+
+`Matter` is the Access multi-value complex column — **288 values across 195
+parents** (**D11**) — and becomes the `fee_letter_matters` table at task 1.4,
+not a column here.
+
+`Status` at three rows is effectively unused. Migrate it; **do not build a
+screen around it.**
+
+### `task_actions` — 4,130 rows, 7 Access columns
+
+| Column | Access | Filled |
+|---|---|---:|
+| `legacy_id` | `ID_process` | 100% |
+| `task_id` + `legacy_task_id_raw` | `ID_Task` | 99% |
+| `report` | `تقرير` | 100% |
+| `result` | `النتيجة` | 99% |
+| `action_date` | `تاريخ الإجراء` | 97% |
+| `performed_by_person_id` + `legacy_performed_by_raw` | `القائم بالعمل` | 96% |
+| `next_appointment` | `الموعد القادم` | **0% — seven rows** |
+
+`القائم بالعمل` is a **person name** — the fourth such mapping in this
+project. Resolve it through `person_name_alias`, never by matching
+`people.name_ar` (**rule 15**), and keep `legacy_performed_by_raw` so the
+spelling each row used survives.
+
+`الموعد القادم` at seven rows is effectively dead. Migrate it; do not surface
+it.
 
 ## Lookups
 

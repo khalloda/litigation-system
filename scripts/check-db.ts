@@ -534,14 +534,35 @@ async function main() {
     ['admin_tasks', 'legacy_court_raw'],
     ['documents', 'legacy_responsible_raw'],
     ['task_actions', 'legacy_task_id_raw'],
+    //  القائم بالعمل — the fourth person-name mapping, 96% of 4,130 rows.
+    ['task_actions', 'legacy_performed_by_raw'],
   ]);
   record(
-    'Core schema: 11 tables, 11 raw columns',
+    'Core schema: 11 tables, 12 raw columns',
     'all present',
     missingTables.length === 0 && missingRaw.length === 0
-      ? '11 tables, 11 raw columns'
+      ? '11 tables, 12 raw columns'
       : `missing ${[...missingTables, ...missingRaw].join(', ')}`,
     missingTables.length === 0 && missingRaw.length === 0,
+  );
+
+  //    Two columns that must NOT exist, which a presence check cannot see.
+  //    contacts.attachments looks 100% populated in Access and holds zero
+  //    files (D11); name_ar/name_en were placeholders invented before the
+  //    real column list arrived, and Access has Contact1 and Full_name.
+  const mustNotExist = await db.$queryRaw<{ table_name: string; column_name: string }[]>`
+    SELECT table_name, column_name FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND (table_name, column_name) IN (
+            ('contacts', 'attachments'), ('contacts', 'name_ar'),
+            ('contacts', 'name_en'))`;
+  record(
+    'No placeholder or complex columns',
+    '0',
+    mustNotExist.length === 0
+      ? '0'
+      : mustNotExist.map((r) => `${r.table_name}.${r.column_name}`).join(', '),
+    mustNotExist.length === 0,
   );
 
   //    Nothing is deleted during migration (D10). The firm already knows the
