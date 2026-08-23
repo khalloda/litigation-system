@@ -707,6 +707,61 @@ In practice:
 4. **A parse failure is a refusal.** Never a default value, never a warning
    that the run continues past.
 
+### A join that fails for every row is evidence about the join
+
+**100% is not a data-quality figure. It is the shape of a wrong column.**
+
+Real data is untidy in patches. People mistype a name, leave a field blank,
+paste two case numbers into one box. That produces failures at 2%, at 7%, at
+40% — never at exactly 100%, because the same clerks who made the mess also
+entered thousands of rows correctly.
+
+So when a join misses *every single row*, stop and check the join. When it
+misses 7%, queue the 7%.
+
+**Both of Stage 2's largest expected review volumes were this fault**, and
+both were recorded as facts about the firm's data in three documents before
+anyone ran them.
+
+| | Recorded as | Actually | The join |
+|---|---:|---:|---|
+| Matters whose `[خطاب الأتعاب]` matches no fee letter | 289 of 412 | **0** | Only `mfilesID` was tried. The column also carries `contractID` |
+| `خطابات الأتعاب.Matter` entries matching no matter | 288 of 288 | **32** | Matched against `matterID`, a surrogate integer. The values are case numbers and match `matterAR` |
+
+**Worked example 1 — the 289 that were never orphans.**
+`الدعاوى.[خطاب الأتعاب]` holds a fee-letter reference that is sometimes a
+`contractID` (1–332, the dense internal key) and sometimes an `mfilesID`
+(1–59,225, the document-management id). Checked against `mfilesID` alone, 123
+matched and 289 did not — and 289 was written down as the orphan count.
+
+The tell was in the arithmetic all along: **123 + 289 = 412 exactly.** Every
+row resolved by one column or the other, none by both, none by neither. A
+number that partitions the total perfectly is describing two categories, not
+a fault.
+
+**Worked example 2 — 288 of 288.**
+The multi-value entries hold case numbers as the firm writes them —
+`2897 / 86ق`, `644 / 2012`. They were matched against `الدعاوى.matterID`,
+which is an integer surrogate key, so nothing could ever match. Against
+`matterAR`, the Arabic case number, 256 of 288 resolve.
+
+Here 100% was itself the evidence: not one of 288 entries matched, in a
+database where the same clerks maintained both sides.
+
+**What to do about it.**
+
+1. **Before recording an orphan count, look at both sides.** Print ten values
+   from each. `2897 / 86ق` next to `1` is a mismatch of *kind*, visible in
+   seconds, and no amount of counting reveals it.
+2. **Try the other candidate columns.** A table's keys are usually few. If a
+   different one matches, that is the answer.
+3. **Treat a total-partition as a signal.** If matched + unmatched splits
+   cleanly across two candidate targets, the column probably carries both.
+4. **Never publish an orphan count that has not been run.** Both of these
+   travelled through `docs/DATA-MODEL.md`, `docs/MIGRATION.md` and
+   `docs/STAGE-2-PLAN.md` as facts, and the last of those is the document the
+   firm reads. They were told to expect 289 items of review that do not exist.
+
 ### Two strings that print identically are not thereby equal
 
 **Comparing what you see is not comparing what is there.** This is the same
@@ -973,6 +1028,55 @@ live in the data at all — it lives in a report nobody had opened.
 migrated as `show_on_poa_report`, with `جرد` recorded as its Access source.
 Translating it literally as `inventory` would have carried a wrong guess into
 the schema and made the report's behaviour look like a bug.
+
+### Encode the refusal now, not the reminder
+
+**When a future condition will make current behaviour unsafe, make the
+database refuse — do not leave a note asking someone to remember.**
+
+`sql/profile-staging.sql` truncates `quarantine.finding` on every run, which
+is right: findings are derived, and a stale one is worse than none.
+
+It is also right *today only*. The moment the first answered workbook comes
+back, that truncate would discard the firm's answers to the row-level
+questions — the fee-letter references, the hearings with no matter. The
+profiler has to switch to upserting before then, exactly as it already does
+for `review_value`.
+
+The obvious thing is a comment saying so. **A comment would not have survived
+until it mattered.** Weeks pass, the workbook comes back on a busy day, and
+somebody re-runs the profiler to refresh the counts — which is a reasonable
+thing to do, and would be a silent, unrecoverable loss of human work that no
+gate would catch, because every count would look fine afterwards.
+
+So the refusal is in the database:
+
+```sql
+CREATE TRIGGER finding_truncate_guard
+    BEFORE TRUNCATE ON quarantine.finding
+    FOR EACH STATEMENT EXECUTE FUNCTION quarantine.refuse_to_discard_answers();
+```
+
+It counts answered rows and raises. Today it never fires — there are no
+answers. The day it does, it stops the profiler with a message naming the
+problem and the fix, and whoever hit it reads it *at exactly the moment they
+need to*.
+
+**The general shape:**
+
+| Instead of | Write |
+|---|---|
+| a comment saying "change this before X" | a check that fails when X happens |
+| a TODO with a date | a constraint, trigger, or `db:check` line |
+| documentation of a hazard | the hazard made impossible, plus documentation |
+
+This is the same family as rule 16 — an assertion that runs once is a
+snapshot — and as "a test must fail when it is removed". All three are about
+the same thing: **the safety must live where the mistake will be made, not
+where somebody happened to write it down.**
+
+`npm run db:check` asserts the trigger is installed, so removing it is itself
+caught.
 
 ### The throwaway cluster we deliberately did not build
 

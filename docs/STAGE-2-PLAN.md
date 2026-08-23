@@ -78,14 +78,46 @@ not, and this is where those go to a review list for you.
 
 We already know roughly what will be on that list:
 
-| What | How many |
-|---|---:|
-| Fee letters referring to a matter we cannot find | 289 |
-| Task steps whose parent task does not exist | 36 |
-| Task steps with no parent recorded at all | 39 |
-| Hearings not attached to any matter | 4 |
-| A power of attorney with no client | 1 |
-| Attendee names that appear only once | about 474 |
+> **Two of these figures were wrong, and we found out by running it.**
+> Corrected 23 August 2026 — see the note directly below the table.
+
+| What | We told you | Actually |
+|---|---:|---:|
+| Fee letters referring to a matter we cannot find | 289 | **32** |
+| Matters referring to a fee letter we cannot find | 289 | **none** |
+| Task steps whose parent task does not exist | 36 | **36** |
+| Task steps with no parent recorded at all | 39 | **39** |
+| Hearings not attached to any matter | 4 | **4** |
+| A power of attorney with no client | 1 | **1** |
+| A matter with no client | — | **1** |
+| A task with no matter | — | **1** |
+| Attendee names we cannot place | about 474 | **663** |
+| Names of people who did admin work, that we cannot place | — | **4** |
+
+#### The correction, and why it happened
+
+**We told you to expect 289 broken fee-letter links. There are none.**
+
+Your Access file records a fee letter against a matter using a reference
+number — but that number is sometimes one kind of internal number and
+sometimes another. We only ever checked it against one of the two. Every
+matter that names a fee letter does in fact find it: 289 of them by one
+number, 123 by the other, and not a single one that finds neither.
+
+**We also implied all 288 fee-letter case references were unmatchable. 32
+are.** Those references are case numbers as you write them — `2897 / 86ق` —
+and we had been comparing them against an internal record number instead of
+against the case number. Most of the 32 that still do not match are entries
+holding several case numbers in one box.
+
+**Nothing about your data changed. Our measurement was wrong**, in the same
+way twice. The rule we have taken from it: when a check fails for *every
+single row*, that is almost always evidence that the check is wrong, not that
+the data is. Data is untidy in patches, not uniformly.
+
+The practical effect is that **the review list is much shorter than we said**:
+roughly 745 items instead of the ~1,000 implied, and none of the 289 you were
+told to expect.
 
 None of these is lost. Each one arrives, keeps its original text, and waits
 for a decision.

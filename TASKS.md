@@ -699,6 +699,27 @@ only ever seen good data is not known to work.
 
 - [ ] **2.9 Transform: admin works, POAs, documents, fee letters**
 
+      **`الدعاوى.[خطاب الأتعاب]` CARRIES TWO KEY SPACES — this is a hazard,
+      not just an explanation.** Found at 2.4. It resolves against
+      `contractID` (1–332) for 289 matters and `mfilesID` (1–59,225) for 123,
+      none by both and none by neither.
+
+      Three things are required here, and none of them is optional:
+
+      1. **Resolve by an explicit rule the firm has confirmed**, recorded in
+         the transform — never by "whichever column happens to match". The
+         question is on the `أسئلة عامة` sheet of the review workbook.
+      2. **Assert that no value resolves BOTH ways**, and fail loudly if one
+         does. A silent pick attaches a matter to the wrong fee letter and
+         nothing looks wrong afterwards. **Two values already exist in both
+         key spaces**, so this is not hypothetical — it is one data-entry
+         mistake away.
+      3. **Keep the reference's original text** in a `_raw` column, per the
+         `_raw` rule, so a wrong resolution can be undone.
+
+      **The assertion must survive into `npm run db:check`** — rule 16. It is
+      not enough for the migration to prove it once.
+
       **The `26` row is here.** It is an `admin work table` row, and the
       crosswalk rule for it (migration 0023) writes **circuit = `26` and
       leaves the court NULL**. Assert both halves on the loaded row, not just
@@ -915,5 +936,13 @@ allows. Test with real volumes.
       46 no against 67 yes.
 
       **Any financial report must state which it is summing.**
+
+      **The fee-letter reference must be validated on entry, not just on
+      migration.** `الدعاوى.[خطاب الأتعاب]` resolves against two different
+      key spaces (see 2.9), and two values already exist in both. The moment
+      anyone can type a fee-letter reference into a form, the same ambiguity
+      can be created by hand. The entry screen must resolve by the same
+      recorded rule and refuse a value that resolves both ways, rather than
+      picking one. Ruled 23 August 2026 when the hazard was found.
 - [ ] Collection splitting between lawyers
 - [ ] Excel import for the attendance and billing history kept outside Access

@@ -115,7 +115,7 @@ logistics, money, classification and free text.
 | `legacy_court_raw` | The original court text. ~305 spellings clean up to a list at 2.5 |
 | `circuit` | **Text, not a list — D20.** 1,281 distinct values, a number plus a specialism |
 | `court_floor`, `court_hall`, `court_shelf`, `court_secretary_room` | Court logistics — **D21**, they stay here |
-| `fee_letter_ref` | `الدعاوى.[خطاب الأتعاب]`, text not a FK. 412 carry a value, 289 match nothing |
+| `fee_letter_ref` | `الدعاوى.[خطاب الأتعاب]`, text not a FK. 412 carry a value and **all 412 resolve** — 289 by `contractID`, 123 by `mfilesID`. **Corrected 23 August 2026; it said "289 match nothing", which was the wrong column.** See "Two key spaces" below |
 | `legacy_id` | The Access `matterID`. See "Legacy identifiers" below |
 
 `court_id` and `circuit` are two columns, not one. Reports join them for
@@ -216,14 +216,50 @@ to these records. Still actively used (latest entry Nov 2025).
 ### `fee_letter_matters` — 288 rows
 From the Access multi-value column `خطابات الأتعاب.Matter` — **288 values
 across 195 parent rows**. Values are case-number *strings* (`1039 / 20ق`), not
-IDs, so matching to `matters` will produce unmatched rows. Quarantine them; do
-not drop them.
+IDs.
+
+**They match `الدعاوى.matterAR`, the Arabic case number — not `matterID`,
+which is a surrogate integer.** Matched correctly, **256 of the 288 resolve
+and 32 do not**; one resolves to *two* matters and is queued. Quarantine the
+32; do not drop them.
+
+> **Corrected 23 August 2026.** This section previously said matching "will
+> produce unmatched rows" without a figure, and the summary table below gave
+> the impression that all 288 were unmatched. Measured against `matterID` they
+> are: 288 of 288. That is not a data-quality figure — it is the shape of a
+> wrong column. See "A join that fails for every row" in `docs/MIGRATION.md`.
 
 **There is a second, separate link in the other direction.**
-`الدعاوى.[خطاب الأتعاب]` → `خطابات الأتعاب.mfilesID`: **412 matters carry a
-value, and 289 of them match no fee letter.** These are two different
-relationships and two different numbers. Both are correct — do not try to
-reconcile 288 against 289.
+`الدعاوى.[خطاب الأتعاب]` → the fee letters: **412 matters carry a value and
+all 412 resolve.** These are two different relationships and two different
+numbers; do not try to reconcile 288 against 412.
+
+#### Two key spaces in one column
+
+`الدعاوى.[خطاب الأتعاب]` does not point at one column. It points at
+**`contractID` for some rows and `mfilesID` for others**:
+
+| Resolves against | Range | Matters |
+|---|---|---:|
+| `contractID` — the dense internal key | 1 – 332 | **289** |
+| `mfilesID` — the document-management id | 1 – 59,225 | **123** |
+| both | | **0** |
+| neither | | **0** |
+
+**This is a hazard, not merely an explanation.** Two values already exist in
+*both* key spaces, so a value could be genuinely ambiguous — today none is,
+but nothing prevents one. The transform must therefore:
+
+1. Resolve by an explicit, recorded rule the firm has confirmed, never by
+   "whichever column happens to match".
+2. **Assert that no value resolves both ways**, and fail loudly if one does.
+   A silent pick attaches a matter to the wrong fee letter and nothing looks
+   wrong afterwards.
+
+**That assertion must survive into Phase 2 data entry.** The moment anyone can
+type a fee-letter reference into a form, the same ambiguity can be created by
+hand — so the check belongs in `npm run db:check` and in the entry validation,
+not only in the migration that first found it.
 
 ---
 
@@ -552,8 +588,9 @@ These are **expected**. Load them; do not try to fix them silently.
 
 | Issue | Count |
 |---|---|
-| Matters whose `الدعاوى.[خطاب الأتعاب]` reference matches no fee letter | 289 of 412 |
-| Fee-letter multi-value entries (`خطابات الأتعاب.Matter`) matching no matter | expected at Gate 3, out of 288 |
+| Matters whose `الدعاوى.[خطاب الأتعاب]` reference matches no fee letter | **0 of 412** — was recorded as 289, which was the wrong column |
+| Fee-letter multi-value entries (`خطابات الأتعاب.Matter`) matching no matter | **32 of 288** — was implied to be all 288, same fault |
+| ...and matching *two* matters | **1** |
 | Fee-letter → matter multi-value entries (`خطابات الأتعاب.Matter`) | 288 across 195 parents |
 | Orphan task actions | 36 |
 | Task actions with no parent id | 39 |
