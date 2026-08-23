@@ -7,8 +7,9 @@ conversation that produced the state below.
 binding — **16** of them now), `docs/DECISIONS.md` (D1–D21), `TASKS.md` (current
 position), then this file.
 
-Last commit: `374322e`. Working tree clean. **STAGE 1 IS COMPLETE.**
-All 31 `db:check` checks pass
+Last commit: `c4f0689`. Working tree clean. **STAGE 1 IS COMPLETE AND
+REVIEWED** — all nine findings of the 24 August review are closed, and the
+court list is seeded. All 35 `db:check` checks pass
 and all 10 `db:verify` checks pass. Stage 1 has been reviewed by Codex and
 all four findings are closed (task 1.2d).
 
@@ -56,8 +57,8 @@ the whole codebase for a right-to-left violation in one command.
 cp .env.example .env
 npm install                 # postinstall runs `prisma generate`
 npm run db:up               # PostgreSQL 17 in Docker, waits until healthy
-npm run db:migrate:deploy   # apply all 19 migrations
-npm run db:check            # 31 checks, all must read OK
+npm run db:migrate:deploy   # apply all 22 migrations
+npm run db:check            # 35 checks, all must read OK
 
 npm run dev                 # http://localhost:3000
 npm run build               # production build
@@ -77,7 +78,7 @@ npm run test:gate1          # 15 cases. Runs under pwsh AND Windows PowerShell 5
 # database
 npm run db:up / db:down / db:logs / db:psql / db:studio
 npm run db:verify           # 10 SQL-level checks inside the container
-npm run db:check            # 31 application-level checks through Prisma
+npm run db:check            # 35 application-level checks through Prisma
 npm run db:reset            # DESTRUCTIVE. Guarded. See §5 and CLAUDE.md rule 12.
 npm run db:migrate          # prisma migrate dev — use this locally, see §5
 ```
@@ -107,7 +108,7 @@ docker/postgres/
 
 prisma/
   schema.prisma (*)         13 models. Structure lives here; DATA lives in sql/
-  migrations/               19 applied migrations, listed in §3
+  migrations/               22 applied migrations, listed in §3
 prisma.config.ts (*)        Prisma 7 config; reads DATABASE_URL from .env
 
 src/
@@ -125,7 +126,7 @@ scripts/
   lib/gate1.ps1 (*)         Gate 1 decision, pure, testable without Access
   lib/inventory.ts (*)      parses+validates the db:reset inventory (JSON)
   db-reset.ts (*)           the guarded destructive reset. Read its header first
-  check-db.ts (*)           31 application-level checks
+  check-db.ts (*)           35 application-level checks
   write-baseline.ts (*)     writes the reviewed-links baseline; refuses silent overwrites
   lib/reviewed-links.ts (*) baseline parse/compare/digest. Pure, no database
   lib/read-links.ts (*)     the one place that reads links out of the database
@@ -204,6 +205,9 @@ Two sources of truth, deliberately separated:
 | 0017 | `20260822124335_billing_column_lists` | the real Access columns for the four billing tables; 3 Latin lookups; drops 3 invented placeholders |
 | 0018 | `…_restore_trigram_indexes` | restores the 6 trigram indexes 0017 dropped, now declared in `schema.prisma` so Prisma owns them |
 | 0019 | `…_invoice_flag_types` | `VAT?` and `report` become booleans; `R-#` is an amount and `R-$` its currency — an inverted reading corrected. Guards on an empty table |
+| 0020 | `…_remove_j_to_qaf_fold` | **the `J → ق` fold removed entirely** — it turned the client `JTI` into `قTI`. Shadow columns recomputed |
+| 0021 | `…_financial_constraints` | the two unconstrained money columns; `clients.full_name_normalised` indexed |
+| 0022 | `…_court_list_and_crosswalk` | **308 courts and 94 rules** from the firm's review of 401 names; `matter_destination` 27 → 31 |
 
 Every migration ends in a `DO $$` block asserting its counts. A migration runs
 in a transaction, so a failed assertion rolls the whole thing back — there is
@@ -572,6 +576,9 @@ Nothing in Stage 2 can run without both.
 ---
 
 ## 8. Open Questions
+
+0. **Nothing blocks Stage 2.** The four below are confirmations and a
+   labelling job, none of which stops a load.
 
 1. **`جرد` is PROBABLE, not confirmed.** The firm reads it as "does it pass
    the periodical inventory check", which fits 680 passing and 55 failing —
