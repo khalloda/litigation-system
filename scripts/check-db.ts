@@ -423,7 +423,7 @@ async function main() {
   //    written at the time would have failed on correct data.
   const roster: Array<[string, number, number]> = [
     ['people', await db.person.count(), 135],
-    ['aliases', await db.personNameAlias.count(), 347],
+    ['aliases', await db.personNameAlias.count(), 348],
     ['staff', await db.person.count({ where: { isStaff: true } }), 64],
     ['current', await db.person.count({ where: { isStaff: true, isActive: true } }), 21],
     ['former', await db.person.count({ where: { isStaff: true, isActive: false } }), 43],
@@ -443,7 +443,7 @@ async function main() {
   const rosterWrong = roster.filter(([, actual, expected]) => actual !== expected);
   record(
     'Roster figures (9)',
-    '135/347/64/21/43/71/2/5/16',
+    '135/348/64/21/43/71/2/5/16',
     rosterWrong.length === 0
       ? roster.map(([, actual]) => actual).join('/')
       : rosterWrong.map(([n, a2, e]) => `${n} ${a2}/${e}`).join(', '),

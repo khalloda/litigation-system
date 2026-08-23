@@ -32,6 +32,7 @@
     "load:staging": "tsx scripts/load-staging.ts",
     "profile:staging": "tsx scripts/profile-staging.ts",
     "review:workbook": "tsx scripts/build-review-workbook.ts",
+    "review:import": "tsx scripts/import-review-answers.ts",
     "transform:clients": "tsx scripts/transform-clients.ts",
     "check:rtl": "tsx scripts/check-rtl.ts && tsx scripts/check-rtl.ts --self-test",
     "check:gitignore": "tsx scripts/check-gitignore.ts",

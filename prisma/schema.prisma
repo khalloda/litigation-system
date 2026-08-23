@@ -621,6 +621,22 @@ model Client {
   /// reversed or re-derived.
   legacyBranchRaw String? @map("legacy_branch_raw")
 
+  /// `العملاء.contactLawyer` — the FIRM lawyer responsible for this client,
+  /// on 123 of 318. Byte for byte, never parsed.
+  ///
+  /// DECLARED HERE, NOT ONLY IN RAW SQL. Migration 0027 added it with an
+  /// ALTER TABLE and did not touch this file, so the next `prisma migrate
+  /// dev` computed a diff against a model that had never heard of it and
+  /// offered to DROP IT — with all 123 values in it. It refused only because
+  /// this session is non-interactive; in an interactive one somebody would
+  /// have been asked, at the end of a long command, whether to drop a column.
+  ///
+  /// That is the same fault the trigram indexes had, recorded further down
+  /// this file: Prisma removes what it can see the columns of but does not
+  /// know about. Anything added in raw SQL to a table Prisma manages has to
+  /// appear here too.
+  legacyContactLawyerRaw String? @map("legacy_contact_lawyer_raw")
+
   cashOrProbono     String?   @map("cash_or_probono")
   status            String?
   poaLocation       String?   @map("poa_location")

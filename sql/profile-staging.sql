@@ -27,10 +27,30 @@
 BEGIN;
 
 -- -------------------------------------------------------------------------
---  Findings are derived. Rebuild them every run so a fixed fault disappears
---  rather than lingering as a stale row that somebody has to interpret.
+--  FINDINGS ARE DERIVED — BUT THEY NOW CARRY THE FIRM'S ANSWERS.
+--
+--  This used to be `TRUNCATE quarantine.finding`, which was right while no
+--  answer existed and became wrong the moment the first answered workbook
+--  came back. `finding_truncate_guard` refused it, exactly as migration 0026
+--  intended: the refusal was encoded when the hazard was noticed rather than
+--  a comment asking somebody to remember.
+--
+--  So: the ANSWERED findings are kept and the rest are rebuilt. A finding
+--  that has been answered and is no longer produced by the profiling below
+--  is kept too, and reported by Gate 3 — deleting a human's answer is what
+--  rule 7 forbids, whatever the reason.
+--
+--  Everything below inserts; nothing updates an answered row.
 -- -------------------------------------------------------------------------
-TRUNCATE quarantine.finding;
+--  Mark every existing finding, then let the inserts below UPSERT over them
+--  on `finding_identity` — the topic, the row, the column. A finding that is
+--  re-derived keeps its id and its answer; one that is no longer derived is
+--  removed at the end unless the firm has answered it.
+--
+--  IDS MUST NOT MOVE. The review workbook prints them and the answers come
+--  home by them. Reissuing ids under a document the firm is holding is how
+--  72 answers arrived unmatchable the first time.
+UPDATE quarantine.finding SET detected_at = '-infinity'::timestamptz;
 
 -- =========================================================================
 --  A. REFERENTIAL DEVIATIONS
@@ -44,31 +64,56 @@ TRUNCATE quarantine.finding;
 INSERT INTO quarantine.finding (topic, severity, src_table, src_file, src_row_num, column_name, original_value, detail)
 SELECT 'hearing_no_matter', 'review', 'الجلسات', src_file, src_row_num, 'matterID', "matterID",
        'This hearing records no matter. It is migrated to an unassigned bucket so the hearing is not lost; the firm decides which matter it belongs to.'
-  FROM staging."الجلسات" WHERE "matterID" IS NULL OR btrim("matterID") = '';
+  FROM staging."الجلسات" WHERE "matterID" IS NULL OR btrim("matterID") = ''
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 --  A2. Administrative work with no matter.
 INSERT INTO quarantine.finding (topic, severity, src_table, src_file, src_row_num, column_name, original_value, detail)
 SELECT 'admin_task_no_matter', 'review', 'admin work table', src_file, src_row_num, 'matterID', "matterID",
        'This administrative task records no matter.'
-  FROM staging."admin work table" WHERE "matterID" IS NULL OR btrim("matterID") = '';
+  FROM staging."admin work table" WHERE "matterID" IS NULL OR btrim("matterID") = ''
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 --  A3. Matters with no client.
 INSERT INTO quarantine.finding (topic, severity, src_table, src_file, src_row_num, column_name, original_value, detail)
 SELECT 'matter_no_client', 'review', 'الدعاوى', src_file, src_row_num, 'clientID', "clientID",
        'This matter records no client.'
-  FROM staging."الدعاوى" WHERE "clientID" IS NULL OR btrim("clientID") = '';
+  FROM staging."الدعاوى" WHERE "clientID" IS NULL OR btrim("clientID") = ''
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 --  A4. Powers of attorney with no client.
 INSERT INTO quarantine.finding (topic, severity, src_table, src_file, src_row_num, column_name, original_value, detail)
 SELECT 'poa_no_client', 'review', 'التوكيلات', src_file, src_row_num, 'clientID', "clientID",
        'This power of attorney records no client.'
-  FROM staging."التوكيلات" WHERE "clientID" IS NULL OR btrim("clientID") = '';
+  FROM staging."التوكيلات" WHERE "clientID" IS NULL OR btrim("clientID") = ''
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 --  A5. Task actions with no parent task id at all.
 INSERT INTO quarantine.finding (topic, severity, src_table, src_file, src_row_num, column_name, original_value, detail)
 SELECT 'task_action_no_parent', 'note', 'إجراءات المهام', src_file, src_row_num, 'ID_Task', "ID_Task",
        'This task action records no parent task. It is migrated with the link left empty.'
-  FROM staging."إجراءات المهام" WHERE "ID_Task" IS NULL OR btrim("ID_Task") = '';
+  FROM staging."إجراءات المهام" WHERE "ID_Task" IS NULL OR btrim("ID_Task") = ''
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 --  A6. Task actions whose parent task id points at nothing.
 INSERT INTO quarantine.finding (topic, severity, src_table, src_file, src_row_num, column_name, original_value, detail)
@@ -76,7 +121,12 @@ SELECT 'task_action_orphan', 'review', 'إجراءات المهام', a.src_file
        'This task action names a parent task that does not exist in the task table.'
   FROM staging."إجراءات المهام" a
  WHERE a."ID_Task" IS NOT NULL AND btrim(a."ID_Task") <> ''
-   AND NOT EXISTS (SELECT 1 FROM staging."admin work table" t WHERE t."ID_Task" = a."ID_Task");
+   AND NOT EXISTS (SELECT 1 FROM staging."admin work table" t WHERE t."ID_Task" = a."ID_Task")
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 -- =========================================================================
 --  B. THE FEE-LETTER LINKS
@@ -100,7 +150,12 @@ SELECT 'fee_letter_matter_unmatched', 'review', 'خطابات الأتعاب.Mat
        END
   FROM staging."خطابات الأتعاب__Matter" v
  WHERE NOT EXISTS (
-        SELECT 1 FROM staging."الدعاوى" m WHERE btrim(m."matterAR") = btrim(v.value));
+        SELECT 1 FROM staging."الدعاوى" m WHERE btrim(m."matterAR") = btrim(v.value))
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 --  B2. ...and one entry matches TWO matters. A count of matches is not a
 --  match: picking either one silently attaches a fee letter to the wrong case.
@@ -110,7 +165,12 @@ SELECT 'fee_letter_matter_ambiguous', 'review', 'خطابات الأتعاب.Mat
        (SELECT count(*) FROM staging."الدعاوى" m WHERE btrim(m."matterAR") = btrim(v.value)) ||
        ' matters. The firm says which one the fee letter covers.'
   FROM staging."خطابات الأتعاب__Matter" v
- WHERE (SELECT count(*) FROM staging."الدعاوى" m WHERE btrim(m."matterAR") = btrim(v.value)) > 1;
+ WHERE (SELECT count(*) FROM staging."الدعاوى" m WHERE btrim(m."matterAR") = btrim(v.value)) > 1
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 --  B3. `الدعاوى.[خطاب الأتعاب]` CARRIES TWO KEY SPACES. Every one of the 412
 --  matters that names a fee letter resolves to exactly one — 289 by
@@ -129,7 +189,12 @@ SELECT 'fee_letter_key_collision', 'note', 'خطابات الأتعاب', f.src_
  WHERE EXISTS (
         SELECT 1 FROM staging."خطابات الأتعاب" g
          WHERE g."mfilesID" IS NOT NULL AND btrim(g."mfilesID") <> ''
-           AND btrim(g."mfilesID") = btrim(f."contractID"));
+           AND btrim(g."mfilesID") = btrim(f."contractID"))
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 -- =========================================================================
 --  C. PEOPLE — the highest-ratio mapping in the project, and the one that
@@ -247,7 +312,12 @@ SELECT 'attendee_unresolved',
        END
   FROM attendee a
   JOIN attendee_value av ON av.value = a.value
- WHERE NOT av.exact_alias;
+ WHERE NOT av.exact_alias
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 --  C6. The same for the person who did each administrative task. Grouped
 --  first, then scored — the nearest-match subquery cannot see an ungrouped
@@ -303,7 +373,12 @@ SELECT 'admin_assignee_unresolved', 'review', 'admin work table', t.src_file, t.
        'The person who did this work is recorded by a name the roster does not know.'
   FROM staging."admin work table" t
  WHERE t."القائم بالعمل" IS NOT NULL AND btrim(t."القائم بالعمل") <> ''
-   AND NOT EXISTS (SELECT 1 FROM public.person_name_alias pa WHERE pa.alias_ar = btrim(t."القائم بالعمل"));
+   AND NOT EXISTS (SELECT 1 FROM public.person_name_alias pa WHERE pa.alias_ar = btrim(t."القائم بالعمل"))
+    ON CONFLICT ON CONSTRAINT finding_identity DO UPDATE
+   SET severity       = EXCLUDED.severity,
+       original_value = EXCLUDED.original_value,
+       detail         = EXCLUDED.detail,
+       detected_at    = now();
 
 -- =========================================================================
 --  D. THE QUESTIONS THAT ARE NOT ABOUT A ROW
@@ -372,6 +447,22 @@ SELECT 'open_question',
    SET occurrences = EXCLUDED.occurrences, clients = EXCLUDED.clients;
 
 -- =========================================================================
+--  SWEEP WHAT IS NO LONGER FOUND
+--
+--  Anything still stamped '-infinity' was not re-derived by the profiling
+--  above: the fault it recorded is gone, or the row is. Those are dropped,
+--  because a stale finding is worse than none.
+--
+--  UNLESS THE FIRM HAS ANSWERED IT. Then it is kept and reported, whatever
+--  the reason it stopped being derived. Deleting a human's answer is what
+--  rule 7 forbids, and "the data changed underneath it" is not an exception —
+--  it is the case where somebody most needs to see what they said.
+-- =========================================================================
+DELETE FROM quarantine.finding
+ WHERE detected_at = '-infinity'::timestamptz
+   AND answered_at IS NULL;
+
+-- =========================================================================
 --  GATE 3
 -- =========================================================================
 DO $GATE3$
@@ -382,6 +473,7 @@ DECLARE
     excluded     bigint := 0;
     clean        bigint := 0;
     n            bigint;
+    m            bigint;
     problems     text[] := '{}';
 BEGIN
     --  1. Every finding and every exclusion must point at a staged row that
@@ -487,7 +579,34 @@ BEGIN
     --  5. An answered review value that no longer appears in the data is KEPT
     --     and reported. Deleting a human's answer is what rule 7 forbids.
     SELECT count(*) INTO n FROM quarantine.review_value WHERE answered_at IS NOT NULL;
-    RAISE NOTICE 'PROVED: % review value(s) already answered by the firm, none discarded', n;
+    SELECT count(*) INTO m FROM quarantine.finding WHERE answered_at IS NOT NULL;
+    RAISE NOTICE 'PROVED: % review value(s) and % finding(s) answered by the firm, none discarded', n, m;
+
+    --  6. AN ANSWER THAT NEEDS ONE MORE WORD IS NOT AN ANSWER YET.
+    --
+    --  `person` or `split` with nobody named cannot be acted on: the
+    --  transform at 2.7 has to attach the hearing to somebody. Storing it is
+    --  right — it is what the firm wrote — and treating it as resolved is
+    --  not. Reported here every run until it is filled in, and never
+    --  inferred: the nearest match being 1.00 is exactly the reasoning that
+    --  produced two duplicate people.
+    SELECT count(*) INTO n FROM quarantine.review_value
+     WHERE firm_answer IN ('person', 'split') AND btrim(coalesce(firm_person, '')) = '';
+    IF n > 0 THEN
+        RAISE NOTICE 'FOR THE FIRM: % answered row(s) name no person and cannot be acted on yet', n;
+    END IF;
+    RAISE NOTICE 'PROVED: % incomplete answer(s) counted, 0 filled in by inference', n;
+
+    --  7. An answered finding the profiling no longer produces. Kept, and
+    --     said out loud: the fault it described has gone away since the firm
+    --     answered it, and somebody should know that before the transform
+    --     acts on the answer.
+    SELECT count(*) INTO n FROM quarantine.finding
+     WHERE detected_at = '-infinity'::timestamptz AND answered_at IS NOT NULL;
+    IF n > 0 THEN
+        RAISE NOTICE 'FOR THE FIRM: % answered finding(s) are no longer produced by profiling, and are kept', n;
+    END IF;
+    RAISE NOTICE 'PROVED: % answered finding(s) outlived their fault, 0 discarded', n;
 END
 $GATE3$;
 

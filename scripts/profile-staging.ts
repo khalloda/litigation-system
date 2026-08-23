@@ -16,7 +16,16 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 const PROFILE = 'sql/profile-staging.sql';
-const EXPECTED_PROOFS = 5;
+/*
+ * Seven, not five. Two were added when the firm's answers arrived: one
+ * counting incomplete answers, one counting answered findings that outlived
+ * the fault they described.
+ *
+ * The counter caught the change rather than the change slipping through —
+ * which is the point of counting. A number that is only ever raised to match
+ * whatever ran is not a check.
+ */
+const EXPECTED_PROOFS = 7;
 
 const result = spawnSync(
   'docker',

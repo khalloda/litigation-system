@@ -707,6 +707,68 @@ In practice:
 4. **A parse failure is a refusal.** Never a default value, never a warning
    that the run continues past.
 
+### A value that will not match may be several values in one field
+
+**Before concluding that a name is unknown, remove what is structurally not a
+name and try again.** Placeholders, dates, titles, bracketed asides — strip
+them, then match what is left.
+
+The Gate 3 attendee sheet went out with **663 questions**. The firm returned
+it having found that only **six** needed real human judgement. The other 657
+were not unrecognised names at all. They looked like this, in a single cell:
+
+```
+**
+2018/03/06
+هاني الدالي
+```
+
+A `**` placeholder, a date, and a name the roster already knows — three
+things in one field, separated by newlines. Trigram similarity compared the
+**whole string** against each roster alias, scored about 0.30, and filed it
+under "the machine has nothing to say". Strip the placeholder and the date and
+`هاني الدالي` resolves exactly.
+
+**This is the same family as the pipe-delimited inventory and the trailing
+CR.** In each, a value carried something the reader did not expect it to carry
+— a delimiter inside a field, a carriage return at the end of one, three
+values stacked in one cell — and the code compared what it *assumed* it had
+rather than what was there.
+
+The scoring was not wrong, exactly; it answered a different question. *How
+similar is this cell to that name?* is not *does this cell contain that name?*
+And the confidence column then dressed a low score up as evidence, which is
+worse than no score: 544 rows were coloured grey, meaning "nothing to
+suggest", when a name sat inside every one of them.
+
+**What to do:**
+
+1. **Decompose before you match.** Split on newlines. Pull out anything
+   matching a date pattern. Strip known placeholders and courtesy titles
+   (`د.`, `أ.`, `المستشار`). Then match each remaining fragment.
+2. **Match fragments, not cells.** A cell that yields three fragments should
+   produce three candidate matches, not one weak one.
+3. **A uniformly low score is a signal about the scorer.** 544 values scoring
+   0.25–0.45 against a 348-alias roster is not 544 unknown people; it is a
+   comparison being made at the wrong granularity.
+4. **Keep everything that is not a name.** The firm's rule, and it is the
+   right one: the date and the placeholder go into the note column verbatim.
+   `محمد عبد العزيز (تليفونياً)` becomes the person plus the note
+   `تليفونياً`; nothing is discarded.
+
+**And two roster faults it exposed**, both repaired in migration 0028:
+
+| | |
+|---|---|
+| `احمد رزق` / `أحمد رزق` | A hamza pair that survived the names review. Every other pair was merged; this one was not — **the exact failure D5 exists to prevent, surviving inside the work that implements D5.** Found by the firm reading a workbook, not by any check here |
+| `حسن عادل "متدرب` | The stored alias is **one character short of the source**: its closing quotation mark is missing. So it never matched, so every hearing carrying it fell into the human pile |
+
+**The second was NOT fixed by stripping quotes in the normaliser.** That was
+tried and rejected: a normaliser loose enough to make `حسن عادل` reach
+`حسن خلف` matches them through general looseness rather than through the
+firm's ruling, and a normaliser that loose will merge people it should not.
+**The damage was in one row. Fix the one row.**
+
 ### A join that fails for every row is evidence about the join
 
 **100% is not a data-quality figure. It is the shape of a wrong column.**
