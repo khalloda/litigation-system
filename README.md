@@ -34,7 +34,8 @@ in the database for a possible future bilingual version.
 |---|---|
 | `docs/PRD.md` | What the system must do. Start here. |
 | `docs/DATA-MODEL.md` | Every table and column |
-| `docs/MIGRATION.md` | Moving the old data across without losing any |
+| `docs/MIGRATION.md` | Moving the old data across without losing any — the technical detail |
+| `docs/STAGE-2-PLAN.md` | **The same thing in plain language, for the firm to check before it runs** |
 | `docs/REPORTS.md` | The 45 reports that must be reproduced |
 | `docs/REPORT-LAYOUTS.md` | House style for printed reports, from real samples |
 | `docs/PERMISSIONS.md` | The four user roles |

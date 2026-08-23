@@ -352,6 +352,12 @@ only ever seen good data is not known to work.
 - [ ] **2.1 Extract** — run `scripts/01_extract_access.ps1`.
       **Gate 1: must report 54 attachments and 288 multi-value entries.**
       If either is zero, stop.
+      **Before this runs, the firm reads `docs/STAGE-2-PLAN.md`** — the same
+      process in plain language — and confirms the shape is right. This is
+      the first time their live records are involved.
+      **Also before this runs:** confirm a copy of the `.accdb` is on the
+      machine and Access (or the Access Database Engine) is installed, with
+      bitness matching PowerShell. Nothing in Stage 2 can run without both.
 
 - [ ] **2.2 Staging schema** — every column `text`, plus `src_row_num`.
 
