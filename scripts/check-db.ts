@@ -1327,6 +1327,83 @@ async function main() {
     quarantine.truncate_guard === 1n,
   );
 
+  // ---- clients and contacts, task 2.5 --------------------------------------
+  //
+  //  These compare the target against STAGING, not against a figure written
+  //  down here. 318 and 188 drift with the firm's file; "the target equals
+  //  what was staged" does not.
+  const transformed = one(
+    await db.$queryRaw<
+      {
+        clients: bigint;
+        staged_clients: bigint;
+        contacts: bigint;
+        staged_contacts: bigint;
+        orphan_contacts: bigint;
+        cleared_target: bigint;
+        cleared_staged: bigint;
+        lawyer_mismatch: bigint;
+        invented_branch: bigint;
+      }[]
+    >`
+      SELECT
+        (SELECT count(*) FROM clients)                                       AS clients,
+        (SELECT count(*) FROM staging."العملاء")                             AS staged_clients,
+        (SELECT count(*) FROM contacts)                                      AS contacts,
+        (SELECT count(*) FROM staging."Contacts")                            AS staged_contacts,
+        (SELECT count(*) FROM contacts WHERE client_id IS NULL)              AS orphan_contacts,
+        (SELECT count(*) FROM clients WHERE cash_or_probono = '')            AS cleared_target,
+        (SELECT count(*) FROM staging."العملاء" WHERE "Cash/probono" = '')   AS cleared_staged,
+        (SELECT count(*) FROM staging."العملاء" s
+           JOIN clients c ON c.legacy_id = s."ID_client"::integer
+          WHERE c.legacy_contact_lawyer_raw IS DISTINCT FROM s."contactLawyer") AS lawyer_mismatch,
+        (SELECT count(*) FROM clients
+          WHERE branch_id IS NOT NULL OR legacy_branch_raw IS NOT NULL
+             OR contact_person_id IS NOT NULL)                               AS invented_branch`,
+    'clients and contacts',
+  );
+
+  record(
+    'Every staged client was transformed',
+    `${transformed.staged_clients} (staging)`,
+    String(transformed.clients),
+    transformed.clients === transformed.staged_clients,
+  );
+  record(
+    'Every staged contact was transformed',
+    `${transformed.staged_contacts} (staging)`,
+    String(transformed.contacts),
+    transformed.contacts === transformed.staged_contacts &&
+      transformed.orphan_contacts === 0n,
+  );
+  //     The whole NULL-versus-'' argument, at its destination. Two clients had
+  //     something typed into Cash/probono and cleared it. A transform that
+  //     trimmed or coalesced would make them indistinguishable from "never
+  //     entered", and nothing would look wrong.
+  record(
+    'Cleared values still differ from never-entered',
+    `${transformed.cleared_staged} empty strings (staging)`,
+    `${transformed.cleared_target} in clients`,
+    transformed.cleared_target === transformed.cleared_staged,
+  );
+  //     Byte for byte, not merely present: a count would be satisfied by 123
+  //     trimmed or re-cased values.
+  record(
+    'contactLawyer preserved byte for byte',
+    '0 differing from staging',
+    String(transformed.lawyer_mismatch),
+    transformed.lawyer_mismatch === 0n,
+  );
+  //     branch_id, legacy_branch_raw and contact_person_id are deliberately
+  //     empty pending the firm's decision. A future transform that fills one
+  //     in without that decision is caught here.
+  record(
+    'Nothing was guessed into branch or contact_person',
+    '0 rows',
+    String(transformed.invented_branch),
+    transformed.invented_branch === 0n,
+  );
+
   // ---- report --------------------------------------------------------------
   const width = Math.max(...checks.map((c) => c.name.length));
   for (const c of checks) {

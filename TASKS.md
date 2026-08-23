@@ -558,7 +558,53 @@ only ever seen good data is not known to work.
       ExcelJS with `rightToLeft` on every sheet, as at task 6.1.
       Detail: "Gate 3 ships as XLSX workbooks" in `docs/MIGRATION.md`.
 
-- [ ] **2.5 Transform: people, lookups, clients, contacts**
+- [x] **2.5 Transform: people, lookups, clients, contacts**
+      **Clients and contacts done 23 August 2026, migration 0027.**
+      People and lookups were already seeded at 1.1/1.2 and 2.5's court work
+      landed at migrations 0022/0023.
+
+      `npm run transform:clients` — **318 clients, 188 contacts**, in one
+      transaction with seven assertions inside it. Every figure is compared
+      against **staging**, never against a number written down here: 318 and
+      188 drift with the firm's file, "the target equals what was staged" does
+      not.
+
+      **The two empty strings arrived.** `Cash/probono` holds `''` on two
+      clients — typed and cleared — against 316 with a value and **zero**
+      never-entered. That is the NULL-versus-`''` chain complete from Access
+      to the target table, and `db:check` re-proves it every run. A transform
+      that trimmed or coalesced would have made those two indistinguishable
+      from "never entered", and nothing would have looked wrong.
+
+      **`contactLawyer` preserved byte for byte** in the new
+      `clients.legacy_contact_lawyer_raw` — asserted as *identical to
+      staging*, not merely present, because a count is satisfied by 123
+      trimmed values.
+
+      **THREE THINGS ARE DELIBERATELY NOT SET, and `db:check` asserts they
+      stay empty** so a later transform cannot quietly fill one in:
+
+      1. **`branch_id` / `legacy_branch_raw`** — the source column is on the
+         **matter**, and 8 of the 12 clients with any branch have several
+         (أدخنة النخلة has eight). One column on the client cannot hold them,
+         and `legacy_branch_raw` could keep only one of eight original texts,
+         which breaks the `_raw` rule outright. **Blocks part of 2.6.**
+      2. **`contact_person_id`** — a field of the new model; Access has no
+         equivalent. Picking one of a client's contacts would be inventing
+         data (rule 4).
+      3. **`cash_or_probono` is stored as typed** — `Probono` 30 and
+         `probono` 5 are almost certainly one value, and "almost certainly" is
+         not a licence to merge. محكمة/محكمه/مجكمة looked equally obvious and
+         needed the firm.
+
+      All three are on the `أسئلة عامة` sheet of the review workbook, which is
+      now 4 questions.
+
+      **Note for every later transform:** `updated_at` has no database default
+      — Prisma's `@updatedAt` is applied by the client — so a raw `INSERT`
+      that omits it fails on NOT NULL. Every transform must set it.
+
+      db:check 46 → **51 checks**.
 
       **`lookup_court` is reviewed and ready to seed — BLOCKED on one row.**
       `sql/lookup-court-and-crosswalk.sql` holds the firm's review of all 401

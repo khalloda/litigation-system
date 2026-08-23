@@ -320,6 +320,57 @@ SELECT 'open_question',
        NULL, '[]'::jsonb, 'none', 'rule'
     ON CONFLICT (topic, value) DO UPDATE SET occurrences = EXCLUDED.occurrences, matters = EXCLUDED.matters;
 
+--  D2. `Probono` (30) and `probono` (5) differ only in case. Almost certainly
+--  one value — and "almost certainly" is not a licence to merge. محكمة /
+--  محكمه / مجكمة looked equally obvious and were three typos of one word that
+--  the firm confirmed rather than anyone assuming. Stored as typed; the merge
+--  is the firm's to make.
+INSERT INTO quarantine.review_value (topic, value, occurrences, years, matters, clients, nearest, confidence, kind)
+SELECT 'open_question',
+       'Are Probono and probono the same value on a client? (Cash/probono)',
+       (SELECT count(*) FROM staging."العملاء" WHERE lower(btrim("Cash/probono")) = 'probono'),
+       NULL, NULL,
+       (SELECT string_agg(v || ' × ' || n, ',  ' ORDER BY n DESC)
+          FROM (SELECT "Cash/probono" AS v, count(*) AS n FROM staging."العملاء"
+                 WHERE "Cash/probono" IS NOT NULL AND btrim("Cash/probono") <> ''
+                 GROUP BY 1) z),
+       '[]'::jsonb, 'none', 'rule'
+    ON CONFLICT (topic, value) DO UPDATE
+   SET occurrences = EXCLUDED.occurrences, clients = EXCLUDED.clients;
+
+--  D3. A branch is recorded on the MATTER and the new model has it on the
+--  CLIENT. 8 of the 12 clients that have any branch have several.
+INSERT INTO quarantine.review_value (topic, value, occurrences, years, matters, clients, nearest, confidence, kind)
+SELECT 'open_question',
+       'A client can have several branches. Should the branch live on the matter rather than the client?',
+       (SELECT count(*) FROM staging."الدعاوى" WHERE "clientBranch" IS NOT NULL AND btrim("clientBranch") <> ''),
+       NULL,
+       (SELECT count(*)::text || ' matters carry a branch'
+          FROM staging."الدعاوى" WHERE "clientBranch" IS NOT NULL AND btrim("clientBranch") <> ''),
+       (SELECT count(*)::text || ' of ' || count(*) FILTER (WHERE branches >= 1)::text || ' clients have more than one'
+          FROM (SELECT count(DISTINCT btrim("clientBranch")) AS branches
+                  FROM staging."الدعاوى"
+                 WHERE "clientBranch" IS NOT NULL AND btrim("clientBranch") <> ''
+                 GROUP BY "clientID") z
+         WHERE branches > 1),
+       '[]'::jsonb, 'none', 'rule'
+    ON CONFLICT (topic, value) DO UPDATE
+   SET occurrences = EXCLUDED.occurrences, matters = EXCLUDED.matters, clients = EXCLUDED.clients;
+
+--  D4. `contactLawyer` names a FIRM lawyer and the model has no column for
+--  one. The text is preserved in clients.legacy_contact_lawyer_raw meanwhile.
+INSERT INTO quarantine.review_value (topic, value, occurrences, years, matters, clients, nearest, confidence, kind)
+SELECT 'open_question',
+       'Should a client record which of our lawyers is responsible for it? (Access: contactLawyer)',
+       (SELECT count(*) FROM staging."العملاء" WHERE "contactLawyer" IS NOT NULL),
+       NULL, NULL,
+       (SELECT count(DISTINCT btrim("contactLawyer"))::text || ' distinct names on '
+               || count(*)::text || ' clients'
+          FROM staging."العملاء" WHERE "contactLawyer" IS NOT NULL),
+       '[]'::jsonb, 'none', 'rule'
+    ON CONFLICT (topic, value) DO UPDATE
+   SET occurrences = EXCLUDED.occurrences, clients = EXCLUDED.clients;
+
 -- =========================================================================
 --  GATE 3
 -- =========================================================================

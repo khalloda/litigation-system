@@ -51,7 +51,43 @@ Login accounts. Linked to `people`. Role is one of the four in
 
 ## Clients
 
-### `clients` — 313 rows
+### `clients` — 318 rows (313 on 19 August; the file grows)
+
+> **Transformed 23 August 2026, task 2.5.** Three columns are deliberately
+> empty and `db:check` asserts they stay that way: `branch_id`,
+> `legacy_branch_raw` and `contact_person_id`. See "A client can have several
+> branches" below and task 2.5.
+>
+> **`legacy_contact_lawyer_raw`** was added (migration 0027) to preserve
+> `العملاء.contactLawyer` — the firm lawyer responsible for the client, on 123
+> of 318. It has no modelled column: `contact_person_id` references
+> `contacts` and means the client's *own* contact person, not one of ours.
+> Whether the model should gain a `responsible_person_id` is on the review
+> workbook.
+
+#### A client can have several branches, and the model has room for one
+
+`clientBranch` is a column on **`الدعاوى`, the matter** — 560 matters, 32
+distinct values, 12 clients. **Eight of those twelve carry more than one:**
+
+| Client | Distinct branch values |
+|---|---:|
+| أدخنة النخلة | 8 |
+| الفطيم | 6 |
+| فرانكي | 5 |
+| تويوتا إيجيبت | 3 |
+| أوراسكوم, سيجما, إسماعيل القرقاوي, CAF | 2 each |
+
+D19 removes the values that were never branches, but أدخنة النخلة still has
+five genuine sites and الفطيم five subsidiaries. **`clients.branch_id` cannot
+represent that, and `clients.legacy_branch_raw` could keep only one of eight
+original texts** — which is the `_raw` rule failing outright, not a rounding.
+
+The likely answer is that the branch belongs on the **matter**, where Access
+put it: *which site of this client does this matter concern?* That would mean
+`matters.branch_id` and `matters.legacy_branch_raw`, and dropping
+`clients.branch_id`. **It is the firm's decision and it is on the review
+workbook.** Nothing is written to either column until then.
 
 **`legacy_branch_raw`** — the original clientBranch text, byte for byte.
 Not optional. The 32 original values resolve to 15 (**D19**): 9 move to
