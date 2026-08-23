@@ -5,7 +5,7 @@
     "aliases": 347,
     "crosswalk": 114
   },
-  "digest": "145280f016031aa646e5f2524d3dd3c4e5276fbf8350a49cfe999de5af8a8079",
+  "digest": "5667f33dd7aa74bb96d5cd41429a8ab323d6df66de6f874220527d5349083276",
   "aliases": [
     {
       "alias": "10- محمود شعبان",
@@ -1508,8 +1508,8 @@
     {
       "sourceField": "court",
       "sourceValue": "26",
-      "targetField": null,
-      "targetValue": null
+      "targetField": "circuit",
+      "targetValue": "26"
     },
     {
       "sourceField": "court",
