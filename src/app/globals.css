@@ -88,6 +88,24 @@
   --colour-border: #c7c7c7;
   --colour-danger: #802f1c; /* Terracotta Red */
 
+  /* ---- LAYER 2: UI tokens ------------------------------------------------
+     Derived from the twelve above, which are the firm's fixed identity
+     palette. Twelve colours run an identity; they cannot run an interface —
+     no hover, no focus ring, no disabled text, no divider weights, and
+     nothing that passes contrast as small text on white.
+
+     Every token here names its ROLE, never its appearance, and records which
+     Layer 1 colour it comes from and why. Extended one at a time during the
+     build, each disclosed. See docs/BRAND.md, "Layer 2 — UI tokens".
+
+     THIS FILE IS THE ONLY ONE ALLOWED TO CONTAIN A RAW COLOUR.
+     npm run check:rtl fails on a hex anywhere else. */
+  --row-alt: #fbfaf7; /* from --colour-background: alternating row */
+  --panel-inset: #f6f4ee; /* from --colour-background: inset panel */
+  --hairline: #ddd9ce; /* from --colour-border: divider on white, motif fill */
+  --text-positive: #0f6e56; /* from --colour-accent: teal fails contrast as small text */
+  --text-attention: #993c1d; /* from --colour-danger: same reason */
+
   /* Type. Arabic naskh needs more line height than Latin to keep the
      descenders and the dots legible at working sizes. */
   --font-body: 'Noto Naskh Arabic', 'Segoe UI', system-ui, sans-serif;

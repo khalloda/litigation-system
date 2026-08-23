@@ -5,18 +5,22 @@
 
 import { t } from '@/strings';
 
-/* Technical values that happen to be strings are not interface text. */
-const tokens = [
-  { name: '--colour-primary', hex: '#214B4B' },
-  { name: '--colour-danger', hex: '#802F1C' },
-];
+/*
+ * Technical values that happen to be strings are not interface text.
+ *
+ * These used to carry the hex beside the token name. They no longer do:
+ * docs/BRAND.md layer 2 makes a raw colour in a component a defect, so a
+ * fixture that is DELIBERATELY CORRECT cannot contain one. Correct code names
+ * the token and lets the stylesheet hold the value.
+ */
+const tokens = ['--colour-primary', '--colour-danger'];
 
 export function Clean() {
   return (
     <div>
       {/* Inline styles that carry no direction. */}
       <p style={{ marginInlineStart: 8 }}>{t.common.total}</p>
-      <p style={{ backgroundColor: '#214B4B' }}>{t.common.search}</p>
+      <p style={{ backgroundColor: 'var(--colour-primary)' }}>{t.common.search}</p>
       <p style={{ marginTop: 4, paddingBlock: 8 }}>{t.common.print}</p>
 
       {/* Every visible string comes from src/strings.ts. */}
@@ -41,7 +45,7 @@ export function Clean() {
       <p style={{ padding: '4px 8px' }}>{t.common.cancel}</p>
 
       {tokens.map((token) => (
-        <span key={token.name}>{token.hex}</span>
+        <span key={token} style={{ backgroundColor: `var(${token})` }} />
       ))}
     </div>
   );

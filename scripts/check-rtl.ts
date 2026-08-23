@@ -40,6 +40,33 @@ const ALLOW = /rtl-ok/;
 type Problem = { file: string; line: number; text: string; message: string; rule: string };
 
 /* ------------------------------------------------------------------------ */
+/*  Rule 3 — a raw colour outside the token layer                            */
+/*                                                                          */
+/*  docs/BRAND.md has two layers. Layer 1 is the firm's twelve identity      */
+/*  colours and is fixed. Layer 2 is the UI token set, derived from them,    */
+/*  extensible during the build, every token named by role and recording     */
+/*  which Layer 1 colour it comes from and why.                             */
+/*                                                                          */
+/*  **A colour that appears in a component without a token is a defect.**    */
+/*                                                                          */
+/*  Without this check that rule is aspirational. Twelve values cannot       */
+/*  supply hover, focus, disabled, selected, three weights of divider and a  */
+/*  scrim — so somebody needs a colour, writes a hex where they are, and by  */
+/*  Stage 4 there are thirty undocumented colours invented one at a time     */
+/*  across different files. That is the outcome the rule exists to prevent,  */
+/*  and only a check prevents it.                                            */
+/*                                                                          */
+/*  Same reasoning as the right-to-left rules above: a violation is          */
+/*  invisible until somebody opens the screen, so it is caught in the gate.  */
+/*                                                                          */
+/*  A hex is allowed in ONE place: a line that declares a custom property,   */
+/*  which is what a Layer 2 token is. Everything else fails.                 */
+/*  A deliberate exception needs an `rtl-ok` comment saying why.             */
+/* ------------------------------------------------------------------------ */
+const HEX = /#[0-9a-fA-F]{3,8}\b/;
+const TOKEN_DECLARATION = /--[a-z0-9-]+\s*:/i;
+
+/* ------------------------------------------------------------------------ */
 /*  Rule 1a — physical properties in a stylesheet                            */
 /* ------------------------------------------------------------------------ */
 
@@ -288,6 +315,15 @@ function checkFile(file: string): Problem[] {
       }
       const shorthand = checkFourValueShorthand(code);
       if (shorthand) add(shorthand, 'four-value-shorthand');
+
+      //  A hex is only ever allowed where a token is DEFINED.
+      if (HEX.test(code) && !TOKEN_DECLARATION.test(code)) {
+        add(
+          'raw colour in a stylesheet — use a var(--token); define the token in ' +
+            'globals.css with its derivation (docs/BRAND.md layer 2)',
+          'raw-hex-css',
+        );
+      }
     }
 
     if (isComponent) {
@@ -299,6 +335,14 @@ function checkFile(file: string): Problem[] {
 
       const inlineShorthand = checkFourValueInline(code);
       if (inlineShorthand) add(inlineShorthand, 'four-value-inline');
+
+      if (HEX.test(code)) {
+        add(
+          'raw colour in a component — use a var(--token); a colour without a ' +
+            'token is a defect (docs/BRAND.md layer 2)',
+          'raw-hex',
+        );
+      }
 
       if (VISIBLE_PROPS.test(code)) {
         add('literal text in a visible prop — move it to src/strings.ts (D12)', 'visible-prop');
@@ -373,6 +417,8 @@ const MUST_CATCH = [
   'label-key',
   'jsx-text',
   'jsx-expression-string',
+  'raw-hex',
+  'raw-hex-css',
 ];
 
 /*

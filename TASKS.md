@@ -523,18 +523,6 @@ only ever seen good data is not known to work.
 Each screen: list with Arabic search, detail view, create/edit where the role
 allows. Test with real volumes.
 
-- [ ] **4.0a Settle the interface numerals** — before any real screen
-      **`docs/BRAND.md` says Western; `docs/VISUAL-DIRECTION.md` section 6
-      records it as open.** The mockups used Arabic-Indic because they read
-      naturally in an Arabic interface; the data holds zero Arabic-Indic
-      digits and the firm's existing printed reports are Western.
-      Three options, in `docs/VISUAL-DIRECTION.md`. **Search already accepts
-      both** — `ar_normalise()` folds `٠-٩`, and that is settled.
-      Whichever way it goes, **update both documents so they agree**, and put
-      any conversion in one place rather than at each call site.
-      Also settle the five tints `docs/VISUAL-DIRECTION.md` uses that are not
-      in the `docs/BRAND.md` palette — see the note there.
-
 - [ ] **4.0 Revisit the right-to-left checker**
       Do this **before** the first real screen. `npm run check:rtl` works one
       line at a time, which was enough for Stage 0 but will not be enough for

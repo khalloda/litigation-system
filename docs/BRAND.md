@@ -1,8 +1,53 @@
 # Brand, language and layout
 
-## Colours
+## Colours — two layers
 
-From the firm's brand guidelines. Use these and nothing else.
+The palette has **two layers**, and they are governed differently. Collapsing
+them was the mistake this section used to make.
+
+**Layer 1 — the brand palette.** Fixed, twelve colours, from the firm's
+identity guidelines. Governs identity: the logo, report headers, the Kufic
+motif, anything a client sees as the firm's mark. **Nothing may be added here
+without the firm.**
+
+**Layer 2 — UI tokens.** Derived, extensible, governs the interface. Every
+token must trace to a Layer 1 colour, say which one and why, and be **named by
+role, never by appearance** — `--row-alt`, not `--light-cream`.
+
+### Why two layers
+
+Twelve colours are right for an identity. They cannot run an interface. A
+working screen needs hover and active states, focus rings, disabled text,
+selected rows, several weights of divider, a scrim behind a dialog, and
+colours that pass contrast as small text on white — none of which identity
+design considers. `#46A398` fails as body text on white; `#0F6E56` exists
+because of it.
+
+This section used to read "use these and nothing else". Left that way it
+guaranteed the opposite of what it intended: by Stage 4 there would be thirty
+undocumented colours, invented one at a time across different files, because
+somebody needed a hover state and had nowhere to put it.
+
+### The rule
+
+> **Layer 1 is fixed and requires the firm. Layer 2 may be extended during the
+> build, but every token must derive from Layer 1, be named by role, and record
+> why it exists. A colour that appears in a component without a token is a
+> defect.**
+
+**`npm run check:rtl` enforces the last sentence** and fails on any raw hex in
+a `.tsx` file, or in a stylesheet anywhere except the line that defines a
+token. That is what makes the rule real rather than aspirational — the same
+reasoning as the right-to-left checks: a violation is invisible until somebody
+opens the screen.
+
+A deliberate exception needs an `rtl-ok` comment saying why. There is exactly
+one in the codebase, on the task 0.4 page, where the hex is the *expected
+value* being verified rather than a style.
+
+## Layer 1 — the brand palette
+
+Fixed. From the firm's brand guidelines.
 
 | Role | Name | Hex |
 |---|---|---|
@@ -24,13 +69,26 @@ mostly light, with emerald green for headers, navigation and primary actions.
 Terracotta red is reserved for warnings and destructive actions — never
 decoration.
 
-**`docs/VISUAL-DIRECTION.md` uses five tints that are not in this table** —
-`#FBFAF7` and `#F6F4EE` for alternating rows and inset panels, `#DDD9CE` for
-the pale motif, and `#0F6E56` / `#993C1D` as print-weight teal and terracotta.
-They are derived from these colours rather than new brand colours, but this
-table currently says "use these and nothing else". **Fold them in here, or
-rule them out, before the first real screen is built** — otherwise the first
-person to need an alternating row invents their own.
+## Layer 2 — UI tokens
+
+Derived from Layer 1. Extensible during the build, one token at a time, each
+disclosed and each recording its derivation.
+
+| Token | Value | Derived from | Why it exists |
+|---|---|---|---|
+| `--row-alt` | `#FBFAF7` | off-white `#EEEDE8` | alternating row, screen and print |
+| `--panel-inset` | `#F6F4EE` | off-white `#EEEDE8` | inset panel background |
+| `--hairline` | `#DDD9CE` | border `#C7C7C7` | divider on white; pale motif fill |
+| `--text-positive` | `#0F6E56` | teal `#46A398` | teal fails contrast as small text on white |
+| `--text-attention` | `#993C1D` | terracotta `#802F1C` | same reason |
+
+**The rest of the token set is deliberately not built yet.** Real screens
+reveal what is actually needed, and a palette designed in advance guesses
+wrong. Further tokens are derived at Stage 4 as each screen demands one — each
+disclosed, each with its derivation added to this table.
+
+The values live in `src/app/globals.css`, which is the only file allowed to
+contain a raw colour.
 
 ## Logo
 
@@ -71,17 +129,28 @@ person to need an alternating row invents their own.
    **Enforced.** `npm run check:rtl` fails on any Arabic character inside a
    `.tsx` file outside a comment.
 
-3. **Numbers stay Western** (0–9) — **BUT THIS IS REOPENED, see below.**
-   Confirmed: zero Arabic-Indic digits in 35,343 rows. **Search must accept**
-   `٠-٩` in case a user types them, and that part is settled and built —
-   `ar_normalise()` folds them.
+3. **Numbers are Western (0–9) everywhere. SETTLED, 24 August 2026.**
 
-   **The interface question is open.** The mockups used Arabic-Indic (`٤٩٣`,
-   `٢٠٢٦`) because they read naturally in an Arabic interface, while the data
-   and the existing printed reports are Western. `docs/VISUAL-DIRECTION.md`
-   section 6 records the three options. **Nothing may be built on this rule
-   until it is settled**, and it is annoying to change late. Whichever way it
-   goes, this paragraph and that one must end up saying the same thing.
+   The interface displays Western digits. So do the reports. The mockups used
+   Arabic-Indic (`٤٩٣`, `٢٠٢٦`) because they read naturally in an Arabic
+   interface, and the firm considered it properly before ruling against it.
+
+   **The reasoning, so this is not reopened:**
+
+   - **Print continuity decides it.** This firm's work leaves the system on
+     paper constantly, and the existing printed reports are Western. Western
+     everywhere is the only option where a screen and a printout from it
+     agree.
+   - Mixing them splits the interface against itself: a matter count in `٤٩٣`
+     above a case number in `1039` on the same screen.
+   - Converting on display means the first missed conversion shows a bare
+     `493` in an otherwise Arabic-Indic screen — which reads as a bug rather
+     than a choice.
+   - The data agrees: **zero** Arabic-Indic digits in all 35,343 rows.
+
+   **Search accepts `٠-٩` regardless, and that is built** — `ar_normalise()`
+   folds them, and `npm run db:check` asserts it. A user may type Arabic-Indic;
+   the interface never displays it.
 
 4. **Mixed direction is normal.** Case numbers look like `1039 / 20ق`; client
    names like `شركة هيوليت باكارد HP`. Let the browser's bidirectional algorithm

@@ -22,22 +22,34 @@ const NEWLINE = String.fromCharCode(10);
 /*
  * Hex codes and token names are values, not words, so they stay here. The
  * name beside each swatch is text a person reads, so it comes from strings.
+ *
+ * EVERY LINE BELOW CARRIES `rtl-ok`, and the reason is the same for all of
+ * them: these hexes are DATA, not styling. This is the task 0.4 page and its
+ * whole job is to prove that each Layer 1 token resolves to the colour
+ * docs/BRAND.md says it should — so the expected value has to be visible
+ * beside the swatch, which is painted by the token itself.
+ *
+ * This is the only place in the codebase where a raw colour is legitimate,
+ * and the exception is written out ten times rather than once because
+ * `rtl-ok` covers a line and the line above it. That is deliberate: an
+ * exception that could be granted to a whole block is an exception nobody
+ * notices growing. Stage 5 deletes this page and the exceptions with it.
  */
 const palette = [
-  { label: t.setupCheck.palette.primary, hex: '#214B4B', token: '--colour-primary' },
-  { label: t.setupCheck.palette.primaryDark, hex: '#163232', token: '--colour-primary-dark' },
-  { label: t.setupCheck.palette.primaryMid, hex: '#2B605C', token: '--colour-primary-mid' },
-  { label: t.setupCheck.palette.accent, hex: '#46A398', token: '--colour-accent' },
-  { label: t.setupCheck.palette.accentWarm, hex: '#B6AA92', token: '--colour-accent-warm' },
+  { label: t.setupCheck.palette.primary, hex: '#214B4B', token: '--colour-primary' }, // rtl-ok: expected value, see above
+  { label: t.setupCheck.palette.primaryDark, hex: '#163232', token: '--colour-primary-dark' }, // rtl-ok: expected value
+  { label: t.setupCheck.palette.primaryMid, hex: '#2B605C', token: '--colour-primary-mid' }, // rtl-ok: expected value
+  { label: t.setupCheck.palette.accent, hex: '#46A398', token: '--colour-accent' }, // rtl-ok: expected value
+  { label: t.setupCheck.palette.accentWarm, hex: '#B6AA92', token: '--colour-accent-warm' }, // rtl-ok: expected value
   {
     label: t.setupCheck.palette.accentWarmDark,
-    hex: '#9C9174',
+    hex: '#9C9174', // rtl-ok: expected value
     token: '--colour-accent-warm-dark',
   },
-  { label: t.setupCheck.palette.background, hex: '#EEEDE8', token: '--colour-background' },
-  { label: t.setupCheck.palette.text, hex: '#1E1E1E', token: '--colour-text' },
-  { label: t.setupCheck.palette.border, hex: '#C7C7C7', token: '--colour-border' },
-  { label: t.setupCheck.palette.danger, hex: '#802F1C', token: '--colour-danger' },
+  { label: t.setupCheck.palette.background, hex: '#EEEDE8', token: '--colour-background' }, // rtl-ok: expected value
+  { label: t.setupCheck.palette.text, hex: '#1E1E1E', token: '--colour-text' }, // rtl-ok: expected value
+  { label: t.setupCheck.palette.border, hex: '#C7C7C7', token: '--colour-border' }, // rtl-ok: expected value
+  { label: t.setupCheck.palette.danger, hex: '#802F1C', token: '--colour-danger' }, // rtl-ok: expected value
 ];
 
 export default function SetupCheck() {

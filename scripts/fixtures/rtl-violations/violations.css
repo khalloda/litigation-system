@@ -70,3 +70,8 @@
 .directional-padding-shorthand {
   padding: 2px 8px 2px 24px;
 }
+
+/* A raw colour where a token belongs. The check must catch this. */
+.summary-card {
+  background: #fbfaf7;
+}

@@ -131,23 +131,34 @@ only the branding treatment.
 
 ---
 
-## 6. Open — decide before Stage 4
+## 6. Settled — numerals are Western
 
-**Numerals in the interface.** The mockups used Arabic-Indic (٤٩٣, ٢٠٢٦) because
-they look natural in an Arabic interface. But the source data contains **zero**
-Arabic-Indic digits, and `docs/BRAND.md` specifies Western.
+**Decided 24 August 2026. Western digits everywhere, in the interface and in
+reports.**
 
-Three options, none decided:
+The mockups used Arabic-Indic (`٤٩٣`, `٢٠٢٦`) because they read naturally in
+an Arabic interface. The firm ruled against it, and the reasoning is recorded
+in `docs/BRAND.md` rule 3 so it is not reopened:
 
-1. Western everywhere — matches the data, matches the existing reports
-2. Arabic-Indic in the interface, Western in data fields and reports
-3. Arabic-Indic everywhere, converting on display
+- **Print continuity decides it.** The firm's work leaves the system on paper
+  constantly and the existing reports are Western. This is the only option
+  where a screen and a printout from it agree.
+- Mixing splits the interface against itself — `٤٩٣` above `1039` on one
+  screen.
+- Converting on display means the first missed conversion shows a bare `493`
+  and reads as a bug rather than a choice.
+- The data agrees: zero Arabic-Indic digits in all 35,343 rows.
 
-Search must accept both regardless — that is already in the normaliser.
+**Search accepts `٠-٩` regardless and always did** — `ar_normalise()` folds
+them and `npm run db:check` asserts it. A user may type Arabic-Indic; the
+interface never displays it.
 
-**This is annoying to change late.** Settle it before the first real screen.
-
----
+**The palette gap this file exposed is also settled.** The five tints used
+here were not an oversight to fold in quietly — they were the first symptom of
+a real gap, and `docs/BRAND.md` is now split into two layers: a fixed
+twelve-colour brand palette, and a derived, extensible UI token set. All five
+are seeded as Layer 2 tokens with their derivations, and `npm run check:rtl`
+now fails on any raw colour outside the token definitions.
 
 ## 7. What this file is not
 

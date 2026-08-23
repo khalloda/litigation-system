@@ -38,3 +38,8 @@ export const palette = [
   { name: 'Emerald Green', hex: '#214B4B' },
   { name: 'Terracotta Red', hex: '#802F1C' },
 ];
+
+// A raw colour in a component. The check must catch this.
+export function Swatch() {
+  return <span style={{ backgroundColor: '#0F6E56' }} />;
+}
