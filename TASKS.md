@@ -349,7 +349,7 @@ confirm the gate catches it, and record what was broken and what it said. See
 "Prove the check catches a failure" in `docs/MIGRATION.md`. A gate that has
 only ever seen good data is not known to work.
 
-- [ ] **2.1 Extract** — run `scripts/01_extract_access.ps1`.
+- [x] **2.1 Extract** — run `scripts/01_extract_access.ps1`. **Done 23 August 2026.**
       **Gate 1: attachments and multi-value entries must both be > 0.**
       If either is zero, stop — that is the signature of the silent-failure
       export (D11).
@@ -387,6 +387,31 @@ only ever seen good data is not known to work.
       Cascade: **30,553 and 35,343 also move.** Gate 4 (task 2.12) reconciles
       the *identity* — migrated + archived = every row — against the file
       actually extracted, never against the constants.
+
+      **Result — Gate 1 PASSED, 23 August 2026.**
+      Source `Litigation database (ID 23194).accdb` · 46,661,632 bytes ·
+      modified 2026-08-23T07:31:52Z · SHA-256 `40EBF988…5979`. All four are
+      recorded in `_migration/meta/manifest.csv`, so "which extraction
+      produced this?" has an answer that is not anyone's memory.
+
+      **30,847 rows over the 15 migrated tables** (+294 on 19 August, about
+      74 a day over four days) · **30,885 over all 17 extracted** ·
+      **54 attachments** · **288 multi-value entries across 195 parents** ·
+      **17 relationship field-pairs** · **zero warnings**. Every count is up
+      or flat; nothing has fallen. Every CSV was read back off the disk and
+      parsed, and the records that came out matched the rows read from
+      Access, columns intact. All 54 logo files are on disk, none empty.
+
+      **The gate expects 17 tables in two named groups, not 15.** It was
+      policing the extraction set with the migration set, and those are
+      different questions. `المحامين` (38) and `LawyerShare4Invoices` (0) are
+      *reference-only*: extracted, never migrated. `المحامين` is the enforced
+      parent of `الدعاوى.lawyerA` and `.lawyerB` — drop it and task 2.7 has
+      nothing to expand the lawyer-combination strings from. See D5's
+      clarification of 23 August 2026. `LawyerShare4Invoices` is asserted at
+      **exactly 0**, not exempted, so a row appearing there fails the gate.
+
+      Output is in `_migration/` — 9.8 MB, gitignored, never committed.
 
 - [ ] **2.2 Staging schema** — every column `text`, plus `src_row_num`.
 
