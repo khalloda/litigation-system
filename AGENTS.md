@@ -160,7 +160,11 @@ know what was intended.
 - Are fonts bundled with the app rather than loaded from a CDN or assumed to be
   on the server?
 - Does search work without hamza and diacritics? Typing `احمد` must find
-  `أحمد`; `140J` must find `140ق`.
+  `أحمد`.
+  **`140J` must NOT find `140ق`.** That fold existed until 24 August 2026 and
+  was removed by the firm: `ar_normalise()` applied it to every field, so the
+  real client `JTI` normalised to `قTI`. If you see a `J → ق` fold, flag it —
+  it is not a missing feature.
 - Are CSS **logical properties** used (`margin-inline-start`) rather than
   `margin-left`?
 - Are any Arabic strings hardcoded in components instead of `src/strings.ts`?
