@@ -205,6 +205,25 @@ and passes each record's **original text** through untouched, prepending only
 would have been the obvious way to write that script, and would have collapsed
 both cells silently.
 
+#### Was it worth it? Two rows out of 31,227
+
+**Recorded honestly, because the next person will reasonably ask.**
+
+Preserving this distinction shaped the extractor's CSV encoding, the staging
+schema, a dedicated proof script with two deliberate breaks, and the loader's
+whole design. The entire practical extent of it is **two rows**.
+
+The honest answer is not that two rows justify the effort by themselves. It is
+that **you cannot know which two until you have kept them** — and by the time
+anyone asks the question, the information is gone. There is no way to recover
+a cleared field from a database that has already collapsed it into "never
+entered": both are empty, and nothing records which was which.
+
+So the cost is paid once, at the only moment it can be paid, against a benefit
+that cannot be measured in advance. That is the shape of most of the rules in
+this file. It is also why the figure is written down here: *two rows* is the
+real number, not an argument dressed up as one.
+
 Both halves of that check were proved to catch a failure, on 23 August 2026:
 
 | Broken on purpose | What happened |
@@ -648,6 +667,49 @@ In practice:
 4. **A parse failure is a refusal.** Never a default value, never a warning
    that the run continues past.
 
+### Two strings that print identically are not thereby equal
+
+**Comparing what you see is not comparing what is there.** This is the same
+family as the two entries above — something unreadable treated as something
+readable — and it is the third instance.
+
+The loader at task 2.3 refused to run, saying the CSV header did not match the
+staging table, and printed both:
+
+```
+file   : ID_Task | تاريخ التنفيذ | ... | آخر موعد | matterID
+staging: ID_Task | تاريخ التنفيذ | ... | آخر موعد | matterID
+```
+
+Fifteen names against fifteen names, character for character on the screen,
+and not equal. The scanner had no branch for the CR of a CRLF outside quotes,
+so it was appending it to **the last field of every record**. The header's
+`matterID` was `matterID\r`, and so was every `matterID` in 1,730 matters.
+
+**What would have happened without the check.** Nothing visible. The load
+succeeds — the column is `text` and a carriage return is a perfectly good
+character. Every row count matches. Gate 2 goes green. Weeks later, at
+transform, `الجلسات.matterID` is joined to `الدعاوى.matterID` and matches
+**nothing**, because one side carries an invisible character and the other
+does not. The symptom appears three stages from the cause, in a join, which is
+the hardest place in a migration to work backwards from.
+
+The general rule:
+
+1. **Diff bytes, not renderings.** When two values that must be equal are not,
+   print them so the difference can be seen — `JSON.stringify`, a hex dump,
+   character codes, lengths. The loader now prints each name JSON-quoted, so
+   `"matterID\r"` reads as what it is.
+2. **Compare structure to structure, at the boundary.** The check that caught
+   this was not clever. It compared the CSV header to the staging table's
+   columns before loading a single row, because "staging is directly
+   comparable to the source" is a claim worth testing rather than assuming.
+   Both sides came from the same extraction, so any difference at all meant
+   something was wrong in between.
+3. **Invisible characters are a class, not an accident.** CR, BOM, zero-width
+   joiners, non-breaking spaces, and the Arabic presentation forms. Any of
+   them can ride along in a value that looks correct in every report.
+
 ### An assertion tests what it looks at, and nothing else
 
 Two examples from the same afternoon, both about the multi-person split rules.
@@ -871,6 +933,42 @@ live in the data at all — it lives in a report nobody had opened.
 migrated as `show_on_poa_report`, with `جرد` recorded as its Access source.
 Translating it literally as `inventory` would have carried a wrong guess into
 the schema and made the report's behaviour look like a bug.
+
+### The throwaway cluster we deliberately did not build
+
+**Do not add a service-selecting override to `scripts/db-reset.ts`.** It has
+been considered and declined, so that nobody builds it later as an obvious
+improvement.
+
+The guard suite gained its own throwaway **database** at task 2.3, which got
+its cases running again after they had been blocked since task 1.1. One case
+still cannot be fully proved: the one showing the guard **allows** a
+legitimate reset. The guard protects the **volume**, not a database —
+`docker compose down -v` destroys every database in it at once — so it
+enumerates all of them and refuses if any holds rows. On a machine holding the
+project data it must refuse, and it should.
+
+Fully proving that case needs a throwaway **cluster**: a second compose service
+with its own volume, and `db-reset.ts` able to be pointed at it.
+
+**The firm's ruling, 23 August 2026: do not build it.**
+
+> `db-reset.ts` is the single thing standing between a mistyped command and
+> 30,885 staged rows. Adding a redirection flag to it in order to satisfy a
+> test puts a bypass into the most safety-critical script in the project — and
+> the bypass would exist permanently, to serve a test that runs occasionally.
+> **A guard with a bypass is not a guard.**
+
+The reduced case proves what actually matters: the guard passed all six
+earlier checks and refused **only** because the volume is not empty. That
+catches a guard that refuses everything, which is the realistic failure mode.
+The suite reports **"9 fully proved, 1 reduced"** rather than "all correct",
+because an honest partial beats a green light that means less than it appears
+to.
+
+**From Stage 2 onward the guard MUST refuse on any machine holding the
+extraction.** That is rule 14 working, not an obstacle to route around. If it
+ever stops refusing, something is wrong with the guard, not with the rule.
 
 ### A safety net we did not build, and must not disable
 
