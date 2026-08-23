@@ -413,7 +413,40 @@ only ever seen good data is not known to work.
 
       Output is in `_migration/` — 9.8 MB, gitignored, never committed.
 
-- [ ] **2.2 Staging schema** — every column `text`, plus `src_row_num`.
+- [x] **2.2 Staging schema** — every column `text`, plus `src_row_num`.
+      **Done 23 August 2026, migration 0024.**
+
+      **20 tables · 204 source columns, all `text`** — 17 extracted plus 3 for
+      the complex columns. Its own PostgreSQL schema, `staging`; Prisma's
+      datasource is `public`, so `migrate dev` reports in sync and leaves it
+      alone.
+
+      **Generated from the extraction's own `meta/columns.csv`, never typed:**
+      `npm run generate:staging-schema -- prisma/migrations/<folder>/migration.sql`.
+      191 Arabic column names retyped by hand is where a silent error enters.
+      The generator cross-checks the dictionary against the manifest — two
+      independent counts — and refuses to write anything if they disagree, or
+      if an identifier exceeds the 63 bytes PostgreSQL silently truncates at.
+      The migration records the source path, size, modification date and
+      SHA-256 of the extraction it describes.
+
+      **Nothing in staging can refuse a row.** Every source column `text`,
+      nullable, no default, no check, no foreign key. Each of those would turn
+      a bad date into a lost row. The only constraint is the primary key on
+      `(src_file, src_row_num)`, which is ours and cannot fail on the firm's
+      data — it makes loading the same file twice an error instead of a silent
+      doubling. Five checks in `npm run db:check` re-prove it (rule 16), and
+      all five were proved to fire against a deliberately wrong table.
+
+      **Column names verbatim** — `الموقف الحالي`, `Cash/probono`, `Inv-No`.
+      Renaming happens at transform, stage D.
+
+      **NULL and `''` proved distinct**, not assumed: `npm run test:staging-copy`.
+      A bare empty field arrives as NULL, a quoted `""` as the empty string.
+      Also proved: Arabic, an embedded comma, an embedded **newline**, a
+      doubled quote and trailing spaces all survive. Both failure modes of the
+      check itself were proved — a wrong assertion (psql exit 3) and *deleted*
+      assertions (psql exit **0**, caught by counting the `PROVED` notices).
 
 - [ ] **2.3 Load to staging** — Gate 2: counts match the manifest.
 

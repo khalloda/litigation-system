@@ -1159,6 +1159,105 @@ async function main() {
     searchProblems.length === 0,
   );
 
+  // ---- staging schema, task 2.2 --------------------------------------------
+  //
+  //  Rule 16: the migration asserted these once, at the moment it ran. That
+  //  proves one moment. These re-prove them every time anyone looks.
+  //
+  //  What is being protected is not the table count — it is the property that
+  //  NOTHING IN STAGING CAN REFUSE A ROW. A NOT NULL, a default, a check or a
+  //  foreign key on a source column would each turn a bad date into a lost
+  //  row, and not one of them would look wrong in a diff.
+  const staging = one(
+    await db.$queryRaw<
+      {
+        tables: bigint;
+        columns: bigint;
+        not_text: bigint;
+        not_nullable: bigint;
+        defaulted: bigint;
+      }[]
+    >`
+      SELECT
+        (SELECT count(*) FROM information_schema.tables
+          WHERE table_schema = 'staging' AND table_type = 'BASE TABLE')   AS tables,
+        (SELECT count(*) FROM information_schema.columns
+          WHERE table_schema = 'staging')                                 AS columns,
+        (SELECT count(*) FROM information_schema.columns
+          WHERE table_schema = 'staging'
+            AND column_name NOT IN ('src_file', 'src_row_num')
+            AND data_type <> 'text')                                      AS not_text,
+        (SELECT count(*) FROM information_schema.columns
+          WHERE table_schema = 'staging'
+            AND column_name NOT IN ('src_file', 'src_row_num')
+            AND is_nullable <> 'YES')                                     AS not_nullable,
+        (SELECT count(*) FROM information_schema.columns
+          WHERE table_schema = 'staging'
+            AND column_default IS NOT NULL)                               AS defaulted`,
+    'staging schema',
+  );
+
+  record(
+    'Staging tables exist',
+    '20 (17 extracted + 3 complex)',
+    String(staging.tables),
+    staging.tables === 20n,
+  );
+  record(
+    'Staging columns',
+    '244 (204 from Access + 20 x 2 bookkeeping)',
+    String(staging.columns),
+    staging.columns === 244n,
+  );
+  //     Every source column text, nullable, undefaulted. Three separate ways
+  //     for a row to be refused at the door, asserted separately so the
+  //     failure names which one it was.
+  const stagingProblems: string[] = [];
+  if (staging.not_text > 0n) stagingProblems.push(`${staging.not_text} columns are not text`);
+  if (staging.not_nullable > 0n)
+    stagingProblems.push(`${staging.not_nullable} source columns are NOT NULL`);
+  if (staging.defaulted > 0n) stagingProblems.push(`${staging.defaulted} columns have a default`);
+  record(
+    'Staging cannot refuse a row',
+    'every source column text, nullable, no default',
+    stagingProblems.length === 0
+      ? 'every source column text, nullable, no default'
+      : stagingProblems.join('; '),
+    stagingProblems.length === 0,
+  );
+
+  const stagingConstraints = await db.$queryRaw<{ contype: string; n: bigint }[]>`
+    SELECT c.contype::text AS contype, count(*) AS n
+      FROM pg_constraint c
+      JOIN pg_class t ON t.oid = c.conrelid
+      JOIN pg_namespace ns ON ns.oid = t.relnamespace
+     WHERE ns.nspname = 'staging'
+     GROUP BY c.contype`;
+  const byType = new Map(stagingConstraints.map((r) => [r.contype, r.n]));
+  const checks_ = [
+    ['c', 'check constraints'],
+    ['f', 'foreign keys'],
+    ['u', 'unique constraints'],
+  ] as const;
+  const unwanted = checks_
+    .filter(([code]) => (byType.get(code) ?? 0n) > 0n)
+    .map(([code, label]) => `${byType.get(code)} ${label}`);
+  //     A foreign key would be the subtle one. A staging row whose parent is
+  //     missing is a FINDING for Gate 3 — an orphan the firm needs to see —
+  //     not a load error that discards it.
+  record(
+    'Staging has no constraints on source data',
+    'no checks, no foreign keys, no unique constraints',
+    unwanted.length === 0 ? 'none' : unwanted.join('; '),
+    unwanted.length === 0,
+  );
+  record(
+    'Staging rows trace back to their origin',
+    '20 primary keys on (src_file, src_row_num)',
+    `${byType.get('p') ?? 0n} primary keys`,
+    (byType.get('p') ?? 0n) === 20n,
+  );
+
   // ---- report --------------------------------------------------------------
   const width = Math.max(...checks.map((c) => c.name.length));
   for (const c of checks) {

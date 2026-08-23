@@ -80,6 +80,74 @@ Stage C, where the decision is visible and reversible.
 Every staging row carries `src_row_num` and `src_file`, so any target row traces
 back to its origin.
 
+### The staging schema — built at task 2.2, 23 August 2026
+
+It lives in its own PostgreSQL schema, `staging`, alongside `public`. Prisma's
+datasource is `public` only, so **`schema.prisma` does not describe these
+tables and `prisma migrate dev` leaves them alone** — the same arrangement as
+the raw-SQL trigram indexes. They are throwaway: `public` is the system,
+`staging` is the loading dock.
+
+**20 tables · 204 source columns, every one `text`.**
+17 extracted tables plus 3 for the complex columns, which are separate because
+an Access complex column holds a pointer, not data.
+
+**Nothing in staging can refuse a row.** Every source column is `text`,
+nullable, with no default, no check and no foreign key. That is not
+tidiness — each of those would turn a bad value into a *lost row*, and none of
+them would look wrong in a diff. A staging row whose parent is missing is an
+orphan for the firm to see at Gate 3, not a load error that discards it.
+`npm run db:check` re-proves all four every time it runs (rule 16).
+
+**Column names are verbatim.** `الموقف الحالي`, `Cash/probono`, `Inv-No`,
+Arabic and all. Staging must be directly comparable to the source — that is
+what it is for. Renaming to the snake_case ASCII of `docs/DATA-MODEL.md`
+happens at **transform**, stage D.
+
+**Generated, not typed.** `npm run generate:staging-schema` builds the
+migration from the extraction's own `meta/columns.csv`. 191 Arabic column
+names retyped by hand is precisely where a silent error enters, and this
+project already has two duplicate people created that way. The generator
+cross-checks the dictionary against the manifest — two counts of the same
+thing, written by different parts of the extractor — and refuses to write
+anything if they disagree. It also refuses an identifier over 63 bytes, which
+PostgreSQL truncates with a *notice* rather than an error, silently merging
+two columns into one.
+
+The generated migration records which extraction it describes: the source
+path, size, modification date and SHA-256.
+
+### NULL and the empty string are not the same value
+
+**An unassigned `lawyerA` is a matter nobody has been put on. A cleared one is
+a matter somebody was taken off.** Collapse the two and that difference is
+gone for good, because staging is the only place the original text still
+exists.
+
+The mechanism is exact and needs no special handling:
+
+| The extractor writes | PostgreSQL CSV `COPY` reads |
+|---|---|
+| a **bare** empty field | `NULL` |
+| a **quoted** empty field, `""` | the empty string |
+
+**This is proved, not reasoned about.** `npm run test:staging-copy` copies a
+fixture into a temp table shaped `LIKE` a real staging table — `INCLUDING
+ALL`, so it inherits any constraint the real one has — asserts both
+directions, and rolls back. It also proves the four kinds of content that
+break a naive loader: a comma inside a quoted field, **a newline inside a
+quoted field**, a doubled quote, and trailing spaces.
+
+Both halves of that check were proved to catch a failure, on 23 August 2026:
+
+| Broken on purpose | What happened |
+|---|---|
+| the assertion changed to expect `''` where `NULL` is correct | `ERROR: a bare empty field did not arrive as NULL`, psql exit 3 |
+| the assertions deleted entirely | **psql exited 0** — a test that runs nothing and reports success. The script counts the `PROVED` notices and fails on 0 of 2 |
+
+The second one is why the counter exists. `ON_ERROR_STOP=1` makes a *failed*
+assertion fatal; nothing but counting makes an *absent* one fatal.
+
 ## Gate 1 — what the extraction may contain
 
 **17 tables in two named groups.** The distinction matters: this gate once
