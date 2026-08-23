@@ -30,6 +30,8 @@
     "db:generate": "prisma generate",
     "db:check": "tsx scripts/check-db.ts",
     "load:staging": "tsx scripts/load-staging.ts",
+    "profile:staging": "tsx scripts/profile-staging.ts",
+    "review:workbook": "tsx scripts/build-review-workbook.ts",
     "check:rtl": "tsx scripts/check-rtl.ts && tsx scripts/check-rtl.ts --self-test",
     "check:gitignore": "tsx scripts/check-gitignore.ts",
     "check:encoding": "tsx scripts/check-encoding.ts",
@@ -46,6 +48,7 @@
     "@fontsource-variable/noto-naskh-arabic": "^5.3.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "exceljs": "^4.4.0",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"

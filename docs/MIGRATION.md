@@ -1000,15 +1000,110 @@ CREATE TABLE qc.quarantine (
 
 Known items, with measured volumes:
 
-| Issue | Count | Handling |
-|---|---:|---|
-| Matters whose `[خطاب الأتعاب]` matches no fee letter | 289 of 412 | Load matter, link null, queue |
-| `خطابات الأتعاب.Matter` entries matching no matter | of 288 across 195 parents | Load, link null, queue |
-| Orphan task actions | 36 | Load, link null, queue |
-| Task actions with no parent id | 39 | Load, link null |
-| Hearings with no matter | 4 | Load to unassigned bucket |
-| POA with no client | 1 | Same |
-| Attendee names seen once | ~474 | Queue for human review |
+| Issue | Expected (19 Aug) | Found (23 Aug) | Handling |
+|---|---:|---:|---|
+| Matters whose `[خطاب الأتعاب]` matches no fee letter | 289 of 412 | **0 of 412** | See below — the expectation was measured against the wrong column |
+| `خطابات الأتعاب.Matter` entries matching no matter | of 288 | **32 of 288** | Same fault. Load, link null, queue |
+| `خطابات الأتعاب.Matter` entries matching *two* matters | — | **1** | Queue. A count of matches is not a match |
+| Orphan task actions | 36 | **36** | Load, link null, queue |
+| Task actions with no parent id | 39 | **39** | Load, link null |
+| Hearings with no matter | 4 | **4** | Load to unassigned bucket |
+| Matters with no client | — | **1** | Queue |
+| Admin tasks with no matter | — | **1** | Queue |
+| POA with no client | 1 | **1** | Same |
+| Attendee spellings not in the roster | ~474 | **663** of 705, over 5,346 mentions | Queue for human review |
+| Admin-task assignees not in the roster | — | **4** | Queue |
+
+### Two expected volumes were measured against the wrong column
+
+**Both were large, and both are small. Recorded rather than quietly
+corrected, because the same mistake is easy to make again.**
+
+**`الدعاوى.[خطاب الأتعاب]` — expected 289 orphans of 412, found none.**
+
+The column carries **two key spaces**. Every one of the 412 matters that names
+a fee letter resolves to exactly one:
+
+| Resolves against | Range | Matters |
+|---|---|---:|
+| `contractID` — the dense internal key | 1 – 332 | **289** |
+| `mfilesID` — the document-management id | 1 – 59,225 | **123** |
+| both | | **0** |
+| neither | | **0** |
+
+The 289 in the original expectation is not a count of orphans at all: it is the
+289 that resolve by `contractID`, counted as failures because only `mfilesID`
+was tried. **123 + 289 = 412 exactly.**
+
+There is no orphan problem here. There is a **latent ambiguity**: two values
+exist in both key spaces, so a future matter naming one of them could not be
+resolved without asking. Those two fee letters are flagged as notes; the
+reading itself goes to the firm as **one question**, not 412 rows of review.
+
+**`خطابات الأتعاب.Matter` — expected 288 orphans, found 32.**
+
+The multi-value entries hold **case numbers as text** — `2897 / 86ق`,
+`644 / 2012` — which resolve against `الدعاوى.matterAR`, the Arabic case
+number, and not against `matterID`, which is a surrogate integer. Matched
+against `matterID` all 288 look like orphans; matched against `matterAR`,
+**256 resolve** and 32 do not. Most of the 32 hold several case numbers in one
+entry, separated by newlines or by an Arabic comma:
+
+```
+5188 / 2011 -
+267 / 2015 -
+789 / 19ق -
+45317 / 73ق
+```
+
+**The lesson is the same both times.** A join that fails for *every* row is
+evidence about the join, not about the data. 100% is not a data-quality
+figure; it is the shape of a wrong column. A join that fails for 7% is a data
+problem worth queueing.
+
+### Gate 3 — built at task 2.4, 23 August 2026
+
+**Every staged row is in exactly one of three states.** A row in no state is a
+failure; a row in two is a failure, because *deliberately excluded* and
+*queued for review* are different answers to the same question and the
+transform would have to pick one.
+
+```
+25,755 clean          nothing was found against it
+ 5,472 quarantined    at least one finding, recording what deviated and why
+     0 excluded       deliberately not migrated, with the reason recorded
+------
+31,227 staged
+```
+
+Five proofs, counted rather than assumed: every finding and exclusion names a
+staged row that exists; no row is in two states; the three states account for
+every staged row; every finding carries an explanation in the firm's terms;
+and no answer the firm has already given was discarded.
+
+**The quarantine schema is three tables.**
+
+| Table | Holds |
+|---|---|
+| `quarantine.finding` | One deviation, against one staged row, with the **original text**. `original_value` is nullable on purpose — for many findings the deviation *is* that the value is null, and writing `''` there would be a lie about the source |
+| `quarantine.exclusion` | A row deliberately not migrated, with the reason **and the person who decided**. Empty is the normal state |
+| `quarantine.review_value` | One row per distinct value needing a human answer, with the context to answer it without opening Access |
+
+**A finding is about a row; a review value is about a value.** Nobody can
+answer `م. أحمد` 47 times — they answer it once, and the 47 hearings carrying
+it are each quarantined by their own finding.
+
+**`npm run profile:staging` is safe to re-run.** Findings are derived and
+rebuilt from scratch; review values are upserted so the firm's answers are
+never touched. A value that has been answered and no longer appears in the
+data is **kept and reported**, never deleted.
+
+**And a trigger enforces that.** The profiler `TRUNCATE`s the findings table,
+which would discard an answer written against a row-level question. There are
+no answers yet, so it cannot happen today — but before the first answered
+workbook comes back the profiler must switch to upserting, and a comment would
+not survive that long. `finding_truncate_guard` refuses the truncate the moment
+any answer exists. **A migration that refuses is a migration somebody reads.**
 
 ### Gate 3 ships as XLSX workbooks, one sheet per topic — ruled 23 August 2026
 
@@ -1046,6 +1141,40 @@ inference.
 
 Write the workbooks with ExcelJS and `rightToLeft` set on every sheet, the same
 as the reporting engine at task 6.1.
+
+#### What was built — `npm run review:workbook`
+
+One workbook, seven sheets, into `_migration/review/` — which is gitignored,
+because every row of it is client data.
+
+| Sheet | Rows | Asks |
+|---|---:|---|
+| اقرأ أولاً | — | How to answer, in Arabic, including that "unknown person" is a correct final answer |
+| الحاضرون بالجلسات | 663 | Who is this attendee spelling? |
+| إجراءات بلا مهمة | 36 | A task action whose parent task does not exist |
+| خطابات الأتعاب | 33 | A fee letter naming a case number that matches no matter, or two |
+| صفوف بلا رابط | 7 | A hearing, matter, POA or task with nothing to attach it to |
+| القائم بالعمل | 4 | Who did this administrative work? |
+| أسئلة عامة | 1 | The two-key-space question above |
+
+**Colour is evidence, not decoration.** The confidence column is computed from
+trigram similarity against `person_name_alias`, so a green row is green for a
+stated reason and a grey row is one the machine has nothing to say about.
+
+**Every row carries its database id in the first column**, and the answers will
+be read back by that id — never by matching the Arabic text. Matching Arabic
+back is exactly the fragile thing this project keeps getting wrong.
+
+**The workbook is read back and verified after it is written**, the same round
+trip as the loader: sheet count, row counts, `rightToLeft` on every sheet, and
+every review id present in the file. Proved to catch a failure on 23 August
+2026 by writing the sheets left-to-right — six sheets reported, exit 1.
+
+**`**` is one question, not 4,132.** Two asterisks appear in the attendee
+fields of 4,132 hearings. It is plainly a placeholder rather than a name, so
+it is classified as one, recorded as a `note` against each hearing, and asked
+about **once**. Quarantining 4,132 rows for review would have buried the 544
+real questions underneath them.
 
 ## The `_raw` rule
 

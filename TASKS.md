@@ -512,7 +512,33 @@ only ever seen good data is not known to work.
       puts a service-selecting override into the most safety-critical script in
       the project. **Not built. The firm decides.**
 
-- [ ] **2.4 Quarantine tables + profiling** — Gate 3.
+- [x] **2.4 Quarantine tables + profiling** — Gate 3.
+      **Done 23 August 2026, migrations 0025 and 0026. GATE 3 PASSED.**
+
+      **25,755 clean · 5,472 quarantined · 0 excluded, of 31,227 staged.**
+      Five proofs, counted rather than assumed.
+
+      Three quarantine tables — `finding` (one deviation, one row, original
+      text intact), `exclusion` (with the reason **and** who decided), and
+      `review_value` (one row per distinct value needing an answer).
+      `npm run profile:staging` is re-runnable: findings are rebuilt,
+      the firm's answers are upserted around and never touched, and a
+      trigger refuses the rebuild the moment any answer exists.
+
+      **Two expected volumes were measured against the wrong column, and both
+      collapse.** `الدعاوى.[خطاب الأتعاب]` — expected 289 orphans of 412,
+      found **0**: the column carries two key spaces, 289 resolving by
+      `contractID` and 123 by `mfilesID`, none by both, none by neither.
+      `خطابات الأتعاب.Matter` — expected 288, found **32**: the entries are
+      case numbers matching `matterAR`, not `matterID`. A join that fails for
+      *every* row is evidence about the join, not the data.
+
+      **The workbook: 7 sheets, RTL, colour-coded by computed confidence,
+      read back and verified after writing** — proved to catch a failure by
+      writing the sheets left-to-right. `**` appears in 4,132 hearings and is
+      asked about **once**, not 4,132 times.
+
+      db:check 41 → **46 checks**.
 
       **The review list ships as XLSX workbooks, one sheet per topic — not a
       flat list.** Ruled by the firm, 23 August 2026.

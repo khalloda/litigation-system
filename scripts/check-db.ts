@@ -1258,6 +1258,75 @@ async function main() {
     (byType.get('p') ?? 0n) === 20n,
   );
 
+  // ---- quarantine, task 2.4 ------------------------------------------------
+  //
+  //  Rule 16 again: the migration asserted the shape once. These re-prove the
+  //  properties the quarantine layer exists for, every time anyone looks.
+  const quarantine = one(
+    await db.$queryRaw<
+      {
+        tables: bigint;
+        original_nullable: bigint;
+        blank_detail: bigint;
+        both_states: bigint;
+        truncate_guard: bigint;
+      }[]
+    >`
+      SELECT
+        (SELECT count(*) FROM information_schema.tables
+          WHERE table_schema = 'quarantine' AND table_type = 'BASE TABLE')       AS tables,
+        (SELECT count(*) FROM information_schema.columns
+          WHERE table_schema = 'quarantine' AND table_name = 'finding'
+            AND column_name = 'original_value' AND is_nullable = 'YES')          AS original_nullable,
+        (SELECT count(*) FROM quarantine.finding WHERE btrim(detail) = '')       AS blank_detail,
+        (SELECT count(*) FROM quarantine.finding f
+          WHERE EXISTS (SELECT 1 FROM quarantine.exclusion e
+                         WHERE e.src_file = f.src_file
+                           AND e.src_row_num = f.src_row_num))                   AS both_states,
+        (SELECT count(*) FROM pg_trigger
+          WHERE tgrelid = 'quarantine.finding'::regclass
+            AND tgname = 'finding_truncate_guard')                               AS truncate_guard`,
+    'quarantine schema',
+  );
+
+  record(
+    'Quarantine tables exist',
+    '3 (finding, exclusion, review_value)',
+    String(quarantine.tables),
+    quarantine.tables === 3n,
+  );
+  //     If original_value ever gains NOT NULL, every finding whose deviation
+  //     IS a null value becomes unrecordable — and the natural fix is to
+  //     write '' instead, which is a lie about the source.
+  record(
+    'Quarantine can record a missing value',
+    'finding.original_value is nullable',
+    quarantine.original_nullable === 1n ? 'nullable' : 'NOT NULL',
+    quarantine.original_nullable === 1n,
+  );
+  record(
+    'Every finding explains itself',
+    '0 with a blank explanation',
+    String(quarantine.blank_detail),
+    quarantine.blank_detail === 0n,
+  );
+  //     Gate 3's central claim, re-proved outside the profiler that made it.
+  //     Quarantined and excluded are different answers to the same question.
+  record(
+    'No row is both quarantined and excluded',
+    '0 rows in two states',
+    String(quarantine.both_states),
+    quarantine.both_states === 0n,
+  );
+  //     The profiler rebuilds findings from scratch. This refuses if that
+  //     would discard an answer the firm has written — rule 7.
+  record(
+    "Quarantine will not discard the firm's answers",
+    'the truncate guard is installed',
+    quarantine.truncate_guard === 1n ? 'installed' : 'MISSING',
+    quarantine.truncate_guard === 1n,
+  );
+
   // ---- report --------------------------------------------------------------
   const width = Math.max(...checks.map((c) => c.name.length));
   for (const c of checks) {
