@@ -32,8 +32,11 @@
      * self-consistency  every CSV parses back out to exactly the number of
                       rows read from Access, with its column count intact and
                       a SHA-256 recorded
-     * completeness   all 15 expected tables present, exactly once each, none
-                      empty, and no unexpected table standing in for one
+     * completeness   all 17 expected tables present, exactly once each, none
+                      empty, and no unexpected table standing in for one.
+                      The 17 are TWO NAMED GROUPS -- see below. The gate used
+                      to police the extraction set with the migration set,
+                      which are different questions
      * relationships  the relationship export is not empty -- without it the
                       foreign keys cannot be rebuilt in the target
      * arithmetic     the reported total equals the sum of the per-table counts
@@ -54,6 +57,21 @@
 ================================================================================
 #>
 
+# ===========================================================================
+#  WHAT THE EXTRACTION IS ALLOWED TO CONTAIN -- 17 tables in TWO NAMED GROUPS
+#
+#  This gate once listed 15 tables: the ones that become records in the new
+#  system. It was then used to police what the EXTRACTOR produced, which is a
+#  different question and a larger set. The first run against the real file
+#  failed on two tables that are extracted deliberately and were never meant
+#  to migrate. Conflating "what do we migrate" with "what do we read out" is
+#  the whole of that bug, and naming the two groups is the whole of the fix.
+#
+#  The "no unexpected table" check keeps its teeth: a genuinely new table in
+#  the Access file still fails, and the firm hears about it before a
+#  migration rather than after.
+# ===========================================================================
+
 # ---------------------------------------------------------------------------
 #  The 19 August 2026 reference. A SHAPE CHECK, NOT A PASS CONDITION.
 #
@@ -65,7 +83,10 @@
 # ---------------------------------------------------------------------------
 $script:Gate1ReferenceDate = '19 August 2026'
 
-$script:Gate1ReferenceRows = [ordered]@{
+# ---- GROUP 1 --------------------------------------------------------------
+#  MIGRATED: the tables that become records in the new system.
+# ---------------------------------------------------------------------------
+$script:Gate1MigratedRows = [ordered]@{
     'الجلسات'          = 13279
     'admin work table' = 4207
     'إجراءات المهام'   = 4130
@@ -82,7 +103,60 @@ $script:Gate1ReferenceRows = [ordered]@{
     'lawyers'          = 23
     'فريق العمل'       = 3
 }
-$script:Gate1ReferenceTotalRows = 30553   # the sum of the table above, on that date
+
+# ---- GROUP 2 --------------------------------------------------------------
+#  REFERENCE-ONLY: extracted, never migrated.
+#
+#  They are read out because nothing is dropped at extraction, and because
+#  one of them is load-bearing:
+#
+#  `المحامين` -- 38 rows, mostly COMBINATIONS of lawyers, an Access
+#  workaround for the lack of many-to-many. Decision D5 does not migrate it
+#  as a table, and that stays true. But the relationship export shows
+#  `المحامين.lawyer_name` is the ENFORCED PARENT of `الدعاوى.lawyerA` and
+#  `الدعاوى.lawyerB` -- every matter's lawyer field points into this list.
+#  Drop it from the extraction and task 2.7 has nothing to expand the
+#  combination strings from. The 38 is D5's figure, not a 19 August reading;
+#  it is reported as shape like any other count.
+#
+#  `LawyerShare4Invoices` -- empty. docs/DATA-MODEL.md replaces it with
+#  `invoice_allocations`, alongside `تقسيم التحصيلات`. Asserted at EXACTLY
+#  zero rather than exempted from the non-empty rule: an exempt table is a
+#  hiding place, and if this one ever gains a row the firm should hear about
+#  it.
+# ---------------------------------------------------------------------------
+$script:Gate1ReferenceOnlyRows = [ordered]@{
+    'المحامين'             = 38
+    'LawyerShare4Invoices' = 0
+}
+
+# Tables whose row count is asserted EXACTLY rather than reported as shape.
+$script:Gate1ExactRowCounts = [ordered]@{
+    'LawyerShare4Invoices' = 0
+}
+
+# Everything the extraction is allowed to contain, in report order.
+$script:Gate1ExpectedRows = [ordered]@{}
+foreach ($k in $script:Gate1MigratedRows.Keys) {
+    $script:Gate1ExpectedRows[$k] = $script:Gate1MigratedRows[$k]
+}
+foreach ($k in $script:Gate1ReferenceOnlyRows.Keys) {
+    $script:Gate1ExpectedRows[$k] = $script:Gate1ReferenceOnlyRows[$k]
+}
+
+# Both totals are SUMMED from the tables above rather than written down a
+# second time. A total written twice is a total that can disagree with itself,
+# which is the failure this project keeps finding: a figure standing in for
+# something it does not measure.
+$script:Gate1MigratedTotalRows = 0
+foreach ($k in $script:Gate1MigratedRows.Keys) {
+    $script:Gate1MigratedTotalRows += $script:Gate1MigratedRows[$k]
+}
+$script:Gate1ExtractedTotalRows = $script:Gate1MigratedTotalRows
+foreach ($k in $script:Gate1ReferenceOnlyRows.Keys) {
+    $script:Gate1ExtractedTotalRows += $script:Gate1ReferenceOnlyRows[$k]
+}
+# -> 30,553 over 15 tables, and 30,591 over 17, as at 19 August 2026.
 
 # ---------------------------------------------------------------------------
 #  The two figures that ARE asserted for equality.
@@ -189,9 +263,10 @@ function Test-Gate1 {
     # -- every expected table must be PRESENT -------------------------------
     # Unconditionally. An earlier version only checked a table if it already
     # appeared in the manifest, so a missing table was simply not noticed.
-    foreach ($name in $script:Gate1ReferenceRows.Keys) {
+    foreach ($name in $script:Gate1ExpectedRows.Keys) {
         if ($names -notcontains $name) {
-            $failures.Add("expected table '$name' is MISSING from the extraction")
+            $group = if ($script:Gate1ReferenceOnlyRows.Contains($name)) { 'reference-only' } else { 'migrated' }
+            $failures.Add("expected table '$name' ($group) is MISSING from the extraction")
         }
     }
 
@@ -200,8 +275,8 @@ function Test-Gate1 {
     # new table has appeared in the Access file, the firm should hear about it
     # before a migration, not after.
     foreach ($name in $names) {
-        if (-not $script:Gate1ReferenceRows.Contains($name)) {
-            $failures.Add("unexpected table '$name' was extracted -- it is not in the migration set")
+        if (-not $script:Gate1ExpectedRows.Contains($name)) {
+            $failures.Add("unexpected table '$name' was extracted -- it is in neither the migrated nor the reference-only group")
         }
     }
 
@@ -219,14 +294,29 @@ function Test-Gate1 {
         }
     }
 
-    # -- no expected table may be empty -------------------------------------
+    # -- no expected table may be empty, except the one asserted at zero ----
     # The counts are no longer asserted, so this is what now stops a table
     # that was opened, read as nothing, and written as a bare header line.
+    #
+    # `LawyerShare4Invoices` is known empty. It is asserted at EXACTLY zero
+    # rather than exempted from this rule: an exempt table would be a place
+    # for a fault to hide, and a table that has quietly started collecting
+    # rows is something the firm should hear about.
     foreach ($row in $TableRows) {
-        if (-not $script:Gate1ReferenceRows.Contains($row.name)) { continue }
+        if (-not $script:Gate1ExpectedRows.Contains($row.name)) { continue }
+
+        if ($script:Gate1ExactRowCounts.Contains($row.name)) {
+            $want = [int]$script:Gate1ExactRowCounts[$row.name]
+            if ([int]$row.row_count -ne $want) {
+                $failures.Add(("table '{0}': {1:N0} rows, expected exactly {2}. This table is recorded as empty and replaced by `invoice_allocations`; rows in it means something changed in Access that nobody has decided about" -f `
+                    $row.name, [int]$row.row_count, $want))
+            }
+            continue
+        }
+
         if ([int]$row.row_count -le 0) {
             $failures.Add(("table '{0}' extracted 0 rows -- it held {1:N0} on {2}" -f `
-                $row.name, $script:Gate1ReferenceRows[$row.name], $script:Gate1ReferenceDate))
+                $row.name, $script:Gate1ExpectedRows[$row.name], $script:Gate1ReferenceDate))
         }
     }
 
@@ -332,13 +422,14 @@ function Test-Gate1 {
     # =======================================================================
     $shape = [System.Collections.Generic.List[object]]::new()
 
-    foreach ($name in $script:Gate1ReferenceRows.Keys) {
+    foreach ($name in $script:Gate1ExpectedRows.Keys) {
         $row = $TableRows | Where-Object { $_.name -eq $name } | Select-Object -First 1
-        $reference = [int]$script:Gate1ReferenceRows[$name]
+        $reference = [int]$script:Gate1ExpectedRows[$name]
         $actual    = if ($null -eq $row) { $null } else { [int]$row.row_count }
 
         $shape.Add([pscustomobject]@{
             Name      = $name
+            Group     = $(if ($script:Gate1ReferenceOnlyRows.Contains($name)) { 'reference' } else { 'migrated' })
             Reference = $reference
             Actual    = $actual
             Delta     = $(if ($null -eq $actual) { $null } else { $actual - $reference })
@@ -346,6 +437,9 @@ function Test-Gate1 {
 
         if ($null -eq $actual) { continue }          # already reported as missing
         if ($actual -le 0)     { continue }          # already reported as empty
+        # A count asserted exactly is not shape, and cannot drift by
+        # definition -- it has already been judged above.
+        if ($script:Gate1ExactRowCounts.Contains($name)) { continue }
 
         # The file grows by about 100 records a day. It does not shrink.
         if ($actual -lt $reference) {
@@ -415,26 +509,53 @@ function Write-Gate1Result {
     Write-Host (" SHAPE -- what was extracted, against {0}" -f $script:Gate1ReferenceDate)
     Write-Host " (reported for a human to eyeball -- NOT asserted)"
     Write-Host "----------------------------------------------------------"
-    Write-Host ("  {0,-20} {1,12} {2,12} {3,12}" -f 'table', '19 Aug', 'extracted', 'change')
+    Write-Host ("  {0,-22} {1,12} {2,12} {3,12}" -f 'table', '19 Aug', 'extracted', 'change')
 
-    foreach ($s in $Result.Shape) {
-        if ($null -eq $s.Actual) {
-            Write-Host ("  {0,-20} {1,12:N0} {2,12} {3,12}" -f `
-                $s.Name, $s.Reference, 'MISSING', '--') -ForegroundColor Red
-            continue
+    # One row of the table.
+    function Write-ShapeRow {
+        param($Entry)
+        if ($null -eq $Entry.Actual) {
+            Write-Host ("  {0,-22} {1,12:N0} {2,12} {3,12}" -f `
+                $Entry.Name, $Entry.Reference, 'MISSING', '--') -ForegroundColor Red
+            return
         }
-        $delta  = [int]$s.Delta
+        $delta  = [int]$Entry.Delta
         $sign   = if ($delta -gt 0) { '+' } else { '' }
         $colour = if ($delta -lt 0) { 'Yellow' } else { 'Gray' }
-        Write-Host ("  {0,-20} {1,12:N0} {2,12:N0} {3,12}" -f `
-            $s.Name, $s.Reference, $s.Actual, ("{0}{1:N0}" -f $sign, $delta)) -ForegroundColor $colour
+        Write-Host ("  {0,-22} {1,12:N0} {2,12:N0} {3,12}" -f `
+            $Entry.Name, $Entry.Reference, $Entry.Actual, ("{0}{1:N0}" -f $sign, $delta)) -ForegroundColor $colour
     }
 
-    $refTotal   = $script:Gate1ReferenceTotalRows
-    $totalDelta = $TotalRows - $refTotal
-    $totalSign  = if ($totalDelta -gt 0) { '+' } else { '' }
-    Write-Host ("  {0,-20} {1,12:N0} {2,12:N0} {3,12}" -f `
-        'TOTAL', $refTotal, $TotalRows, ("{0}{1:N0}" -f $totalSign, $totalDelta))
+    # A total line. Every total says how many tables it covers, because a
+    # total that does not is a figure standing in for something it does not
+    # measure -- which is how a 15-table sum came to be printed against a
+    # 17-table one.
+    function Write-TotalRow {
+        param([string] $Label, [int] $Tables, [int] $Reference, [int] $Actual)
+        $delta = $Actual - $Reference
+        $sign  = if ($delta -gt 0) { '+' } else { '' }
+        Write-Host ("  {0,-22} {1,12:N0} {2,12:N0} {3,12}" -f `
+            ("{0} ({1} tables)" -f $Label, $Tables), $Reference, $Actual,
+            ("{0}{1:N0}" -f $sign, $delta))
+    }
+
+    $migrated  = @($Result.Shape | Where-Object { $_.Group -eq 'migrated' })
+    $reference = @($Result.Shape | Where-Object { $_.Group -eq 'reference' })
+
+    foreach ($s in $migrated) { Write-ShapeRow $s }
+
+    $migratedActual = 0
+    foreach ($s in $migrated) { if ($null -ne $s.Actual) { $migratedActual += [int]$s.Actual } }
+    Write-TotalRow 'MIGRATED' $migrated.Count $script:Gate1MigratedTotalRows $migratedActual
+
+    if ($reference.Count -gt 0) {
+        Write-Host ""
+        Write-Host "  reference-only -- extracted, never migrated:"
+        foreach ($s in $reference) { Write-ShapeRow $s }
+    }
+
+    Write-Host ""
+    Write-TotalRow 'EXTRACTED' $Result.Shape.Count $script:Gate1ExtractedTotalRows $TotalRows
     Write-Host ""
 
     if ($SourceInfo.Count -gt 0) {
@@ -488,8 +609,9 @@ function Write-Gate1Result {
     Write-Host "==========================================================" -ForegroundColor Green
     Write-Host " GATE 1 PASSED" -ForegroundColor Green
     Write-Host "==========================================================" -ForegroundColor Green
-    Write-Host ("  tables        : {0} of {0} present, once each, none empty" -f `
-        $script:Gate1ReferenceRows.Count)
+    Write-Host ("  tables        : {0} present, once each -- {1} migrated, {2} reference-only" -f `
+        $script:Gate1ExpectedRows.Count, $script:Gate1MigratedRows.Count,
+        $script:Gate1ReferenceOnlyRows.Count)
     Write-Host  "  self-check    : every CSV read back and verified, SHA-256 recorded"
     Write-Host ("  rows          : {0:N0}" -f $TotalRows)
     Write-Host ("  attachments   : {0}" -f $Attachments)

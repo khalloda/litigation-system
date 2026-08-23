@@ -13,8 +13,14 @@ things, and confusing them makes the final reconciliation impossible to judge.
 | Number | What it is |
 |---:|---|
 | **35,343** | Every row in the Access file, including the tables the firm dropped |
-| **30,553** | The rows that actually migrate — the sum of the Gate 1 table below |
-| **4,790** | The difference: archived tables. Meetings (3,230 rows, D2) plus `Copy Of العملاء`, `Follow-up`, `عهدة قسم القضايا`, `Paste Errors`, `tblMinMatterHearingDate` and the other archive-only tables the extraction script skips by default |
+| **30,553** | The rows that actually migrate — the sum of the **migrated** group below |
+| **4,790** | The difference: everything not migrated. Meetings (3,230 rows, D2) plus `Copy Of العملاء`, `Follow-up`, `عهدة قسم القضايا`, `Paste Errors`, `tblMinMatterHearingDate` and the other archive-only tables the extraction script skips by default — **and the 38 rows of `المحامين`**, which is extracted but not migrated |
+
+**Not migrated splits three ways, and Gate 4 needs the distinction.** A table
+is *migrated* (becomes records in the new system), *reference-only*
+(extracted, read during the migration, never becomes records), or
+*archive-only* (not extracted at all without `-IncludeArchiveTables`). The
+first two are what Gate 1 expects; all three together are the 35,343.
 
 **All three figures are as at 19 August 2026, and all three move.** The file
 grows by about 100 records a day, so by cutover the migrated figure will be
@@ -74,9 +80,18 @@ Stage C, where the decision is visible and reversible.
 Every staging row carries `src_row_num` and `src_file`, so any target row traces
 back to its origin.
 
-## Gate 1 — expected values
+## Gate 1 — what the extraction may contain
 
-Fail the migration if these do not match.
+**17 tables in two named groups.** The distinction matters: this gate once
+listed only the 15 migrated tables and was then used to police what the
+*extractor* produced, which is a larger set. The first run against the real
+file failed on two tables that are read out deliberately and were never meant
+to migrate. *What do we migrate* and *what do we read out* are different
+questions.
+
+### Group 1 — migrated (15 tables)
+
+These become records in the new system.
 
 | Table | Rows | | Table | Rows |
 |---|---:|---|---|---:|
@@ -91,7 +106,24 @@ Fail the migration if these do not match.
 
 **These 15 tables summed to 30,553 rows on 19 August 2026.**
 
-Also on that date: **54 attachments** and **288 multi-value entries**.
+### Group 2 — reference-only (2 tables)
+
+Extracted, never migrated. Nothing is dropped at extraction, and one of these
+is load-bearing.
+
+| Table | Rows | Why it is extracted |
+|---|---:|---|
+| `المحامين` | 38 | **The enforced parent of `الدعاوى.lawyerA` and `.lawyerB`.** Every matter's lawyer field is a name drawn from this list, and most of the 38 are *combinations* of lawyers. D5 does not migrate it as a table and that stays true — but drop it from the extraction and task 2.7 has nothing to expand the combination strings from. The 38 is D5's figure, not a 19 August reading |
+| `LawyerShare4Invoices` | 0 | Empty. Replaced by `invoice_allocations`, alongside `تقسيم التحصيلات`. **Asserted at exactly 0**, not exempted from the non-empty rule — an exempt table is a place for a fault to hide, and a table that has quietly started collecting rows is something the firm should hear about |
+
+**The two totals are reported separately, each labelled with how many tables
+it covers:** 30,553 over 15 migrated tables, 30,591 over all 17. Printing one
+against the other is a total standing in for something it does not measure —
+the same fault as writing 30,553 into Gate 4. Both are **summed from the
+tables above** by `scripts/lib/gate1.ps1` rather than written down a second
+time, so they cannot disagree with the lists they are totals of.
+
+Also on 19 August 2026: **54 attachments** and **288 multi-value entries**.
 
 ### What Gate 1 actually asserts — ruled 23 August 2026
 
@@ -112,7 +144,7 @@ already written down twice in this file; this is it arriving in advance.
 |---|---|---|
 | **Provenance** | The manifest records the source file's **path, size, modification date and SHA-256** | Three weeks from now, *"which extraction produced this?"* has to be answerable from the manifest and not from anyone's memory. On cutover day it is the proof that the frozen production file — and not a stale rehearsal copy — is what was read |
 | **Self-consistency** | Every CSV is **read back off the disk and parsed**, and the records that come out equal the rows read from Access, with the column count intact. SHA-256 recorded for every file | This is the real question Gate 1 answers: *did we get everything out intact?* It needs no prior figure and cannot drift. It must be a real parse — counting our own writes proves only that the loop ran, and counting lines is wrong the moment a memo field contains a newline |
-| **Completeness** | All **15** expected tables present, **exactly once each**, each with **more than zero** rows, and no unexpected table | A missing table is the fault that once slipped through a manifest whose total added up; a duplicate entry is the fault that slipped through the fix |
+| **Completeness** | All **17** expected tables present — 15 migrated, 2 reference-only — **exactly once each**, each with **more than zero** rows except the one asserted at exactly 0, and no table outside either group | A missing table is the fault that once slipped through a manifest whose total added up; a duplicate entry is the fault that slipped through the fix. The two groups are the fix for the third: policing the extraction set with the migration set |
 | **Relationships** | The relationship export is **not empty** | Without it the foreign keys cannot be rebuilt in the target |
 | **Arithmetic** | The reported total equals the **sum of the per-table counts** | The identity, which holds on any day. Not a comparison against 30,553, which would fail every run from here |
 | **Complex columns** | Attachments **exactly 54** and multi-value entries **exactly 288** | Zero is the signature of the silent-failure export (D11) — but a floor of `> 0` passes a partial read, and 53 logos out of 54 is a lost logo. **Tightened from a floor to an exact match, ruled by the firm 23 August 2026.** These do not drift the way rows do: if the firm adds a client logo or a fee letter, the gate fails until the figure is changed here deliberately, with the reason. That is intended — a logo appearing is something the firm should confirm, not something a gate should wave through |

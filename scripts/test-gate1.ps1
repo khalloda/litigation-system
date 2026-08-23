@@ -37,8 +37,10 @@ $FakeSha = 'a' * 64
 # cases below; here it is, so the arithmetic is easy to follow.
 function New-PerfectRun {
     $rows = @()
-    foreach ($name in $script:Gate1ReferenceRows.Keys) {
-        $n = $script:Gate1ReferenceRows[$name]
+    $total = 0
+    foreach ($name in $script:Gate1ExpectedRows.Keys) {
+        $n = $script:Gate1ExpectedRows[$name]
+        $total += $n
         $rows += [pscustomobject]@{
             name                 = $name
             row_count            = $n
@@ -50,7 +52,7 @@ function New-PerfectRun {
     }
     return @{
         TableRows    = $rows
-        TotalRows    = 30553
+        TotalRows    = $total     # 30,591 over 17 tables: 30,553 migrated + 38 + 0
         Attachments  = 54
         MvfValues    = 288
         WarningCount = 0
@@ -63,6 +65,15 @@ function New-PerfectRun {
         RelationshipPairs    = 21
         SelectedTables       = @()
         IncludeArchiveTables = $false
+    }
+}
+
+# A manifest row for a table that is not in the expected set.
+function New-TableRow {
+    param([string] $Name, [int] $Rows)
+    return [pscustomobject]@{
+        name = $Name; row_count = $Rows; csv_rows_verified = $Rows
+        csv_columns_verified = 7; plain_columns = 7; sha256 = $script:FakeSha
     }
 }
 
@@ -169,6 +180,67 @@ $run = Add-Rows (New-PerfectRun) 'lawyers' 24
 Test-Case 'DRIFT: `lawyers` 23 -> 47 is below the floor and passes quietly' $run 'pass'
 
 # ===========================================================================
+#  THE TWO GROUPS -- 15 migrated + 2 reference-only, added 23 August 2026
+#
+#  The first run of this gate against the real Access file failed on two
+#  tables that are extracted deliberately and were never meant to migrate.
+#  The gate was policing the EXTRACTION set with the MIGRATION set, and those
+#  are different questions.
+# ===========================================================================
+
+# `المحامين` is not migrated, but `الدعاوى.lawyerA` and `.lawyerB` are
+# enforced children of it. Without it, task 2.7 has nothing to expand the
+# lawyer-combination strings from.
+$run = New-PerfectRun
+$run.TableRows = @($run.TableRows | Where-Object { $_.name -ne 'المحامين' })
+$run.TotalRows = $run.TotalRows - 38
+Test-Case 'a missing `المحامين` fails -- reference-only is still expected' `
+    $run 'fail' 'reference-only'
+
+# It is reported as shape like any other count, so it may drift.
+$run = Add-Rows (New-PerfectRun) 'المحامين' 3
+Test-Case '`المحامين` gaining three combinations passes' $run 'pass'
+
+# ...and it may not be empty.
+$run = Add-Rows (New-PerfectRun) 'المحامين' -38
+Test-Case 'an empty `المحامين` fails' $run 'fail' 'extracted 0 rows'
+
+# `LawyerShare4Invoices` is asserted at EXACTLY zero, not exempted from the
+# non-empty rule. An exempt table is a place for a fault to hide.
+$run = New-PerfectRun
+Test-Case 'an empty `LawyerShare4Invoices` passes -- it is asserted at 0, not skipped' `
+    $run 'pass'
+
+$run = Add-Rows (New-PerfectRun) 'LawyerShare4Invoices' 1
+Test-Case 'ONE row in `LawyerShare4Invoices` fails -- the firm hears about it' `
+    $run 'fail' 'expected exactly 0'
+
+# The teeth are still there: a table in neither group fails.
+$run = New-PerfectRun
+$run.TableRows += (New-TableRow 'brand_new_access_table' 900)
+$run.TotalRows = $run.TotalRows + 900
+Test-Case 'a genuinely new table still fails -- neither group covers it' `
+    $run 'fail' 'neither the migrated nor the reference-only group'
+
+# The documented figure, asserted rather than trusted. 30,553 over 15 tables
+# is quoted throughout docs/MIGRATION.md; if the table above is ever edited,
+# this is what notices.
+if ($script:Gate1MigratedTotalRows -ne 30553) {
+    $failed++
+    Write-Host ("  FAIL  the migrated tables sum to {0}, not the documented 30,553" -f `
+        $script:Gate1MigratedTotalRows) -ForegroundColor Red
+} else {
+    Write-Host "  ok    the 15 migrated tables sum to the documented 30,553"
+}
+if ($script:Gate1ExtractedTotalRows -ne 30591) {
+    $failed++
+    Write-Host ("  FAIL  the 17 expected tables sum to {0}, not 30,591" -f `
+        $script:Gate1ExtractedTotalRows) -ForegroundColor Red
+} else {
+    Write-Host "  ok    the 17 expected tables sum to 30,591 -- 30,553 + 38 + 0"
+}
+
+# ===========================================================================
 #  RE-REVIEW -- the three bypasses that each printed "GATE 1 PASSED"
 # ===========================================================================
 
@@ -177,10 +249,7 @@ Test-Case 'DRIFT: `lawyers` 23 -> 47 is below the floor and passes quietly' $run
 # and a total cannot tell a missing table from a different one.
 $run = New-PerfectRun
 $run.TableRows = @($run.TableRows | Where-Object { $_.name -ne 'lawyers' })
-$run.TableRows += [pscustomobject]@{
-    name = 'some_other_table'; row_count = 23; csv_rows_verified = 23
-    csv_columns_verified = 7; plain_columns = 7; sha256 = $FakeSha
-}
+$run.TableRows += (New-TableRow 'some_other_table' 23)
 Test-Case 'RE-REVIEW: `lawyers` missing, an unrelated 23-row table makes the total add up' `
     $run 'fail' 'lawyers'
 
@@ -190,10 +259,7 @@ Test-Case 'RE-REVIEW: the stray table that masked it is also rejected' `
 # RE-REVIEW 2: -Tables used to pass with no complex columns at all.
 $run = New-PerfectRun
 $run.SelectedTables = @('العملاء')
-$run.TableRows = @([pscustomobject]@{
-    name = 'العملاء'; row_count = 313; csv_rows_verified = 313
-    csv_columns_verified = 7; plain_columns = 7; sha256 = $FakeSha
-})
+$run.TableRows = @(New-TableRow 'العملاء' 313)
 $run.TotalRows = 313
 $run.Attachments = 0
 $run.MvfValues = 0
@@ -228,7 +294,7 @@ Test-Case '287 multi-value entries fails' $run 'fail' 'multi-value entries 287'
 # ===========================================================================
 $run = New-PerfectRun
 $run.TableRows = @($run.TableRows | Where-Object { $_.name -ne 'فريق العمل' })
-$run.TotalRows = 30550
+$run.TotalRows = $run.TotalRows - 3
 Test-Case 'a missing table fails even when nothing replaces it' $run 'fail' 'MISSING'
 
 # An empty table is the new failure the count check used to cover for free.
@@ -241,18 +307,12 @@ Test-Case 'a table extracted as 0 rows fails -- opened, read as nothing, header 
 # the gate reported "exact" -- but a loader reading that manifest could act on
 # the empty duplicate.
 $run = New-PerfectRun
-$run.TableRows += [pscustomobject]@{
-    name = 'lawyers'; row_count = 0; csv_rows_verified = 0
-    csv_columns_verified = 7; plain_columns = 7; sha256 = $FakeSha
-}
+$run.TableRows += (New-TableRow 'lawyers' 0)
 Test-Case 'RED TEAM: a duplicate, empty `lawyers` entry fails' $run 'fail' 'appears 2 times'
 
 $run = New-PerfectRun
-$run.TableRows += [pscustomobject]@{
-    name = 'lawyers'; row_count = 23; csv_rows_verified = 23
-    csv_columns_verified = 7; plain_columns = 7; sha256 = $FakeSha
-}
-$run.TotalRows = 30576
+$run.TableRows += (New-TableRow 'lawyers' 23)
+$run.TotalRows = $run.TotalRows + 23
 Test-Case 'a duplicate with the correct count also fails' $run 'fail' 'appears 2 times'
 
 # ===========================================================================
@@ -298,7 +358,7 @@ $run = New-PerfectRun; $run.RelationshipPairs = 0
 Test-Case 'no relationships exported fails -- the foreign keys are unrebuildable' `
     $run 'fail' 'no relationships'
 
-$run = New-PerfectRun; $run.TotalRows = 30554
+$run = New-PerfectRun; $run.TotalRows = $run.TotalRows + 1
 Test-Case 'a total that disagrees with the sum of the per-table counts fails' `
     $run 'fail' 'does not equal the sum'
 

@@ -57,6 +57,31 @@ table with a role. Names are never used as keys.
 *Evidence:* `احمد سعيد` and `أحمد سعيد` differ by one hamza and Access treated
 them as two people, detaching 3 matters.
 
+### Clarification, 23 August 2026 — `المحامين` is still EXTRACTED
+
+**The decision above does not change. This adds what it did not say.**
+
+Not migrating a table is not the same as not reading it. The first extraction
+run (task 2.1) exported the Access relationships, and they show:
+
+```
+المحامين.lawyer_name  →  الدعاوى.lawyerA     enforced
+المحامين.lawyer_name  →  الدعاوى.lawyerB     enforced
+```
+
+**`المحامين` is the enforced parent of both lawyer fields on every matter.**
+Every value in `الدعاوى.lawyerA` and `.lawyerB` is a name drawn from that
+38-row list, and most of those 38 are *combinations* of lawyers rather than
+people. It is the list that turns a matter's lawyer field into real people.
+
+So it must still be extracted. **Drop it and task 2.7 has nothing to expand
+the combination strings from** — the matters would keep a name that resolves
+to nobody, which is the exact failure this decision exists to prevent.
+
+Gate 1 therefore expects **17 tables in two named groups**: 15 *migrated*, and
+2 *reference-only* — `المحامين` and the empty `LawyerShare4Invoices` — which
+are extracted and never migrated. See `docs/MIGRATION.md`.
+
 ## D6 — Teams dropped from the matter
 
 87% of matters (1,507 of 1,730) were on "team 1". A field where almost
