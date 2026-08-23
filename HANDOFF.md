@@ -1,6 +1,6 @@
 # Handoff — Litigation Management System
 
-Written 24 August 2026, end of session. Assumes you have no memory of the
+Written 23 August 2026, end of session. Assumes you have no memory of the
 conversation that produced the state below.
 
 **Read first, in this order:** `CLAUDE.md` (**16** durable rules — binding),
@@ -8,21 +8,29 @@ conversation that produced the state below.
 position), then this file. Before Stage 2 also read `docs/MIGRATION.md` in
 full and `docs/STAGE-2-PLAN.md`.
 
-Last commit: `efa03be`. Working tree clean. **STAGE 1 IS COMPLETE AND
-REVIEWED.** All nine findings of the 24 August Codex review
-(`docs/reviews/2026-08-24-stage-1-full.md`) are closed, the court list is
-seeded, and 22 migrations are applied.
+Last commit: `8f9abbd`. Working tree clean. **STAGE 1 IS COMPLETE AND
+REVIEWED, AND THE FIRM'S FIVE CORRECTIONS ARE APPLIED.** All nine findings of
+the Codex review (`docs/reviews/2026-08-23-stage-1-full.md`) are closed, the
+court list is seeded, and **23 migrations** are applied.
 
 ```
-npm run db:check    35 of 35 pass
+npm run db:check    36 of 36 pass
 npm run db:verify   10 of 10 pass
 npm run check       6 gates pass
 npm run test:gate1  15 cases pass
 npm run test:guard  REFUSES BY DESIGN — see §6
 ```
 
-**Nothing is half-finished.** The next action is five document corrections the
-firm approved at the end of this session — §7, item 1. No code is involved.
+**Nothing is half-finished.** The next action is **task 2.1 — Extract**, and
+both of its preconditions are now cleared: the firm has approved
+`docs/STAGE-2-PLAN.md`, and the machine has been verified. See §7.
+
+**A NOTE ON DATES.** The previous handoff was dated 24 August 2026. That was
+wrong — the machine date was 23 August, and the migration folders from that
+session are stamped `20260823`. Corrected everywhere except two applied
+migrations, whose comments still say 24 August: Prisma checksums applied
+migrations, so editing even a comment makes `migrate dev` and `migrate deploy`
+refuse. **Do not "tidy" them.**
 
 ---
 
@@ -68,8 +76,8 @@ the whole codebase for a right-to-left violation in one command.
 cp .env.example .env
 npm install                 # postinstall runs `prisma generate`
 npm run db:up               # PostgreSQL 17 in Docker, waits until healthy
-npm run db:migrate:deploy   # apply all 22 migrations
-npm run db:check            # 35 checks, all must read OK
+npm run db:migrate:deploy   # apply all 23 migrations
+npm run db:check            # 36 checks, all must read OK
 
 npm run dev                 # http://localhost:3000
 npm run build               # production build
@@ -232,6 +240,7 @@ Two sources of truth, deliberately separated:
 | 0020 | `…_remove_j_to_qaf_fold` | **the `J → ق` fold removed entirely** — it turned the client `JTI` into `قTI`. Shadow columns recomputed |
 | 0021 | `…_financial_constraints` | the two unconstrained money columns; `clients.full_name_normalised` indexed — this is the **seventh** trigram index |
 | 0022 | `…_court_list_and_crosswalk` | **308 courts and 94 rules** from the firm's review of 401 names; `matter_destination` 27 → 31; adds a permanent assertion that no lookup value is also a crosswalk source (no chains) |
+| 0023 | `…_circuit_crosswalk_target` | **`26` is a CIRCUIT, not a discard.** Adds the first **text target** rule kind. One court discard remains (`/`), not two. Seven postconditions |
 
 Every migration ends in a `DO $$` block asserting its counts. A migration runs
 in a transaction, so a failed assertion rolls the whole thing back — there is
@@ -256,12 +265,12 @@ teams          2 — 8 members, 5 of them current; 16 current staff have none
 crosswalk      114 rules, 0 dangling, 0 unrecognised
   52 court · 35 SPLIT (court + circuit from one string) · 9 matter_category
   5 matter_destination · 3 hearing_action · 3 separate_client
-  1 matter_type · 1 degree · 1 quarantine · 4 discarded
+  1 matter_type · 1 degree · 1 quarantine · 1 circuit · 3 discarded
 
-               NOTE: the 4 discards are 2 client_branch document headings
-               (D19, correct) and 2 court values, `/` and `26`. The firm has
-               ruled `26` is a CIRCUIT, not rubbish — §7 item 1.2. After that
-               correction there must be exactly ONE court discard.
+               The 3 discards are 2 client_branch document headings (D19,
+               correct) and ONE court value, `/`. **Exactly one court
+               discard** — asserted permanently, in both directions.
+               `26` is now a CIRCUIT rule (migration 0023), not a discard.
 
 primaries      exactly 1 per person, each equal to people.name_ar,
                enforced by a partial unique index
@@ -376,7 +385,26 @@ building, which are not in that file.
    through `@prisma/config` — the Prisma CLI, a dev dependency never shipped.
    The offered fix downgrades to Prisma 6. **Not taken.** Re-assess at 7.1.
 
-### Added this session
+### Added 23 August 2026 (second session)
+
+17. **The crosswalk has a fourth rule kind: a TEXT TARGET.** `target_field =
+    'circuit'` (migration 0023). Recognised, never resolved against a list —
+    a circuit is text by **D20** — and **required to carry a non-empty
+    `target_value`**. That requirement is not tidiness: a kind merely *exempt*
+    from resolving would let a rule carrying nothing pass both the
+    "unrecognised" and the "dangling" check and look healthy. When adding any
+    future rule kind, give it a positive assertion, never an exemption.
+
+18. **Gate 1 asserts against the file it actually reads.** The 19 August row
+    counts are a **shape check**, not a pass condition — the firm's ruling.
+    The file drifts ~100 records a day, so a gate demanding 13,279 hearings
+    would refuse a good extraction, and a gate that fails on correct data gets
+    loosened until it passes. Full rule in `docs/MIGRATION.md`, "What Gate 1
+    actually asserts". **Cascaded:** 30,553 and 35,343 also move, so Gate 4
+    proves the *identity* (migrated + archived = every row), not the
+    constants.
+
+### Added earlier
 
 10. **The `J → ق` fold is removed from `ar_normalise()` entirely** — not
     narrowed, removed. Migration 0020. The PRD had asked for it so that `140J`
@@ -486,6 +514,20 @@ corrects 0016.
 
 **`--force-i-know` without asking the owner.** `CLAUDE.md` rule 13.
 
+**Editing an applied migration's COMMENT.** Not just its SQL. Prisma checksums
+the whole file, so changing a comment makes `migrate dev` and `migrate deploy`
+refuse with "migration modified" on every machine that already applied it. Two
+migrations carry a wrong date (24 August) in a comment for exactly this reason
+and are left alone deliberately — see the note at the top of this file.
+
+**Giving a new crosswalk rule kind an EXEMPTION instead of an assertion.** The
+text target (`circuit`, migration 0023) is exempt from resolving against a list
+because there is no list — but it is NOT exempt from carrying a value. Without
+that positive requirement, a circuit rule holding nothing would pass both the
+"unrecognised" and the "dangling" check and read as healthy. Any future rule
+kind needs the same treatment: name what makes it *correct*, not merely what it
+is excused from.
+
 ### Added this session
 
 **Re-introducing the `J → ق` fold in any form.** It was removed in migration
@@ -545,7 +587,7 @@ closed.
 **This session, on top of that:**
 
 - **All nine findings of the 24 August full Stage 1 review are closed**
-  (`docs/reviews/2026-08-24-stage-1-full.md`): 4 MUST, 4 SHOULD, 1 MINOR.
+  (`docs/reviews/2026-08-23-stage-1-full.md`): 4 MUST, 4 SHOULD, 1 MINOR.
   In summary —
   - the two unconstrained money columns now have constraints, and `db:check`
     watches all of them (migration 0021)
@@ -575,20 +617,51 @@ closed.
 Every assertion above was **proved by deliberately breaking it**; the commit
 messages carry the exact error text each produced.
 
+**This session (23 August, second sitting) — the firm's five corrections, all
+applied:**
+
+1. **The Access file is kept indefinitely**, not archived away at T+90. 90 days
+   is how long it stays *immediately available*. `docs/MIGRATION.md` cutover,
+   `docs/STAGE-2-PLAN.md` in three places, `TASKS.md` **7.5** — the cutover
+   task. *Not 7.6: the previous handoff sent me there and 7.6 is the user
+   guide, which carries no retention wording. Nothing was invented there.*
+2. **`26` is a circuit, not rubbish** — migration 0023, and the first text
+   target rule kind. See §4 item 17. Proved by breaking, five ways.
+3. **The "nothing is thrown away" claim corrected.** No *record* is thrown
+   away; one *value* is — the `/` — and its text stays in `legacy_court_raw`.
+4. **Gate 3 ships as XLSX workbooks**, one sheet per topic, with per-row
+   context for the ~474 attendee names, colour-coded by confidence, answered
+   with a long-serving colleague present, "unknown person" never guessed.
+   `docs/MIGRATION.md` beside Gate 3, `TASKS.md` **2.4**.
+5. **Cutover is a normal working day**, announced at T-8, **Khaled Helmy signs
+   off at T-7 by name**. `TASKS.md` **7.4**.
+
+Plus, all from the firm in the same sitting:
+
+- **`docs/STAGE-2-PLAN.md` is APPROVED** — Khaled Helmy, 23 August 2026,
+  recorded in the document itself so it is not asked again.
+- **Gate 1's drift ruling** — §4 item 18.
+- **`LawyerA+` is a co-lead, confirmed in writing.** Open question closed; it
+  decided who is responsible on 171 matters.
+- **The session date was 23 August, not 24.** Corrected in eleven files and one
+  review filename. **Two applied migrations still say 24 August in a comment
+  and must not be edited** — Prisma checksums them.
+
 ### Verification status
 
-- `npm run db:check` — **35 of 35 pass.**
+- `npm run db:check` — **36 of 36 pass.**
 - `npm run db:verify` — **10 of 10 pass.**
 - `npm run check` — six gates pass.
 - `npm run test:gate1` — 15 cases pass, under both PowerShell 5.1 and 7.
 - `npm run test:guard` — **refuses to run.** By design; see below.
-- **Independently reviewed** up to and including commit `c4f0689`. The four
-  commits after it (`add710b`, `f026836`, `11bb11a`, `efa03be`) are
-  documentation only and are **unreviewed**.
+- **Independently reviewed** up to and including commit `c4f0689`. Everything
+  after it is **unreviewed** — four documentation commits from the previous
+  sitting, then this session's six. Migration 0023 and the `db:check` change
+  are the only code in them.
 
 ### In progress
 
-**Nothing.** Working tree clean, all 22 migrations applied, no half-written
+**Nothing.** Working tree clean, all 23 migrations applied, no half-written
 file.
 
 ### Known problems and standing conditions
@@ -616,9 +689,11 @@ file.
    task 0.4 scaffold and Stage 5 deletes it. Do not suppress it either.
 
 5. **`TASKS.md` records the court work under task 2.5**, not as a Stage 1
-   task. That is deliberate — the courts are a Stage 2 transform input — but
-   it means the Stage 1 checklist does not show the last two days of work.
-   *Uncertain whether the owner wants a 1.6a/1.6b entry added; not done.*
+   task. That is deliberate — the courts are a Stage 2 transform input — and
+   migration 0023's correction is recorded in the same place. It does mean the
+   Stage 1 checklist does not show that work. *Still uncertain whether the
+   owner wants a 1.6a/1.6b entry; not done, and not worth a session on its
+   own.*
 
 6. **`db:verify` (10 SQL checks) and `db:check` (35 application checks)
    overlap by inspection, not by a test.** Nothing asserts they agree.
@@ -629,121 +704,100 @@ file.
 
 ## 7. Next Steps
 
-### 1. Apply the five corrections the firm approved — DO THIS FIRST
+**The five corrections are applied and both preconditions for Stage 2 are
+cleared.** Nothing stands between here and task 2.1.
 
-Documentation only; no code, no migration. All five were approved at the end of
-the last session and are not yet applied.
+### 1. Task 2.1 — Extract. START HERE.
 
-**1.1 — The Access file is retained indefinitely, not archived at 90 days.**
+`scripts/01_extract_access.ps1`.
 
-A matter may be in court for years, and the `.accdb` is the only pre-migration
-record of **1,223 closed matters**. The 90 days is how long it stays
-*immediately available*; after that it becomes cold storage, **not gone**.
+**Verified on 23 August 2026, not taken on trust:**
 
-Change these, which currently say or imply the file is archived away at T+90:
+```
+source copy   "D:\chatGPT\Litigation-Database\migration-source\Litigation database (ID 23194).accdb"
+              resolves · 46,661,632 bytes · modified 23 Aug 2026 10:31
+Access        Microsoft Access 2021, 64-bit
+DAO COM       DAO.DBEngine.120 v16.0 CREATES SUCCESSFULLY under BOTH
+              Windows PowerShell 5.1 (64-bit) and PowerShell 7.6.5 (64-bit)
+```
 
-- `docs/MIGRATION.md:712–713` — the cutover table:
-  `T+0  Go live. Access stays available read-only for 90 days.` and
-  `T+90d  Archive the .accdb to cold storage. Do not delete.`
-- `docs/STAGE-2-PLAN.md:19` and `:91` and the table row at `:207`
-- `TASKS.md` task **7.6**
+The copy is **already compacted** — 44.5 MB, not the 2 GB the live file sits
+at. **The compact-and-repair on the production file is still outstanding and
+still urgent.**
 
-Wording to convey: read-only from T+0; immediately available for 90 days; then
-moved to cold storage and **kept indefinitely**. Never deleted.
+**THE SOURCE IS A REHEARSAL COPY AND HAS ALREADY DRIFTED.** Taken 23 August;
+the live file moves ~100 records a day.
 
-**1.2 — `26` is a circuit, not rubbish.**
+**THIS TASK MUST CHANGE THE SCRIPT BEFORE RUNNING IT.**
+`scripts/01_extract_access.ps1` today hard-asserts the 19 August counts and
+exits non-zero on any mismatch — which under the firm's ruling would refuse a
+perfectly good extraction. Gate 1 becomes:
 
-That row in `admin work table` has **no circuit recorded** — somebody typed the
-circuit number into the court box. It maps to **circuit `26`**; the **court is
-unknown** for that row.
-
-Only `/` is discarded. That row already has a real circuit,
-`الاثنين مدني (ه)`, so `/` was a placeholder for a court nobody filled in.
-
-**One court discard, not two.** Assert exactly one.
-
-Current state, verified: `migration_crosswalk` holds four rows with
-`target_field IS NULL` — two `client_branch` document headings (D19, correct
-and unchanged) and two `court` rows, `/` and `26`. The `26` row must become a
-mapping to a circuit; the `/` row stays a discard. A new migration is the right
-vehicle, since 0022 is applied.
-
-**1.3 — Correct the "nothing is thrown away" claim.**
-
-`docs/STAGE-2-PLAN.md:22` currently reads *"**And nothing is thrown away.** Not
-a single record… There is no step in this process that deletes anything."*
-That is now inaccurate. Name the single `/` discard explicitly: no *record* is
-thrown away, and one *value* is — a `/` that was never a court name — with the
-original text kept in `legacy_court_raw`.
-
-**1.4 — The Gate 3 review list ships as XLSX workbooks, one sheet per topic.**
-
-Not a flat list. The **~474 attendee names** need per-row context so the firm
-can answer without opening Access:
-
-| Column | Content |
+| | Pass condition |
 |---|---|
-| occurrence count | how many rows use this spelling |
-| years | the range of years it appears in |
-| matters | which matters |
-| clients | which clients |
-| nearest roster matches | with a closeness score |
-| three columns for the firm | their answer |
+| Self-consistency | rows written = rows read, per table, exactly; SHA-256 per file |
+| Completeness | all **15** tables present, each non-empty |
+| Complex columns | attachments **> 0** and multi-value **> 0** — a floor, not a match |
+| Warnings | **zero**. Any warning is a failure |
+| Shape | each count *reported* beside its 19 August figure, difference shown |
 
-**Colour-coded by confidence.** The firm answers with a long-serving colleague
-present. Anything neither recognises is marked **"unknown person"** — never
-guessed. Record on task **2.4** (Gate 3) in `TASKS.md` and in
-`docs/MIGRATION.md` beside Gate 3.
+A count that has **fallen** is not drift and goes to the firm.
+Full rule: "What Gate 1 actually asserts" in `docs/MIGRATION.md`.
 
-**1.5 — Cutover is a normal working day.**
+**Prove the gate before trusting it** — point it at a table with a row removed,
+blank an attachment, and confirm it stops. `docs/MIGRATION.md`, "Prove the
+check catches a failure".
 
-A full day allocated, announced **a week ahead**. **Khaled Helmy signs off at
-T-7 by name** — replacing the existing "the firm signs off" in the cutover
-timetable. Update `docs/MIGRATION.md` (cutover section), `docs/STAGE-2-PLAN.md`
-("What the firm needs to do, and when") and `TASKS.md` task **7.4**.
-
-### 2. Then task 2.1 — Extract
-
-`scripts/01_extract_access.ps1`. **Gate 1 must report exactly 54 attachments
-and 288 multi-value entries.** If either is zero, extraction failed silently —
-stop.
-
-**Before running it, confirm with the owner:** that a **copy** of the `.accdb`
-is on the machine, and that Microsoft Access or the Access Database Engine is
-installed with bitness matching PowerShell. Nothing in Stage 2 runs without
-both. This has never been verified on this machine.
-
-Also confirm the firm has read and approved `docs/STAGE-2-PLAN.md` — that is
-what it exists for.
-
-### 3. Task 2.2 — Staging schema
+### 2. Task 2.2 — Staging schema
 
 Every column `text`, plus `src_row_num` and `src_file`. No load can fail on a
 type conversion.
 
-### 4. Task 2.3 — Load to staging, Gate 2
+### 3. Task 2.3 — Load to staging, Gate 2
 
 And **give `test:guard` its own throwaway database here**, created and
 destroyed per run, so its 22 cases run again (see §6 item 2).
 
-### 5. Task 2.4 — Quarantine tables and profiling, Gate 3
+### 4. Task 2.4 — Quarantine tables and profiling, Gate 3
 
-The XLSX review workbooks from item 1.4 above.
+**The XLSX review workbooks.** One sheet per topic; the ~474 attendee names
+carry occurrence count, years, matters, clients and nearest roster matches with
+a closeness score. Colour-coded by confidence. **"Unknown person" is never
+guessed.** ExcelJS with `rightToLeft` on every sheet.
 
-### 6. Tasks 2.5 – 2.12 — the transforms and Gate 4
+### 5. Tasks 2.5 – 2.12 — the transforms and Gate 4
 
-In the order written in `TASKS.md`. Note task **2.7** carries the corrected
-membership for the three mis-parsed split rules (§6 item 1), and tasks **2.5**
-and **2.6** carry the two D19 rules: never overwrite an existing
-`matter_category`, and the three `separate_client` values mean the matter is on
-the wrong client and must be quarantined, not guessed.
+In the order written in `TASKS.md`. Carry forward:
 
----
+- **2.7** — the corrected membership for the three mis-parsed split rules
+  (§6 item 1). Without it **11 matters lose every lawyer**.
+- **2.5 / 2.6** — the two D19 rules: never overwrite an existing
+  `matter_category`, and the three `separate_client` values mean the matter is
+  on the **wrong client** and must be quarantined, never guessed.
+- **2.9** — the `26` row lands here. **Assert both halves on the loaded row,
+  not just on the rule:** circuit = `26` **and** `court_id IS NULL`. A court
+  defaulted, inferred from the circuit, or set to the string `26` is a failure.
+- **2.12** — Gate 4 reconciles the **identity** (migrated + archived = every
+  row) against the extraction, **never** against 30,553 / 35,343.
 
 ## 8. Open Questions
 
-**Nothing here blocks Stage 2 starting.** Items 1–4 are confirmations and a
-labelling job; item 5 is a recorded consequence, not a question.
+**Nothing here blocks Stage 2 starting.**
+
+**CLOSED 23 August 2026 — do not re-ask:**
+
+- **`LawyerA+` is a co-lead.** Confirmed in writing. Proven from the
+  collection-split data, not the name: every invoice with one reads Reviewer
+  0.250 / LawyerA 0.375 / LawyerA+ 0.375, always a different person; without
+  one, LawyerA takes the whole 0.750. `LawyerA → lead`, `LawyerA+ → co_lead`,
+  `LawyerB → support`, `Reviewer →` its own role with no `matter_lawyers`
+  equivalent. **Invoice 21819 has `LawyerA+` at 0.075, not 0.375** — all 15
+  invoices still sum to 1, so it is deliberate. **No rule may assume 0.375.**
+  Recorded in `docs/GLOSSARY.md`. This decided 171 matters.
+- **`docs/STAGE-2-PLAN.md` is approved** — Khaled Helmy, 23 August 2026.
+- **The machine facts for task 2.1** — verified, see §7.
+
+**Still open.** The firm will bring these before their deadlines.
 
 1. **What does `جرد` mean?** The firm reads it as "does it pass the periodical
    inventory check", which fits the data — 680 passing, 55 failing — but they
@@ -758,13 +812,7 @@ labelling job; item 5 is a recorded consequence, not a question.
    empty, so nothing is at risk yet, but **the reading has not been confirmed
    in writing by the firm.** Confirm before task 2.10 loads invoices.
 
-3. **What does `LawyerA+` mean?** Currently modelled as a **co-lead**, mapping
-   to `matter_lawyers.role = co_lead`, with the alignment between `LawyerAs`
-   and `matter_lawyers.role` written into `docs/GLOSSARY.md`. *Believed
-   correct but not confirmed in writing.* It affects who appears as
-   responsible on 171 matters, so confirm before task 2.7.
-
-4. **The Arabic labels for the three Latin billing lookups.** `lookup_invoice_type`
+3. **The Arabic labels for the three Latin billing lookups.** `lookup_invoice_type`
    (2), `lookup_invoice_status` (5) and `lookup_lawyer_share_role` (4) keep
    their Access codes, with a nullable `label_ar` for the word shown on screen.
    These are financial terms and were **not invented** (`CLAUDE.md` rule 5).
@@ -772,21 +820,23 @@ labelling job; item 5 is a recorded consequence, not a question.
    forgotten. **Needed before task 4.8** (the billing screen), not before
    Stage 2.
 
-5. **`140J` no longer finds `140ق`.** A consequence of removing the `J → ق`
+4. **`140J` no longer finds `140ق`.** A consequence of removing the `J → ق`
    fold, accepted deliberately: the fold turned the client `JTI` into `قTI`.
    Recorded here so it is not rediscovered as a bug. If the firm wants it back,
    it must be a **search-time synonym on the case-number field only** — never a
    change to `ar_normalise()`, which seven columns share. See §5.
 
-6. **The three "separate client" values need new client records.**
+5. **The three "separate client" values need new client records.**
    `سيجما للإعلام (تليفزيون الحياة)`, `ألفا مصر للتجارة` and
    `سيجما للصناعات الدوائية`. The firm decides which client each affected
    matter belongs to; until then those matters are quarantined at task 2.6.
    No action needed now.
 
-7. **Has the firm read `docs/STAGE-2-PLAN.md`?** It was written for them to
-   approve before Stage 2 runs, and approval has not been recorded. *Uncertain
-   whether it has been sent.*
+6. **The production Access file is still at its 2 GB ceiling.** The rehearsal
+   copy is compacted; the live file is not. A file at its ceiling can refuse
+   to save new records. The firm has been told twice. **Not a blocker for
+   Stage 2, but it is the one item here that can lose data on any ordinary
+   working day.**
 
 ---
 
