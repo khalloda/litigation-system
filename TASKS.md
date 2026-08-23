@@ -209,8 +209,11 @@ be bigger than expected, split it and tell the owner.
       100% populated and holds zero files (D11). `db:check` asserts all three
       are absent, which a presence check cannot see.
 
-      **Three POA column names need the firm to confirm them** — `الصفة`
-      against `صفة الموكل بالتوكيل`, `حرف`, and `جرد`. Not in
+      **`جرد` is settled — 23 August 2026, source: the firm's litigation
+      assistant.** It is a checkbox controlling whether the record appears on
+      the POA list report, not a fact about the power of attorney. Migrated as
+      `show_on_poa_report`. **Two POA column names still need the firm** —
+      `الصفة` against `صفة الموكل بالتوكيل`, and `حرف`. Not in
       `docs/GLOSSARY.md`, so translated literally with the Arabic source
       recorded against each. Renaming an empty table costs nothing.
       db:check 24 → **25 checks**.
@@ -762,6 +765,12 @@ allows. Test with real volumes.
       and it must handle **several copies of one power of attorney held by
       different lawyers at once** — which a simple in/out flag could not.
       **Do not build it now.**
+
+      **The POA list report filters on `show_on_poa_report`** (Access `جرد`,
+      confirmed 23 August 2026). 680 of 735 powers of attorney are set to
+      show, 55 are not. It is a report setting the firm controls per record —
+      not a fact about the power of attorney — so the report must honour it
+      and the record screen must let it be changed.
 - [ ] **6.8 The one report with an unknown layout** — do not start until the
       firm supplies the sample.
       Only `صالح-ضد مفصل حسب المحامي` remains unknown.
@@ -817,5 +826,17 @@ allows. Test with real volumes.
       of one-offs. Do not design a dropdown until the firm has been through
       the values.
 - [ ] Invoice and payment entry
+
+      **VAT needs its own field, separate from the `VAT?` flag**, recording
+      whether the invoice amount is **VAT-inclusive or VAT-exclusive**. Ruled
+      by the firm, 23 August 2026, when `VAT?` was migrated as-is.
+
+      Without it, a report summing `Amount` adds gross figures to net ones.
+      **The total looks plausible and is wrong**, which is worse than a total
+      that is obviously broken. 289 invoices are flagged `1` and 254 `0`, and
+      it is a per-invoice decision rather than a date rule — 2018 alone is
+      46 no against 67 yes.
+
+      **Any financial report must state which it is summing.**
 - [ ] Collection splitting between lawyers
 - [ ] Excel import for the attendance and billing history kept outside Access

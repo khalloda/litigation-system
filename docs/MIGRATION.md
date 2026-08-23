@@ -80,6 +80,23 @@ Stage C, where the decision is visible and reversible.
 Every staging row carries `src_row_num` and `src_file`, so any target row traces
 back to its origin.
 
+### `src_row_num` is the CSV record ordinal — never insertion order
+
+**Ruled by the firm, 23 August 2026.** The loader supplies `src_row_num` as it
+streams the file: the ordinal of the record within that CSV, counted as it is
+read.
+
+It must **not** be derived after loading — not from `row_number() OVER ()`,
+not from an identity column, not from the physical order rows come back in.
+PostgreSQL gives **no guarantee** that a `SELECT` returns rows in the order
+`COPY` wrote them. It very often does, and *"it does in practice"* is not the
+standard this project holds: the whole purpose of the column is that a target
+row three stages later can be traced to a line in a file the firm still has.
+A number that is usually the line number is not a line number.
+
+Note that the ordinal is over **records**, not lines. A memo field in this
+database can contain a newline, so record 400 may begin well past line 400.
+
 ### The staging schema — built at task 2.2, 23 August 2026
 
 It lives in its own PostgreSQL schema, `staging`, alongside `public`. Prisma's
@@ -746,6 +763,64 @@ Apply this to **every one of the four migration gates**:
 
 Record the result of each deliberate break next to the gate. "We ran it and it
 passed" is not evidence that a gate works.
+
+### A test must fail when it is REMOVED, not only when it is wrong
+
+**Break every proof twice: once by making it wrong, once by deleting it.**
+Both must fail. This applies to every proof script in the project, not only
+the one that found it.
+
+Task 2.2's proof of the NULL / empty-string distinction was broken both ways
+on 23 August 2026:
+
+| Broken on purpose | What happened |
+|---|---|
+| the assertion changed to expect `''` where `NULL` is correct | `ERROR: a bare empty field did not arrive as NULL` — psql exit **3** |
+| the assertions **deleted entirely** | psql exit **0** |
+
+The second one is the reason this section exists. A test with its assertions
+removed does nothing, prints nothing alarming, and **reports success**. It
+sits in `package.json` looking like coverage, and every run is green because
+every run is empty. That is worse than having no test: a missing test is a
+known gap, and a hollow one is a false assurance.
+
+`ON_ERROR_STOP=1` makes a *failed* assertion fatal. **Nothing but counting
+makes an *absent* one fatal.** So each proof emits a notice per assertion —
+`RAISE NOTICE 'PROVED: …'` — and the script that runs it **counts them and
+fails on the wrong number**, whatever the exit code said.
+
+This is the same shape as the rule above it: an assertion that runs once is a
+snapshot, and an assertion that has stopped running is not an assertion at
+all. Neither is visible from the outside; both need something counting.
+
+### A column can be a report setting rather than a fact
+
+**Some columns describe the record. Some describe what the software should do
+with the record. No amount of correlating a column against other columns will
+tell you which kind you are holding.**
+
+`جرد` on the powers of attorney sat unresolved through **three rounds of
+analysis**. 1 on 680 rows, 0 on 55 — a clean, confident-looking split. It was
+compared against `عدد النسخ` (copies in the safe), against the issuing
+authority, against the dates. It contradicted every one of them in every
+direction, which read as noisy data.
+
+It was not noisy data. **It is a checkbox that controls whether the record
+appears on the POA list report.** The firm's litigation assistant said so in
+one sentence on 23 August 2026, and every correlation had been against the
+wrong kind of thing: a report setting has no reason to agree with anything
+about the record, because it is not about the record.
+
+Two consequences worth keeping:
+
+**Ask the person who uses the screen, earlier.** The analysis could not have
+produced this answer, however many rounds it ran. The evidence for it does not
+live in the data at all — it lives in a report nobody had opened.
+
+**Name the column for what it does, not for what it is called.** `جرد` is
+migrated as `show_on_poa_report`, with `جرد` recorded as its Access source.
+Translating it literally as `inventory` would have carried a wrong guess into
+the schema and made the report's behaviour look like a bug.
 
 ### A safety net we did not build, and must not disable
 

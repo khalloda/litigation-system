@@ -238,8 +238,12 @@ These are known now, so they will not be a surprise:
 4. **About 474 attendee names appear only once each.** Some are real people
    spelled unusually; some are not names at all. Those need a human eye.
 
-5. **`جرد` on powers of attorney** — we still do not know for certain what its
-   two states mean. Nothing depends on it yet.
+5. **`جرد` on powers of attorney** — ✅ **answered 23 August 2026.** Your
+   litigation assistant told us: it is a checkbox that controls whether the
+   record shows on the powers-of-attorney list report. Not a fact about the
+   power of attorney, which is why three rounds of comparing it against the
+   other columns got nowhere. It is carried across as a setting you can
+   change, named for what it does.
 
 ---
 

@@ -105,7 +105,7 @@ For anyone reading the data or the schema. Do not guess at these.
 | مسلسل | Sequence | **Latin letters — A, B, C. Not a number** |
 | جهة الإصدار | Issuing authority | |
 | عدد النسخ | Copies in the safe | **A LIVE COUNT, not a static figure.** See below |
-| جرد | Inventory check | Yes/no. 1 on 680 rows, 0 on 55. **PROBABLE, NOT CONFIRMED:** the firm reads it as "does it pass the periodical inventory check", which fits the split — but they said "I think". **Nothing may depend on it until confirmed.** |
+| جرد | **Show on the POA list report** | **CONFIRMED 23 August 2026, source: the firm's litigation assistant.** A checkbox controlling whether the record appears on the powers-of-attorney list report. 1 on 680 rows, 0 on 55. **Not a fact about the power of attorney at all** — nothing to do with copies, courts or deposits. Migrated as `show_on_poa_report`. The earlier "inventory check" reading was a guess and was wrong |
 
 The powers-of-attorney report prints the reference as **`982 / أ / 2009`** —
 number / letter / year.
@@ -219,16 +219,37 @@ rather than an error — there is nothing to quarantine.
 
 | Access | Reading | Evidence |
 |---|---|---|
-| `VAT?` | **VAT applies to this invoice.** Boolean | Only `1` (289) and `0` (254). The `1` rows are `Service` invoices with ordinary amounts; nothing encodes a rate or a value |
+| `VAT?` | **VAT applies to this invoice.** Boolean | Only `1` (289) and `0` (254). The `1` rows are `Service` invoices with ordinary amounts; nothing encodes a rate or a value. **Migrated as-is, not displayed. Replaced in Phase 2** — see below |
 | `report` | Unknown, effectively unused. Boolean | 535 zeros, 8 ones. Migrated (D10), **never surfaced** |
-| `R-#` / `R-$` | A **receipt amount and its currency** | `R-#`: 278 blank, 244 zero, 21 round figures — 5000, 10000, 44000. `R-$`: 520 blank, 21 `EGP`, 2 `0`, on the same 21 rows |
+| `R-#` / `R-$` | **R = Received.** An amount received and its currency | **CONFIRMED 23 August 2026.** `R-#`: 278 blank, 244 zero, 21 round figures — 5000, 10000, 44000. `R-$`: 520 blank, 21 `EGP`, 2 `0`, on the same 21 rows |
 
-`R-#` is an **amount despite its name**, and `R-$` is a **currency despite
-its**. 21 invoices of 543 — under 4% — carry anything. Both migrated, neither
+**`R` stands for Received**, confirmed by the firm. `R-#` is the amount
+received and `R-$` its currency — an **amount despite its name**, and a
+**currency despite its**. Invoice 21408 is the case that shows it: 3,000
+received against 33,000 invoiced, status *Partially Paid*.
+
+Migrated as `received_amount` (numeric) and `received_currency` (text).
+**21 invoices of 543 carry anything — a 3.9% fill rate.** Neither is
 surfaced.
 
-**The `R-` prefix suggesting "receipt" is an INFERENCE, not a fact.** The data
-shows only an amount and a currency travelling together.
+### `VAT?` — migrated as-is, replaced in Phase 2
+
+**The firm's ruling, 23 August 2026: keep the values exactly as they are.** In
+Phase 2 this becomes a proper field recording *whether VAT is included in the
+invoice amount*, separate from the flag.
+
+**Why that matters more than it sounds.** If `VAT?` = 1 means the amount
+already includes VAT, then any report summing `Amount` is adding gross figures
+to net ones. **The total looks plausible and is wrong**, and nothing on the
+page says so.
+
+A date rule was considered and does not hold. Every pre-2016 invoice is `0`,
+consistent with VAT arriving in Egypt that year — but from 2018 the values are
+heavily mixed (**46 no against 67 yes in 2018 alone**). It is a per-invoice
+decision, not a date.
+
+For Phase 1: boolean, migrated, **not displayed**, meaning recorded as the
+firm's own reading.
 
 ## Attendance (the leave register)
 

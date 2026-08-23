@@ -248,9 +248,9 @@ contracts.
 | `type_id` | `Inv-Type` | 100% |
 | `vat` | `VAT?` | 100% — **boolean**, 1 on 289 / 0 on 254 |
 | `report` | `report` | 100% — **boolean**, 535 zeros / 8 ones. Not surfaced |
-| `receipt_amount` | `R-#` | 49% nominally, but 278 blank + 244 zero — **21 real rows** |
+| `received_amount` | `R-#` | 49% nominally, but 278 blank + 244 zero — **21 real rows, 3.9%** |
 | `amount_usd` | `USD$` | 4% |
-| `receipt_currency` | `R-$` | 4% — the same 21 rows, `EGP` |
+| `received_currency` | `R-$` | 4% — the same 21 rows, `EGP` |
 | — | `Pay-Date` | 23%, **not migrated (D4)** |
 
 **Do not migrate `Pay-Date`** (D4) despite it being 23% filled: it stops in
@@ -258,16 +258,26 @@ September 2019 while payments run to December 2021.
 
 **`VAT?` is a flag** — VAT applies to this invoice — and `report` is a flag on
 eight invoices whose meaning is unknown. Both boolean, both migrated (D10),
-`report` never surfaced.
+neither surfaced.
 
-**`R-#` and `R-$` are a receipt amount and its currency, and the first reading
-of them here was inverted.** The names suggest a number and an amount; the
-content says otherwise — `R-#` holds round figures (5000, 10000, 44000) on 21
-rows, and `R-$` holds `EGP` on the same 21. Under 4% of invoices carry either.
-Neither is surfaced.
+**`VAT?` is migrated as-is and replaced in Phase 2.** The firm's ruling,
+23 August 2026. In Phase 2 it becomes a field recording *whether VAT is
+included in the invoice amount*, separate from the flag — because if `1` means
+the amount already includes VAT, **any report summing `Amount` mixes gross
+figures with net ones, and the total looks plausible while being wrong.** Not
+a date rule: every pre-2016 invoice is `0`, but 2018 alone is 46 no against
+67 yes. It is a per-invoice decision. See `docs/GLOSSARY.md` and the Phase 2
+invoicing task.
 
-**The `R-` prefix suggesting "receipt" is an inference, not a fact.** The data
-shows only an amount and a currency travelling together.
+**`R` stands for Received** — confirmed by the firm, 23 August 2026. `R-#` is
+an amount received and `R-$` its currency, so both are the opposite of what
+their names suggest: an **amount** despite the `#`, a **currency** despite the
+`$`. Invoice 21408 is the case that shows it — 3,000 received against 33,000
+invoiced, status *Partially Paid*.
+
+**21 invoices of 543 carry either — a 3.9% fill rate**, recorded here because
+a column this empty is easy to mistake for one that failed to migrate.
+Migrated, neither surfaced.
 
 ### `payments` — 597 rows (2013 – Dec 2021)
 
@@ -413,7 +423,7 @@ not exist.
 | `issue_date` | `تاريخ الإصدار` | 100% |
 | `copies_count` | `عدد النسخ` | 99% |
 | `notes` | `ملاحظات` | 53% |
-| `inventory` | `جرد` | 100% |
+| `show_on_poa_report` | `جرد` | 100% — **boolean, a report setting.** See below |
 | `legacy_lawyers_raw` | `المحامون الصادر لهم التوكيل` | 100% |
 
 `المحامون الصادر لهم التوكيل` holds **up to twelve lawyers in one string** and
@@ -425,9 +435,17 @@ the hearing attendees.
 report** (`docs/REPORT-LAYOUTS.md`). It is stored as an integer and asserted to
 be one — comparing it as text would order 10 before 2.
 
-**Three names need the firm to confirm them:** `الصفة` against
+**`جرد` is a REPORT SETTING, not a fact about the power of attorney.**
+Confirmed by the firm's litigation assistant, 23 August 2026: it is a checkbox
+controlling whether the record appears on the **POA list report** (task 6.7).
+Nothing to do with copies, courts or deposits — which is exactly why it
+contradicted `عدد النسخ` in every direction. It is migrated as
+`show_on_poa_report`, named for what it does, with `جرد` recorded as the
+Access source. See "A column can be a report setting" in `docs/MIGRATION.md`.
+
+**Two names still need the firm to confirm them:** `الصفة` against
 `صفة الموكل بالتوكيل` (two capacity fields, and which is which is not
-obvious), `حرف`, and `جرد`. They are not in `docs/GLOSSARY.md`, so they are
+obvious), and `حرف`. They are not in `docs/GLOSSARY.md`, so they are
 translated literally and the Arabic source column is recorded against each one
 — the mapping is unambiguous whatever the English label turns out to be.
 
