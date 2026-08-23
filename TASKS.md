@@ -443,8 +443,46 @@ only ever seen good data is not known to work.
       fifth time a stated count was wrong while its list was right.
 
       The seven WRONG values are settled: five are destinations (four added,
-      `matter_destination` 27 → 31), and `/` and `26` are discarded, keeping
-      their text in `legacy_court_raw` (D10).
+      `matter_destination` 27 → 31).
+
+      **`26` IS A CIRCUIT, NOT RUBBISH — corrected 23 August 2026, migration
+      0023.** The firm re-read the row. That row in `admin work table` has
+      **no circuit recorded**; somebody typed the circuit number into the
+      court box. So:
+
+        circuit  =  26          the value lands, in the right column
+        court    =  UNKNOWN     genuinely null. NOT court `26`, not inferred.
+
+      **ONE COURT DISCARD, NOT TWO.** Only `/` — and that row *already* has a
+      real circuit, `الاثنين مدني (ه)`, which is what shows `/` was a
+      placeholder typed where a court name should have gone. The two rows
+      look alike and are not alike.
+
+      **This needed a new KIND of crosswalk rule — the first TEXT TARGET.**
+      A circuit is text by **D20** and deliberately not a list (1,281 values:
+      a number plus a specialism), so there is nothing to resolve against.
+      `target_field = 'circuit'` is recognised, never resolved against a
+      list, and **must carry a non-empty `target_value`**. That requirement
+      is the point: a kind merely *exempt* from resolving would let a rule
+      carrying nothing pass both the unrecognised and the dangling check and
+      look healthy — the fault in "An assertion tests what it looks at" in
+      `docs/MIGRATION.md`.
+
+      Both halves are asserted, in the migration and permanently in
+      `db:check` (rule 16): the circuit lands **with its value**, and `26` is
+      absent from `lookup_court` so the raw text cannot resolve to a court by
+      the ordinary path and reintroduce `court = '26'` by the back door. Plus
+      exactly one court discard, asserted in both directions.
+      db:check 35 → **36 checks**.
+
+      Proved by breaking, five ways, each restored: a circuit rule with no
+      value (caught twice over), `26` put back to a discard, `26` inserted
+      into `lookup_court`, a misspelled `circuits`, and the `/` discard
+      turned into something else. The baseline also refused the change by
+      name — `court/26: now points at circuit/26` — and was rewritten
+      deliberately in its own commit.
+
+      Both keep their original text in `legacy_court_raw` (D10).
 
       `db:check` now asserts permanently that **no lookup value is also a
       crosswalk source**, however it reached the list. Proved by reinserting
@@ -522,6 +560,14 @@ only ever seen good data is not known to work.
       13,279 hearings. `**` becomes no rows, not a person.
 
 - [ ] **2.9 Transform: admin works, POAs, documents, fee letters**
+
+      **The `26` row is here.** It is an `admin work table` row, and the
+      crosswalk rule for it (migration 0023) writes **circuit = `26` and
+      leaves the court NULL**. Assert both halves on the loaded row, not just
+      the rule: the circuit is `26`, and `court_id IS NULL`. A court
+      defaulted, inferred from the circuit, or set to the string `26` is a
+      failure — nobody knows which court that row was heard in, and unknown
+      is the honest answer. `legacy_court_raw` keeps the original `26`.
 
 - [ ] **2.10 Transform: invoices and payments** — read-only. No `Pay-Date`.
 

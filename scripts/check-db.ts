@@ -258,12 +258,34 @@ async function main() {
   //    nothing. NULL means the value is discarded.
   const markers = new Set(['quarantine', 'separate_client']);
 
+  //    TEXT TARGETS are the third kind, added 23 August 2026 with `26`.
+  //
+  //    A circuit is TEXT by D20 and deliberately NOT a list — 1,281 distinct
+  //    values that are a number plus a specialism — so there is nothing for a
+  //    resolve check to look up. But a kind that were merely EXEMPT from
+  //    resolving would be a hole: a circuit rule carrying no value would pass
+  //    the unrecognised check (it is recognised) and the dangling check (it
+  //    is not resolved), and read as healthy while carrying nothing.
+  //
+  //    That is the fault described in "An assertion tests what it looks at,
+  //    and nothing else" — the two split rules with NO member rows had no
+  //    member row to fail. So a text target gets its own positive
+  //    requirement: it MUST carry a non-empty target_value, and failing that
+  //    it counts as dangling, exactly like a list rule pointing at nothing.
+  const textTargets = new Set(['circuit']);
+
   const unrecognised = crosswalk.filter(
-    (c) => c.targetField !== null && !(c.targetField in listTargets) && !markers.has(c.targetField),
+    (c) =>
+      c.targetField !== null &&
+      !(c.targetField in listTargets) &&
+      !markers.has(c.targetField) &&
+      !textTargets.has(c.targetField),
   );
   const dangling = crosswalk.filter((c) => {
     const field = c.targetField;
     if (field === null || markers.has(field)) return false;
+    //  A text target carries its own text. No text is nothing to carry.
+    if (textTargets.has(field)) return c.targetValue === null || c.targetValue.trim() === '';
     const list = listTargets[field];
     if (list === undefined) return false; // already counted as unrecognised
     //  A missing value on a list rule is dangling too. There is nothing to
@@ -309,6 +331,43 @@ async function main() {
     '308 courts, 94 rules',
     `${courts} courts, ${courtRules} rules`,
     courts === 308 && courtRules === 94,
+  );
+
+  //    `26` IS A CIRCUIT, COURT UNKNOWN — the firm's correction, 23 Aug 2026,
+  //    migration 0023. Both halves are checked, because each is satisfiable
+  //    without the other and only both together are the firm's decision:
+  //
+  //      the circuit lands   target_field 'circuit' AND target_value '26'.
+  //                          The field alone would allow a rule carrying
+  //                          nothing.
+  //      the court is null   `26` is absent from lookup_court, so the raw
+  //                          text cannot resolve to a court by the ordinary
+  //                          path and reintroduce court='26' by the back
+  //                          door. NOT court `26`, and not inferred.
+  //
+  //    And exactly ONE court discard, asserted in both directions: a count
+  //    alone is satisfied by discarding the wrong single value, and naming
+  //    `/` alone is satisfied while a second discard sits beside it.
+  const twentySix = crosswalk.find((c) => c.sourceField === 'court' && c.sourceValue === '26');
+  const courtDiscards = crosswalk.filter(
+    (c) => c.sourceField === 'court' && c.targetField === null,
+  );
+  const circuitLands = twentySix?.targetField === 'circuit' && twentySix?.targetValue === '26';
+  const courtUnknown = !courtNames.has('26');
+  const oneDiscard = courtDiscards.length === 1 && courtDiscards[0]?.sourceValue === '/';
+  record(
+    '`26` is a circuit, court unknown',
+    "circuit '26', not in lookup_court, 1 discard (/)",
+    [
+      circuitLands
+        ? "circuit '26'"
+        : `${twentySix?.targetField ?? 'MISSING'}/${twentySix?.targetValue ?? 'NULL'}`,
+      courtUnknown ? 'not a court' : 'IN LOOKUP_COURT',
+      oneDiscard
+        ? '1 discard (/)'
+        : `${courtDiscards.length} discards (${courtDiscards.map((c) => c.sourceValue).join(', ')})`,
+    ].join(', '),
+    circuitLands && courtUnknown && oneDiscard,
   );
 
   //    Rule (b) of the branch resolution: three values are separate CLIENTS,

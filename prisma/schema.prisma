@@ -305,11 +305,20 @@ model MigrationCrosswalk {
   sourceValue  String  @map("source_value")
   /// How many rows in the live data carry this value.
   rowsAffected Int?    @map("rows_affected")
-  /// Where it goes. Stage 2 reads this to decide what to do with the value:
+  /// Where it goes. Stage 2 reads this to decide what to do with the value.
+  /// There are FOUR kinds of rule, and they behave differently:
   ///
   ///   a lookup name      map to that list — 'matter_category', 'degree',
-  ///                      'matter_type', 'hearing_action', 'venue'.
+  ///                      'matter_type', 'hearing_action', 'venue', 'court'.
   ///                      target_value MUST exist in it.
+  ///   'SPLIT'            one string holds a court AND something else.
+  ///                      target_value is the COURT part and resolves like
+  ///                      any other court; the remainder is in reviewer_note.
+  ///   'circuit'          a TEXT TARGET — added 23 Aug 2026, migration 0023.
+  ///                      The circuit is text by D20 and deliberately NOT a
+  ///                      list (1,281 values: a number plus a specialism), so
+  ///                      there is nothing to resolve against. target_value
+  ///                      is the text to write and MUST be non-empty.
   ///   'quarantine'       no automatic mapping. Send the row to the review
   ///                      queue and let a human decide.
   ///   'separate_client'  the matter is attached to THE WRONG CLIENT.
@@ -317,12 +326,18 @@ model MigrationCrosswalk {
   ///                      one — the firm decides.
   ///   NULL               the value is discarded and the row simply loses it.
   ///                      Only ever for a value the firm has said is not data.
+  ///                      EXACTLY ONE of these exists: court '/'.
   ///
   /// A marker ('quarantine', 'separate_client') carries no target_value; a
-  /// list name must carry one. Both are asserted by the migration and by
-  /// npm run db:check, including that target_field is a name this project
-  /// recognises — a misspelled one would otherwise be skipped by the resolve
-  /// checks and look perfectly healthy.
+  /// list name must carry one that resolves; a TEXT TARGET must carry one
+  /// that is non-empty. That last requirement is not tidiness — a kind that
+  /// were merely EXEMPT from resolving would let a rule carrying nothing pass
+  /// both the 'unrecognised' and the 'dangling' check and look healthy.
+  ///
+  /// All of it is asserted by the migration and by npm run db:check,
+  /// including that target_field is a name this project recognises — a
+  /// misspelled one would otherwise be skipped by the resolve checks and look
+  /// perfectly healthy.
   targetField  String? @map("target_field")
   targetValue  String? @map("target_value")
   reviewerNote String? @map("reviewer_note")
