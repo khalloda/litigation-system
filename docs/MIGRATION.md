@@ -110,16 +110,33 @@ already written down twice in this file; this is it arriving in advance.
 
 | | Pass condition | Why |
 |---|---|---|
-| **Self-consistency** | Rows written to CSV = rows read from the table, per table, exactly. SHA-256 recorded for every file | This is the real question Gate 1 answers: *did we get everything out intact?* It needs no prior figure and cannot drift |
-| **Completeness** | All **15** expected tables present, each with **more than zero** rows | A missing table is the fault that once slipped through a manifest whose total added up |
-| **Complex columns** | Attachments **> 0** and multi-value entries **> 0** | Zero is the signature of the silent-failure export (D11). This is the one hard number-like condition, and it is a floor, not a match |
-| **No warnings** | The script exits non-zero on **any** warning | A complex-column read that throws is a warning, and a warning in a lossless extraction is a failure |
+| **Provenance** | The manifest records the source file's **path, size, modification date and SHA-256** | Three weeks from now, *"which extraction produced this?"* has to be answerable from the manifest and not from anyone's memory. On cutover day it is the proof that the frozen production file — and not a stale rehearsal copy — is what was read |
+| **Self-consistency** | Every CSV is **read back off the disk and parsed**, and the records that come out equal the rows read from Access, with the column count intact. SHA-256 recorded for every file | This is the real question Gate 1 answers: *did we get everything out intact?* It needs no prior figure and cannot drift. It must be a real parse — counting our own writes proves only that the loop ran, and counting lines is wrong the moment a memo field contains a newline |
+| **Completeness** | All **15** expected tables present, **exactly once each**, each with **more than zero** rows, and no unexpected table | A missing table is the fault that once slipped through a manifest whose total added up; a duplicate entry is the fault that slipped through the fix |
+| **Relationships** | The relationship export is **not empty** | Without it the foreign keys cannot be rebuilt in the target |
+| **Arithmetic** | The reported total equals the **sum of the per-table counts** | The identity, which holds on any day. Not a comparison against 30,553, which would fail every run from here |
+| **Complex columns** | Attachments **exactly 54** and multi-value entries **exactly 288** | Zero is the signature of the silent-failure export (D11) — but a floor of `> 0` passes a partial read, and 53 logos out of 54 is a lost logo. **Tightened from a floor to an exact match, ruled by the firm 23 August 2026.** These do not drift the way rows do: if the firm adds a client logo or a fee letter, the gate fails until the figure is changed here deliberately, with the reason. That is intended — a logo appearing is something the firm should confirm, not something a gate should wave through |
+| **No warnings** | The script exits non-zero on **any** warning | A complex-column read that throws is a warning, and a warning in a lossless extraction is a failure. An attachment that writes **0 bytes** is also a warning: an empty logo is a lost logo, and it passes every count-based check |
 | **Shape** | Each count reported beside its 19 August figure and the difference shown | For a human to eyeball: 13,279 → 13,4xx is drift; 13,279 → 412 is a broken read |
 
 **Drift is expected and is reported, not refused.** A count that has *fallen*
 below its August figure is not automatically a stop, but it is the opposite of
 drift and must be put in front of the firm rather than passed over — the file
 grows, it does not shrink.
+
+**How that is built.** A fallen count is a **concern**, not a failure. Gate 1
+separates the two and prints them apart: a *failure* means the extraction is
+wrong, a *concern* means the extraction looks intact but a count moved in a
+direction the firm should see. Both block Stage B — "put in front of the firm"
+means the run does not go green and nobody has to notice a line of yellow text
+— but they say different things, and conflating them would have the firm
+debugging a script when the question is about their data.
+
+A count that has **doubled or more** is also a concern, for the same reason in
+the other direction: at about 100 records a day across the whole file, a table
+twice its August size is not four days of drift either. The threshold only
+applies once the absolute change exceeds 250 rows, so a 3-row team table
+gaining a member does not shout.
 
 **The 30,553 total moves with the data.** It is the sum of what was extracted on
 the day, and Gate 4 reconciles against **that** sum — not against 30,553. See

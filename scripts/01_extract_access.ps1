@@ -213,6 +213,36 @@ function Get-FileSha256 {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
 }
 
+# ---------------------------------------------------------------------------
+#  Read the CSV back off the disk and parse it.
+#
+#  This is Gate 1's self-consistency check, and it is the one condition that
+#  needs no prior figure and cannot drift: the records that parse back out of
+#  the file must equal the rows that were read out of Access.
+#
+#  It has to be a real parse -- not a line count, and not a tally of our own
+#  WriteLine calls. Counting our own writes would prove only that the loop
+#  ran. Counting lines would be wrong the moment a memo field contains a
+#  newline, and they do. Import-Csv is the same CSV grammar Stage B will read
+#  the file with, so a truncated write, an unbalanced quote or a mangled
+#  encoding shows up here rather than three stages later.
+# ---------------------------------------------------------------------------
+function Measure-WrittenCsv {
+    param([string] $Path)
+
+    try {
+        $rows = @(Import-Csv -LiteralPath $Path -Encoding UTF8)
+    } catch {
+        return @{ Rows = $null; Columns = $null; Error = "$_" }
+    }
+
+    $columns = $null
+    if ($rows.Count -gt 0) {
+        $columns = @($rows[0].PSObject.Properties.Name).Count
+    }
+    return @{ Rows = $rows.Count; Columns = $columns; Error = $null }
+}
+
 # ===========================================================================
 #  OPEN THE DATABASE (READ-ONLY)
 # ===========================================================================
@@ -226,9 +256,25 @@ if (-not (Test-Path -LiteralPath $DatabasePath)) {
     throw "Database not found: $DatabasePath"
 }
 
-$srcInfo = Get-Item -LiteralPath $DatabasePath
-Write-Log ("Source size   : {0:N0} bytes" -f $srcInfo.Length)
-Write-Log ("Source SHA256 : {0}" -f (Get-FileSha256 $DatabasePath))
+# ---------------------------------------------------------------------------
+#  SOURCE PROVENANCE
+#
+#  Recorded before a single row is read, and written into the manifest.
+#  Three weeks from now the question "which extraction produced this?" has to
+#  be answerable from the manifest and not from anyone's memory -- and on
+#  cutover day this is the proof that the frozen production file, and not a
+#  stale rehearsal copy, is what was read. Gate 1 fails if any of the four is
+#  missing.
+# ---------------------------------------------------------------------------
+$srcInfo           = Get-Item -LiteralPath $DatabasePath
+$SourceBytes       = $srcInfo.Length
+$SourceModifiedUtc = $srcInfo.LastWriteTimeUtc.ToString('o')
+$SourceSha256      = Get-FileSha256 $DatabasePath
+$SourceFullPath    = $srcInfo.FullName
+
+Write-Log ("Source size     : {0:N0} bytes" -f $SourceBytes)
+Write-Log ("Source modified : {0} (UTC)" -f $SourceModifiedUtc)
+Write-Log ("Source SHA256   : {0}" -f $SourceSha256)
 
 try {
     $engine = New-Object -ComObject DAO.DBEngine.120
@@ -385,6 +431,15 @@ foreach ($tableName in $targetTables) {
 
                             $size = (Get-Item -LiteralPath $outPath).Length
 
+                            # SaveToFile can succeed and still leave nothing
+                            # behind. An empty logo is a lost logo, and it
+                            # would otherwise pass every count-based check:
+                            # the row is there, the file is there, the image
+                            # is gone.
+                            if ($size -le 0) {
+                                Add-Warning $tableName $c.Name "attachment '$fileName' on parent '$parentKey' wrote 0 bytes"
+                            }
+
                             $w.WriteLine(
                                 (ConvertTo-CsvField $parentKey) + ',' +
                                 (ConvertTo-CsvField $fileName)  + ',' +
@@ -449,6 +504,15 @@ foreach ($tableName in $targetTables) {
     $rs.Close()
     $writer.Flush(); $writer.Close()
 
+    # ---- read the file back and prove it is what we just wrote ------------
+    $verify = Measure-WrittenCsv $csvPath
+    if ($null -ne $verify.Error) {
+        Add-Warning $tableName '(csv)' ("the written CSV could not be parsed back: {0}" -f $verify.Error)
+    }
+    elseif ($verify.Rows -ne $rowCount) {
+        Add-Warning $tableName '(csv)' ("{0} rows read from Access but {1} parse back out of the CSV" -f $rowCount, $verify.Rows)
+    }
+
     foreach ($k in $complexWriters.Keys) {
         $complexWriters[$k].Writer.Flush()
         $complexWriters[$k].Writer.Close()
@@ -459,7 +523,9 @@ foreach ($tableName in $targetTables) {
         object_type       = 'table'
         name              = $tableName
         output_file       = "tables/$safe.csv"
-        row_count         = $rowCount
+        row_count            = $rowCount
+        csv_rows_verified    = $verify.Rows
+        csv_columns_verified = $verify.Columns
         plain_columns     = $plainCols.Count
         complex_columns   = $complexCols.Count
         attachments       = $attachmentCount
@@ -467,6 +533,7 @@ foreach ($tableName in $targetTables) {
         mvf_parents       = $mvfParentCount
         sha256            = Get-FileSha256 $csvPath
         bytes             = (Get-Item -LiteralPath $csvPath).Length
+        source_modified_utc = ''
     })
 
     foreach ($k in $complexWriters.Keys) {
@@ -476,6 +543,8 @@ foreach ($tableName in $targetTables) {
             name            = "$tableName.$k"
             output_file     = "complex/" + (Split-Path $p -Leaf)
             row_count       = $(if ($complexCols | Where-Object { $_.Name -eq $k -and $_.Type -eq $dbAttachment }) { $attachmentCount } else { $mvfValueCount })
+            csv_rows_verified    = ''
+            csv_columns_verified = ''
             plain_columns   = 0
             complex_columns = 0
             attachments     = $attachmentCount
@@ -483,6 +552,7 @@ foreach ($tableName in $targetTables) {
             mvf_parents     = $mvfParentCount
             sha256          = Get-FileSha256 $p
             bytes           = (Get-Item -LiteralPath $p).Length
+            source_modified_utc = ''
         })
     }
 
@@ -582,6 +652,27 @@ $db.Close()
 [System.Runtime.InteropServices.Marshal]::ReleaseComObject($db)     | Out-Null
 [System.Runtime.InteropServices.Marshal]::ReleaseComObject($engine) | Out-Null
 
+# The manifest's first row is the source file itself. Every other row
+# describes something this script produced; this one records what it was
+# produced FROM. Export-Csv takes its header from the first object, so this
+# row also fixes the column set -- every other row carries the same keys.
+$Manifest.Insert(0, [pscustomobject]@{
+    object_type          = 'source'
+    name                 = $srcInfo.Name
+    output_file          = $SourceFullPath
+    row_count            = ''
+    csv_rows_verified    = ''
+    csv_columns_verified = ''
+    plain_columns        = ''
+    complex_columns      = ''
+    attachments          = ''
+    mvf_values           = ''
+    mvf_parents          = ''
+    sha256               = $SourceSha256
+    bytes                = $SourceBytes
+    source_modified_utc  = $SourceModifiedUtc
+})
+
 $manifestPath = Join-Path $DirMeta 'manifest.csv'
 $Manifest | Export-Csv -LiteralPath $manifestPath -NoTypeInformation -Encoding UTF8
 
@@ -594,9 +685,10 @@ if ($Warnings.Count -gt 0) {
 
 $summary = [ordered]@{
     extracted_at         = (Get-Date).ToString('o')
-    source_path          = $DatabasePath
-    source_bytes         = $srcInfo.Length
-    source_sha256        = (Get-FileSha256 $DatabasePath)
+    source_path          = $SourceFullPath
+    source_bytes         = $SourceBytes
+    source_modified_utc  = $SourceModifiedUtc
+    source_sha256        = $SourceSha256
     tables_extracted     = @($targetTables).Count
     total_rows           = ($Manifest | Where-Object { $_.object_type -eq 'table' } | Measure-Object -Property row_count -Sum).Sum
     total_attachments    = ($Manifest | Where-Object { $_.object_type -eq 'table' } | Measure-Object -Property attachments -Sum).Sum
@@ -630,13 +722,25 @@ Write-Log "=========================================================="
 . (Join-Path $PSScriptRoot 'lib/gate1.ps1')
 
 $tableRows = @($Manifest | Where-Object { $_.object_type -eq 'table' } |
-                Select-Object name, row_count)
+                Select-Object name, row_count, csv_rows_verified,
+                              csv_columns_verified, plain_columns, sha256)
+
+# What the extraction was taken FROM. Gate 1 fails if any of the four is
+# missing: an extraction that cannot name its source is not evidence.
+$sourceInfo = @{
+    path         = $SourceFullPath
+    bytes        = $SourceBytes
+    modified_utc = $SourceModifiedUtc
+    sha256       = $SourceSha256
+}
 
 $gate = Test-Gate1 -TableRows $tableRows `
                    -TotalRows    ([int]$summary.total_rows) `
                    -Attachments  ([int]$summary.total_attachments) `
                    -MvfValues    ([int]$summary.total_mvf_values) `
                    -WarningCount $Warnings.Count `
+                   -SourceInfo   $sourceInfo `
+                   -RelationshipPairs $relCount `
                    -SelectedTables $Tables `
                    -IncludeArchiveTables:$IncludeArchiveTables
 
@@ -646,6 +750,8 @@ $code = Write-Gate1Result -Result $gate `
                           -MvfValues    ([int]$summary.total_mvf_values) `
                           -WarningCount $Warnings.Count `
                           -TableCount   $summary.tables_extracted `
+                          -RelationshipPairs $relCount `
+                          -SourceInfo   $sourceInfo `
                           -ManifestPath $manifestPath `
                           -WarningsPath $warnPath
 
@@ -653,7 +759,7 @@ if (-not $gate.Gated) {
     Write-Log ('DIAGNOSTIC RUN -- Gate 1 not evaluated ({0}).' -f $gate.Reason)
 }
 elseif ($code -ne 0) {
-    Write-Log ('GATE 1 FAILED with {0} problem(s).' -f $gate.Failures.Count) 'ERROR'
+    Write-Log ('GATE 1 DID NOT PASS -- {0} failure(s), {1} concern(s) for the firm.' -f $gate.Failures.Count, $gate.Concerns.Count) 'ERROR'
 }
 else {
     Write-Log 'GATE 1 PASSED.'
