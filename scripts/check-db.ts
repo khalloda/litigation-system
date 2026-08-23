@@ -165,6 +165,31 @@ async function main() {
   //     survive and the whole set that had to go are both named. المنطقة
   //     الحرة is named because it is the one value that changed side during
   //     the decision — an earlier note moved it to venue, wrongly.
+  //     Every one of the 15 approved branches is named. Before this, only
+  //     المنطقة الحرة was — so the other 14 could be renamed or replaced and
+  //     the count would still read 15. A decision the firm made value by
+  //     value is protected value by value.
+  const approvedBranches = [
+    'تويوتا إيجيبت',
+    'تويوتا مصر للتجارة',
+    'تويوتا إيجيبت لصناعة السيارات',
+    'الفطيم للتنمية العقارية',
+    'الفطيم للسيارات',
+    'الفطيم مصر للبيع بالتجزئة',
+    'الفطيم لإنشاء وتنمية المنتجعات السكنية',
+    'الفطيم لإقامة المراكز التجارية والإدارية',
+    'أوراسكوم للفنادق',
+    'أوراسكوم للاتصالات',
+    'المصنع المحلي',
+    'المركز الرئيسي',
+    'المنطقة الحرة',
+    'فرع المنصورة',
+    'فرع الإسكندرية',
+  ];
+  const branchesPresent = await db.lookupClientBranch.count({
+    where: { labelAr: { in: approvedBranches } },
+  });
+  const branchTotal = await db.lookupClientBranch.count();
   const freeZone = await db.lookupClientBranch.count({ where: { labelAr: 'المنطقة الحرة' } });
   const notBranches = await db.lookupClientBranch.count({
     where: {
@@ -191,10 +216,13 @@ async function main() {
     },
   });
   record(
-    'Client branch is 15 sites only',
-    'free zone kept, 0 non-branches',
-    `free zone ${freeZone === 1 ? 'kept' : 'MISSING'}, ${notBranches} non-branches`,
-    freeZone === 1 && notBranches === 0,
+    'Client branch: the 15 approved sites',
+    'all 15 present by name, 0 non-branches',
+    branchesPresent === 15 && branchTotal === 15 && notBranches === 0 && freeZone === 1
+      ? 'all 15 present by name'
+      : `${branchesPresent}/15 approved present, ${branchTotal} rows in total, ` +
+        `${notBranches} non-branches, free zone ${freeZone === 1 ? 'kept' : 'MISSING'}`,
+    branchesPresent === 15 && branchTotal === 15 && notBranches === 0 && freeZone === 1,
   );
 
   //    The crosswalk is what lets Stage 2 map the old text. Every rule that
@@ -635,9 +663,9 @@ async function main() {
             ('invoice_allocations', 'invoice_id'))`;
   record(
     'Stage 2 can never reject a row',
-    '16 links all nullable',
+    '15 links + payments.payment_date, all nullable',
     notNullable.length === 0
-      ? '16 links all nullable'
+      ? '15 links + 1 date, all nullable'
       : `NOT NULL on ${notNullable.map((r) => `${r.table_name}.${r.column_name}`).join(', ')}`,
     notNullable.length === 0,
   );
@@ -674,20 +702,87 @@ async function main() {
   //     matter and ask the firm which lawyer leads it — do NOT relax it.
   //     "Who leads this matter" having two answers is the ambiguity D5 exists
   //     to remove.
-  const junctionGuards = await db.$queryRaw<{ name: string }[]>`
-    SELECT conname AS name FROM pg_constraint
-     WHERE conname IN ('matter_lawyers_role_check', 'matter_parties_side_check',
-                       'matter_parties_gender_check')
-    UNION ALL
-    SELECT indexname FROM pg_indexes
-     WHERE schemaname = 'public' AND indexname = 'matter_lawyers_one_lead_per_matter'`;
+  //     CHECKED BY BEHAVIOUR, NOT BY NAME. A `CHECK (true)` called
+  //     matter_lawyers_role_check, a disabled trigger, or a NON-unique index
+  //     called matter_lawyers_one_lead_per_matter would all satisfy a name
+  //     check and protect nothing.
+  //
+  //     This is our own rule one level up: a check must be tested against the
+  //     failure it prevents. Asserting a name only tests that somebody once
+  //     typed that name.
+  //
+  //     Deliberately NOT a general schema-diffing tool — these specific
+  //     objects, verified to do their specific jobs.
+  const guards: string[] = [];
+
+  //     Each CHECK must be validated and must mention the values it exists to
+  //     restrict. `convalidated` matters: a constraint added NOT VALID is not
+  //     enforced against existing rows and still reads as present.
+  const checkRules: Array<[string, string[]]> = [
+    ['matter_lawyers_role_check', ['lead', 'co_lead', 'support']],
+    ['matter_parties_side_check', ['client', 'opponent']],
+    ['matter_parties_gender_check', ['m', 'f']],
+    ['invoices_amount_not_negative_check', ['amount', '>=']],
+    ['invoices_amount_usd_not_negative_check', ['amount_usd', '>=']],
+    ['invoices_receipt_amount_not_negative_check', ['receipt_amount', '>=']],
+    ['payments_credit_not_negative_check', ['credit', '>=']],
+    ['payments_debit_not_negative_check', ['debit', '>=']],
+    ['invoice_allocations_share_range_check', ['share', '>=', '<=']],
+  ];
+  const constraintRows = await db.$queryRaw<
+    { conname: string; def: string; validated: boolean }[]
+  >`SELECT conname, pg_get_constraintdef(oid) AS def, convalidated AS validated
+      FROM pg_constraint WHERE contype = 'c'`;
+  const byName = new Map(constraintRows.map((r) => [r.conname, r]));
+  for (const [name, mustContain] of checkRules) {
+    const row = byName.get(name);
+    if (row === undefined) {
+      guards.push(`${name} is missing`);
+    } else if (!row.validated) {
+      guards.push(`${name} is NOT VALID`);
+    } else {
+      const absent = mustContain.filter((token) => !row.def.includes(token));
+      if (absent.length > 0) guards.push(`${name} does not mention ${absent.join(', ')}`);
+    }
+  }
+
+  //     Both partial unique indexes must be UNIQUE and actually FILTERED on
+  //     the predicate that makes them mean what they claim.
+  const partials: Array<[string, string]> = [
+    ['matter_lawyers_one_lead_per_matter', 'lead'],
+    ['person_name_alias_one_primary_per_person', 'is_primary'],
+  ];
+  const indexRows = await db.$queryRaw<
+    { name: string; is_unique: boolean; predicate: string | null }[]
+  >`SELECT ci.relname AS name, i.indisunique AS is_unique,
+           pg_get_expr(i.indpred, i.indrelid) AS predicate
+      FROM pg_index i
+      JOIN pg_class ci ON ci.oid = i.indexrelid
+      JOIN pg_namespace n ON n.oid = ci.relnamespace AND n.nspname = 'public'`;
+  const indexByName = new Map(indexRows.map((r) => [r.name, r]));
+  for (const [name, predicateToken] of partials) {
+    const row = indexByName.get(name);
+    if (row === undefined) guards.push(`${name} is missing`);
+    else if (!row.is_unique) guards.push(`${name} is NOT UNIQUE`);
+    else if (row.predicate === null) guards.push(`${name} is not filtered`);
+    else if (!row.predicate.includes(predicateToken))
+      guards.push(`${name} filters on ${row.predicate}, not ${predicateToken}`);
+  }
+
+  //     ...and the rule they protect, in the data. A constraint that exists
+  //     says nothing about rows that predate it.
+  const twoLeads = await db.$queryRaw<{ count: bigint }[]>`
+    SELECT count(*) AS count FROM (
+      SELECT matter_id FROM matter_lawyers WHERE role = 'lead'
+       GROUP BY matter_id HAVING count(*) > 1) d`;
+  const twoLeadsCount = Number(one(twoLeads, 'matters with two leads').count);
+  if (twoLeadsCount > 0) guards.push(`${twoLeadsCount} matters have two lead lawyers`);
+
   record(
-    'Junction constraints in place',
-    '3 checks + one lead per matter',
-    junctionGuards.length === 4
-      ? '3 checks + one lead per matter'
-      : `only ${junctionGuards.length} of 4: ${junctionGuards.map((g) => g.name).join(', ')}`,
-    junctionGuards.length === 4,
+    'Guards do their job, not just exist',
+    '9 checks validated + 2 unique partial indexes + 0 matters with two leads',
+    guards.length === 0 ? '9 checks + 2 partial indexes, all real' : guards.join('; '),
+    guards.length === 0,
   );
 
   // 9b. Billing — task 1.5. Empty until Phase 2, and the shape is where the
@@ -732,18 +827,80 @@ async function main() {
   //     invoices carry splits and all 15 sum to exactly 1. So it has 15
   //     genuine cases to validate when Stage 2 loads تقسيم التحصيلات, and any
   //     failure would be a real finding rather than a bad rule.
+  //     THREE WAYS THIS USED TO PASS SOMETHING BROKEN:
+  //
+  //     1. `sum(share) <> 1` ignores NULLs in PostgreSQL. One allocation of
+  //        1.0 plus one with no share at all sums to 1 and passed.
+  //     2. Rows with a NULL invoice_id were grouped TOGETHER, so shares from
+  //        several different unresolved invoices could total 1 between them.
+  //     3. Neither was visible, because the check reported only a count.
+  //
+  //     Null shares now fail by name; totals are computed only for RESOLVED
+  //     invoices; and unresolved parents are reported separately, as the
+  //     quarantine cases they are rather than as an arithmetic result.
+  const nullShares = await db.$queryRaw<{ count: bigint }[]>`
+    SELECT count(*) AS count FROM invoice_allocations WHERE share IS NULL`;
+  const unresolvedAllocations = await db.$queryRaw<{ count: bigint }[]>`
+    SELECT count(*) AS count FROM invoice_allocations WHERE invoice_id IS NULL`;
   const badSplits = await db.$queryRaw<{ invoice_id: number; total: string }[]>`
     SELECT invoice_id, sum(share)::text AS total
       FROM invoice_allocations
+     WHERE invoice_id IS NOT NULL
      GROUP BY invoice_id
     HAVING sum(share) <> 1`;
+  const nullShareCount = Number(one(nullShares, 'null shares').count);
+  const unresolvedCount = Number(one(unresolvedAllocations, 'unresolved allocations').count);
+  const splitProblems: string[] = [];
+  if (nullShareCount > 0) splitProblems.push(`${nullShareCount} allocations have no share`);
+  for (const b of badSplits) splitProblems.push(`invoice ${b.invoice_id} sums to ${b.total}`);
   record(
     'Invoice shares sum to 1',
-    '0 invoices out',
-    badSplits.length === 0
-      ? '0 invoices out'
-      : badSplits.map((b) => `invoice ${b.invoice_id} sums to ${b.total}`).join(', '),
-    badSplits.length === 0,
+    '0 out, 0 null shares',
+    splitProblems.length === 0
+      ? `0 out, 0 null shares` +
+          (unresolvedCount > 0 ? ` (${unresolvedCount} awaiting an invoice)` : '')
+      : splitProblems.join('; '),
+    splitProblems.length === 0,
+  );
+
+  //     An allocation whose invoice never resolved is a QUARANTINE case, not
+  //     an arithmetic one. Reported here so it cannot hide inside a total.
+  record(
+    'Allocations all reach an invoice',
+    '0 unresolved',
+    `${unresolvedCount} unresolved`,
+    unresolvedCount === 0,
+  );
+
+  //     The eleven billing lookup rows, by exact code. Counts alone would be
+  //     satisfied by eleven rows that are not these eleven, and these are the
+  //     values Stage 2 matches Access against.
+  const billingCodes = await db.$queryRaw<{ list: string; code: string }[]>`
+    SELECT 'invoice_status' AS list, code FROM lookup_invoice_status
+    UNION ALL SELECT 'invoice_type', code FROM lookup_invoice_type
+    UNION ALL SELECT 'lawyer_share_role', code FROM lookup_lawyer_share_role`;
+  const expectedBillingCodes = [
+    'invoice_status:Paid',
+    'invoice_status:Unpaid',
+    'invoice_status:Partially Paid',
+    'invoice_status:Later',
+    'invoice_status:Canceled',
+    'invoice_type:Service',
+    'invoice_type:Expenses',
+    'lawyer_share_role:Reviewer',
+    'lawyer_share_role:LawyerA',
+    'lawyer_share_role:LawyerB',
+    'lawyer_share_role:LawyerA+',
+  ];
+  const actualBillingCodes = new Set(billingCodes.map((r) => `${r.list}:${r.code}`));
+  const missingCodes = expectedBillingCodes.filter((c) => !actualBillingCodes.has(c));
+  record(
+    'Billing lookups: 11 exact codes',
+    '11 present, none translated',
+    missingCodes.length === 0 && actualBillingCodes.size === 11
+      ? '11 present, none translated'
+      : `missing ${missingCodes.join(', ') || '(none)'}, ${actualBillingCodes.size} rows in total`,
+    missingCodes.length === 0 && actualBillingCodes.size === 11,
   );
 
   // 10. Arabic search — task 1.6.
@@ -753,26 +910,36 @@ async function main() {
   //     ar_normalise() folds both the stored value and the query, so the two
   //     sides cannot drift apart.
   //
-  //     The POSITIVE tests are the two docs/PRD.md names. The NEGATIVE ones
+  //     `احمد` finding `أحمد` is the docs/PRD.md case that still stands.
+  //     `140J` finding `140ق` was the other, and the firm REMOVED it on
+  //     24 August 2026: the J -> ق fold turned the real client JTI into قTI.
+  //     Both case-year forms stay findable by their own spelling. The
+  //     NEGATIVE tests
   //     matter more: every fold is a merge, and a fold that is right 95% of
   //     the time silently merges two people the other 5%. This project has
   //     merged two people by accident twice, one carrying 1,309 hearings.
   const folds = await db.$queryRaw<{ label: string; pass: boolean }[]>`
     SELECT 'احمد finds أحمد'  AS label, ar_normalise('احمد') = ar_normalise('أحمد') AS pass
-    UNION ALL SELECT '140J finds 140ق', ar_normalise('140J') = ar_normalise('140ق')
     UNION ALL SELECT 'ta marbuta',      ar_normalise('محكمه') = ar_normalise('محكمة')
     UNION ALL SELECT 'compound space',  ar_normalise('عبدالعزيز') = ar_normalise('عبد العزيز')
     UNION ALL SELECT 'Arabic digits',   ar_normalise('١٤٠ق') = ar_normalise('140ق')
     UNION ALL SELECT 'NOT a dropped middle name',
                      ar_normalise('سامي خطاب') <> ar_normalise('سامي إبراهيم خطاب')
     UNION ALL SELECT 'NOT تحكيم/تحقيق', ar_normalise('تحكيم') <> ar_normalise('تحقيق')
-    UNION ALL SELECT 'NOT طاعن/متظلم',  ar_normalise('طاعن') <> ar_normalise('متظلم')`;
+    UNION ALL SELECT 'NOT طاعن/متظلم',  ar_normalise('طاعن') <> ar_normalise('متظلم')
+    UNION ALL SELECT 'NOT أول درجة/ابتدائي',
+                     ar_normalise('أول درجة') <> ar_normalise('ابتدائي')
+    -- Removed 24 Aug 2026 by the firm's ruling: J is NEVER folded to ق. JTI
+    -- is a real client and the fold corrupted their name. The two case-year
+    -- forms now stay apart, which is intended.
+    UNION ALL SELECT 'JTI survives as Latin', ar_normalise('JTI') = 'jti'
+    UNION ALL SELECT 'NOT 140J/140ق',   ar_normalise('140J') <> ar_normalise('140ق')`;
   const failedFolds = folds.filter((f) => !f.pass);
   record(
     'Arabic search folds, and does not over-fold',
-    '8 of 8',
+    '10 of 10',
     failedFolds.length === 0
-      ? '8 of 8'
+      ? '10 of 10'
       : `FAILED: ${failedFolds.map((f) => f.label).join(', ')}`,
     failedFolds.length === 0,
   );
@@ -787,43 +954,105 @@ async function main() {
              WHERE alias_ar_normalised IS DISTINCT FROM ar_normalise(alias_ar))
          + (SELECT count(*) FROM clients
              WHERE name_ar_normalised IS DISTINCT FROM ar_normalise(name_ar))
+         -- full_name and subject were MISSING from this query. A client name
+         -- or a matter subject could have become unfindable with every check
+         -- green. All seven shadow columns are covered now.
+         + (SELECT count(*) FROM clients
+             WHERE full_name_normalised IS DISTINCT FROM ar_normalise(full_name))
          + (SELECT count(*) FROM matters
              WHERE case_number_ar_normalised IS DISTINCT FROM ar_normalise(case_number_ar))
+         + (SELECT count(*) FROM matters
+             WHERE subject_normalised IS DISTINCT FROM ar_normalise(subject))
          + (SELECT count(*) FROM contacts
              WHERE contact_name_normalised IS DISTINCT FROM ar_normalise(contact_name))
       AS count`;
   const driftCount = Number(one(drifted, 'normalised drift').count);
   record(
-    'Normalised columns agree with the function',
+    'Normalised columns agree (all 7)',
     '0 rows out of step',
     `${driftCount} out of step`,
     driftCount === 0,
   );
 
-  const searchGuards = await db.$queryRaw<{ name: string }[]>`
-    SELECT tgname AS name FROM pg_trigger
-     WHERE tgname IN ('clients_name_ar_normalise', 'clients_full_name_normalise',
-                      'matters_case_number_ar_normalise', 'matters_subject_normalise',
-                      'people_name_ar_normalise', 'person_name_alias_alias_ar_normalise',
-                      'contacts_contact_name_normalise')
-    UNION ALL
-    SELECT indexname FROM pg_indexes
-     WHERE schemaname = 'public' AND indexdef LIKE '%gin_trgm_ops%'
-       AND indexname IN (
-            'clients_name_ar_normalised_idx', 'matters_case_number_ar_normalised_idx',
+  //     Each trigger is checked for what it DOES: enabled, on the right
+  //     table, BEFORE INSERT OR UPDATE, calling ar_normalise_column with the
+  //     right source and target columns. A disabled trigger keeps its name
+  //     and stops maintaining the column — silently, and the drift check
+  //     above would only notice once a row changed.
+  const triggerRows = await db.$queryRaw<
+    { name: string; tbl: string; enabled: string; def: string }[]
+  //     tgenabled is PostgreSQL's internal "char" type, which the driver
+  //     cannot deserialize; cast it to text at the source.
+  >`SELECT t.tgname AS name, c.relname AS tbl, t.tgenabled::text AS enabled,
+           pg_get_triggerdef(t.oid) AS def
+      FROM pg_trigger t
+      JOIN pg_class c ON c.oid = t.tgrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+     WHERE NOT t.tgisinternal`;
+  const triggerByName = new Map(triggerRows.map((r) => [r.name, r]));
+  const expectedTriggers: Array<[string, string, string, string]> = [
+    ['clients_name_ar_normalise', 'clients', 'name_ar', 'name_ar_normalised'],
+    ['clients_full_name_normalise', 'clients', 'full_name', 'full_name_normalised'],
+    ['matters_case_number_ar_normalise', 'matters', 'case_number_ar', 'case_number_ar_normalised'],
+    ['matters_subject_normalise', 'matters', 'subject', 'subject_normalised'],
+    ['people_name_ar_normalise', 'people', 'name_ar', 'name_ar_normalised'],
+    ['person_name_alias_alias_ar_normalise', 'person_name_alias', 'alias_ar', 'alias_ar_normalised'],
+    ['contacts_contact_name_normalise', 'contacts', 'contact_name', 'contact_name_normalised'],
+  ];
+  const searchProblems: string[] = [];
+  for (const [name, tbl, source, target] of expectedTriggers) {
+    const row = triggerByName.get(name);
+    if (row === undefined) {
+      searchProblems.push(`${name} is missing`);
+      continue;
+    }
+    //   'O' is the only enabled state that fires for ordinary writes.
+    if (row.enabled !== 'O') searchProblems.push(`${name} is DISABLED (${row.enabled})`);
+    if (row.tbl !== tbl) searchProblems.push(`${name} is on ${row.tbl}, not ${tbl}`);
+    if (!row.def.includes('BEFORE INSERT OR UPDATE'))
+      searchProblems.push(`${name} is not BEFORE INSERT OR UPDATE`);
+    if (!row.def.includes('ar_normalise_column'))
+      searchProblems.push(`${name} does not call ar_normalise_column`);
+    if (!row.def.includes(`'${source}'`) || !row.def.includes(`'${target}'`))
+      searchProblems.push(`${name} does not map ${source} to ${target}`);
+  }
+
+  //     ...and each index is a real trigram index, not a btree wearing the
+  //     name. A btree called ..._normalised_idx does nothing for LIKE '%…%'.
+  const trigramRows = await db.$queryRaw<{ name: string; def: string }[]>`
+    SELECT indexname AS name, indexdef AS def FROM pg_indexes
+     WHERE schemaname = 'public' AND indexname IN (
+            'clients_name_ar_normalised_idx', 'clients_full_name_normalised_idx',
+            'matters_case_number_ar_normalised_idx',
             'matters_subject_normalised_idx', 'people_name_ar_normalised_idx',
             'person_name_alias_alias_ar_normalised_idx',
             'contacts_contact_name_normalised_idx')`;
+  const trigramByName = new Map(trigramRows.map((r) => [r.name, r.def]));
+  for (const name of [
+    'clients_name_ar_normalised_idx',
+    'clients_full_name_normalised_idx',
+    'matters_case_number_ar_normalised_idx',
+    'matters_subject_normalised_idx',
+    'people_name_ar_normalised_idx',
+    'person_name_alias_alias_ar_normalised_idx',
+    'contacts_contact_name_normalised_idx',
+  ]) {
+    const def = trigramByName.get(name);
+    if (def === undefined) searchProblems.push(`${name} is missing`);
+    else if (!def.includes('gin_trgm_ops')) searchProblems.push(`${name} is not a trigram index`);
+  }
   //     The index names are Prisma's own since they were declared in
   //     schema.prisma. They were briefly created in raw SQL instead, and the
   //     next migration dropped all six — THIS CHECK is what caught it. The
   //     indexdef test matters as much as the name: a plain btree called the
   //     right thing would satisfy a name check and do nothing for LIKE '%…%'.
   record(
-    'Search triggers and trigram indexes',
-    '7 triggers + 6 indexes',
-    searchGuards.length === 13 ? '7 triggers + 6 indexes' : `only ${searchGuards.length} of 13`,
-    searchGuards.length === 13,
+    'Search triggers and indexes do their job',
+    '7 triggers enabled and correct, 7 trigram indexes',
+    searchProblems.length === 0
+      ? '7 triggers enabled and correct, 7 trigram indexes'
+      : searchProblems.join('; '),
+    searchProblems.length === 0,
   );
 
   // ---- report --------------------------------------------------------------

@@ -170,6 +170,27 @@ the pattern looks.** A fold that is right 95% of the time silently merges two
 people the other 5%, and merging two people is the failure this project has
 already suffered twice.
 
+#### A fold justified by one column applies to all of them
+
+The `J → ق` fold was reasoned about only in the case-year suffix, where `140J`
+and `140ق` genuinely are the same thing. It was then applied by
+`ar_normalise()` to **every searchable field in the system**, including client
+names — so the real client **JTI** normalised to `قTI` and searches for them
+returned wrong results from the day task 1.6 shipped.
+
+The reasoning was sound and the scope was not. **Before adding a fold, name
+every column it will touch and ask whether it is still true there.** A rule
+justified by case numbers has to survive client names, matter subjects and
+people's names, because the normaliser does not know which column it is
+looking at.
+
+The firm removed the fold entirely on 24 August 2026 rather than restricting
+it to a case-number context: the risk of corrupting a client name outweighs
+the convenience, and a conditional fold would have been one more thing to get
+wrong. `db:check` now asserts `JTI` survives as `jti` **and** that `140J` does
+not equal `140ق`, so reinstating it fails loudly instead of looking like a
+missing feature restored.
+
 #### Why the third class was added
 
 The space fold was added on 21 August 2026, and finding it immediately found
@@ -589,7 +610,8 @@ Known items, with measured volumes:
 
 | Issue | Count | Handling |
 |---|---:|---|
-| Fee-letter links matching no matter | 289 | Load matter, link null, queue |
+| Matters whose `[خطاب الأتعاب]` matches no fee letter | 289 of 412 | Load matter, link null, queue |
+| `خطابات الأتعاب.Matter` entries matching no matter | of 288 across 195 parents | Load, link null, queue |
 | Orphan task actions | 36 | Load, link null, queue |
 | Task actions with no parent id | 39 | Load, link null |
 | Hearings with no matter | 4 | Load to unassigned bucket |

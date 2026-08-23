@@ -309,7 +309,10 @@ no stored value disagrees with the function.
 
 **Folded:** diacritics and tatweel · `أ إ آ ٱ → ا` · `ة → ه` · `ى → ي` ·
 `ؤ → و` · `ئ → ي` · Arabic-Indic digits `٠-٩ → 0-9` · Latin lowercased ·
-`J → ق` · the space inside a compound name.
+the space inside a compound name.
+
+**`J` is NOT folded to `ق`** — removed 24 August 2026 after it turned the
+client **JTI** into `قTI`. See `docs/GLOSSARY.md`.
 
 **Never folded: a dropped middle name.** `سامي خطاب` and
 `سامي إبراهيم خطاب` stay apart. Asserted as a negative test in the migration
@@ -497,7 +500,8 @@ These are **expected**. Load them; do not try to fix them silently.
 
 | Issue | Count |
 |---|---|
-| Matters whose `خطاب الأتعاب` reference matches no fee letter | 289 of 412 |
+| Matters whose `الدعاوى.[خطاب الأتعاب]` reference matches no fee letter | 289 of 412 |
+| Fee-letter multi-value entries (`خطابات الأتعاب.Matter`) matching no matter | expected at Gate 3, out of 288 |
 | Fee-letter → matter multi-value entries (`خطابات الأتعاب.Matter`) | 288 across 195 parents |
 | Orphan task actions | 36 |
 | Task actions with no parent id | 39 |

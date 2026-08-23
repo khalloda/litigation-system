@@ -318,9 +318,15 @@ be bigger than expected, split it and tell the owner.
       guarantees its content. Proved: an application writing rubbish into the
       shadow column is overruled.
 
-      **Both named tests pass** — `احمد` finds `أحمد`, `140J` finds `140ق` —
-      and so do ta marbuta, alef maqsura, tatweel, diacritics, Arabic-Indic
-      digits, Latin case and the compound-name space.
+      **`احمد` finds `أحمد`**, and so do ta marbuta, alef maqsura, tatweel,
+      diacritics, Arabic-Indic digits, Latin case and the compound-name space.
+
+      **The `J → ق` fold was REMOVED on 24 August 2026** (migration 0020). It
+      was the second named test, and it was wrong: the fold applied to every
+      field, so the real client **JTI** normalised to `قTI`. Both case-year
+      spellings stay findable by their own form. `db:check` asserts `JTI`
+      survives as `jti` and that `140J` does **not** equal `140ق`, so
+      reinstating the fold fails loudly rather than looking like a fix.
 
       **The negative tests matter more, and are asserted in the migration and
       in `db:check`:** a dropped middle name is NEVER folded

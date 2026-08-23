@@ -282,8 +282,13 @@ Matches D7 — name and capacity are separate values rendered together, not one
 text field.
 
 **Case numbers appear in both scripts in the same report:** `J2391/18`,
-`J37503/79`, `55534 / 74ق`, `2103 لسنة 18 قضائية`. Confirms the `ق ↔ J` fold in
-the search normaliser.
+`J37503/79`, `55534 / 74ق`, `2103 لسنة 18 قضائية`.
+
+This was once cited as confirming a `ق ↔ J` fold in the search normaliser.
+**There is no such fold** — it was removed on 24 August 2026 because it also
+turned the client **JTI** into `قTI`. What these samples confirm is that a
+report must RENDER both scripts side by side, which it does. Searching is a
+separate matter: each spelling is found by its own form.
 
 **Powers of attorney split the number into three columns** — `رقم التوكيل` ·
 `حرف` · `السنة` — matching the Access fields. In the combined report they render

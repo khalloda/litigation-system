@@ -74,8 +74,19 @@ Users type Arabic without hamza and without diacritics. A plain search fails on
 
 Every searchable Arabic field needs a normalised shadow column: strip
 diacritics and tatweel, fold `أ إ آ ٱ → ا`, `ة → ه`, `ى → ي`, `ؤ → و`, `ئ → ي`,
-fold Arabic-Indic digits `٠-٩ → 0-9`, lowercase Latin, and fold the case-year
-suffix `J ↔ ق`. The same function is applied to the user's query.
+fold Arabic-Indic digits `٠-٩ → 0-9`, and lowercase Latin. The same function is
+applied to the user's query.
+
+**`J` IS NEVER FOLDED TO `ق`.** The fold was removed on 24 August 2026 by the
+firm's ruling: `ar_normalise()` applied it to every field, so the real client
+**JTI** normalised to `قTI` and searches for them returned wrong results. The
+risk of corrupting a client name outweighs matching `140J` against `140ق`.
+Both spellings stay findable by their own form. **Do not reinstate it as a
+missing feature.**
+
+*(This paragraph originally specified a `J ↔ ق` fold. It was implemented, found
+to be wrong in practice, and removed. The specification is corrected here
+rather than annotated, so that reading it does not reintroduce the fault.)*
 
 ## 5. Reports
 

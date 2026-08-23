@@ -239,7 +239,13 @@ designed.
 ## Case number suffixes
 
 `ق` (قضائية, judicial year) and `J` mean the same thing — 695 matters use `ق`,
-92 use `J`. The search normaliser folds them together.
+92 use `J`.
+
+**The search normaliser does NOT fold them together.** It did until 24 August
+2026, and the fold reached every field rather than only case numbers, so the
+real client **JTI** became `قTI`. The firm removed it. A lawyer searching a
+case number types it as recorded, and both spellings remain findable by their
+own form.
 
 ## Values that are not names
 

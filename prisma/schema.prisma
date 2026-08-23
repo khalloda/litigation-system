@@ -636,6 +636,11 @@ model Client {
   /// dropped it — Prisma removes an index it can see the columns of but does
   /// not know about. db:check caught that; this stops it recurring.
   @@index([nameArNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
+  /// full_name is searchable too, so it is indexed on the same footing as
+  /// name_ar. 313 rows would not need one; the asymmetry would need
+  /// explaining every time somebody read the model, which costs more than
+  /// the index does.
+  @@index([fullNameNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("clients")
 }
 
