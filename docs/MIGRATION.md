@@ -71,6 +71,46 @@ Access file (read-only copy)
  [E] cutover
 ```
 
+### The extracted CSVs are UTF-8 **without** a BOM, and that is deliberate
+
+**If you double-click one in Excel on Windows you will see `Ø§Ù„Ø³ÙŠØ¯` where
+`السيد` should be. Nothing is wrong with the file.**
+
+Excel assumes Windows-1252 for a `.csv` opened by double-click. It reads each
+UTF-8 Arabic byte as a separate Latin character, so two bytes become two
+symbols. **The tell is that numbers and booleans look perfectly normal in the
+same view** — they are ASCII, one byte each, and Windows-1252 agrees with
+UTF-8 about those. Corruption during extraction would not be so selective.
+
+**To look at one:**
+
+| Do this | Not this |
+|---|---|
+| Excel → **Data → From Text/CSV**, and set **File Origin** to `65001: Unicode (UTF-8)` | double-clicking the file |
+| Any editor that reads UTF-8 — VS Code, Notepad++ | Notepad on an older Windows |
+
+#### Why not just add a BOM and make the double-click work?
+
+Because the three BOM bytes would land **inside the first column name**.
+`COPY ... FROM ... (FORMAT csv, HEADER true)` does not strip a byte-order
+mark: the first header field becomes `\uFEFFID_Task` rather than `ID_Task`,
+and the load fails — or worse, if a loader were tolerant enough to accept it,
+succeeds with a column nobody can name.
+
+**This is the trailing-CR fault of task 2.3 arriving from the other end.**
+Same family: an invisible character riding along inside a value that renders
+correctly everywhere a human looks. There the CR was appended to the *last*
+field of every record; here the BOM would be prepended to the *first* field of
+the header. Both are cured the same way — compare bytes, not renderings, and
+check the header against the schema before loading a row. See "Two strings
+that print identically are not thereby equal".
+
+So the trade is: the files are correct for the machine that must read them,
+and mildly inconvenient for the human who opens one to look. That is the right
+way round. `npm run check:encoding` asserts the rule in both directions —
+the `.ps1` scripts must keep their BOM, because Windows PowerShell 5.1 reads a
+BOM-less script as Windows-1252 and mangles every Arabic table name in it.
+
 ### Why staging is all-text
 
 A load can never fail on a type conversion, so **no row is rejected at the
