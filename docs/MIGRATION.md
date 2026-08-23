@@ -818,6 +818,16 @@ years, and that file is the only pre-migration record of **1,223 closed
 matters**. There is no date on which it is deleted, and no step in this plan
 deletes it.
 
-**Separately and urgently:** the production Access file sits at exactly
-2,147,483,648 bytes — the hard limit — and compacts to 45 MB. Compact and repair
-it on a backup now. A file at its ceiling can refuse to save new records.
+**Access bloat — resolved 23 August 2026, kept here as history.** The
+production file had reached exactly 2,147,483,648 bytes — Access's hard limit —
+while holding 35,343 rows, and compacted to 45 MB. 97.8% of it was wasted space,
+and a file at its ceiling can refuse to save new records.
+
+The firm compacted and repaired **both** the production file and the rehearsal
+copy on 23 August 2026. The rehearsal copy taken afterwards is 46,661,632 bytes,
+which is consistent with the right file having been compacted. **This is no
+longer a risk to daily work**, and no step in this plan depends on it.
+
+It stays in the record because it is evidence, not a task: a store that grew
+fifty-fold in wasted space with no warning, until it was one save away from
+refusing new records, is one of the reasons for this migration.

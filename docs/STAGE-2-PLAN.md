@@ -247,7 +247,7 @@ These are known now, so they will not be a surprise:
 
 | When | What |
 |---|---|
-| **Now, urgently** | **Compact and repair the Access file.** It sits at exactly 2 GB, which is the maximum Access allows, and compacts to 45 MB. A file at its ceiling can start refusing to save new records. Do this on a backup first. |
+| ~~Now, urgently~~ | ✅ **Done, 23 August 2026 — compact and repair the Access file.** It had reached exactly 2 GB, the maximum Access allows, and compacted to 45 MB. A file at its ceiling can start refusing to save new records. You compacted both the live file and the copy. **No longer a risk**, and nothing below depends on it. Kept here because it is one of the reasons for moving off Access, not because anything is outstanding. |
 | Before we start | ✅ Done — a copy is on the machine and Access 2021 is installed. Both were checked on 23 August 2026, not taken on trust |
 | During Step 3 | Answer the review workbooks — the items above, plus whatever else turns up. Do this with a long-serving colleague present |
 | 14 days before | Full practice run. Every gate passes, six reports compared |

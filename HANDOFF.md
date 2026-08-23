@@ -721,9 +721,9 @@ DAO COM       DAO.DBEngine.120 v16.0 CREATES SUCCESSFULLY under BOTH
               Windows PowerShell 5.1 (64-bit) and PowerShell 7.6.5 (64-bit)
 ```
 
-The copy is **already compacted** — 44.5 MB, not the 2 GB the live file sits
-at. **The compact-and-repair on the production file is still outstanding and
-still urgent.**
+**Both files are compacted.** The firm compacted the production file and the
+rehearsal copy on 23 August 2026; the copy taken afterwards is 46,661,632 bytes.
+The 2 GB ceiling is **history, not a current risk**.
 
 **THE SOURCE IS A REHEARSAL COPY AND HAS ALREADY DRIFTED.** Taken 23 August;
 the live file moves ~100 records a day.
@@ -832,11 +832,11 @@ In the order written in `TASKS.md`. Carry forward:
    matter belongs to; until then those matters are quarantined at task 2.6.
    No action needed now.
 
-6. **The production Access file is still at its 2 GB ceiling.** The rehearsal
-   copy is compacted; the live file is not. A file at its ceiling can refuse
-   to save new records. The firm has been told twice. **Not a blocker for
-   Stage 2, but it is the one item here that can lose data on any ordinary
-   working day.**
+6. **Access bloat — closed 23 August 2026.** The production file had reached
+   its 2 GB ceiling while holding 35,343 rows. The firm compacted and repaired
+   both it and the rehearsal copy on 23 August 2026. **Nothing outstanding.**
+   Recorded in `docs/MIGRATION.md` as history — evidence of why the firm is
+   moving off Access, not an open item.
 
 ---
 

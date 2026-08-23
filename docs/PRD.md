@@ -5,9 +5,12 @@
 Sarie Eldin & Partners runs its litigation practice on a Microsoft Access file
 built around 2010. It works, but:
 
-- **It has hit its size limit.** The file sits at exactly 2 GiB — the maximum
-  Access allows — and compacts down to 45 MB. 97.8% was wasted space. A file at
-  its limit can start refusing to save new records.
+- **It had hit its size limit.** The file reached exactly 2 GiB — the maximum
+  Access allows — while holding 35,343 rows, and compacted down to 45 MB. 97.8%
+  was wasted space. A file at its limit can start refusing to save new records.
+  **Compacted 23 August 2026**, live file and rehearsal copy both, so it is no
+  longer a risk to daily work — but a store that bloats fifty-fold, silently,
+  until it is one save away from refusing, is a reason to move off it.
 - **There is no login.** Anyone who opens the file sees and can change
   everything, including billing. There is no record of who changed what.
 - **One person at a time, in one office.** No remote access.

@@ -366,9 +366,9 @@ only ever seen good data is not known to work.
                       Windows PowerShell 5.1 (64-bit) and PowerShell 7.6.5
                       (64-bit). Run 64-bit to match Access.
 
-      **The copy is already compacted** — 44.5 MB, not the 2 GB the live file
-      sits at. The compact-and-repair on the production file is still
-      outstanding and is still urgent.
+      **Both files are compacted** — the copy is 46,661,632 bytes. The firm
+      compacted the production file and the copy on 23 August 2026. The 2 GB
+      ceiling is **history, not a current risk**; see `docs/MIGRATION.md`.
 
       **THE SOURCE IS A REHEARSAL COPY AND HAS ALREADY DRIFTED.** It was taken
       on 23 August 2026; the live file moves about 100 records a day. **The
