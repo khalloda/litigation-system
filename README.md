@@ -39,6 +39,7 @@ in the database for a possible future bilingual version.
 | `docs/REPORT-LAYOUTS.md` | House style for printed reports, from real samples |
 | `docs/PERMISSIONS.md` | The four user roles |
 | `docs/BRAND.md` | Colours, fonts, right-to-left rules |
+| `docs/VISUAL-DIRECTION.md` | Agreed look and feel from the mockups. **Direction, not a specification** |
 | `docs/DATABASE.md` | Running the database, and what to do when it complains |
 | `docs/DECISIONS.md` | Decisions already made, and why. **Do not re-open these.** |
 | `docs/GLOSSARY.md` | Arabic legal terms explained |

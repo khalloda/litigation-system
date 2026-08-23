@@ -24,6 +24,14 @@ mostly light, with emerald green for headers, navigation and primary actions.
 Terracotta red is reserved for warnings and destructive actions — never
 decoration.
 
+**`docs/VISUAL-DIRECTION.md` uses five tints that are not in this table** —
+`#FBFAF7` and `#F6F4EE` for alternating rows and inset panels, `#DDD9CE` for
+the pale motif, and `#0F6E56` / `#993C1D` as print-weight teal and terracotta.
+They are derived from these colours rather than new brand colours, but this
+table currently says "use these and nothing else". **Fold them in here, or
+rule them out, before the first real screen is built** — otherwise the first
+person to need an alternating row invents their own.
+
 ## Logo
 
 - `logo.png` — full lockup, bilingual. Use on login and printed report headers.
@@ -63,8 +71,17 @@ decoration.
    **Enforced.** `npm run check:rtl` fails on any Arabic character inside a
    `.tsx` file outside a comment.
 
-3. **Numbers stay Western** (0–9). Confirmed: zero Arabic-Indic digits in
-   35,343 rows. But **search must accept** `٠-٩` in case a user types them.
+3. **Numbers stay Western** (0–9) — **BUT THIS IS REOPENED, see below.**
+   Confirmed: zero Arabic-Indic digits in 35,343 rows. **Search must accept**
+   `٠-٩` in case a user types them, and that part is settled and built —
+   `ar_normalise()` folds them.
+
+   **The interface question is open.** The mockups used Arabic-Indic (`٤٩٣`,
+   `٢٠٢٦`) because they read naturally in an Arabic interface, while the data
+   and the existing printed reports are Western. `docs/VISUAL-DIRECTION.md`
+   section 6 records the three options. **Nothing may be built on this rule
+   until it is settled**, and it is annoying to change late. Whichever way it
+   goes, this paragraph and that one must end up saying the same thing.
 
 4. **Mixed direction is normal.** Case numbers look like `1039 / 20ق`; client
    names like `شركة هيوليت باكارد HP`. Let the browser's bidirectional algorithm

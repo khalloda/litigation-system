@@ -1,5 +1,11 @@
 # Report layouts
 
+**This file is authoritative for report LAYOUT.**
+`docs/VISUAL-DIRECTION.md` section 5 adds the branding treatment on top —
+watermark, double rule, alternating row tint, signature blocks — and changes
+nothing structural here. Where the two appear to disagree about layout, this
+file wins.
+
 Extracted from nine real printed reports supplied by the firm. This is the
 house style — follow it rather than inventing one.
 
