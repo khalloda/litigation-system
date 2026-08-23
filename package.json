@@ -36,7 +36,8 @@
     "test:gate1": "pwsh -NoProfile -File scripts/test-gate1.ps1",
     "generate:lookup-seed": "tsx scripts/generate-lookup-seed.ts",
     "generate:roster-seed": "tsx scripts/generate-roster-seed.ts",
-    "baseline:write": "tsx scripts/write-baseline.ts"
+    "baseline:write": "tsx scripts/write-baseline.ts",
+    "generate:court-seed": "tsx scripts/generate-court-seed.ts"
   },
   "dependencies": {
     "@fontsource-variable/noto-naskh-arabic": "^5.3.0",

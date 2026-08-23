@@ -369,11 +369,26 @@ only ever seen good data is not known to work.
 
 - [ ] **2.5 Transform: people, lookups, clients, contacts**
 
-      **Fill `lookup_court` and clean it.** ~305 distinct court names arrive
-      from the data and will need the same spelling-variant pass as every
-      other Arabic list — `القضاء الإداري` and `القضاء الإداري بالعباسية` may
-      be one court with a location suffix (**D20**). Every court reference
-      keeps `legacy_court_raw`, so the cleanup is reversible.
+      **`lookup_court` is reviewed and ready to seed — BLOCKED on one row.**
+      `sql/lookup-court-and-crosswalk.sql` holds the firm's review of all 401
+      distinct court names: 307 KEEP, 52 MERGE, 35 SPLIT, 7 WRONG, giving 309
+      courts and 94 crosswalk rules. Generate it with
+      `npm run generate:court-seed -- <new migration.sql>`; never retype it.
+
+      **`القضاء الإداري` and `القضاء الإداري بالعباسية` are DIFFERENT courts** —
+      different buildings, deliberately kept apart (**D22**). The earlier guess
+      that they might be one court with a location suffix was wrong.
+
+      **BLOCKER — `هيئة الاستثمار` is both a court and a merge source.** It is
+      seeded into `lookup_court` (marked "1 uses") *and* merged away to
+      `الهيئة العامة للاستثمار والمناطق الحرة` (42 uses), *and* is the court
+      part of a SPLIT. That is a two-step chain — the same fault as `جنح` at
+      task 1.2c — and the migration's own assertion refuses to apply it.
+      Awaiting the firm. See the handoff.
+
+      Four WRONG rows name `matter_destination` values that do not exist in
+      that list; the generator turns them into quarantine rules rather than
+      inventing four destinations. Also awaiting the firm.
 
       **RULE (a) — NEVER OVERWRITE AN EXISTING `matter_category`.** Nine of
       the branch values resolved by **D19** move into `matter_category`. Where

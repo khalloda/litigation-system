@@ -344,3 +344,41 @@ matter screen and every matter report.
 
 `docs/DATA-MODEL.md` carried this as "optional, discuss before doing it".
 It is now decided and the note is removed, so it stops reappearing.
+
+## D22 — Every lookup value gets human review. Courts are the proof
+
+The 401 distinct court names in the Access data were reviewed **one at a
+time** by the firm: 307 kept, 52 merged, 35 split, 7 not courts at all. That
+review cannot be replaced by any amount of cleverness, and the court list is
+the clearest evidence in the project of why.
+
+**Ten spellings collapse into one court.**
+
+```
+الهيئة العامة للاستثمار          هيئة الاستثمار
+الهيئة العامة للأستثمار في صلاح سالم    هيئة الأستثمار بمدينة نصر
+الهيئة العامة للاستثمار بالمنطقة الحرة   هيئة الاستثمار - المنطقة الحرة
+…
+```
+
+They differ by the definite article, by hamza, **and by branch location**. No
+normaliser reaches that: `في صلاح سالم` and `بمدينة نصر` are different strings
+saying the same thing, and only somebody who knows the institution can say so.
+
+**And in the other direction, three names that a fuzzy match would have merged
+on sight are deliberately kept apart:**
+
+```
+القضاء الإداري  ·  القضاء الإداري بالعباسية  ·  القضاء الإداري بالإسكندرية
+```
+
+Same court name, different buildings in different cities. An algorithm
+confident enough to fold the ten would certainly have folded these three.
+
+**That pair is the argument.** A tool cannot tell the two cases apart, because
+the difference is not in the text — it is in the world. Both directions are
+asserted in the migration, in both directions: the ten must be one, and the
+three must be three. Asserting only the fold would not notice the over-merge.
+
+Every lookup list in this system is reviewed value by value for the same
+reason, and `sql/` holds those reviews as the source of truth.
