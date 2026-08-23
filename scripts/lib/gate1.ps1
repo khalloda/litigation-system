@@ -613,7 +613,17 @@ function Write-Gate1Result {
         $script:Gate1ExpectedRows.Count, $script:Gate1MigratedRows.Count,
         $script:Gate1ReferenceOnlyRows.Count)
     Write-Host  "  self-check    : every CSV read back and verified, SHA-256 recorded"
-    Write-Host ("  rows          : {0:N0}" -f $TotalRows)
+
+    # Every total says what it covers. An unlabelled figure here would be the
+    # same fault the shape table above was fixed for.
+    $migratedActual = 0
+    foreach ($s in $Result.Shape) {
+        if ($s.Group -eq 'migrated' -and $null -ne $s.Actual) { $migratedActual += [int]$s.Actual }
+    }
+    Write-Host ("  rows          : {0:N0} over {1} migrated tables" -f `
+        $migratedActual, $script:Gate1MigratedRows.Count)
+    Write-Host ("                  {0:N0} over all {1} extracted" -f `
+        $TotalRows, $script:Gate1ExpectedRows.Count)
     Write-Host ("  attachments   : {0}" -f $Attachments)
     Write-Host ("  mvf values    : {0}" -f $MvfValues)
     Write-Host ("  relationships : {0} field-pairs" -f $RelationshipPairs)
