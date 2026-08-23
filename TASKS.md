@@ -451,15 +451,66 @@ only ever seen good data is not known to work.
       check itself were proved — a wrong assertion (psql exit 3) and *deleted*
       assertions (psql exit **0**, caught by counting the `PROVED` notices).
 
-- [ ] **2.3 Load to staging** — Gate 2: counts match the manifest.
+- [x] **2.3 Load to staging** — Gate 2: counts match the manifest.
+      **Done 23 August 2026. GATE 2 PASSED.**
 
-      **Also at this task: give `npm run test:guard` its own database.**
-      The guard suite writes fixture tables, so it refuses to run against a
-      database holding project data — CLAUDE.md rule 14 working as intended.
-      But that means its 22 cases have not run since task 1.1 and the gap
-      widens with every migration. The firm's ruling: create and destroy a
-      throwaway database per run, so the suite never touches the project one.
-      Do not build it before this task.
+      `npm run load:staging` — 20 files, **31,227 rows staged**: 30,885 over
+      the 17 extracted tables (the figure Gate 1 reported) plus 342 from the
+      complex columns, 54 logos and 288 multi-value entries.
+
+      The load and Gate 2 run in **one transaction**, so a failure rolls the
+      whole thing back rather than leaving a plausible-looking half-load.
+
+      **Gate 2 asserts:** per-table staged rows = manifest rows, exactly;
+      `src_row_num` runs 1..n with no gaps or repeats and one `src_file` per
+      table; three totals each labelled with how many tables it covers, with
+      the extracted-table subtotal tied to `summary.total_rows` — a figure the
+      extraction recorded independently; **193,445 NULL cells and 2
+      empty-string cells** across all 204 source columns; all 20 tables carry
+      `src_file` and `src_row_num`. Seven proofs, counted rather than assumed.
+
+      **`src_row_num` is the CSV record ordinal**, counted by the loader as it
+      streams — never insertion order, per the firm's ruling. Records, not
+      lines: a memo field here can contain a newline.
+
+      **NULL versus `''` is 193,445 against 2.** Both empty strings are in
+      `العملاء."Cash/probono"`. The loader keeps them by never decoding the
+      records — it passes each record's original text through and prepends only
+      the two bookkeeping fields. Decoding and re-encoding would have lost both
+      cells without moving a single count.
+
+      **A real bug the header check caught**, before any row was loaded: the
+      loader's scanner appended the CR of every CRLF to the last field of every
+      record. Fifteen column names that printed identically and compared
+      unequal. Every `matterID` would have arrived with an invisible carriage
+      return.
+
+      **`npm run test:guard` now has its own throwaway database**, created and
+      destroyed per run — `guard_test_<pid>_<time>` on the same local server,
+      because several cases exist to prove the guard cannot destroy one
+      database while inspecting another in the same container. Its 10 guard
+      cases and 12 parser cases — 22 in all — run again; they had not run since
+      task 1.1. Rule 14's
+      check is narrowed to the two databases the suite writes to, not weakened.
+      The one destructive statement refuses unless the name carries the
+      throwaway prefix **and** differs from the project database — both, not
+      either — and the drop runs in a `finally` so a failed run leaves nothing
+      behind.
+
+      **One case is reduced, and it is a decision for the firm.** The guard
+      protects the **volume**, not a database: `docker compose down -v`
+      destroys every database in it at once, which is why the guard enumerates
+      all of them and refuses if any holds rows. So on this machine the guard
+      *must* refuse, and the one case proving it ever **allows** a reset cannot
+      be proved. It now runs in reduced form — it asserts the guard passed all
+      six earlier checks and refused **only** because the volume is not empty,
+      which still catches a guard that refuses everything — and the suite says
+      so rather than reporting a pass it has not earned.
+
+      Fully proving it needs a throwaway **cluster**: a second compose service
+      with its own volume, and `db-reset.ts` able to be pointed at it. That
+      puts a service-selecting override into the most safety-critical script in
+      the project. **Not built. The firm decides.**
 
 - [ ] **2.4 Quarantine tables + profiling** — Gate 3.
 

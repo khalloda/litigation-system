@@ -29,6 +29,7 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:check": "tsx scripts/check-db.ts",
+    "load:staging": "tsx scripts/load-staging.ts",
     "check:rtl": "tsx scripts/check-rtl.ts && tsx scripts/check-rtl.ts --self-test",
     "check:gitignore": "tsx scripts/check-gitignore.ts",
     "check:encoding": "tsx scripts/check-encoding.ts",

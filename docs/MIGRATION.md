@@ -134,6 +134,39 @@ two columns into one.
 The generated migration records which extraction it describes: the source
 path, size, modification date and SHA-256.
 
+### Gate 2 — the load, task 2.3, 23 August 2026
+
+**Gate 2 proves nothing was lost between reading and loading.** Staged row
+counts equal the manifest counts exactly, per table and in total.
+
+The whole load runs in **one transaction with Gate 2 inside it**, so a failure
+rolls the entire thing back. A half-loaded staging schema that looks plausible
+is worse than an empty one.
+
+| What it asserts | Why |
+|---|---|
+| Per table: staged rows = the rows the extractor read out of Access | The promise of the gate. Two measurements of the same thing at opposite ends of the journey |
+| `src_row_num` runs **1..n with no gaps and no repeats**, one `src_file` per table | A matching count can still be the wrong rows. Two copies of record 7 and no record 12 counts exactly the same as 1..n does |
+| **Three** totals, each labelled with how many tables it covers | 30,885 over the 17 extracted tables — the figure Gate 1 reported — plus 342 from the complex columns, giving 31,227 staged over 20 tables |
+| The extracted-table subtotal equals `summary.total_rows` | Ties Gate 2 back to a figure the extraction recorded **independently** and Gate 1 has already accepted. A total checked only against its own sum proves almost nothing |
+| Every NULL and every empty string, counted across all 204 source columns | See below |
+| All 20 tables carry `src_file` and `src_row_num` | Every target row must be traceable to a source line |
+
+**The three totals are a correction made during the task.** The first version
+reported one figure — 31,227 — and compared it against its own sum of the rows
+it had just loaded. Worse, 31,227 is not the 30,885 Gate 1 reported, because
+staging holds the flattened complex columns as rows of their own. Neither
+number is wrong; printing one under the other's name is the fault, and it is
+the same fault as writing 30,553 into Gate 4.
+
+**The header of every CSV is checked against the staging table's columns before
+a single row is loaded.** This is what "staging is directly comparable to the
+source" means in practice, and it earned its place immediately: it caught a
+loader that appended the CR of every CRLF to the last field of every record.
+Fifteen column names that printed identically and compared unequal. Without
+that check, every `matterID` in the database would have carried an invisible
+carriage return, and no row count would have moved.
+
 ### NULL and the empty string are not the same value
 
 **An unassigned `lawyerA` is a matter nobody has been put on. A cleared one is
@@ -154,6 +187,23 @@ ALL`, so it inherits any constraint the real one has — asserts both
 directions, and rolls back. It also proves the four kinds of content that
 break a naive loader: a comma inside a quoted field, **a newline inside a
 quoted field**, a doubled quote, and trailing spaces.
+
+**And it is proved again at full volume, on the real data.** Across the whole
+extraction the difference is **193,445 NULLs against 2 empty strings**. Gate 2
+counts both, across all 204 source columns, and fails on either figure.
+
+**Two cells.** Both in `العملاء."Cash/probono"` — two clients where somebody
+typed something and cleared it, against 316 where nothing was ever entered.
+That is the entire practical extent of a distinction worth insisting on, and
+it is exactly why it had to be insisted on: nothing about a load that lost
+them would have looked wrong. No row count moves. No error is raised. The two
+cells simply become the same as the other 316.
+
+**The loader keeps them by never decoding them.** It finds record boundaries
+and passes each record's **original text** through untouched, prepending only
+`src_file` and `src_row_num`. Decoding the CSV into values and re-encoding it
+would have been the obvious way to write that script, and would have collapsed
+both cells silently.
 
 Both halves of that check were proved to catch a failure, on 23 August 2026:
 
