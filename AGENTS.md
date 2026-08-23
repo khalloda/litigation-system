@@ -161,7 +161,7 @@ know what was intended.
   on the server?
 - Does search work without hamza and diacritics? Typing `احمد` must find
   `أحمد`.
-  **`140J` must NOT find `140ق`.** That fold existed until 24 August 2026 and
+  **`140J` must NOT find `140ق`.** That fold existed until 23 August 2026 and
   was removed by the firm: `ar_normalise()` applied it to every field, so the
   real client `JTI` normalised to `قTI`. If you see a `J → ق` fold, flag it —
   it is not a missing feature.
