@@ -1,5 +1,5 @@
 -- ============================================================================
---  THE SEVEN "WRONG" COURT VALUES — the firm's ruling, 24 August 2026
+--  THE SEVEN "WRONG" COURT VALUES — the firm's ruling, 23 August 2026
 --
 --  Seven of the 401 reviewed court names are not courts at all. The review
 --  file recorded them as "a venue or destination", which is two answers, so

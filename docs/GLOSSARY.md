@@ -174,8 +174,14 @@ never guess.
 
 ### `LawyerAs` and `matter_lawyers.role` are the same idea, named twice
 
+**CONFIRMED BY THE FIRM IN WRITING, 23 August 2026.** This was previously
+recorded as "believed correct, not confirmed", which mattered: it decides who
+appears as responsible on **171 matters**. It is now settled and the open
+question is closed.
+
 **Record the alignment or the two will be conflated.** A collection split and a
-matter assignment describe the same relationship from different sides.
+matter assignment describe the same relationship from different sides — and the
+same concept named two ways in two tables is exactly what gets conflated later.
 
 | `تقسيم التحصيلات.LawyerAs` | `matter_lawyers.role` | |
 |---|---|---|
@@ -185,8 +191,9 @@ matter assignment describe the same relationship from different sides.
 | `Reviewer` | — | the reviewing partner; no `matter_lawyers` equivalent |
 
 **`LawyerA+` is a co-lead, not a variant of `LawyerA`.** It is always a
-different person, and the structure is unambiguous — every invoice carrying one
-looks like this:
+different person, and the structure is unambiguous. **The proof is in the
+collection-split data, not in the name** — every invoice carrying one looks
+like this:
 
 ```
 Reviewer   0.250

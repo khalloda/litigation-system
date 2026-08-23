@@ -321,7 +321,7 @@ be bigger than expected, split it and tell the owner.
       **`احمد` finds `أحمد`**, and so do ta marbuta, alef maqsura, tatweel,
       diacritics, Arabic-Indic digits, Latin case and the compound-name space.
 
-      **The `J → ق` fold was REMOVED on 24 August 2026** (migration 0020). It
+      **The `J → ق` fold was REMOVED on 23 August 2026** (migration 0020). It
       was the second named test, and it was wrong: the fold applied to every
       field, so the real client **JTI** normalised to `قTI`. Both case-year
       spellings stay findable by their own form. `db:check` asserts `JTI`
@@ -432,7 +432,7 @@ only ever seen good data is not known to work.
       different buildings, deliberately kept apart (**D22**). The earlier guess
       that they might be one court with a location suffix was wrong.
 
-      **APPLIED 24 August 2026, migration 0022. 308 courts, 94 rules.**
+      **APPLIED 23 August 2026, migration 0022. 308 courts, 94 rules.**
 
       **308, not the stated 309.** `هيئة الاستثمار` was in the list *and* a
       merge source *and* a SPLIT's court part — a two-step chain, the same

@@ -129,7 +129,7 @@ contain a raw colour.
    **Enforced.** `npm run check:rtl` fails on any Arabic character inside a
    `.tsx` file outside a comment.
 
-3. **Numbers are Western (0–9) everywhere. SETTLED, 24 August 2026.**
+3. **Numbers are Western (0–9) everywhere. SETTLED, 23 August 2026.**
 
    The interface displays Western digits. So do the reports. The mockups used
    Arabic-Indic (`٤٩٣`, `٢٠٢٦`) because they read naturally in an Arabic

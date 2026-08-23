@@ -311,7 +311,7 @@ no stored value disagrees with the function.
 `ؤ → و` · `ئ → ي` · Arabic-Indic digits `٠-٩ → 0-9` · Latin lowercased ·
 the space inside a compound name.
 
-**`J` is NOT folded to `ق`** — removed 24 August 2026 after it turned the
+**`J` is NOT folded to `ق`** — removed 23 August 2026 after it turned the
 client **JTI** into `قTI`. See `docs/GLOSSARY.md`.
 
 **Never folded: a dropped middle name.** `سامي خطاب` and
@@ -475,7 +475,7 @@ it.
 
 ## Courts — `lookup_court`, 308 entries
 
-Seeded 24 August 2026 from `sql/lookup-court-and-crosswalk.sql`, the firm's
+Seeded 23 August 2026 from `sql/lookup-court-and-crosswalk.sql`, the firm's
 review of all **401** distinct court names in `الدعاوى.matterCourt`,
 `الجلسات.المحكمة` and `admin work table.المحكمة`:
 
@@ -512,7 +512,7 @@ All are **tables, not enums**, each with `label_ar`, `label_en`, `sort_order`,
 `importance` (3) · `party_role` (11) · `hearing_action` (20) ·
 `matter_destination` (31) · `client_branch` (15) — **134 rows total**
 
-`matter_destination` went 27 → 31 on 24 August 2026: four of the seven values
+`matter_destination` went 27 → 31 on 23 August 2026: four of the seven values
 the court review found to be "not a court" are real places where something
 happened, and that list already holds exactly this kind of value. See
 `sql/court-wrong-destinations.sql`.

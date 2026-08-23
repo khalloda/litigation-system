@@ -291,7 +291,7 @@ text field.
 `J37503/79`, `55534 / 74ق`, `2103 لسنة 18 قضائية`.
 
 This was once cited as confirming a `ق ↔ J` fold in the search normaliser.
-**There is no such fold** — it was removed on 24 August 2026 because it also
+**There is no such fold** — it was removed on 23 August 2026 because it also
 turned the client **JTI** into `قTI`. What these samples confirm is that a
 report must RENDER both scripts side by side, which it does. Searching is a
 separate matter: each spelling is found by its own form.

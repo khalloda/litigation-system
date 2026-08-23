@@ -229,7 +229,7 @@ justified by case numbers has to survive client names, matter subjects and
 people's names, because the normaliser does not know which column it is
 looking at.
 
-The firm removed the fold entirely on 24 August 2026 rather than restricting
+The firm removed the fold entirely on 23 August 2026 rather than restricting
 it to a case-number context: the risk of corrupting a client name outweighs
 the convenience, and a conditional fold would have been one more thing to get
 wrong. `db:check` now asserts `JTI` survives as `jti` **and** that `140J` does

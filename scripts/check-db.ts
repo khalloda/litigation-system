@@ -1016,7 +1016,7 @@ async function main() {
   //
   //     `احمد` finding `أحمد` is the docs/PRD.md case that still stands.
   //     `140J` finding `140ق` was the other, and the firm REMOVED it on
-  //     24 August 2026: the J -> ق fold turned the real client JTI into قTI.
+  //     23 August 2026: the J -> ق fold turned the real client JTI into قTI.
   //     Both case-year forms stay findable by their own spelling. The
   //     NEGATIVE tests
   //     matter more: every fold is a merge, and a fold that is right 95% of
@@ -1033,7 +1033,7 @@ async function main() {
     UNION ALL SELECT 'NOT طاعن/متظلم',  ar_normalise('طاعن') <> ar_normalise('متظلم')
     UNION ALL SELECT 'NOT أول درجة/ابتدائي',
                      ar_normalise('أول درجة') <> ar_normalise('ابتدائي')
-    -- Removed 24 Aug 2026 by the firm's ruling: J is NEVER folded to ق. JTI
+    -- Removed 23 Aug 2026 by the firm's ruling: J is NEVER folded to ق. JTI
     -- is a real client and the fold corrupted their name. The two case-year
     -- forms now stay apart, which is intended.
     UNION ALL SELECT 'JTI survives as Latin', ar_normalise('JTI') = 'jti'

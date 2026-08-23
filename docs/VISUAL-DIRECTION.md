@@ -1,6 +1,6 @@
 # Visual direction
 
-Agreed from mockups, 24 August 2026. **Direction only — not a specification.**
+Agreed from mockups, 23 August 2026. **Direction only — not a specification.**
 Nothing here has been built. Every screen will be revisited during Stage 4
 (core screens) and Stage 6 (reports) with real data in front of us.
 
@@ -133,7 +133,7 @@ only the branding treatment.
 
 ## 6. Settled — numerals are Western
 
-**Decided 24 August 2026. Western digits everywhere, in the interface and in
+**Decided 23 August 2026. Western digits everywhere, in the interface and in
 reports.**
 
 The mockups used Arabic-Indic (`٤٩٣`, `٢٠٢٦`) because they read naturally in
