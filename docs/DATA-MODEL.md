@@ -473,6 +473,36 @@ spelling each row used survives.
 `الموعد القادم` at seven rows is effectively dead. Migrate it; do not surface
 it.
 
+## Courts — `lookup_court`, 308 entries
+
+Seeded 24 August 2026 from `sql/lookup-court-and-crosswalk.sql`, the firm's
+review of all **401** distinct court names in `الدعاوى.matterCourt`,
+`الجلسات.المحكمة` and `admin work table.المحكمة`:
+
+| Outcome | Count |
+|---|---:|
+| KEEP — a real, distinct court | 307 |
+| MERGE — a spelling of another court | 52 |
+| SPLIT — a court with something else attached | 35 |
+| WRONG — not a court at all | 7 |
+| | **401** |
+
+**308, not the 309 the source file states.** `هيئة الاستثمار` appeared in the
+list *and* was a merge source for `الهيئة العامة للاستثمار والمناطق الحرة`;
+the seed generator had taken it from a SPLIT's court part without checking. The
+firm's review was consistent — the generator was not. `npm run db:check` now
+asserts permanently that **no lookup value is also a crosswalk source**,
+however it reached the list.
+
+Never retype this list: `npm run generate:court-seed -- <new migration.sql>`.
+
+**Four rules for Stage 2** are in the source file: a SPLIT writes to more than
+one column and the remainder is never discarded; three raw values carry an
+individual's name and go to the **hearing** note (`الجلسات.ملاحظات`), not the
+matter note; `(السودان)` on `الجيزة الابتدائية` loads as circuit text and is
+flagged at Gate 3; and a court in neither the crosswalk nor the list is a
+quarantine case.
+
 ## Lookups
 
 All are **tables, not enums**, each with `label_ar`, `label_en`, `sort_order`,
@@ -480,11 +510,15 @@ All are **tables, not enums**, each with `label_ar`, `label_en`, `sort_order`,
 
 `matter_type` (14) · `matter_category` (21) · `degree` (12) · `venue` (7) ·
 `importance` (3) · `party_role` (11) · `hearing_action` (20) ·
-`matter_destination` (27) · `client_branch` (15) — **130 rows total**
+`matter_destination` (31) · `client_branch` (15) — **134 rows total**
 
-A tenth list, **`lookup_court`**, was added at task 1.3 and is **empty** until
-Stage 2 fills it with roughly 305 values (**D20**). It is not counted in the
-130.
+`matter_destination` went 27 → 31 on 24 August 2026: four of the seven values
+the court review found to be "not a court" are real places where something
+happened, and that list already holds exactly this kind of value. See
+`sql/court-wrong-destinations.sql`.
+
+A tenth list, **`lookup_court`**, holds **308** courts and is **not** counted
+in the 134. See below.
 
 Was 150, then 146, now 130. Four values were merged on 21 August 2026 after
 three lists were found to have been marked "already clean" without inspection

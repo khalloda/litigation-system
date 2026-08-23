@@ -277,6 +277,7 @@ the same: the *list* was right and the *number attached to it* was wrong.
 | The roster generator | "0 mentions" | the name had failed to match, and two duplicate people were created |
 | The `db:reset` inventory | a table with 0 rows | the row count had failed to parse |
 | `client_branch` | "13 KEEP and 19 WRONG", then "15 and 17" | the enumerated values were 15 and 16, and were right both times |
+| `lookup_court` | "309 courts" | 308. The 309th was `هيئة الاستثمار`, a spelling of another court that a seed generator had taken into the list |
 
 A total is a *summary* of the content. When the two disagree, the content is
 the evidence and the total is a description of it — and this project has never
@@ -302,6 +303,12 @@ In practice:
 4. **Report the difference and let the owner rule.** Do not quietly adopt the
    count, and do not quietly adopt the list either. Say which one the data
    supports and why.
+
+**And the wrong count is not always somebody else's.** The 309 came from a
+generator in this repository, which had built the court list from the reviewed
+file and added one entry too many. The firm's review was consistent throughout.
+Counting the items rather than trusting the total is what found it — and the
+habit is worth as much when the total is your own.
 
 The same applies to a *field name* in an instruction, not only a count. The
 branch resolution said `آراء قانونية` moves to `matter_category رأي قانوني`;

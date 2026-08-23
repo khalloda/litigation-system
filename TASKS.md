@@ -379,16 +379,23 @@ only ever seen good data is not known to work.
       different buildings, deliberately kept apart (**D22**). The earlier guess
       that they might be one court with a location suffix was wrong.
 
-      **BLOCKER — `هيئة الاستثمار` is both a court and a merge source.** It is
-      seeded into `lookup_court` (marked "1 uses") *and* merged away to
-      `الهيئة العامة للاستثمار والمناطق الحرة` (42 uses), *and* is the court
-      part of a SPLIT. That is a two-step chain — the same fault as `جنح` at
-      task 1.2c — and the migration's own assertion refuses to apply it.
-      Awaiting the firm. See the handoff.
+      **APPLIED 24 August 2026, migration 0022. 308 courts, 94 rules.**
 
-      Four WRONG rows name `matter_destination` values that do not exist in
-      that list; the generator turns them into quarantine rules rather than
-      inventing four destinations. Also awaiting the firm.
+      **308, not the stated 309.** `هيئة الاستثمار` was in the list *and* a
+      merge source *and* a SPLIT's court part — a two-step chain, the same
+      fault as `جنح` at 1.2c. **My generator's bug, not the firm's review:** it
+      took the split's court part into the list without checking whether that
+      string was itself a merge source. Every split's court part now resolves
+      through the merge map first. Counted independently before applying — the
+      fifth time a stated count was wrong while its list was right.
+
+      The seven WRONG values are settled: five are destinations (four added,
+      `matter_destination` 27 → 31), and `/` and `26` are discarded, keeping
+      their text in `legacy_court_raw` (D10).
+
+      `db:check` now asserts permanently that **no lookup value is also a
+      crosswalk source**, however it reached the list. Proved by reinserting
+      the artefact.
 
       **RULE (a) — NEVER OVERWRITE AN EXISTING `matter_category`.** Nine of
       the branch values resolved by **D19** move into `matter_category`. Where

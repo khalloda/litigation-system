@@ -17,11 +17,21 @@
  *      file does not know about. The CREATE TABLE is dropped and the INSERTs
  *      gain `updated_at`.
  *
- *   2. Four of the seven WRONG rows point at matter_destination values that
- *      DO NOT EXIST in that list. Only نقابة الأطباء is there. The firm's note
- *      says "a venue or destination" — `or`, which is not a decision — so
- *      those four become quarantine rules rather than dangling ones or four
- *      invented lookup entries. See the note written onto each row.
+ *   2. A SPLIT's court part may itself be a MERGE SOURCE. Taking it into the
+ *      court list verbatim builds a two-step chain — which is what the first
+ *      version of this generator did, and what the migration's own assertion
+ *      refused:
+ *
+ *          هيئة الاستثمار ⏎ لجان فض المنازعات  --SPLIT-->  هيئة الاستثمار
+ *          هيئة الاستثمار                      --MERGE-->  الهيئة العامة …
+ *
+ *      **The firm's review was consistent; the generator was not.** Every
+ *      split's court part is now resolved through the merge map first, and
+ *      any label that is a merge source is kept OUT of the court list.
+ *
+ *      That makes the list **308**, not the 309 the source file states — the
+ *      309th was this artefact. Counted here, not assumed: see the assertion
+ *      below, which reports the difference rather than trusting either number.
  *
  * Every count is asserted before a byte is written.
  */
@@ -30,20 +40,12 @@ import { readFileSync, writeFileSync, appendFileSync, statSync } from 'node:fs';
 
 const SOURCE = 'sql/lookup-court-and-crosswalk.sql';
 
-/* The four whose destination does not exist in lookup_matter_destination.
- * نقابة الأطباء is deliberately absent from this list: it IS in the list. */
-const DESTINATIONS_NOT_IN_THE_LIST = [
-  'مقر شركة أدخنة النخلة بشبين الكوم',
-  'نادي المقطم الرياضي',
-  'كايرو فيستيفال سيتي',
-  'مكتب بريد المعادي',
-];
-
-const QUARANTINE_NOTE =
-  'Not a court. The firm classified it as "a venue or destination" — but it is ' +
-  'not in lookup_matter_destination, and "or" is not a decision. Quarantined ' +
-  'rather than guessed at, and rather than inventing a destination entry. The ' +
-  'firm decides whether it becomes one. The original stays in legacy_court_raw.';
+/* The court list the source file states, and the list this generator produces.
+ * They differ by the one artefact described above; the assertion reports the
+ * difference rather than either number being taken on trust. */
+const STATED_COURTS = 309;
+const EXPECTED_COURTS = 308;
+const EXPECTED_RULES = 94;
 
 function main() {
   const target = process.argv[2];
@@ -76,55 +78,85 @@ function main() {
   const courtInserts = lines.filter((l) => l.startsWith('INSERT INTO lookup_court '));
   const crosswalkInserts = lines.filter((l) => l.startsWith('INSERT INTO migration_crosswalk '));
 
-  if (courtInserts.length !== 309) {
-    throw new Error(`${SOURCE}: ${courtInserts.length} court rows, expected 309`);
+  if (courtInserts.length !== STATED_COURTS) {
+    throw new Error(`${SOURCE}: ${courtInserts.length} court rows, expected ${STATED_COURTS}`);
   }
-  if (crosswalkInserts.length !== 94) {
-    throw new Error(`${SOURCE}: ${crosswalkInserts.length} crosswalk rules, expected 94`);
+  if (crosswalkInserts.length !== EXPECTED_RULES) {
+    throw new Error(`${SOURCE}: ${crosswalkInserts.length} rules, expected ${EXPECTED_RULES}`);
+  }
+
+  /* The merge map: every value that is folded into another court. A label in
+   * here is NOT a court — it is a spelling of one. */
+  const mergeTarget = new Map<string, string>();
+  for (const line of crosswalkInserts) {
+    const m = /VALUES \('court', '(.*?)', \d+, 'court', '(.*?)', '/.exec(line);
+    if (m !== null && m[1] !== undefined && m[2] !== undefined) mergeTarget.set(m[1], m[2]);
+  }
+  if (mergeTarget.size !== 52) {
+    throw new Error(`${mergeTarget.size} merge rules, expected 52`);
   }
 
   /* lookup_court.updated_at is NOT NULL — Prisma's @updatedAt. The source file
    * predates the table and does not supply it. */
-  const courts = courtInserts.map((line) => {
-    const rewritten = line
-      .replace('INSERT INTO lookup_court (label_ar, sort_order)', 'INSERT INTO "lookup_court" (label_ar, sort_order, updated_at)')
-      .replace(/VALUES \((.*)\);/, 'VALUES ($1, now());');
-    if (!rewritten.includes('now()')) {
-      throw new Error(`could not rewrite a court insert:\n${line}`);
-    }
-    return rewritten;
-  });
+  /* A label that is a merge source is a spelling, not a court. Dropping it is
+   * what removes the chain. Counted and reported, never silent. */
+  const droppedAsMergeSource: string[] = [];
+  const courts = courtInserts
+    .filter((line) => {
+      const m = /VALUES \('(.*)', \d+\);/.exec(line);
+      const label = m?.[1];
+      if (label !== undefined && mergeTarget.has(label)) {
+        droppedAsMergeSource.push(label);
+        return false;
+      }
+      return true;
+    })
+    .map((line) => {
+      const rewritten = line
+        .replace('INSERT INTO lookup_court (label_ar, sort_order)', 'INSERT INTO "lookup_court" (label_ar, sort_order, updated_at)')
+        .replace(/VALUES \((.*)\);/, 'VALUES ($1, now());');
+      if (!rewritten.includes('now()')) {
+        throw new Error(`could not rewrite a court insert:\n${line}`);
+      }
+      return rewritten;
+    });
 
-  let requarantined = 0;
-  const crosswalk = crosswalkInserts.map((line) => {
-    const affected = DESTINATIONS_NOT_IN_THE_LIST.filter((v) => line.includes(`'${v}'`));
-    if (affected.length === 0) return line;
-    requarantined += 1;
-    /* Rewrite target_field and target_value, and replace the note. The row
-     * keeps its source_value and rows_affected exactly. */
-    const rewritten = line
-      .replace(", 'matter_destination', '", ", 'quarantine', NULL_MARKER, '")
-      .replace(/NULL_MARKER, '[^']*', '[^']*'\);$/, `NULL, '${QUARANTINE_NOTE}');`);
-    //  Match the FIELD, not the word: the replacement note itself contains
-    //  "lookup_matter_destination", and checking for the bare substring made
-    //  this guard fire on its own output.
-    if (rewritten.includes('NULL_MARKER') || rewritten.includes(", 'matter_destination',")) {
-      throw new Error(`could not requarantine:\n${line}\n-> ${rewritten}`);
-    }
-    return rewritten;
-  });
-
-  if (requarantined !== 4) {
-    throw new Error(`requarantined ${requarantined} rows, expected 4`);
+  if (courts.length !== EXPECTED_COURTS) {
+    throw new Error(
+      `${courts.length} courts after dropping ${droppedAsMergeSource.length} merge ` +
+        `sources, expected ${EXPECTED_COURTS}`,
+    );
   }
 
+  /* Resolve every SPLIT's court part through the merge map. Without this the
+   * split points at a spelling that is no longer a court, and Stage 2 would
+   * follow value -> spelling -> court: a two-step chain, and a second chance
+   * to get it wrong. */
+  let splitsResolved = 0;
+  const crosswalk = crosswalkInserts.map((line) => {
+    const m = /VALUES \('court', '(.*?)', \d+, 'SPLIT', '(.*?)', '/.exec(line);
+    if (m === null) return line;
+    const courtPart = m[2];
+    if (courtPart === undefined) return line;
+    const resolved = mergeTarget.get(courtPart);
+    if (resolved === undefined) return line;
+    splitsResolved += 1;
+    const rewritten = line.replace(`, 'SPLIT', '${courtPart}', '`, `, 'SPLIT', '${resolved}', '`);
+    if (rewritten === line) {
+      throw new Error(`could not resolve a split court part:\n${line}`);
+    }
+    return rewritten;
+  });
+
   const header = `-- Generated by npm run generate:court-seed from ${SOURCE}.
--- 309 courts, 94 crosswalk rules. DO NOT EDIT BY HAND: correct the source
--- file and regenerate, or the reviewed data and the migration diverge.
+-- ${courts.length} courts, ${crosswalk.length} crosswalk rules.
+-- DO NOT EDIT BY HAND: correct the source file and regenerate, or the
+-- reviewed data and the migration diverge.
 --
--- Four WRONG rows were rewritten to 'quarantine' because the
--- matter_destination values they named do not exist in that list. See the
--- generator for the reasoning.
+-- The source file lists ${STATED_COURTS} courts. ${droppedAsMergeSource.length} of them is also a MERGE
+-- SOURCE — a spelling of another court, not a court — so it is dropped and the
+-- list is ${courts.length}. ${splitsResolved} SPLIT court part was resolved through the merge
+-- map for the same reason. See the generator header.
 
 `;
 
@@ -137,9 +169,11 @@ function main() {
   );
 
   console.log(`Wrote ${target}`);
-  console.log(`  courts            ${courts.length}`);
+  console.log(`  courts stated     ${STATED_COURTS}`);
+  console.log(`  dropped           ${droppedAsMergeSource.length} (also a merge source: ${droppedAsMergeSource.join(', ')})`);
+  console.log(`  courts written    ${courts.length}`);
   console.log(`  crosswalk rules   ${crosswalk.length}`);
-  console.log(`  requarantined     ${requarantined} (destination not in the list)`);
+  console.log(`  splits resolved   ${splitsResolved} (court part was a merge source)`);
 }
 
 main();

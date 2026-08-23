@@ -1,11 +1,11 @@
 {
   "note": "Every alias and crosswalk link the firm reviewed. npm run db:check proves each one still holds. Adding links is allowed; changing one fails the check. Regenerate with npm run baseline:write -- --accept-changes, and commit it on its own. See scripts/lib/reviewed-links.ts.",
-  "generatedAt": "2026-08-21",
+  "generatedAt": "2026-08-23",
   "counts": {
     "aliases": 347,
-    "crosswalk": 20
+    "crosswalk": 114
   },
-  "digest": "fd47b2dfa57710fdb860291f6bae2e74f034d33d841341868cb30a61a7ae70c8",
+  "digest": "145280f016031aa646e5f2524d3dd3c4e5276fbf8350a49cfe999de5af8a8079",
   "aliases": [
     {
       "alias": "10- محمود شعبان",
@@ -1498,6 +1498,570 @@
       "sourceValue": "مدني",
       "targetField": "matter_category",
       "targetValue": "مدني"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "/",
+      "targetField": null,
+      "targetValue": null
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "26",
+      "targetField": null,
+      "targetValue": null
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "6 أكتوبر (جنوب الجيزة)",
+      "targetField": "court",
+      "targetValue": "6 أكتوبر -جنوب الجيزة الكلية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "6 أكتوبر -جنوب الجزة الكلية",
+      "targetField": "court",
+      "targetValue": "6 أكتوبر -جنوب الجيزة الكلية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "أستئناف القاهرة",
+      "targetField": "court",
+      "targetValue": "استئناف القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "أكتوبر",
+      "targetField": "court",
+      "targetValue": "6 أكتوبر"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف",
+      "targetField": "court",
+      "targetValue": "الاستئناف"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف الإسكندرية بأبيس",
+      "targetField": "court",
+      "targetValue": "استئناف الإسكندرية (أبيس)"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف الخانكة و العبور",
+      "targetField": "court",
+      "targetValue": "استئناف الخانكة والعبور"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف الزقازيق \\n  \\n 19 استئناف",
+      "targetField": "SPLIT",
+      "targetValue": "استئناف الزقازيق"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف القاهرة \\n  \\n 50 تجاري",
+      "targetField": "SPLIT",
+      "targetValue": "استئناف القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف القاهرة \\n  \\n 62 تجاري",
+      "targetField": "SPLIT",
+      "targetValue": "استئناف القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف القاهرة مأمورية استئناف الجيزة \\n  \\n 118 تعويضات",
+      "targetField": "SPLIT",
+      "targetValue": "استئناف القاهرة مأمورية استئناف الجيزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف شمال الجيزة شارع السودان",
+      "targetField": "court",
+      "targetValue": "استئناف شمال الجيزة (السودان)"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف شمال القاهرة \\n  \\n 87 تعويضات",
+      "targetField": "SPLIT",
+      "targetValue": "استئناف شمال القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف عال القاهرة",
+      "targetField": "court",
+      "targetValue": "استئناف عالي القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف عال شبين الكوم",
+      "targetField": "court",
+      "targetValue": "استئناف عالي شبين الكوم"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف عالي القاهرة \\n  \\n 4 تعويضات",
+      "targetField": "SPLIT",
+      "targetValue": "استئناف عالي القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "استئناف عالي طنطا \\n مأمورية شبين الكوم",
+      "targetField": "SPLIT",
+      "targetValue": "استئناف عالي طنطا"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "اسرة العجوزة",
+      "targetField": "court",
+      "targetValue": "أسرة العجوزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الأدارية العليا",
+      "targetField": "court",
+      "targetValue": "الإدارية العليا"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الإدارية العليا \\n  \\n 1 طعون عليا",
+      "targetField": "SPLIT",
+      "targetValue": "الإدارية العليا"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الإدارية العليا \\n  \\n 1 موضوعي",
+      "targetField": "SPLIT",
+      "targetValue": "الإدارية العليا"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الإدارية العليا \\n  \\n 2 فحص",
+      "targetField": "SPLIT",
+      "targetValue": "الإدارية العليا"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الاسكندرية الاقتصادية",
+      "targetField": "court",
+      "targetValue": "الإسكندرية الاقتصادية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الجيزة الابتدائية  \\n (السودان)",
+      "targetField": "SPLIT",
+      "targetValue": "الجيزة الابتدائية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الجيزة الابتدائية \\n  \\n 4 مدني حكومة",
+      "targetField": "SPLIT",
+      "targetValue": "الجيزة الابتدائية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "السادس من أكتوبر",
+      "targetField": "court",
+      "targetValue": "6 أكتوبر"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القاهرة الأقتصادية",
+      "targetField": "court",
+      "targetValue": "القاهرة الاقتصادية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القاهرة الاقتصادية \\n  \\n 2 اقتصادي",
+      "targetField": "SPLIT",
+      "targetValue": "القاهرة الاقتصادية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القاهرة الاقتصادية \\n  \\n 4 استئناف",
+      "targetField": "SPLIT",
+      "targetValue": "القاهرة الاقتصادية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القاهرة الجديدة \\n  \\n 14 تعويضات",
+      "targetField": "SPLIT",
+      "targetValue": "القاهرة الجديدة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القاهرة الجديدة \\n استئناف محكمة الأسرة",
+      "targetField": "SPLIT",
+      "targetValue": "القاهرة الجديدة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القاهرة الجديدة الابتدائية",
+      "targetField": "court",
+      "targetValue": "القاهرة الجديدة الأبتدائية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القضاء الأداري",
+      "targetField": "court",
+      "targetValue": "القضاء الإداري"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القضاء الإداري \\n  \\n 7 مفوضي استثمار",
+      "targetField": "SPLIT",
+      "targetValue": "القضاء الإداري"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القضاء الإداري \\n  \\n 8 عقود",
+      "targetField": "SPLIT",
+      "targetValue": "القضاء الإداري"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القضاء الإداري \\n 3 أفراد مفوضين",
+      "targetField": "SPLIT",
+      "targetValue": "القضاء الإداري"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "القضاء الاداري بالعباسية",
+      "targetField": "court",
+      "targetValue": "القضاء الإداري بالعباسية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "المحكمة الإدارية العليا",
+      "targetField": "court",
+      "targetValue": "الإدارية العليا"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "النقض \\n  \\n جنائي",
+      "targetField": "SPLIT",
+      "targetValue": "النقض"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "النقض \\n  \\n مدني",
+      "targetField": "SPLIT",
+      "targetValue": "النقض"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الهيئة العامة للأستثمار  - المنطقة الحرة",
+      "targetField": "court",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الهيئة العامة للأستثمار - المنطقة الحرة",
+      "targetField": "court",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الهيئة العامة للأستثمار في صلاح سالم",
+      "targetField": "court",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الهيئة العامة للاستثمار",
+      "targetField": "court",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "الهيئة العامة للاستثمار بالمنطقة الحرة",
+      "targetField": "court",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "جنوب الجيزة  \\n  \\n 7 مدني كلي",
+      "targetField": "SPLIT",
+      "targetValue": "جنوب الجيزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "جنوب الجيزة  \\n  \\n 9 مدني كلي",
+      "targetField": "SPLIT",
+      "targetValue": "جنوب الجيزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "جنوب الجيزة \\n  \\n 12 مدني",
+      "targetField": "SPLIT",
+      "targetValue": "جنوب الجيزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "جنوب الجيزة \\n  \\n 13 تعويضات",
+      "targetField": "SPLIT",
+      "targetValue": "جنوب الجيزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "جنوب الجيزة \\n  \\n 6 مدني",
+      "targetField": "SPLIT",
+      "targetValue": "جنوب الجيزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "جنوب الجيزة الأبتدائية",
+      "targetField": "court",
+      "targetValue": "جنوب الجيزة الابتدائية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "جنوب القاهرة \\n  \\n 16 عمال",
+      "targetField": "SPLIT",
+      "targetValue": "جنوب القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "جنوب القاهرة الابتدائية",
+      "targetField": "court",
+      "targetValue": "جنوب القاهرة الأبتدائية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "جهاز التنفيذي للمنطقة الصناعية و مديرية المساحة",
+      "targetField": "court",
+      "targetValue": "الجهاز التنفيذي للمنطقة الصناعية و مديرية المساحة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "حلوان الابتدائية",
+      "targetField": "court",
+      "targetValue": "حلوان الأبتدائية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "خبراء القاهرة الأقتصادية",
+      "targetField": "court",
+      "targetValue": "خبراء القاهرة الاقتصادية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "خبراء مجلس الدولة (خبير/محمد هاشم)",
+      "targetField": "SPLIT",
+      "targetValue": "خبراء مجلس الدولة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "شمال القاهرة \\n  \\n 45 مدني",
+      "targetField": "SPLIT",
+      "targetValue": "شمال القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "شمال القاهرة7",
+      "targetField": "SPLIT",
+      "targetValue": "شمال القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "قصر النيل- عابدين",
+      "targetField": "court",
+      "targetValue": "قصر النيل - عابدين"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "قضاء إداري",
+      "targetField": "court",
+      "targetValue": "القضاء الإداري"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "قضاء الأداري",
+      "targetField": "court",
+      "targetValue": "القضاء الإداري"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "كايرو فيستيفال سيتي",
+      "targetField": "matter_destination",
+      "targetValue": "كايرو فيستيفال سيتي"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "لجنة تفتيش بهيئة الأستثمار",
+      "targetField": "court",
+      "targetValue": "لجنة التفتيش - الهيئة العامة للاستثمار"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة أستئناف القاهرة",
+      "targetField": "court",
+      "targetValue": "استئناف القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة استئناف اسرة التجمع 21826/142 ق",
+      "targetField": "SPLIT",
+      "targetValue": "محكمة استئناف اسرة التجمع"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة القاهرة الجديدة",
+      "targetField": "court",
+      "targetValue": "القاهرة الجديدة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة النقض",
+      "targetField": "court",
+      "targetValue": "النقض"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة جنوب القاهرة",
+      "targetField": "court",
+      "targetValue": "جنوب القاهرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة حلوان",
+      "targetField": "court",
+      "targetValue": "حلوان"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة حلوان الابتدائية",
+      "targetField": "court",
+      "targetValue": "حلوان الأبتدائية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة شمال الجيزة",
+      "targetField": "court",
+      "targetValue": "شمال الجيزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة شمال الجيزة الابتدائية تنعقد في جنوب الجيزة",
+      "targetField": "court",
+      "targetValue": "شمال الجيزة - تنعقد في جنوب الجيزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة عابدين",
+      "targetField": "court",
+      "targetValue": "عابدين"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة مجلس الدولة بالرحاب",
+      "targetField": "court",
+      "targetValue": "مجلس الدولة بالرحاب"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "محكمة مدينة نصر",
+      "targetField": "court",
+      "targetValue": "مدينة نصر"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "مركز التسوية والتحكيم الرياضي",
+      "targetField": "court",
+      "targetValue": "مركز التسوية و التحكيم الرياضي المصري"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "مقر شركة أدخنة النخلة بشبين الكوم",
+      "targetField": "matter_destination",
+      "targetValue": "مقر شركة أدخنة النخلة بشبين الكوم"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "مكتب بريد المعادي",
+      "targetField": "matter_destination",
+      "targetValue": "مكتب بريد المعادي"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "مكتب خبراء العباسية",
+      "targetField": "court",
+      "targetValue": "مكتب خبراء شرق القاهرة -  العباسية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "مكتب خبراء شرق القاهرة بالعباسية",
+      "targetField": "court",
+      "targetValue": "مكتب خبراء شرق القاهرة -  العباسية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "مكتب خبراء وزارة العدل بجنوب الجيزة - (مروة السيد)",
+      "targetField": "SPLIT",
+      "targetValue": "مكتب خبراء وزارة العدل بجنوب الجيزة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "نادي المقطم الرياضي",
+      "targetField": "matter_destination",
+      "targetValue": "نادي المقطم الرياضي"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "نقابة الأطباء",
+      "targetField": "matter_destination",
+      "targetValue": "نقابة الأطباء"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "نقض",
+      "targetField": "court",
+      "targetValue": "النقض"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "نيابة الأموال العامة \\n العليا",
+      "targetField": "SPLIT",
+      "targetValue": "نيابة الأموال العامة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "نيابة الشئون المالية والتجارية \\n  \\n وكيل نيابة/ أسامة الطنطاوي",
+      "targetField": "SPLIT",
+      "targetValue": "نيابة الشئون المالية والتجارية"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "هيئة الأستثمار - المنطقة الحرة",
+      "targetField": "court",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "هيئة الأستثمار بمدينة نصر",
+      "targetField": "court",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "هيئة الاستثمار",
+      "targetField": "court",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "هيئة الاستثمار  \\n  \\n لجان فض المنازعات",
+      "targetField": "SPLIT",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+    },
+    {
+      "sourceField": "court",
+      "sourceValue": "هيئة الاستثمار - المنطقة الحرة",
+      "targetField": "court",
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
     },
     {
       "sourceField": "hearing_action",

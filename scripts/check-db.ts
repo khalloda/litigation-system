@@ -96,7 +96,9 @@ async function main() {
     ['importance', () => db.lookupImportance.count(), 3],
     ['party_role', () => db.lookupPartyRole.count(), 11],
     ['hearing_action', () => db.lookupHearingAction.count(), 20],
-    ['matter_destination', () => db.lookupMatterDestination.count(), 27],
+    //  27 + 4: the firm ruled that four of the seven "not a court" values are
+    //  destinations. See sql/court-wrong-destinations.sql.
+    ['matter_destination', () => db.lookupMatterDestination.count(), 31],
     ['client_branch', () => db.lookupClientBranch.count(), 15],
   ];
 
@@ -109,9 +111,9 @@ async function main() {
   }
   record(
     'Lookup lists (9)',
-    '130 rows',
+    '134 rows',
     wrong.length === 0 ? `${lookupTotal} rows` : wrong.join(', '),
-    wrong.length === 0 && lookupTotal === 130,
+    wrong.length === 0 && lookupTotal === 134,
   );
 
   // The default matter type is what a matter falls back to. Exactly one.
@@ -235,6 +237,7 @@ async function main() {
   //    rows that cannot see a rule with no members at all.
   const crosswalk = await db.migrationCrosswalk.findMany();
 
+  const courtNames = new Set((await db.lookupCourt.findMany()).map((r) => r.labelAr));
   const listTargets: Record<string, Set<string>> = {
     hearing_action: new Set((await db.lookupHearingAction.findMany()).map((r) => r.labelAr)),
     client_branch: new Set((await db.lookupClientBranch.findMany()).map((r) => r.labelAr)),
@@ -242,6 +245,14 @@ async function main() {
     matter_type: new Set((await db.lookupMatterType.findMany()).map((r) => r.labelAr)),
     degree: new Set((await db.lookupDegree.findMany()).map((r) => r.labelAr)),
     venue: new Set((await db.lookupVenue.findMany()).map((r) => r.labelAr)),
+    matter_destination: new Set(
+      (await db.lookupMatterDestination.findMany()).map((r) => r.labelAr),
+    ),
+    court: courtNames,
+    //  A SPLIT writes to more than one column. Its target_value is the COURT
+    //  part and must resolve like any other court; the remainder is carried
+    //  in the reviewer_note and goes to circuit, case number or hearing note.
+    SPLIT: courtNames,
   };
   //    Markers are not lists: they carry no target_value and resolve to
   //    nothing. NULL means the value is discarded.
@@ -261,9 +272,43 @@ async function main() {
   });
   record(
     'Crosswalk rules resolve',
-    '20 rules, 0 dangling, 0 unrecognised',
+    '114 rules, 0 dangling, 0 unrecognised',
     `${crosswalk.length} rules, ${dangling.length} dangling, ${unrecognised.length} unrecognised`,
-    crosswalk.length === 20 && dangling.length === 0 && unrecognised.length === 0,
+    crosswalk.length === 114 && dangling.length === 0 && unrecognised.length === 0,
+  );
+
+  //    NO TWO-STEP CHAINS. A lookup value that is ALSO a crosswalk source for
+  //    its own field means value -> entry -> somewhere else, and Stage 2 would
+  //    have to know to follow it twice.
+  //
+  //    This is a permanent assertion because it has now caught the fault
+  //    twice: the جنح chain at task 1.2c, and هيئة الاستثمار — which the court
+  //    seed generator put into lookup_court verbatim from a SPLIT's court
+  //    part, without noticing that the same string was itself a merge source.
+  //    The firm's review was consistent; the generator was not. It holds
+  //    however a value reached the list: a KEEP, a merge target, or a split.
+  const chainSources = crosswalk.filter((c) => {
+    const list = listTargets[c.sourceField];
+    return list !== undefined && list.has(c.sourceValue);
+  });
+  record(
+    'No lookup value is also a crosswalk source',
+    '0 chains',
+    chainSources.length === 0
+      ? '0 chains'
+      : chainSources.map((c) => `${c.sourceField}/${c.sourceValue}`).join(', '),
+    chainSources.length === 0,
+  );
+
+  //    The court list itself — 308, not the 309 the reviewed file states. The
+  //    309th was هيئة الاستثمار, a spelling rather than a court.
+  const courts = await db.lookupCourt.count();
+  const courtRules = crosswalk.filter((c) => c.sourceField === 'court').length;
+  record(
+    'Court list and crosswalk',
+    '308 courts, 94 rules',
+    `${courts} courts, ${courtRules} rules`,
+    courts === 308 && courtRules === 94,
   );
 
   //    Rule (b) of the branch resolution: three values are separate CLIENTS,
