@@ -350,14 +350,43 @@ confirm the gate catches it, and record what was broken and what it said. See
 only ever seen good data is not known to work.
 
 - [ ] **2.1 Extract** — run `scripts/01_extract_access.ps1`.
-      **Gate 1: must report 54 attachments and 288 multi-value entries.**
-      If either is zero, stop.
-      **Before this runs, the firm reads `docs/STAGE-2-PLAN.md`** — the same
-      process in plain language — and confirms the shape is right. This is
-      the first time their live records are involved.
-      **Also before this runs:** confirm a copy of the `.accdb` is on the
-      machine and Access (or the Access Database Engine) is installed, with
-      bitness matching PowerShell. Nothing in Stage 2 can run without both.
+      **Gate 1: attachments and multi-value entries must both be > 0.**
+      If either is zero, stop — that is the signature of the silent-failure
+      export (D11).
+
+      **✅ Both preconditions are cleared.**
+      `docs/STAGE-2-PLAN.md` was **approved by Khaled Helmy, 23 August 2026**;
+      the firm returned five corrections and all five are applied.
+      The machine was verified on 23 August 2026 rather than taken on trust:
+
+        source copy   "D:\chatGPT\Litigation-Database\migration-source\Litigation database (ID 23194).accdb"
+                      resolves · 46,661,632 bytes · modified 23 Aug 2026 10:31
+        Access        Microsoft Access 2021, 64-bit
+        DAO COM       DAO.DBEngine.120 v16.0 creates successfully under BOTH
+                      Windows PowerShell 5.1 (64-bit) and PowerShell 7.6.5
+                      (64-bit). Run 64-bit to match Access.
+
+      **The copy is already compacted** — 44.5 MB, not the 2 GB the live file
+      sits at. The compact-and-repair on the production file is still
+      outstanding and is still urgent.
+
+      **THE SOURCE IS A REHEARSAL COPY AND HAS ALREADY DRIFTED.** It was taken
+      on 23 August 2026; the live file moves about 100 records a day. **The
+      19 August figures are a shape check, not a pass condition** — ruled by
+      the firm, 23 August 2026.
+
+      **This task must change the script before running it.**
+      `scripts/01_extract_access.ps1` today hard-asserts the 19 August counts
+      and exits non-zero on any mismatch, which would refuse a perfectly good
+      extraction. Gate 1 becomes: every table self-consistent (written =
+      read, SHA-256 recorded), all 15 tables present and non-empty, complex
+      columns > 0, zero warnings — with each count *reported* beside its
+      August figure and the difference shown. A count that has **fallen** is
+      not drift and goes to the firm.
+      Full rule: "What Gate 1 actually asserts" in `docs/MIGRATION.md`.
+      Cascade: **30,553 and 35,343 also move.** Gate 4 (task 2.12) reconciles
+      the *identity* — migrated + archived = every row — against the file
+      actually extracted, never against the constants.
 
 - [ ] **2.2 Staging schema** — every column `text`, plus `src_row_num`.
 
@@ -372,6 +401,24 @@ only ever seen good data is not known to work.
       Do not build it before this task.
 
 - [ ] **2.4 Quarantine tables + profiling** — Gate 3.
+
+      **The review list ships as XLSX workbooks, one sheet per topic — not a
+      flat list.** Ruled by the firm, 23 August 2026.
+
+      The ~474 attendee names are the largest sheet and the reason for the
+      rule: nobody can identify `م. أحمد` from the string alone. Every row
+      carries **occurrence count, years, matters, clients, nearest roster
+      matches with a closeness score**, and three columns for the firm's
+      answer — enough to decide **without opening Access**.
+
+      **Colour-coded by confidence.** Answered with a long-serving colleague
+      present, because most of this is institutional memory.
+      **Anything neither of them recognises is marked "unknown person" —
+      never guessed** (rule 4, rule 15). That is a correct permanent answer,
+      not a gap to infer later.
+
+      ExcelJS with `rightToLeft` on every sheet, as at task 6.1.
+      Detail: "Gate 3 ships as XLSX workbooks" in `docs/MIGRATION.md`.
 
 - [ ] **2.5 Transform: people, lookups, clients, contacts**
 
@@ -638,8 +685,21 @@ allows. Test with real volumes.
       e) **Test a restore** onto a spare machine before go-live, and confirm a
          client logo appears in a printed report. Do not skip this.
 - [ ] **7.3 Full dry-run migration** (T-14d in `docs/MIGRATION.md`)
-- [ ] **7.4 Second dry run + firm sign-off** (T-7d)
+- [ ] **7.4 Second dry run + sign-off by name** (T-7d)
+      **Khaled Helmy signs off, by name** — not "the firm". One named person,
+      so it is unambiguous afterwards whose decision it was to go.
+      **T-8d: announce the date to the whole firm**, a week ahead, so nobody
+      plans around it badly.
 - [ ] **7.5 Cutover** — freeze Access, migrate, Gate 4, go live
+      **A normal working day, set aside in full.** Not an evening or a
+      weekend.
+      **RETENTION — the Access file is kept indefinitely.** Read-only from
+      T+0 and **immediately available for 90 days**; after that it moves to
+      cold storage, which is slower to reach and is not the same as gone.
+      **There is no step that deletes it.** A matter can be in court for
+      years and the `.accdb` is the only pre-migration record of 1,223 closed
+      matters. (Recorded here, on the cutover task, because this is where the
+      freeze and go-live already live.)
 - [ ] **7.6 Short Arabic user guide** for the four roles
 
 ---

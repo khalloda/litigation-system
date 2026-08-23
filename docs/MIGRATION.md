@@ -16,9 +16,18 @@ things, and confusing them makes the final reconciliation impossible to judge.
 | **30,553** | The rows that actually migrate — the sum of the Gate 1 table below |
 | **4,790** | The difference: archived tables. Meetings (3,230 rows, D2) plus `Copy Of العملاء`, `Follow-up`, `عهدة قسم القضايا`, `Paste Errors`, `tblMinMatterHearingDate` and the other archive-only tables the extraction script skips by default |
 
-**Prove 30,553.** The Gate 4 reconciliation report must also show
-*migrated 30,553 + archived 4,790 = 35,343*, so both numbers are visible on one
-page and nobody rediscovers this gap later and reports it as lost data.
+**All three figures are as at 19 August 2026, and all three move.** The file
+grows by about 100 records a day, so by cutover the migrated figure will be
+larger than 30,553 and the total larger than 35,343. That is expected. What must
+hold on any given run is the **arithmetic**, not the constants:
+
+> *migrated + archived = every row in the file*
+
+**Gate 4 proves that identity against the counts from the file actually
+extracted**, and prints all three of that day's figures on one page, so the gap
+is visible and nobody rediscovers it later and reports it as lost data. It does
+**not** compare against 30,553 — see "What Gate 1 actually asserts" below for
+why a constant here would fail every run from now on.
 
 ## The trap that destroys data silently
 
@@ -80,21 +89,57 @@ Fail the migration if these do not match.
 | `السداد` | 597 | | `فريق العمل` | 3 |
 | `الفواتير` | 543 | | | |
 
-**These 15 tables sum to 30,553 rows.** That is the migration target.
+**These 15 tables summed to 30,553 rows on 19 August 2026.**
 
-Also: **54 attachments** and **288 multi-value entries**.
+Also on that date: **54 attachments** and **288 multi-value entries**.
 
-**These numbers are asserted by `scripts/01_extract_access.ps1`, not printed
-for a human to compare.** The script exits non-zero on any mismatch, and on
-**any warning at all** — a complex-column read that throws is recorded as a
-warning, and a warning in a lossless extraction is a failure. It used to print
-the expected values and a note saying "if attachments = 0 the extraction
-failed silently", which is advice, not a gate: nobody reads the twelfth line
-of a run that says it succeeded.
+### What Gate 1 actually asserts — ruled 23 August 2026
 
-If the firm's data has genuinely changed — it is in daily use and drifts about
-100 records a day — update the expected counts in that script deliberately,
-in the same commit as the reason.
+**The figures above are a SHAPE CHECK, not a pass condition.** The firm's ruling,
+and it changes how this gate is built.
+
+The Access file is in daily use and drifts about **100 records a day**. Every
+copy we extract from — every rehearsal copy, and the real one on cutover day —
+has already moved away from 19 August. A gate that demanded 13,279 hearings
+would refuse a perfectly good extraction, and the natural response to a gate
+that fails on correct data is to loosen it until it passes. At that point it
+has stopped being a check while still looking like one. That failure mode is
+already written down twice in this file; this is it arriving in advance.
+
+**Gate 1 asserts against the counts taken from the file it actually read.**
+
+| | Pass condition | Why |
+|---|---|---|
+| **Self-consistency** | Rows written to CSV = rows read from the table, per table, exactly. SHA-256 recorded for every file | This is the real question Gate 1 answers: *did we get everything out intact?* It needs no prior figure and cannot drift |
+| **Completeness** | All **15** expected tables present, each with **more than zero** rows | A missing table is the fault that once slipped through a manifest whose total added up |
+| **Complex columns** | Attachments **> 0** and multi-value entries **> 0** | Zero is the signature of the silent-failure export (D11). This is the one hard number-like condition, and it is a floor, not a match |
+| **No warnings** | The script exits non-zero on **any** warning | A complex-column read that throws is a warning, and a warning in a lossless extraction is a failure |
+| **Shape** | Each count reported beside its 19 August figure and the difference shown | For a human to eyeball: 13,279 → 13,4xx is drift; 13,279 → 412 is a broken read |
+
+**Drift is expected and is reported, not refused.** A count that has *fallen*
+below its August figure is not automatically a stop, but it is the opposite of
+drift and must be put in front of the firm rather than passed over — the file
+grows, it does not shrink.
+
+**The 30,553 total moves with the data.** It is the sum of what was extracted on
+the day, and Gate 4 reconciles against **that** sum — not against 30,553. See
+"Which row count is the target?" above and Gate 4 below. Writing 30,553 into
+Gate 4 as a constant would fail every run from now on, for the same reason.
+
+> **Task 2.1 must change the script before it runs.**
+> `scripts/01_extract_access.ps1` today hard-asserts the 19 August counts and
+> exits non-zero on any mismatch. Under this ruling that refuses a legitimate
+> extraction. The August figures become a reported comparison; the five
+> conditions in the table above become the gate.
+
+**The gate is asserted by the script, not printed for a human to compare.** It
+once printed the expected values and a note saying "if attachments = 0 the
+extraction failed silently", which is advice, not a gate: nobody reads the
+twelfth line of a run that says it succeeded.
+
+If the 19 August reference figures are ever restated — because the firm has
+re-baselined, not because the data drifted — change them deliberately, in the
+same commit as the reason.
 
 Note: the attachment count is 54 only with the default table set. Running the
 extractor with `-IncludeArchiveTables` also reads `Copy Of العملاء`, which holds
@@ -625,6 +670,43 @@ Known items, with measured volumes:
 | POA with no client | 1 | Same |
 | Attendee names seen once | ~474 | Queue for human review |
 
+### Gate 3 ships as XLSX workbooks, one sheet per topic — ruled 23 August 2026
+
+**Not a flat list.** The firm answers this, and a bare list of ~474 attendee
+names is unanswerable: nobody can identify `م. أحمد` from the string alone.
+Every row therefore carries the context needed to decide it **without opening
+Access**, because the whole point of the gate is that the firm can work through
+it at their own desk.
+
+One sheet per topic — attendee names, unmatched fee letters, orphan task
+actions, branch/category conflicts, and so on. Each row of the attendee sheet:
+
+| Column | Content |
+|---|---|
+| occurrence count | how many rows carry this exact spelling |
+| years | the range of years it appears in |
+| matters | which matters |
+| clients | which clients |
+| nearest roster matches | the closest names in `person_name_alias`, each with a closeness score |
+| three columns for the firm | their answer |
+
+**Colour-coded by confidence**, so a near-certain match is confirmed in a
+glance and the genuinely ambiguous rows get the time they deserve.
+
+**Answered with a long-serving colleague present.** Most of this is
+institutional memory — who `م. أحمد` was in 2013 is not written down anywhere
+in the file.
+
+**Anything neither of them recognises is marked "unknown person" — never
+guessed.** `CLAUDE.md` rule 4 and rule 15 both land here: a guessed name
+attaches one person's historical work to another, and that is precisely the
+failure a missing hamza already caused twice in this project. "Unknown person"
+is a correct, permanent answer. It is not a gap to be filled in later by
+inference.
+
+Write the workbooks with ExcelJS and `rightToLeft` set on every sheet, the same
+as the reporting engine at task 6.1.
+
 ## The `_raw` rule
 
 Every normalised column keeps the original text beside it —
@@ -687,6 +769,14 @@ Parents before children.
 **Counts** are not enough. A reversed join gives the right number of rows with
 the wrong content. Also check:
 
+**Reconcile against the extraction, not against the constants in this file.**
+Every figure below was measured on 19 August 2026 and the file drifts about 100
+records a day, so each is a *shape check* — near enough proves the right query,
+exactly equal proves nothing on a file that has moved. The **pass condition is
+that the new system agrees with the copy that was actually extracted**, table
+for table and total for total. The August figures are printed beside the
+measured ones so a wrong join still stands out.
+
 - Matter count per lawyer against the legacy figures: إيهاب حمدي 476,
   ناجي رمضان 200, هاني الدالي 181, أحمد سعيد 129, محمد عبد العزيز 124,
   أحمد إسماعيل 85, محمود شعبان 41
@@ -706,12 +796,27 @@ The Access file is in daily use. A stale copy drifted **325 rows in a few days**
 
 ```
 T-14d  Full dry run on a copy. All gates pass. Six reports reconciled.
-T-7d   Second dry run. Firm signs off.
+T-8d   ANNOUNCE the date to the whole firm. A week's notice, not a surprise.
+T-7d   Second dry run. KHALED HELMY SIGNS OFF, BY NAME.
 T-1d   Final compact + backup. SHA-256 recorded.
-T-0    FREEZE Access (read-only for everyone). Run A–E. Gate 4 must pass.
-T+0    Go live. Access stays available read-only for 90 days.
-T+90d  Archive the .accdb to cold storage. Do not delete.
+T-0    A NORMAL WORKING DAY, set aside in full. FREEZE Access (read-only for
+       everyone). Run A–E. Gate 4 must pass.
+T+0    Go live. Access stays IMMEDIATELY available, read-only.
+T+90d  The .accdb moves to cold storage. KEPT INDEFINITELY. NEVER DELETED.
 ```
+
+**Two things in that timetable are decisions, not scheduling.**
+
+**Sign-off is one named person.** "The firm signs off" is nobody signing off.
+**Khaled Helmy** signs off at T-7, by name, so it is unambiguous afterwards
+whose decision it was to go.
+
+**The `.accdb` is retained indefinitely.** The 90 days is how long it stays
+*immediately available* — after that it moves to cold storage, which is slower
+to reach and is not the same thing as gone. A matter can sit in court for
+years, and that file is the only pre-migration record of **1,223 closed
+matters**. There is no date on which it is deleted, and no step in this plan
+deletes it.
 
 **Separately and urgently:** the production Access file sits at exactly
 2,147,483,648 bytes — the hard limit — and compacts to 45 MB. Compact and repair

@@ -7,6 +7,10 @@ shape of it now rather than afterwards.
 No technical knowledge is needed to read this. If any part of it looks wrong,
 say so — it is much cheaper to change now.
 
+> **Approved by Khaled Helmy, 23 August 2026.** The firm read this document and
+> returned five corrections; all five are applied here. Approval is recorded in
+> the document itself so it is not asked for a second time.
+
 ---
 
 ## The one thing to know first
@@ -16,15 +20,28 @@ never deleted.**
 
 Everything below happens to a copy taken on the day. The original stays where
 it is, in daily use, until the very last step — and even then it is only made
-read-only, not removed. It stays available to everyone for **90 days** after
-go-live, and is archived after that rather than deleted.
+read-only, not removed.
 
-**And nothing is thrown away.** Not a single record. Where a value cannot be
+**The Access file is kept indefinitely. It is never deleted.** For **90 days**
+after go-live it stays immediately available to everyone, read-only, so anything
+can be checked against it on the spot. After that it moves to cold storage —
+somewhere slower to reach, not somewhere it stops existing. A matter can be in
+court for years, and that file is the only pre-migration record of your **1,223
+closed matters**.
+
+**No record is thrown away.** Not a single one. Where a value cannot be
 understood — a lawyer's name spelled a way we have not seen, a court that is
 not in the list, a payment with no invoice — the record is still brought
 across. It is simply **set aside for you to look at**, with its original text
-kept exactly as it was typed. There is no step in this process that deletes
-anything.
+kept exactly as it was typed.
+
+**One value is thrown away, and it is worth naming.** In the whole file there is
+a single court entry that reads `/` — a placeholder somebody typed where a court
+name should have gone. That row already records its real circuit, so nothing
+about it is lost by dropping the `/`. The row itself is migrated in full, and
+the `/` is still kept beside it in the original-text column, so even that is
+recoverable. It is the only value in the migration that is deliberately
+discarded, and the migration asserts that there is exactly one.
 
 ---
 
@@ -87,8 +104,8 @@ going back to Access.
 ### Step 5 — Go live
 
 Access is frozen — made read-only for everyone — the whole process is run once
-more on the final data, and the new system goes live. Access stays readable
-for 90 days.
+more on the final data, and the new system goes live. Access stays immediately
+readable for 90 days, and is kept indefinitely after that.
 
 ---
 
@@ -105,12 +122,22 @@ work.
 
 **Proves: we read everything, and read it correctly.**
 
-Every table's row count is compared against what we expect, and a fingerprint
-is taken of every file so we can tell later if anything changed.
+Every table is counted as it is read, and a fingerprint is taken of every file,
+so we can prove later that what was written is exactly what was read and that
+nothing changed in between.
 
-The two counts that matter most: **54 logos** and **288 matter references**.
-If either comes back as zero, the read has failed silently — which is exactly
-what a normal export does — and everything stops.
+**The figures from 19 August are a shape check, not the pass mark.** Your file
+changes by roughly 100 records a day, so a rehearsal copy taken today will not
+match a count taken in August — and it should not. What Gate 1 actually
+requires is that all **15 tables** are there, that each one's count is close
+enough to its August figure to show we are reading the right table, and that
+what came out matches what went in, exactly. A number that has drifted is
+expected. A table that is missing, or a count that does not match itself, is a
+stop.
+
+The two counts that are a hard pass mark: **54 logos** and **288 matter
+references**. If either comes back as zero, the read has failed silently —
+which is exactly what a normal export does — and everything stops.
 
 ### Gate 2 — after loading
 
@@ -128,6 +155,28 @@ review list. There is no third category, and nothing is unaccounted for.
 
 **This is the gate that needs you.** The review list is the firm's to decide
 on, and the work cannot finish without those decisions.
+
+**You get it as Excel workbooks, one sheet per topic — not a flat list.** The
+largest sheet is the **~474 attendee names**, and a bare list of names is
+unanswerable: nobody can say who `م. أحمد` is with nothing around it. So every
+row carries its own context, and you should never need to open Access to answer
+one:
+
+| Column | What it tells you |
+|---|---|
+| How many times | how many rows use this exact spelling |
+| Years | the range of years it appears in |
+| Matters | which matters it appears on |
+| Clients | which clients those belong to |
+| Nearest matches | the closest names on the roster, with how close each is |
+| Three columns for you | your answer |
+
+Rows are **colour-coded by confidence**, so the near-certain ones can be
+confirmed quickly and the genuinely unclear ones get the time they need.
+
+Answer it with a long-serving colleague present — much of this is institutional
+memory rather than anything written down. **Anything neither of you recognises
+is marked "unknown person". It is never guessed.**
 
 ### Gate 4 — after building the real records
 
@@ -199,12 +248,14 @@ These are known now, so they will not be a surprise:
 | When | What |
 |---|---|
 | **Now, urgently** | **Compact and repair the Access file.** It sits at exactly 2 GB, which is the maximum Access allows, and compacts to 45 MB. A file at its ceiling can start refusing to save new records. Do this on a backup first. |
-| Before we start | Confirm a copy of the file is on the machine, and that Access is installed on it |
-| During Step 3 | Answer the review list — the items above, plus whatever else turns up |
+| Before we start | ✅ Done — a copy is on the machine and Access 2021 is installed. Both were checked on 23 August 2026, not taken on trust |
+| During Step 3 | Answer the review workbooks — the items above, plus whatever else turns up. Do this with a long-serving colleague present |
 | 14 days before | Full practice run. Every gate passes, six reports compared |
-| 7 days before | Second practice run. **The firm signs off** |
-| The day | Access frozen, everything run once more, go live |
-| For 90 days after | Access stays available, read-only, so anything can be checked against it |
+| 8 days before | **Tell everyone the date.** The changeover is announced a week ahead so nobody plans around it badly |
+| 7 days before | Second practice run. **Khaled Helmy signs off, by name.** Not "the firm" — one named person, so it is clear whose decision it was |
+| The day | **A normal working day**, set aside in full. Access frozen, everything run once more, go live |
+| For 90 days after | Access stays immediately available, read-only, so anything can be checked against it |
+| After that | The Access file moves to cold storage and is **kept indefinitely**. It is never deleted |
 
 ---
 
