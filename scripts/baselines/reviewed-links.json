@@ -2,10 +2,10 @@
   "note": "Every alias and crosswalk link the firm reviewed. npm run db:check proves each one still holds. Adding links is allowed; changing one fails the check. Regenerate with npm run baseline:write -- --accept-changes, and commit it on its own. See scripts/lib/reviewed-links.ts.",
   "generatedAt": "2026-08-23",
   "counts": {
-    "aliases": 347,
+    "aliases": 348,
     "crosswalk": 114
   },
-  "digest": "5667f33dd7aa74bb96d5cd41429a8ab323d6df66de6f874220527d5349083276",
+  "digest": "e59a609447fb9f772186e96ef9437a949bb70fec51456ebf99d1ac55384275ba",
   "aliases": [
     {
       "alias": "10- محمود شعبان",
@@ -232,6 +232,10 @@
       "person": "احمد أبو العباس الاتربي"
     },
     {
+      "alias": "احمد رزق",
+      "person": "أحمد رزق"
+    },
+    {
       "alias": "احمد سعيد",
       "person": "أحمد سعيد"
     },
@@ -368,7 +372,7 @@
       "person": "حسن خلف"
     },
     {
-      "alias": "حسن عادل \"متدرب",
+      "alias": "حسن عادل \"متدرب\"",
       "person": "حسن خلف"
     },
     {
