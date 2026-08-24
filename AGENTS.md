@@ -32,9 +32,10 @@ cross-reference — so read `CLAUDE.md` now if you have not. In brief:
    real.
 5. Never guess at Arabic legal terminology. Check `docs/GLOSSARY.md`; if a
    term is not there, ask.
-6. The owner classifies all data supplied or made available for this project
-   as non-confidential and authorises Codex to process it for this project —
-   see **Owner-approved data classification and handling** below.
+6. The owner classifies all data supplied, stored or made available for this
+   project as non-confidential and authorises Codex to process it whenever
+   reasonably necessary for this project — see **Owner-approved data
+   classification and handling** below.
 7. Nothing is ever deleted in migration. An unmappable value is parked in a
    review table with its original text intact — see `docs/MIGRATION.md`.
 8. Test with real volumes — 13,279 hearings, not 20 rows.
@@ -424,21 +425,26 @@ asking the owner first and explaining exactly what will be destroyed.
 
 ## Owner-approved data classification and handling
 
-The owner has made this binding factual declaration for this project:
+The owner has made the following binding decision, which supersedes every
+contrary data-classification statement in the repository:
 
-- All data the owner supplied or made available for this project is
-  classified by the owner as **non-confidential**. This includes client
-  names, matter names, case information, financial figures, spreadsheets,
-  the Access database, extracted data and migration-review data.
-- Codex is explicitly authorised to read and process this data when
-  reasonably necessary for development, testing, migration verification,
-  reconciliation and review of this application.
-- Do not repeatedly challenge, reopen or block work based only on a general
-  presumption that law-firm data must be confidential.
-- Raise the classification issue again only if you discover new concrete
-  evidence of credentials, secrets, data outside the scope of the owner's
-  authorisation, or a specific legal or contractual restriction — not merely
-  because the data contains names, cases or financial figures.
+- All data supplied, stored or made available for this project is
+  **non-confidential**. This includes client names, matter names, case
+  information, financial figures, the Access database, extracted data,
+  spreadsheets, review workbooks and migration data.
+- Codex is explicitly authorised to read and process all such data whenever
+  reasonably necessary to develop, test, migrate, reconcile, verify and
+  review this application.
+- Do not pause, refuse, challenge or repeatedly reopen this classification
+  merely because this is a law-firm application; the data contains client or
+  matter names, case information or financial figures; or the data originated
+  from a production Access application.
+- Raise a new data-classification question only if the owner introduces new
+  data and explicitly classifies it differently.
+
+Credentials, passwords, API keys, certificates, connection strings and
+authentication tokens remain protected as security secrets. That is separate
+from the classification of the project's business data.
 
 This classification and authorisation do **not** permit:
 
@@ -450,11 +456,10 @@ This classification and authorisation do **not** permit:
 - transmitting it to anyone outside the project without the owner's specific
   instruction.
 
-These restrictions remain in force for repository size, permanent Git
-history, operational control, data integrity, privacy discipline and
-avoidance of accidental distribution — not because the project should
-presume the supplied data is confidential. If prohibited data is found in
-Git, report it as a **MUST FIX** immediately.
+Raw data files remain excluded from Git for operational reasons: repository
+size, permanent Git history, reproducibility, integrity and preventing
+accidental distribution. This restriction is not based on confidentiality.
+If prohibited data is found in Git, report it as a **MUST FIX** immediately.
 
 ---
 
