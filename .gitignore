@@ -1,9 +1,10 @@
 # ===========================================================================
-#  CONFIDENTIAL DATA — never commit any of this
+#  RAW PROJECT DATA — never commit any of this
 #
 #  This repository holds the CODE for the litigation system.
-#  It must never hold client data, case records, or database exports.
-#  Anything matching the patterns below stays on the local machine only.
+#  Raw data and exported/generated data files stay outside Git for operational
+#  reasons: repository size, permanent history, reproducibility, integrity,
+#  and preventing accidental distribution. This is not a confidentiality rule.
 # ===========================================================================
 
 # NOTE ON THE ODD-LOOKING PATTERNS BELOW
@@ -79,13 +80,13 @@ uploads/
 storage/
 media/
 
-# Printed reports and scanned paperwork. Every sample the firm has supplied
-# carries real client names, case numbers and figures. Blanket rule: no PDF
-# in this repository. If a genuinely blank template is ever needed, add an
+# Printed reports and scanned paperwork are binary exports and source records
+# that create permanent, hard-to-audit Git history. Blanket rule: no PDF in
+# this repository. If a genuinely blank template is ever needed, add an
 # exception for it here deliberately.
 *.[pP][dD][fF]
 
-# Report samples supplied by the firm — real client data, kept locally only.
+# Report samples supplied by the firm — raw reference files kept outside Git.
 docs/report-samples/
 
 

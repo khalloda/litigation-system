@@ -1408,8 +1408,9 @@ leaves zero partial answers.
 
 #### What was built — `npm run review:workbook`
 
-One workbook, seven sheets, into `_migration/review/` — which is gitignored,
-because every row of it is client data.
+One workbook, seven sheets, into `_migration/review/` — which is gitignored
+because review workbooks are raw migration artifacts whose binary history would
+bloat the repository and increase integrity and accidental-distribution risks.
 
 | Sheet | Rows | Asks |
 |---|---:|---|

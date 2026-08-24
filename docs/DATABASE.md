@@ -264,8 +264,10 @@ Copy `.env.example` to `.env` and edit it:
 cp .env.example .env
 ```
 
-`.env` is never committed to git — it is in `.gitignore`, along with everything
-else that could carry client data.
+`.env` is never committed to Git because it contains security secrets. Raw
+database and export formats are also ignored, separately, for repository size,
+permanent-history, reproducibility, integrity and accidental-distribution
+reasons.
 
 On the laptop the default password is fine, because the database is unreachable
 from outside the machine. **On the Ubuntu server, set a long random password**

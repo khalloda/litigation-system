@@ -7,9 +7,9 @@ Bundled deliberately, never from a CDN. Two reasons, both from
 
 1. The PDF renderer runs on a server with no fonts installed. If the font is
    not bundled, every Arabic letter in a printed report becomes an empty box.
-2. The firm's data is confidential. A CDN font request tells a third party
-   which pages are being opened, and stops working if the office loses its
-   internet connection.
+2. Font delivery must not depend on an unrelated external service. A CDN font
+   request tells a third party which pages are being opened and stops working
+   if the office loses its internet connection.
 
 Three subsets are included — Arabic, Latin and Latin Extended. Latin is needed
 because the data is genuinely mixed: `شركة هيوليت باكارد HP`, `1039 / 20ق`.

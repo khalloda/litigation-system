@@ -12,8 +12,9 @@ be bigger than expected, split it and tell the owner.
 
 - [x] **0.1 Repository skeleton**
       Next.js + TypeScript. Prettier and ESLint. `.gitignore` that excludes
-      `.env`, `node_modules`, and **any database file or CSV export** — the data
-      is confidential and must never be committed.
+      `.env`, `node_modules`, and **any database file or CSV export**. Raw data
+      files stay outside Git for repository size, permanent-history,
+      reproducibility, integrity and accidental-distribution reasons.
 
 - [x] **0.2 Docker Compose**
       PostgreSQL 16+ with the ICU Arabic collation available. One command must

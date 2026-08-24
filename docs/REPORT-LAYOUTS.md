@@ -9,8 +9,9 @@ file wins.
 Extracted from nine real printed reports supplied by the firm. This is the
 house style — follow it rather than inventing one.
 
-Sample PDFs live in `docs/report-samples/` (not committed to git — they contain
-real client data).
+Sample PDFs live in `docs/report-samples/`. They are not committed to Git:
+binary report samples are raw reference material that would enlarge permanent
+history and create integrity and accidental-distribution risks.
 
 ---
 
