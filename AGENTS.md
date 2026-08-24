@@ -298,7 +298,9 @@ should never crowd out items 1–5.
 
 You may now edit these two files — that changed on 24 August 2026, at the
 owner's direct instruction, superseding the earlier absolute prohibition.
-**Only under this protocol, and only ever by hand, deliberately:**
+**Only through a deliberate edit by the active development agent following
+this protocol; automatic, generated, incidental, or silent modification is
+prohibited:**
 
 - **Read both files completely, immediately before editing either one.**
   These are the files most likely to have changed since you last saw them,
@@ -324,9 +326,10 @@ owner's direct instruction, superseding the earlier absolute prohibition.
   automatic process may modify either file, ever.** *Already found:*
   Next.js 16 appends its own instructions to `AGENTS.md` on every
   `next dev`. Disabled with `agentRules: false` in `next.config.ts`.
-- If either file is ever found changed outside this protocol — no direct
-  instruction, no approval for a weakening, or by an automatic tool —
-  **restore the intended wording and tell the owner.**
+- If either file appears to have changed outside this protocol, **stop,
+  preserve the working tree, compare it with the last committed version, and
+  tell the owner. Do not revert, overwrite, or restore it without the owner's
+  explicit instruction.**
 
 **Claude Code has no standing claim to these files either.** If the owner
 reintroduces it as an active developer, it follows this same protocol —

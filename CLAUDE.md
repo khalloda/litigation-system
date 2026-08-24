@@ -184,10 +184,11 @@ decisions that actually carry a trade-off.
     wrong guess can cost days.
 
 11. **`AGENTS.md` and `CLAUDE.md` may be edited only under this protocol.**
-    These two files are written by people, for the tools: `AGENTS.md` is
-    Codex's development brief, `CLAUDE.md` is this file. **No generator,
-    framework, plugin, hook, development server or other automatic process
-    may modify either file, ever** — that has not changed and does not.
+    These are governance documents for the development tools. The active
+    development agent may deliberately edit them only under this protocol.
+    `AGENTS.md` is Codex's development brief; `CLAUDE.md` is this file. **No
+    generator, framework, plugin, hook, development server or other automatic
+    process may modify either file, ever** — that has not changed and does not.
     *Already found:* Next.js 16 appends its own instructions to `AGENTS.md`
     on every `next dev`. Disabled with `agentRules: false` in
     `next.config.ts`. If text ever appears in either file that no tool
@@ -218,9 +219,10 @@ decisions that actually carry a trade-off.
     - **Commit governance changes separately from application changes** —
       never amended into another commit, never combined with unrelated
       work, never hidden inside a larger diff.
-    - If either file is ever found changed outside this protocol — no
-      direct instruction, no approval for a weakening, or by an automatic
-      tool — **restore the intended wording and tell the owner.**
+    - If either file appears to have changed outside this protocol, **stop,
+      preserve the working tree, compare it with the last committed version,
+      and tell the owner. Do not revert, overwrite, or restore it without the
+      owner's explicit instruction.**
 
     **Neither tool has a standing claim to these files.** Being "the active
     developer" is not, by itself, permission to edit governance — the
