@@ -349,6 +349,45 @@ model MigrationCrosswalk {
   @@map("migration_crosswalk")
 }
 
+/// Firm-reviewed decompositions of compound person-name source values.
+/// Task 2.7 loads 33 rules and 84 ordered members. The source text remains
+/// the key for matching; people are always reached through an exact alias.
+model MigrationMultiPersonRule {
+  id           Int    @id @default(autoincrement())
+  rawValue     String @unique @map("raw_value")
+  occurrences  Int
+  reviewerNote String @map("reviewer_note")
+
+  members       MigrationMultiPersonRuleMember[]
+  matterLawyers MatterLawyer[]
+
+  @@map("migration_multi_person_rule")
+}
+
+model MigrationMultiPersonRuleMember {
+  id         Int                      @id @default(autoincrement())
+  ruleId     Int                      @map("rule_id")
+  rule       MigrationMultiPersonRule @relation(fields: [ruleId], references: [id])
+  personName String                   @map("person_name")
+  personId   Int                      @map("person_id")
+  person     Person                   @relation(fields: [personId], references: [id])
+  ordinal    Int
+
+  @@unique([ruleId, ordinal], map: "migration_multi_person_rule_member_rule_ordinal_key")
+  @@unique([ruleId, personId], map: "migration_multi_person_rule_member_rule_person_key")
+  @@index([personId])
+  @@map("migration_multi_person_rule_member")
+}
+
+/// Reviewed values that are not people (placeholders, titles and notes).
+model MigrationExcludedName {
+  rawValue    String @id @map("raw_value")
+  occurrences Int
+  reason      String
+
+  @@map("migration_excluded_name")
+}
+
 // ===========================================================================
 //  PEOPLE — task 1.2
 //
@@ -370,13 +409,13 @@ model MigrationCrosswalk {
 /// npm run db:check, which is the authority; if this comment and that check
 /// ever disagree, the check is right.
 model Person {
-  id     Int     @id @default(autoincrement())
-  nameAr String  @unique @map("name_ar")
+  id               Int     @id @default(autoincrement())
+  nameAr           String  @unique @map("name_ar")
   /// Kept in step by a database TRIGGER, never written by the application —
   /// see migration 0016. A generated column cannot be used because Prisma
   /// would include it in every INSERT and PostgreSQL refuses that.
   nameArNormalised String? @map("name_ar_normalised")
-  nameEn String? @map("name_en")
+  nameEn           String? @map("name_en")
 
   /// Login address. Nullable because only a handful of people ever log in;
   /// unique where present, which a UNIQUE constraint gives for free since
@@ -411,19 +450,20 @@ model Person {
   updatedBy Int?     @map("updated_by")
 
   /// Administrative tasks assigned to this person (المسئول).
-  adminTasks AdminTask[]
+  adminTasks                      AdminTask[]
   /// Paper documents this person is responsible for.
-  documents  Document[]
+  documents                       Document[]
   /// Administrative task steps this person carried out (القائم بالعمل).
-  taskActions TaskAction[]
+  taskActions                     TaskAction[]
   /// Matters this person is a lawyer on.
-  matterLawyers MatterLawyer[]
+  matterLawyers                   MatterLawyer[]
+  migrationMultiPersonRuleMembers MigrationMultiPersonRuleMember[]
   /// Hearings this person attended.
-  hearingAttendees HearingAttendee[]
+  hearingAttendees                HearingAttendee[]
   /// Shares of collections allocated to this person.
-  invoiceAllocations InvoiceAllocation[]
+  invoiceAllocations              InvoiceAllocation[]
   /// Leave register entries.
-  attendance Attendance[]
+  attendance                      Attendance[]
 
   @@index([isStaff, isActive])
   /// The trigram index that makes a LIKE '%…%' search fast. DECLARED HERE ON
@@ -442,17 +482,17 @@ model Person {
 ///
 /// **Match through this table, never through people.name_ar** — rule 15.
 model PersonNameAlias {
-  id        Int     @id @default(autoincrement())
-  personId  Int     @map("person_id")
-  person    Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  id                Int     @id @default(autoincrement())
+  personId          Int     @map("person_id")
+  person            Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
   /// The spelling exactly as it appeared. Unique across the whole roster: one
   /// spelling cannot belong to two people.
-  aliasAr   String  @unique @map("alias_ar")
+  aliasAr           String  @unique @map("alias_ar")
   /// Kept in step by a database TRIGGER, never written by the application —
   /// see migration 0016. A generated column cannot be used because Prisma
   /// would include it in every INSERT and PostgreSQL refuses that.
   aliasArNormalised String? @map("alias_ar_normalised")
-  isPrimary Boolean @default(false) @map("is_primary")
+  isPrimary         Boolean @default(false) @map("is_primary")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -494,15 +534,15 @@ model LookupTeam {
 }
 
 // ---------------------------------------------------------------------------
-//  DEFERRED to Stage 2, task 2.7 — the multi-person split rules
+//  LOADED at Stage 2, task 2.7 — the multi-person split rules
 //
-//  migration_multi_person_rule (33), _member (66) and migration_excluded_name
-//  (38) were going to be created here with the roster, on the same reasoning
+//  migration_multi_person_rule (33), _member (84) and migration_excluded_name
+//  (38) were created with task 2.7, on the same reasoning
 //  as migration_crosswalk: they hold reviewed data now, so a note saying
 //  "add them later" is a dependency on memory.
 //
-//  They are NOT created, because building the assertion found the data is not
-//  ready. Four of the 66 member names resolve to nobody:
+//  They were not created with the original roster because building the
+//  assertion found that the then-current 66 member rows were not ready:
 //
 //    محمد عبدالعزيز عبد الحافظ   (2 rows)  the roster spells it
 //                                          محمد عبد العزيز عبد الحافظ
@@ -511,10 +551,10 @@ model LookupTeam {
 //    an entire eight-lawyer string pasted in as ONE member name (1 row) —
 //    that rule was never split, so the matter using it would lose all eight
 //
-//  Each would silently drop a lawyer from a matter during Stage 2, which is
-//  precisely what these rules exist to prevent. Loading them would mean
-//  either weakening the assertion or seeding data known to be wrong.
-//  Raised with the firm; they load at task 2.7 once corrected.
+//  Task 1.2a added the reviewed spacing aliases. At task 2.7 the firm supplied
+//  the missing 6 + 5 members and split the malformed pseudo-member into 8,
+//  producing 84 valid ordered members. They now live in the Prisma models
+//  above and are checked permanently by db:check.
 // ---------------------------------------------------------------------------
 
 // ===========================================================================
@@ -603,24 +643,24 @@ model Client {
   legacyId Int? @unique @map("legacy_id")
 
   /// 100% filled in the Access data.
-  nameAr   String  @map("name_ar")
+  nameAr             String  @map("name_ar")
   /// Kept in step by a database TRIGGER, never written by the application —
   /// see migration 0016. A generated column cannot be used because Prisma
   /// would include it in every INSERT and PostgreSQL refuses that.
-  nameArNormalised String? @map("name_ar_normalised")
+  nameArNormalised   String? @map("name_ar_normalised")
   /// 73% filled. Kept for a possible future bilingual version (D12).
-  nameEn   String? @map("name_en")
-  fullName String? @map("full_name")
+  nameEn             String? @map("name_en")
+  fullName           String? @map("full_name")
   fullNameNormalised String? @map("full_name_normalised")
 
-  branchId Int?                @map("branch_id") @db.SmallInt
-  branch   LookupClientBranch? @relation(fields: [branchId], references: [id])
+  branchId        Int?                @map("branch_id") @db.SmallInt
+  branch          LookupClientBranch? @relation(fields: [branchId], references: [id])
   /// The original clientBranch text, byte for byte. NOT OPTIONAL as a design
   /// choice: the 32 original values resolve to 15 (D19) — 9 move to
   /// matter_category, 1 to matter_type, 1 to degree, 4 are quarantined and 2
   /// are discarded. Without this column that resolution could never be
   /// reversed or re-derived.
-  legacyBranchRaw String? @map("legacy_branch_raw")
+  legacyBranchRaw String?             @map("legacy_branch_raw")
 
   /// `العملاء.contactLawyer` — the FIRM lawyer responsible for this client,
   /// on 123 of 318. Byte for byte, never parsed.
@@ -731,15 +771,15 @@ model Contact {
   client   Client? @relation("ClientContacts", fields: [clientId], references: [id])
 
   /// Access `Contact1`, 97% filled. THE name field, despite the column name.
-  contactName String? @map("contact_name")
+  contactName           String? @map("contact_name")
   /// Kept in step by a database TRIGGER, never written by the application —
   /// see migration 0016. A generated column cannot be used because Prisma
   /// would include it in every INSERT and PostgreSQL refuses that.
   contactNameNormalised String? @map("contact_name_normalised")
   /// Access `Full_name`, 10% filled. Not the primary name — see above.
-  fullName    String? @map("full_name")
+  fullName              String? @map("full_name")
   /// Access `Job Title`, 60%.
-  jobTitle    String? @map("job_title")
+  jobTitle              String? @map("job_title")
 
   /// Access `E-mail Address`, 75%.
   email         String? @map("email")
@@ -797,36 +837,36 @@ model Matter {
   /// Durable identity of the complete staged source row. The Access id above
   /// is the business key; this hash proves which exact source values produced
   /// the migrated row and is independent of CSV filename and row order.
-  legacySourceRecordKey       String? @unique @map("legacy_source_record_key")
+  legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   /// Complete 38-column source row for lossless migration audit. This does not
   /// reintroduce D6's team concept or perform task 2.7's lawyer/party split.
-  legacySourcePayload Json? @map("legacy_source_payload") @db.JsonB
+  legacySourcePayload          Json?   @map("legacy_source_payload") @db.JsonB
 
   /// **MULTI-LINE. NEVER SPLIT, NEVER COLLAPSED TO ONE LINE — D9.**
   /// 308 matters (18%) hold several case numbers stacked with line breaks:
   /// the journey of the matter up through the courts. The firm decided not to
   /// parse them; every screen and every report must render all the lines.
-  caseNumberAr String? @map("case_number_ar")
+  caseNumberAr           String? @map("case_number_ar")
   /// Kept in step by a database TRIGGER, never written by the application —
   /// see migration 0016. A generated column cannot be used because Prisma
   /// would include it in every INSERT and PostgreSQL refuses that.
   caseNumberArNormalised String? @map("case_number_ar_normalised")
   /// Access matterEN, retained for the possible future bilingual version.
-  caseNumberEn String? @map("case_number_en")
+  caseNumberEn           String? @map("case_number_en")
   /// 98% filled.
-  subject      String?
-  subjectNormalised String? @map("subject_normalised")
+  subject                String?
+  subjectNormalised      String? @map("subject_normalised")
 
   clientId Int?    @map("client_id")
   client   Client? @relation(fields: [clientId], references: [id])
 
   /// D19: the source branch is a property of the matter, because one client
   /// can have several sites. Removed non-branch values leave this null.
-  branchId Int?                @map("branch_id") @db.SmallInt
-  branch   LookupClientBranch? @relation(fields: [branchId], references: [id])
+  branchId        Int?                @map("branch_id") @db.SmallInt
+  branch          LookupClientBranch? @relation(fields: [branchId], references: [id])
   /// Byte-exact Access clientBranch, including discarded and quarantined text.
-  legacyBranchRaw String? @map("legacy_branch_raw")
+  legacyBranchRaw String?             @map("legacy_branch_raw")
 
   // ---- classification: four independent lists, D8 ------------------------
   matterTypeId     Int?                     @map("matter_type_id") @db.SmallInt
@@ -853,21 +893,21 @@ model Matter {
 
   /// Access fields whose names do not establish a safer semantic model. They
   /// are migrated, retained, and not surfaced until a screen/report needs them.
-  notes1                        String? @map("notes_1")
-  notes2                        String? @map("notes_2")
-  startDate                     DateTime? @map("start_date") @db.Date
-  endDate                       DateTime? @map("end_date") @db.Date
-  askedAmount                   Decimal? @map("asked_amount") @db.Decimal(18, 2)
-  judgedAmount                  Decimal? @map("judged_amount") @db.Decimal(18, 2)
-  legacySelected                Boolean? @map("legacy_selected")
-  evaluation                    String?
-  currentStatus                 String? @map("current_status")
-  legacyClientTypeRaw           String? @map("legacy_client_type_raw")
-  legacyFinancialAllocationRaw  String? @map("legacy_financial_allocation_raw")
-  legalOpinion                  String? @map("legal_opinion")
-  legacyContractIdRaw           String? @map("legacy_contract_id_raw")
+  notes1                       String?   @map("notes_1")
+  notes2                       String?   @map("notes_2")
+  startDate                    DateTime? @map("start_date") @db.Date
+  endDate                      DateTime? @map("end_date") @db.Date
+  askedAmount                  Decimal?  @map("asked_amount") @db.Decimal(18, 2)
+  judgedAmount                 Decimal?  @map("judged_amount") @db.Decimal(18, 2)
+  legacySelected               Boolean?  @map("legacy_selected")
+  evaluation                   String?
+  currentStatus                String?   @map("current_status")
+  legacyClientTypeRaw          String?   @map("legacy_client_type_raw")
+  legacyFinancialAllocationRaw String?   @map("legacy_financial_allocation_raw")
+  legalOpinion                 String?   @map("legal_opinion")
+  legacyContractIdRaw          String?   @map("legacy_contract_id_raw")
   /// Preserved for task 2.7. It is never matched directly to a person name.
-  legacyPartnerRaw              String? @map("legacy_partner_raw")
+  legacyPartnerRaw             String?   @map("legacy_partner_raw")
 
   // ---- where it is heard -------------------------------------------------
   /// court and circuit are TWO SEPARATE FIELDS, not one. Reports join them
@@ -884,7 +924,7 @@ model Matter {
   /// court. A 1,281-option dropdown is unusable and a list would fight the
   /// data. Whether to split it into number + specialism is a question for
   /// AFTER the data lands: see task 2.6. Do not attempt the split now.
-  circuit String?
+  circuit          String?
   circuitSecretary String? @map("circuit_secretary")
 
   // ---- court logistics ---------------------------------------------------
@@ -950,13 +990,13 @@ model Hearing {
   hearingDate     DateTime? @map("hearing_date") @db.Date
   nextHearingDate DateTime? @map("next_hearing_date") @db.Date
 
-  actionId Int?                 @map("action_id") @db.SmallInt
-  action   LookupHearingAction? @relation(fields: [actionId], references: [id])
+  actionId        Int?                 @map("action_id") @db.SmallInt
+  action          LookupHearingAction? @relation(fields: [actionId], references: [id])
   /// The original الإجراء text. 23 actions merged to 20 on 21 August 2026
   /// (محكمه and مجكمة into محكمة, رفع الدعوي into رفع الدعوى), which affects
   /// 18 hearings and makes the mapping many-to-one. Without this the merge
   /// could never be reversed.
-  legacyActionRaw String? @map("legacy_action_raw")
+  legacyActionRaw String?              @map("legacy_action_raw")
 
   decision String?
   /// صالح / ضد. Drives the for-and-against reports and the dashboard charts.
@@ -1006,7 +1046,7 @@ model AdminTask {
   /// the highest-ratio mapping in this project, the one that has already gone
   /// wrong twice. person_name_alias records that a spelling exists; only this
   /// records which spelling THIS row used.
-  legacyAssigneeRaw String? @map("legacy_assignee_raw")
+  legacyAssigneeRaw  String? @map("legacy_assignee_raw")
 
   executionDate    DateTime? @map("execution_date") @db.Date
   result           String?
@@ -1050,12 +1090,12 @@ model TaskAction {
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
 
-  taskId Int?       @map("task_id")
-  task   AdminTask? @relation(fields: [taskId], references: [id])
+  taskId          Int?       @map("task_id")
+  task            AdminTask? @relation(fields: [taskId], references: [id])
   /// The original ID_Task, kept even when it resolves to nothing — that is
   /// what makes the 36 orphans investigable rather than merely lost.
   /// Access `ID_Task`, 99%.
-  legacyTaskIdRaw String? @map("legacy_task_id_raw")
+  legacyTaskIdRaw String?    @map("legacy_task_id_raw")
 
   /// Access `تاريخ الإجراء`, 97%.
   actionDate DateTime? @map("action_date") @db.Date
@@ -1072,9 +1112,9 @@ model TaskAction {
   legacyPerformedByRaw String? @map("legacy_performed_by_raw")
 
   /// Access `النتيجة`, 99%.
-  result String? @map("result")
+  result          String?   @map("result")
   /// Access `تقرير`, 100%.
-  report String? @map("report")
+  report          String?   @map("report")
   /// Access `الموعد القادم`, **0% — seven rows in 4,130.** Migrated because
   /// nothing is deleted (D10), but effectively dead. Do not surface it.
   nextAppointment DateTime? @map("next_appointment") @db.Date
@@ -1135,13 +1175,13 @@ model PowerOfAttorney {
   ///
   /// **TEXT, NOT A NUMBER.** Despite the name, the values are Latin letters —
   /// A, B, C. Typing it as an integer would fail the load on every row.
-  serialNo String? @map("serial_no")
+  serialNo             String? @map("serial_no")
   /// Access `اسم الموكل`, 100% — the name of the principal granting the power.
-  principalName String? @map("principal_name")
+  principalName        String? @map("principal_name")
   /// Access `الصفة`, 100% — **the live capacity field.** The capacity in
   /// which the principal granted the power: `شخصي`, or a corporate office
   /// such as `عضو منتدب لشركة أكيومن`. Free text, 306 distinct values.
-  poaCapacity String? @map("poa_capacity")
+  poaCapacity          String? @map("poa_capacity")
   /// Access `صفة الموكل بالتوكيل`, 77% — **the abandoned duplicate of
   /// poa_capacity.** Migrated because nothing is deleted (D10). **Never read
   /// it**; every value it holds is either identical to poa_capacity, absent,
@@ -1156,12 +1196,12 @@ model PowerOfAttorney {
   /// **982 / أ / 2009** is number / letter / year.
   poaLetter String? @map("poa_letter")
   /// Access `السنة`, 99% — the year part of the same reference.
-  poaYear String? @map("poa_year")
+  poaYear   String? @map("poa_year")
 
   /// Access `جهة الإصدار`, 100% — the authority that issued it.
-  issuingAuthority String? @map("issuing_authority")
+  issuingAuthority String?   @map("issuing_authority")
   /// Access `تاريخ الإصدار`, 100%.
-  issueDate DateTime? @map("issue_date") @db.Date
+  issueDate        DateTime? @map("issue_date") @db.Date
 
   /// Access `عدد النسخ`, 99% — **a LIVE COUNT of copies currently in the
   /// safe.** Not a static figure and not a yes/no flag.
@@ -1187,7 +1227,7 @@ model PowerOfAttorney {
   copiesCount Int? @map("copies_count")
 
   /// Access `ملاحظات`, 53%.
-  notes String? @map("notes")
+  notes     String?  @map("notes")
   /// Access `جرد`, 100% — a yes/no flag: 1 on 680 rows, 0 on 55.
   ///
   /// **PROBABLE, NOT CONFIRMED.** The firm's reading is "does it pass the
@@ -1273,13 +1313,13 @@ model FeeLetter {
   clientName String? @map("client_name")
 
   /// Access `Cont-Type`, 94%.
-  contractType String? @map("contract_type")
+  contractType      String?   @map("contract_type")
   /// Access `Cont-Date`, 93%.
-  contractDate DateTime? @map("contract_date") @db.Date
+  contractDate      DateTime? @map("contract_date") @db.Date
   /// Access `Cont-Details`, 98%.
-  contractDetails String? @map("contract_details")
+  contractDetails   String?   @map("contract_details")
   /// Access `Cont-Structure`, 85%.
-  contractStructure String? @map("contract_structure")
+  contractStructure String?   @map("contract_structure")
 
   /// Access `Status`, **1% — three rows in 331.** Migrated because nothing is
   /// deleted (D10). **Do not build a screen around it.**
@@ -1355,11 +1395,22 @@ model MatterLawyer {
   /// re-derived or corrected.
   legacySource String? @map("legacy_source")
 
+  /// Durable task 2.7 provenance. Direct aliases use member ordinal 1 and no
+  /// rule; reviewed compound values retain both the rule and member order.
+  legacySourceRecordKey        String?                   @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String?                   @map("legacy_source_extraction_sha256")
+  sourceField                  String?                   @map("source_field")
+  reviewedRuleId               Int?                      @map("reviewed_rule_id")
+  reviewedRule                 MigrationMultiPersonRule? @relation(fields: [reviewedRuleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sourceMemberOrdinal          Int?                      @map("source_member_ordinal")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  @@unique([matterId, personId], map: "matter_lawyers_matter_person_key")
+  @@unique([legacySourceRecordKey, sourceField, sourceMemberOrdinal], map: "matter_lawyers_legacy_source_key")
   @@index([matterId])
   @@index([personId])
   @@map("matter_lawyers")
@@ -1392,6 +1443,11 @@ model MatterParty {
   /// this is what makes that reversible.
   legacyRaw String? @map("legacy_raw")
 
+  legacySourceRecordKey        String? @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  sourceField                  String? @map("source_field")
+  sourceFragmentOrdinal        Int?    @map("source_fragment_ordinal")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1399,6 +1455,7 @@ model MatterParty {
 
   roles MatterPartyRole[]
 
+  @@unique([legacySourceRecordKey, sourceField, sourceFragmentOrdinal], map: "matter_parties_legacy_source_key")
   @@index([matterId])
   @@map("matter_parties")
 }
@@ -1414,13 +1471,17 @@ model MatterPartyRole {
   role   LookupPartyRole @relation(fields: [roleId], references: [id])
 
   /// Order the roles were written in.
-  ordinal Int?
+  ordinal       Int?
+  /// Exact reviewed capacity fragment before it resolved to the 11-role list.
+  legacyRoleRaw String? @map("legacy_role_raw")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  @@unique([partyId, roleId], map: "matter_party_roles_party_role_key")
+  @@unique([partyId, ordinal], map: "matter_party_roles_party_ordinal_key")
   @@index([partyId])
   @@map("matter_party_roles")
 }
@@ -1635,18 +1696,18 @@ model Invoice {
   /// to a FEE LETTER, not directly to a client; the client comes through it.
   /// There is no clientID on الفواتير, and the placeholder client_id this
   /// table briefly carried has been removed.
-  feeLetterId Int?       @map("fee_letter_id")
-  feeLetter   FeeLetter? @relation(fields: [feeLetterId], references: [id])
+  feeLetterId      Int?       @map("fee_letter_id")
+  feeLetter        FeeLetter? @relation(fields: [feeLetterId], references: [id])
   /// The contractID exactly as it appeared, kept even when it resolves to
   /// nothing — that is what makes an unmatched invoice investigable.
-  legacyContractId String? @map("legacy_contract_id")
+  legacyContractId String?    @map("legacy_contract_id")
 
   /// Access `Currency`, 100%. Gate 4 reconciles **total invoiced and total
   /// paid, per currency** (docs/MIGRATION.md), so it has to survive. A total
   /// across mixed currencies is a meaningless number.
-  currency String?
+  currency  String?
   /// Access `Amount`, 100%. Money is NEVER a floating-point number.
-  amount   Decimal? @db.Decimal(14, 2)
+  amount    Decimal? @db.Decimal(14, 2)
   /// Access `USD$`, 4% — a dollar equivalent on a handful of rows. Kept
   /// because nothing is deleted; it is not a substitute for `amount`.
   amountUsd Decimal? @map("amount_usd") @db.Decimal(14, 2)
@@ -1655,14 +1716,14 @@ model Invoice {
   invoiceDate DateTime? @map("invoice_date") @db.Date
 
   /// Access `Inv-Status`, 100%.
-  statusId Int?                 @map("status_id") @db.SmallInt
-  status   LookupInvoiceStatus? @relation(fields: [statusId], references: [id])
-  legacyStatusRaw String?       @map("legacy_status_raw")
+  statusId        Int?                 @map("status_id") @db.SmallInt
+  status          LookupInvoiceStatus? @relation(fields: [statusId], references: [id])
+  legacyStatusRaw String?              @map("legacy_status_raw")
 
   /// Access `Inv-Type`, 100%.
-  typeId Int?               @map("type_id") @db.SmallInt
-  type   LookupInvoiceType? @relation(fields: [typeId], references: [id])
-  legacyTypeRaw String?     @map("legacy_type_raw")
+  typeId        Int?               @map("type_id") @db.SmallInt
+  type          LookupInvoiceType? @relation(fields: [typeId], references: [id])
+  legacyTypeRaw String?            @map("legacy_type_raw")
 
   /// Access `Inv-Details`, 100%.
   details String?
@@ -1735,8 +1796,8 @@ model Payment {
   currency String?
   /// Access `Credit` 99% and `Debit` 52%. Two columns, not one `amount` —
   /// the placeholder this table briefly carried has been removed.
-  credit Decimal? @db.Decimal(14, 2)
-  debit  Decimal? @db.Decimal(14, 2)
+  credit   Decimal? @db.Decimal(14, 2)
+  debit    Decimal? @db.Decimal(14, 2)
 
   /// Access `التاريخ`, **67% — a third of payments have no date.** Nullable,
   /// and expected to show up at Gate 3 rather than being a surprise.
@@ -1786,8 +1847,8 @@ model InvoiceAllocation {
   ///
   /// Nullable for exactly that reason. The `Int` it briefly was would have
   /// rejected every unresolvable row.
-  personId Int?    @map("person_id")
-  person   Person? @relation(fields: [personId], references: [id])
+  personId        Int?    @map("person_id")
+  person          Person? @relation(fields: [personId], references: [id])
   /// The English name exactly as typed.
   legacyLawyerRaw String? @map("legacy_lawyer_raw")
 
@@ -1808,9 +1869,9 @@ model InvoiceAllocation {
   /// **Do not build a rule that assumes 0.375.** Invoice 21819 has
   /// `LawyerA+` at 0.075. All 15 invoices with splits still sum to 1, so it
   /// is deliberate rather than an error — nothing to quarantine.
-  lawyerRoleId Int?                   @map("lawyer_role_id") @db.SmallInt
-  lawyerRole   LookupLawyerShareRole? @relation(fields: [lawyerRoleId], references: [id])
-  legacyLawyerAsRaw String?           @map("legacy_lawyer_as_raw")
+  lawyerRoleId      Int?                   @map("lawyer_role_id") @db.SmallInt
+  lawyerRole        LookupLawyerShareRole? @relation(fields: [lawyerRoleId], references: [id])
+  legacyLawyerAsRaw String?                @map("legacy_lawyer_as_raw")
 
   /// A FRACTION, not a percentage: 0.25, never 25. Decimal(6,5) so thirds
   /// round predictably and three shares still add to 1.
@@ -1818,8 +1879,8 @@ model InvoiceAllocation {
   /// Access `Percent` (100%) holds a PERCENTAGE. Stage 2 divides by 100 and
   /// keeps the original in legacy_percent_raw, so the conversion is visible
   /// and reversible.
-  share Decimal? @db.Decimal(6, 5)
-  legacyPercentRaw String? @map("legacy_percent_raw")
+  share            Decimal? @db.Decimal(6, 5)
+  legacyPercentRaw String?  @map("legacy_percent_raw")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -1844,8 +1905,8 @@ model Attendance {
   /// Resolved through person_name_alias at Stage 2, never by matching
   /// people.name_ar — rule 15. Nullable so a name that resolves to nobody
   /// goes to the review queue rather than being dropped.
-  personId Int?    @map("person_id")
-  person   Person? @relation(fields: [personId], references: [id])
+  personId        Int?    @map("person_id")
+  person          Person? @relation(fields: [personId], references: [id])
   /// The typed name exactly as it appeared — a fifth person-name mapping, and
   /// it gets a raw partner for the same reason as the other four.
   legacyPersonRaw String? @map("legacy_person_raw")
@@ -1863,7 +1924,7 @@ model Attendance {
   ///
   /// **Do not make it a lookup.** It needs its own review before any dropdown
   /// is designed — recorded on the Phase 2 attendance task.
-  situation String?
+  situation          String?
   /// The original text byte for byte, so a Phase 2 cleanup that folds `At the
   /// Office` and `At the office` together stays reversible.
   legacySituationRaw String? @map("legacy_situation_raw")

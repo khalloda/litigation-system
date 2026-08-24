@@ -10,6 +10,8 @@
  */
 
 import 'dotenv/config';
+import assert from 'node:assert/strict';
+import { Client } from 'pg';
 import { db } from '../src/lib/db';
 import {
   asBigInt,
@@ -22,6 +24,8 @@ import {
 } from './lib/matter-reconciliation';
 import { readLinksFromDatabase } from './lib/read-links';
 import { additions, compare, readBaseline } from './lib/reviewed-links';
+import { reconcileMatterRelationships } from './lib/matter-relationship-reconciliation';
+import { correctedMultiPersonRules } from './lib/matter-relationship-rules';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
 
@@ -1408,7 +1412,7 @@ async function main() {
     identityProblems.length === 0,
   );
 
-  // ---- quarantine, tasks 2.4 and 2.6 ---------------------------------------
+  // ---- quarantine, tasks 2.4, 2.6 and 2.7 ----------------------------------
   //
   //  Rule 16 again: the migration asserted the shape once. These re-prove the
   //  properties the quarantine layer exists for, every time anyone looks.
@@ -1465,9 +1469,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '4 (finding, exclusion, review_value, matter_transform)',
+    '5 (finding, exclusion, review_value, matter_transform, matter_relationship_transform)',
     String(quarantine.tables),
-    quarantine.tables === 4n,
+    quarantine.tables === 5n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -2209,6 +2213,134 @@ async function main() {
       asBigInt(permanentMatterResult.quarantine_rows) === 55n &&
       permanentMatterFailures.length === 0,
   );
+
+  // 2.7 — independently rebuild every expected lawyer, party, role,
+  // exclusion and quarantine row from staging plus the reviewed rule tables.
+  // This deliberately does not read the transform's temporary/in-memory plan.
+  const databaseUrl = process.env['DATABASE_URL'];
+  assert.ok(databaseUrl, 'DATABASE_URL is required for relationship reconciliation');
+  const relationshipDb = new Client({ connectionString: databaseUrl });
+  await relationshipDb.connect();
+  try {
+    const relationshipResult = await reconcileMatterRelationships(relationshipDb);
+    record(
+      'Matter lawyers and parties reconcile to source',
+      '33 rules + 84 ordered members + 38 exclusions; every source cell exact',
+      relationshipResult.defects.length === 0
+        ? `${relationshipResult.sourceCells} cells -> ` +
+            `${relationshipResult.actualLawyers} lawyers, ` +
+            `${relationshipResult.actualParties} parties, ` +
+            `${relationshipResult.actualPartyRoles} roles, ` +
+            `${relationshipResult.actualEvidence} exclusions/quarantines`
+        : relationshipResult.defects.slice(0, 5).join('; '),
+      relationshipResult.defects.length === 0,
+    );
+
+    const occurrenceRows = await relationshipDb.query<{
+      raw_value: string;
+      poa_occurrences: string;
+      matter_occurrences: string;
+    }>(
+      `
+      SELECT r.raw_value,
+             (SELECT count(*)::text FROM staging."التوكيلات" p
+               WHERE position(r.raw_value in p."المحامون الصادر لهم التوكيل") > 0) poa_occurrences,
+             (SELECT count(*)::text FROM staging."الدعاوى" m
+               WHERE position(r.raw_value in m."lawyerA") > 0
+                  OR position(r.raw_value in m."lawyerB") > 0) matter_occurrences
+        FROM migration_multi_person_rule r
+       WHERE r.raw_value = ANY($1::text[])
+       ORDER BY array_position($1::text[], r.raw_value)`,
+      [correctedMultiPersonRules.map((rule) => rule.rawValue)],
+    );
+    const expectedOccurrences = [
+      { poa: '8', matters: '0' },
+      { poa: '0', matters: '0' },
+      { poa: '1', matters: '0' },
+    ];
+    const occurrenceOk =
+      occurrenceRows.rows.length === 3 &&
+      occurrenceRows.rows.every(
+        (row, index) =>
+          row.poa_occurrences === expectedOccurrences[index]!.poa &&
+          row.matter_occurrences === expectedOccurrences[index]!.matters,
+      );
+    record(
+      'Corrected-rule current extraction evidence',
+      'POA 8/0/1; matter lawyers 0/0/0',
+      occurrenceRows.rows
+        .map((row) => `${row.poa_occurrences}/${row.matter_occurrences}`)
+        .join(', '),
+      occurrenceOk,
+    );
+
+    const structure = await relationshipDb.query<{
+      source_shapes: string;
+      rule_shape_definition: string | null;
+      identity_indexes: string;
+      foreign_keys: string;
+      evidence_triggers: string;
+      trigger_functions: string;
+    }>(`
+      SELECT
+        (SELECT count(*)::text FROM pg_constraint
+          WHERE conname IN ('matter_lawyers_legacy_source_shape',
+                            'matter_lawyers_rule_shape',
+                            'matter_parties_legacy_source_shape')
+            AND contype='c' AND convalidated) source_shapes,
+        (SELECT pg_get_constraintdef(oid) FROM pg_constraint
+          WHERE conrelid='matter_lawyers'::regclass
+            AND conname='matter_lawyers_rule_shape'
+            AND contype='c' AND convalidated) rule_shape_definition,
+        (SELECT count(*)::text FROM pg_class c JOIN pg_index i ON i.indexrelid=c.oid
+          WHERE c.relname IN ('matter_lawyers_matter_person_key',
+                              'matter_lawyers_legacy_source_key',
+                              'matter_parties_legacy_source_key',
+                              'matter_party_roles_party_role_key',
+                              'matter_party_roles_party_ordinal_key')
+            AND i.indisunique AND i.indisvalid AND i.indisready) identity_indexes,
+        (SELECT count(*)::text FROM pg_constraint
+          WHERE conname IN ('matter_lawyers_reviewed_rule_id_fkey',
+                            'migration_multi_person_rule_member_rule_id_fkey',
+                            'migration_multi_person_rule_member_person_id_fkey',
+                            'matter_relationship_transform_exclusion_fkey')
+            AND contype='f' AND convalidated) foreign_keys,
+        (SELECT count(*)::text FROM pg_trigger t
+          WHERE t.tgrelid='quarantine.matter_relationship_transform'::regclass
+            AND NOT t.tgisinternal
+            AND pg_get_triggerdef(t.oid) IN (
+              'CREATE TRIGGER matter_relationship_transform_source_immutable BEFORE UPDATE ON quarantine.matter_relationship_transform FOR EACH ROW EXECUTE FUNCTION quarantine.protect_matter_relationship_transform_source()',
+              'CREATE TRIGGER matter_relationship_transform_no_erasure BEFORE DELETE OR TRUNCATE ON quarantine.matter_relationship_transform FOR EACH STATEMENT EXECUTE FUNCTION quarantine.refuse_matter_relationship_transform_erasure()')) evidence_triggers,
+        (SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+          WHERE n.nspname='quarantine'
+            AND ((p.proname='protect_matter_relationship_transform_source'
+                  AND p.prosrc LIKE '%NEW.source_payload IS DISTINCT FROM OLD.source_payload%'
+                  AND p.prosrc LIKE '%NEW.reviewed_exclusion_raw_value IS DISTINCT FROM OLD.reviewed_exclusion_raw_value%')
+              OR (p.proname='refuse_matter_relationship_transform_erasure'
+                  AND p.prosrc LIKE '%never delete or truncate%'))
+            AND p.prorettype='trigger'::regtype) trigger_functions`);
+    const definition = structure.rows[0]!;
+    const expectedRuleShape =
+      'CHECK ((((legacy_source_record_key IS NULL) AND (reviewed_rule_id IS NULL)) OR ' +
+      '((legacy_source_record_key IS NOT NULL) AND (((reviewed_rule_id IS NULL) AND ' +
+      '(source_member_ordinal = 1)) OR (reviewed_rule_id IS NOT NULL)))))';
+    const structureOk =
+      definition.source_shapes === '3' &&
+      definition.rule_shape_definition === expectedRuleShape &&
+      definition.identity_indexes === '5' &&
+      definition.foreign_keys === '4' &&
+      definition.evidence_triggers === '2' &&
+      definition.trigger_functions === '2';
+    record(
+      'Matter relationship constraints and evidence guards',
+      '3 source shapes, 5 unique indexes, 4 foreign keys, 2 exact triggers/functions',
+      `${definition.source_shapes}, ${definition.identity_indexes}, ${definition.foreign_keys}, ` +
+        `${definition.evidence_triggers}/${definition.trigger_functions}, rule shape exact`,
+      structureOk,
+    );
+  } finally {
+    await relationshipDb.end();
+  }
 
   // ---- report --------------------------------------------------------------
   const width = Math.max(...checks.map((c) => c.name.length));

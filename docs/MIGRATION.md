@@ -1022,7 +1022,10 @@ one matter, whose lawyers would have been lost.
 **It could not have found the other two.** Two rules had NO MEMBER ROWS AT
 ALL, because the extractor's bracket capture returned nothing. A rule with no
 members has no member row to fail, so an assertion over member rows sees
-perfection. Ten more matters would have lost every lawyer, silently.
+perfection. The historic review attributed ten source occurrences to those two
+rules; the task 2.7 live check later measured the current extraction as 8 and
+0 POA occurrences and no matter-lawyer occurrences. Without the parent check,
+every occurrence present at transform time would still have lost every lawyer.
 
 So when writing an assertion, ask what it CANNOT see:
 
@@ -1641,6 +1644,63 @@ different text suffixes; 62 rows are not number-led and include categories,
 weekday descriptions, committees and names. Keep the combined text now.
 Splitting it safely later would require a firm review of those 62 rows and 31
 suffixes, followed by an additive migration that retains `circuit` unchanged.
+
+## Matter lawyer and party transform — completed 24 August 2026
+
+Task 2.7 loaded **33 reviewed multi-person rules, 84 ordered members and 38
+reviewed exclusions**. The old 66-member figure is retained only as history:
+two rules that had no members gained 6 and 5, and one malformed pseudo-member
+became 8 real members (+7 net). No valid member was removed to force the stale
+total to remain true. Every member resolves through exactly one
+`person_name_alias`; the transformation never joins a typed name directly to
+`people`.
+
+The three corrected strings currently occur **8 / 0 / 1 times in
+`التوكيلات.المحامون الصادر لهم التوكيل` and 0 / 0 / 0 times in matter
+`lawyerA` / `lawyerB`**. The middle rule remains a valid reviewed
+historical/forward-compatible rule. Task 2.7 did not transform POA data; task
+2.9 will use the same rule table when that source is in scope.
+
+The matter-only result is:
+
+| Outcome | Rows |
+|---|---:|
+| lawyer relationships | 927 on 708 matters |
+| parties | 2,615 on 1,520 matters |
+| party roles | 2,199 |
+| immutable exclusions/quarantines | 926 source cells |
+
+Every populated source cell has exactly one outcome: one or more target rows,
+or one immutable evidence row. The complete original value, durable source
+record key and extraction fingerprint are retained. Reviewed compound lawyers
+also retain the rule id and member ordinal. Parties retain their side and
+fragment ordinal; each role retains the exact capacity fragment.
+
+Only reviewed deterministic separation is accepted. An exact person alias
+produces one lawyer; an exact multi-person rule produces its ordered members;
+an exact exclusion produces no person and records the reviewed reason. Party
+lines are separated only where the source structure is unambiguous, and a
+quoted capacity is accepted only when it exactly equals one of D7's 11
+masculine/feminine labels. Nothing is stemmed, fuzzy-matched or inferred.
+
+That conservative rule leaves 180 unreviewed lawyer combinations, 714
+unreviewed capacity strings, 30 malformed quote structures, one duplicated
+role and one gender conflict in quarantine. This is deliberate: D7 says dual
+and plural capacities eventually collapse to the base role, but the repository
+does not yet contain a reviewed value-by-value crosswalk for those spellings.
+Turning one into another by Arabic word shape would be guessing legal meaning.
+
+The transform runs in one serializable transaction and the permanent
+reconciliation independently rebuilds the expected set from staging, exact
+aliases and reviewed rule tables. It compares every target field, role,
+position, source value, source identity, fingerprint, rule provenance and
+every quarantine reason/detail. The isolated fixture proves broken rule
+membership, unresolved and ambiguous aliases, ordinal defects, duplicate
+members, missing/extra relationships, incorrect roles, unreviewed values,
+wrong exclusions, altered evidence and a forced late failure. The late failure
+leaves all four result tables empty. The second identical live run retained
+digest `39a453b615bf00998692afd18bcc2f75efcaf3146358d21e932d0aa9fb859e52`,
+including IDs and timestamps.
 
 ## The `_raw` rule
 

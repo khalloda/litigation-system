@@ -151,6 +151,20 @@ which is different and is dangerous: the schema may be half-built. If you ever
 see `UNFINISHED` on this line, stop and say so — do not run anything else
 against the database.
 
+### PostgreSQL catalog-definition maintenance
+
+The strict catalog-definition checks introduced in commit `92d5c3f` were
+verified against **PostgreSQL 17.11**. Keep them strict: they protect the full
+definitions of constraints, indexes, triggers and trigger functions, not just
+object names or counts.
+
+A future PostgreSQL major version may change how `pg_get_constraintdef`,
+`pg_get_indexdef` or `pg_get_triggerdef` formats the same database semantics.
+If one of these checks fails after an upgrade, compare the actual object
+semantically and review its complete definition before changing the expected
+string. Never automatically accept the newly formatted output, and never
+weaken or remove the check merely to make an upgrade green.
+
 It then prints the same four Arabic names sorted two ways, which shows why this
 matters:
 

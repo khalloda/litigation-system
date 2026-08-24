@@ -60,8 +60,9 @@ be bigger than expected, split it and tell the owner.
       Both hamza pairs proved to resolve to one person each.
       `people.email` added — nullable, unique where present, for Milestone 4.
       **Deferred to 2.7:** `migration_multi_person_rule` / `_member` /
-      `migration_excluded_name`. Writing the assertion for them found 4 of
-      the 66 member names resolve to nobody — see below.
+      `migration_excluded_name`. The reviewed export initially held 66 member
+      rows. Task 2.7 applies the firm's three corrections without deleting any
+      valid member and loads the corrected total of 84 — see below.
 
 - [x] **1.2a Alias completeness** — resolved 21 August 2026, migration 0005
       339 → 347 aliases. Six people's own names were missing from the alias
@@ -795,30 +796,35 @@ only ever seen good data is not known to work.
 
       Rule (a) applies here too, for any branch value that reaches a matter.
 
-- [ ] **2.7 Transform: matter_lawyers and matter_parties**
+- [x] **2.7 Transform: matter_lawyers and matter_parties**
       Split the combination strings using the rules in
       `migration_multi_person_rule`.
 
       **Load the three deferred tables here** — `migration_multi_person_rule`
-      (33), `_member` (66) and `migration_excluded_name` (38). They were held
-      back from task 1.2 because three rules were broken.
+      (33), `_member` (**84 corrected**) and `migration_excluded_name` (38).
+      The 66 figure is the pre-repair export: Rule 1 gained 6, Rule 2 gained
+      5, and Rule 3's one malformed pseudo-member became 8 (+7 net), so no
+      other valid member was removed to preserve the stale total.
 
       **THREE RULES ARE MIS-PARSED IN THE SOURCE — corrected membership below,
       supplied by the firm 21 August 2026.** The firm's review notes were
       correct throughout; the extractor lost them. Two rules had a missing
       closing bracket so the capture returned nothing and they have **no
       members at all**; a third used `-` as its separator so the whole string
-      came through as one name. **Left unfixed, 11 matters lose every lawyer.**
+      came through as one name. The review notes described 8 + 2 + 1 historic
+      occurrences; the current extraction instead contains **8 / 0 / 1 in
+      the POA source and 0 / 0 / 0 in matter lawyer columns**. Rule 2 remains
+      intentionally as a reviewed historical/forward-compatible rule.
 
-      Rule 1 — 8 matters — `خالد محمود حمدي عبد العزيز وأحمد عبد الله محمد ومحمد عبد العزيز عبد الحافظ وشريف أبو المكارم صالح وأحمد سعيد أحمد ومحمد مجدي أحمد الغرابلي`
+      Rule 1 — 8 current POA occurrences — `خالد محمود حمدي عبد العزيز وأحمد عبد الله محمد ومحمد عبد العزيز عبد الحافظ وشريف أبو المكارم صالح وأحمد سعيد أحمد ومحمد مجدي أحمد الغرابلي`
       members: خالد عطيه · أحمد عبد الله · محمد عبد العزيز عبد الحافظ ·
                شريف أبو المكارم · أحمد سعيد · محمد الغرابلي
 
-      Rule 2 — 2 matters — `خالد محمود حمدي عبد العزيز وأحمد عبد الله محمد ومحمد عبد العزيز عبد الحافظ وأحمد سعيد أحمد ومحمد مجدي أحمد الغرابلي`
+      Rule 2 — 0 current occurrences (2 in the historic review) — `خالد محمود حمدي عبد العزيز وأحمد عبد الله محمد ومحمد عبد العزيز عبد الحافظ وأحمد سعيد أحمد ومحمد مجدي أحمد الغرابلي`
       members: خالد عطيه · أحمد عبد الله · محمد عبد العزيز عبد الحافظ ·
                أحمد سعيد · محمد الغرابلي
 
-      Rule 3 — 1 matter — `هاني سري الدين - أميرة شريف - إيهاب حمدي - محمد عبد العزيز - أحمد سعيد - محمد حمدي - هاني الدالي - عبد الرحمن البنا`
+      Rule 3 — 1 current POA occurrence — `هاني سري الدين - أميرة شريف - إيهاب حمدي - محمد عبد العزيز - أحمد سعيد - محمد حمدي - هاني الدالي - عبد الرحمن البنا`
       members: those eight, with محمد عبد العزيز resolving to
                محمد عبد العزيز عبد الحافظ
 
@@ -830,9 +836,26 @@ only ever seen good data is not known to work.
       other** (see "An assertion tests what it looks at" in
       `docs/MIGRATION.md`):
         1. every rule has **at least one** member — a rule with none has no
-           row to fail, which is how 10 of the 11 matters stayed hidden
+           row to fail, which is how the two broken historic rules stayed hidden
         2. every member name resolves to **exactly one** person
         3. ordinals run from 1 with no gaps
+
+      **Completed 24 August 2026.** The live matter-only transform produced
+      927 lawyer relationships on 708 matters, 2,615 parties on 1,520 matters
+      and 2,199 party roles. It preserved all source text and provenance.
+      926 unsafe source cells are retained as immutable evidence: 180
+      unreviewed lawyer combinations, 714 unreviewed legal-capacity strings,
+      30 malformed quote structures, 1 duplicate role and 1 conflicting
+      gender. None was guessed. The three corrected rules occur only in POA
+      data today, which stays untouched until task 2.9.
+
+      The transform and permanent `db:check` rebuild expectations from
+      staging plus exact reviewed rules, rather than trusting counts or a
+      one-time plan. The fixture proves empty/missing/malformed rules,
+      unresolved and ambiguous aliases, ordinal defects, duplicate members,
+      missing/extra relationships, wrong roles, altered evidence/identity and
+      a late transactional failure. An identical second live run preserved
+      the exact result digest, including IDs and timestamps.
 
 - [ ] **2.8 Transform: hearings and attendees**
       The current extraction holds 13,382 hearings; 13,279 is the 19 August

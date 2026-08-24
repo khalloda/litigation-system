@@ -36,6 +36,7 @@
     "review:attach-legacy-identity": "tsx scripts/attach-legacy-workbook-identity.ts",
     "transform:clients": "tsx scripts/transform-clients.ts",
     "transform:matters": "tsx scripts/transform-matters.ts",
+    "transform:matter-relationships": "tsx scripts/transform-matter-relationships.ts",
     "check:rtl": "tsx scripts/check-rtl.ts && tsx scripts/check-rtl.ts --self-test",
     "check:gitignore": "tsx scripts/check-gitignore.ts",
     "check:encoding": "tsx scripts/check-encoding.ts",
@@ -45,12 +46,14 @@
     "test:review-import": "tsx scripts/test-review-import.ts",
     "test:attendee-decomposition": "tsx scripts/test-attendee-decomposition.ts",
     "test:matter-transform": "tsx scripts/test-matter-transform.ts",
+    "test:matter-relationships": "tsx scripts/test-matter-relationships.ts",
     "generate:lookup-seed": "tsx scripts/generate-lookup-seed.ts",
     "generate:roster-seed": "tsx scripts/generate-roster-seed.ts",
     "baseline:write": "tsx scripts/write-baseline.ts",
     "generate:court-seed": "tsx scripts/generate-court-seed.ts",
     "generate:staging-schema": "tsx scripts/generate-staging-schema.ts",
-    "generate:matter-crosswalk": "tsx scripts/generate-matter-crosswalk.ts"
+    "generate:matter-crosswalk": "tsx scripts/generate-matter-crosswalk.ts",
+    "generate:matter-relationship-rules": "tsx scripts/generate-matter-relationship-rules.ts"
   },
   "dependencies": {
     "@fontsource-variable/noto-naskh-arabic": "^5.3.0",

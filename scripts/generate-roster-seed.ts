@@ -59,7 +59,7 @@ const EXPECTED = {
   currentWithTeam: 5,
   currentWithoutTeam: 16,
   multiPersonRules: 33,
-  multiPersonMembers: 66,
+  multiPersonMembers: 84,
   excludedNames: 38,
 } as const;
 
@@ -207,9 +207,10 @@ void teamUpdates;
 
 /*
  * The multi-person split rules and excluded names are DEFERRED to task 2.7.
- * Writing the assertion for them found that 4 of the 66 member names resolve
- * to nobody — see the note in prisma/schema.prisma. Loading them would mean
- * weakening the assertion or seeding data known to be wrong.
+ * The reviewed export originally contained 66 member rows. Task 2.7 applies
+ * the firm's three corrections without removing any valid member: two empty
+ * rules gain 6 and 5 members, while one malformed pseudo-member becomes 8
+ * real members. The corrected canonical total is therefore 84.
  */
 
 // ---- assertions -----------------------------------------------------------

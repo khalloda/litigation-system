@@ -176,17 +176,26 @@ drafts cited D18 here and were wrong.
 ### `matter_lawyers`
 Replaces `lawyerA` / `lawyerB` and the combination strings.
 `matter_id`, `person_id`, `role` (`lead` / `co_lead` / `support`), `position`,
-`legacy_source`. **At most one `lead` per matter.**
+`legacy_source`. Task 2.7 also records the durable source key and extraction
+fingerprint, the exact source field, reviewed split-rule id and ordered member
+position. **At most one `lead` per matter.**
 
-Expected: 896 matters with a lead, 241 with support, 834 with none.
+Task 2.7 result: 927 relationships on 708 matters. Another 180 source lawyer
+cells are retained for review because they match neither an exact alias nor a
+reviewed split rule; none was guessed.
 
 ### `matter_parties`  +  `matter_party_roles`
 Replaces `client&Cap` and `opponent&Cap`, which held name and legal capacity in
 one field (92% and 83% multi-line).
 
 `matter_parties`: `matter_id`, `side` (client / opponent), `party_name`,
-`gender`, `ordinal`, `legacy_raw`.
-`matter_party_roles`: `party_id`, `role_id`, `ordinal` — several roles per party.
+`gender`, `ordinal`, `legacy_raw`, durable source identity, source field and
+fragment ordinal.
+`matter_party_roles`: `party_id`, `role_id`, `ordinal`, `legacy_role_raw` —
+several roles per party, with the exact capacity fragment preserved.
+
+Task 2.7 result: 2,615 parties and 2,199 roles. Unreviewed or structurally
+ambiguous source cells remain in `quarantine.matter_relationship_transform`.
 
 ---
 
