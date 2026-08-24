@@ -3,6 +3,14 @@
 You are building a litigation management web application for a law firm in
 Cairo, replacing a Microsoft Access database.
 
+**Codex works on this project too, under the same working rules below.**
+Until 24 August 2026 the two tools had separate jobs — Claude Code wrote,
+Codex reviewed. The owner removed that separation: both now implement
+`TASKS.md`, run tests, and commit. `AGENTS.md` is Codex's brief; it points
+back here for the rules rather than duplicating them, so read both if you are
+unsure which applies. The one asymmetry that remains is the one below, in
+rule 11: Codex may never edit either instruction file, whatever it is asked.
+
 **Before doing anything: read `README.md`, then `docs/PRD.md`, then
 `docs/DECISIONS.md`, then `TASKS.md`.**
 
@@ -89,8 +97,8 @@ trade-off unless you explain it in ordinary language.
     wrong guess can cost days.
 
 11. **No tool may edit `AGENTS.md` or `CLAUDE.md`.** These two files are
-    written by people: `AGENTS.md` is Codex's reviewer brief, `CLAUDE.md` is
-    this file. Any tool that auto-generates or appends to either must be
+    written by people: `AGENTS.md` is Codex's development brief, `CLAUDE.md`
+    is this file. Any tool that auto-generates or appends to either must be
     switched off, not tidied up afterwards.
     *Already found:* Next.js 16 appends its own instructions to `AGENTS.md` on
     every `next dev`. Disabled with `agentRules: false` in `next.config.ts`.
@@ -140,8 +148,8 @@ trade-off unless you explain it in ordinary language.
     assume the database contains irreplaceable data unless you have proved
     otherwise:** 30,553 extracted rows and 54 client logos that cost a full
     extraction run to produce. `npm run db:reset` refusing *is* the answer —
-    it means there is data, so stop. The same rule is in `AGENTS.md` for the
-    reviewer.
+    it means there is data, so stop. The same rule is in `AGENTS.md` for
+    Codex.
 
 15. **Never match an Arabic name without asserting the row count.** Match
     through `person_name_alias`, state the number of rows you expect, and fail
