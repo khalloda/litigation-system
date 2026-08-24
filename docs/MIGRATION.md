@@ -731,9 +731,10 @@ In practice:
 
 ### A value that will not match may be several values in one field
 
-**Before concluding that a name is unknown, remove what is structurally not a
-name and try again.** Placeholders, dates, titles, bracketed asides — strip
-them, then match what is left.
+**Before concluding that a name is unknown, separate what is structurally not
+a name and try again.** Placeholders, dates, titles and bracketed asides are
+classified apart from the name, but their exact text is retained. Nothing is
+stripped from the stored source value.
 
 The Gate 3 attendee sheet went out with **663 questions**. The firm returned
 it having found that only **six** needed real human judgement. The other 657
@@ -748,8 +749,8 @@ were not unrecognised names at all. They looked like this, in a single cell:
 A `**` placeholder, a date, and a name the roster already knows — three
 things in one field, separated by newlines. Trigram similarity compared the
 **whole string** against each roster alias, scored about 0.30, and filed it
-under "the machine has nothing to say". Strip the placeholder and the date and
-`هاني الدالي` resolves exactly.
+under "the machine has nothing to say". Separate the placeholder and the date
+and `هاني الدالي` resolves exactly; keep all three fragments.
 
 **This is the same family as the pipe-delimited inventory and the trailing
 CR.** In each, a value carried something the reader did not expect it to carry
@@ -766,8 +767,9 @@ suggest", when a name sat inside every one of them.
 **What to do:**
 
 1. **Decompose before you match.** Split on newlines. Pull out anything
-   matching a date pattern. Strip known placeholders and courtesy titles
-   (`د.`, `أ.`, `المستشار`). Then match each remaining fragment.
+   matching a valid calendar-date pattern. Classify known placeholders and
+   courtesy titles (`د.`, `أ.`, `المستشار`) without deleting them. Then match
+   each remaining fragment.
 2. **Match fragments, not cells.** A cell that yields three fragments should
    produce three candidate matches, not one weak one.
 3. **A uniformly low score is a signal about the scorer.** 544 values scoring
@@ -790,6 +792,126 @@ tried and rejected: a normaliser loose enough to make `حسن عادل` reach
 `حسن خلف` matches them through general looseness rather than through the
 firm's ruling, and a normaliser that loose will merge people it should not.
 **The damage was in one row. Fix the one row.**
+
+#### Correction B — the fixture-proven decomposition contract
+
+**Built 24 August 2026. Not applied to staging, quarantine or the target
+tables.** This correction defines and tests the decomposition before it is
+allowed near the live migration.
+
+The read-only inventory of the five attendee columns found **12,732 non-empty
+cells and 708 byte-distinct values**. Of those cells, 713 contain a line break,
+650 contain a digit, 645 contain a slash, 378 contain an Arabic comma, 733
+contain repeated whitespace, 13 have outer whitespace and 9 contain a blank
+line. CRLF is usual, but bare LF and bare CR both occur. The present data has
+no Latin-letter attendee value and no English comma, semicolon or pipe; those
+forms are fixtures for a future entry, not claims about this extraction.
+The extracted CSV and staging produced the same ordered attendee-cell SHA-256,
+`3ec09ab48157e51271156e6cea69afe32d17252e4da00c55733d58c44e03cee2`, over
+row number + source column + UTF-8 length + exact value. The patterns were
+therefore checked on both sides of Gate 2, not inferred from staging alone.
+
+The 5,346 source cells represented by the 663 attendee questions also explain
+the shape of the fault:
+
+| Firm's answer | Source cells | What the old whole-cell scorer missed |
+|---|---:|---|
+| placeholder / other non-name text | 4,221 | `**`, follow-up instructions, holidays and administrative notes are not people |
+| split into people | 549 | line breaks, Arabic commas and compound forms hold more than one person |
+| one person after separating structure | 576 | dates, titles or notes surround an exact known name |
+| **total** | **5,346** | every cell was previously scored as one string |
+
+`npm run test:attendee-decomposition` prints a before/after line for **all 30
+fixture classes** and runs 1,198 assertions. The classes cover CRLF, bare LF,
+bare CR, blank lines, Arabic and English punctuation, slashes which are and
+are not dates, spaced dash/ampersand/plus rules, dates before and after names,
+Arabic-Indic digits, titles, roles, placeholders, notes, duplicate names,
+mixed Arabic/English text, irregular whitespace, invalid dates and ambiguous
+prose.
+
+The contract is deliberately narrower than the firm's answered workbook:
+
+1. **The complete source cell is immutable.** It is copied verbatim,
+   fingerprinted, frozen in the fixture implementation and reconstructed by
+   concatenating every output span. Whitespace, punctuation and every form of
+   line break are output spans too, so a successful reconciliation cannot
+   hide discarded characters.
+2. **Identity does not use a filename or row position.** A cell id is derived
+   from source table + durable `src_record_key` + source column. A fragment id
+   is derived from that cell id + exact source offsets + exact raw text. The
+   extraction fingerprint, filename and row number remain trace information,
+   but reordering or renaming them changes no durable id.
+3. **Only an exact supplied alias becomes a person.** The future live caller
+   must build that map from `person_name_alias` and assert every match count.
+   There is no trigram match, no implicit Arabic fold and no middle-name guess.
+4. **Non-person classifications are explicit.** A date must be a real calendar
+   date between 1900 and 2100. Titles, roles, placeholders and notes come from
+   ruled lists supplied to the function. If the same text appears in two rule
+   classes, the run fails instead of choosing one silently. A complete ruled
+   note or exact alias outranks punctuation inside it, so a comma in an
+   approved note or English suffix name does not split the value again.
+5. **Ambiguity stays visible.** Arabic `و` is not treated as a separator. A
+   known name embedded inside prose is not pulled out as an attendee. An
+   invalid date and an unknown fragment are marked `ambiguous`, with
+   `reviewRequired = true`.
+6. **Sequence is evidence.** Every span carries its one-based sequence, source
+   line, start/end offsets, classification rule, cell id, source-record key
+   and original-cell fingerprint. Duplicate names remain two spans with two
+   ids; they are not deduplicated as people.
+7. **Re-running is a no-op.** The fixture model merges on durable cell and
+   fragment ids. An identical second run adds nothing. Different source text
+   or classification under the same identity is a hard conflict, never an
+   overwrite.
+
+The deliberate non-guesses include actual patterns such as
+`محمد عبد العزيز وأ. إيهاب حمدي` and
+`متابعة فقط بعد الجلسة (هاني الدالي) **`. The firm has already answered those
+in the returned workbook. The machine still must not infer them: the later
+live application applies the recorded human answer to the stable ambiguous
+fragment.
+
+##### Separate procedure for applying Correction B to live migration data
+
+This is future work, immediately before task 2.8, and needs a new owner-
+authorised run. It is not part of the fixture correction.
+
+1. **Record a read-only before-state:** all staging table counts, the exact
+   attendee-cell inventory, the 744-answer association digest, and current
+   transformed counts. Refuse if they differ from the then-current
+   `db:check` baseline.
+2. **Add two migration-only audit tables, one row per source cell and one row
+   per output span.** The cell row holds the complete original text and its
+   fingerprint. The span row holds offsets, sequence, raw text, rule and an
+   optional resolved `person_id`. Unique keys enforce one cell per
+   `(source_table, src_record_key, source_column)` and one span per durable
+   fragment id. Immutability triggers refuse changes to source identity,
+   original text and fingerprints. Any application-visible schema addition
+   must be made in `schema.prisma` in the same change.
+3. **Generate the whole proposed decomposition without writing.** Build exact
+   person matches from `person_name_alias`; build non-person rules only from
+   the firm's recorded answers. Print every ambiguous span and all counts.
+4. **Reconcile all existing answers before the first write.** Every one of the
+   663 attendee review values must still name the same complete source value.
+   A `person`/`split` answer must resolve to the same ordered people; a
+   `not a name` answer must produce no attendee. The other 81 answers must be
+   byte-identical and untouched. Any missing, extra or changed association is
+   a refusal.
+5. **Apply all cell/span rows in one serializable transaction.** Upsert by
+   durable identity. Unknown spans create a durable quarantine item; they are
+   never converted to a person. Do not update any staging source column or
+   any existing review answer.
+6. **Make the guarantees permanent in `db:check`:** every non-empty source
+   cell has exactly one audit cell; each audit cell reconstructs byte for byte;
+   ids and fingerprints recompute; sequences and offsets are gap-free; every
+   non-separator span is either explicitly classified or quarantined; person
+   spans resolve through exactly one alias; and `**` creates no person.
+7. **Re-run the before-state reconciliation.** Staging counts, all 744 answers
+   and the already transformed client/contact counts must be unchanged. Only
+   the new audit rows and their expected quarantine rows may have increased.
+8. **Task 2.8 consumes the proved audit rows, not the original cell parser.**
+   `hearing_attendees.legacy_name_raw` keeps the complete original cell on
+   each resulting attendee row, while the audit tables retain dates, titles,
+   placeholders, notes and ambiguous spans even when they create no attendee.
 
 ### A join that fails for every row is evidence about the join
 

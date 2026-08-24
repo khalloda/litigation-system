@@ -584,6 +584,31 @@ only ever seen good data is not known to work.
       wrong identities, and a forced late database failure are all refused.
       `db:check` is now **55 checks**.
 
+      **Correction B, 24 August 2026 — compound attendee decomposition is
+      fixture-proven, not applied to live migration data.** Read-only
+      inspection found 12,732 non-empty attendee cells: 713 contain line
+      breaks, 650 contain digits, 378 use Arabic commas and 9 contain blank
+      lines. The current profiler scores each complete cell, which is why a
+      placeholder, date and known name stacked on three lines looked like one
+      unknown name.
+
+      `npm run test:attendee-decomposition` covers **30 before/after fixture
+      classes with 1,198 assertions**. The complete cell remains immutable and
+      fingerprinted; every output span keeps its exact text, line, offsets,
+      sequence, separating rule and durable source-record identity. Only an
+      exact supplied alias can become a person. Dates must be real calendar
+      dates, titles/placeholders/notes/roles come from explicit ruled lists,
+      and overlapping rules fail. Arabic `و`, a known name embedded in prose,
+      an invalid date and every unrecognised fragment remain marked for
+      review. Reordering filenames or rows does not change cell or fragment
+      ids, and applying the same result twice is a no-op.
+
+      This correction added **no migration, database table or live transform**.
+      Staging, the 744 review answers and `hearing_attendees` were not changed.
+      Applying it is a separate owner-authorised procedure immediately before
+      task 2.8; that procedure and its reconciliation gates are recorded in
+      `docs/MIGRATION.md`.
+
 - [x] **2.5 Transform: people, lookups, clients, contacts**
       **Clients and contacts done 23 August 2026, migration 0027.**
       People and lookups were already seeded at 1.1/1.2 and 2.5's court work
@@ -767,7 +792,12 @@ only ever seen good data is not known to work.
         3. ordinals run from 1 with no gaps
 
 - [ ] **2.8 Transform: hearings and attendees**
-      13,279 hearings. `**` becomes no rows, not a person.
+      The current extraction holds 13,382 hearings; 13,279 is the 19 August
+      shape figure, not the reconciliation target. `**` becomes no rows, not a
+      person. Apply Correction B's fixture-proven decomposition through the
+      separate dry-run, answer-reconciliation and transactional procedure in
+      `docs/MIGRATION.md` before this transform; do not parse the live cells ad
+      hoc here.
 
 - [ ] **2.9 Transform: admin works, POAs, documents, fee letters**
 

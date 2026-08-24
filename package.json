@@ -42,6 +42,7 @@
     "test:gate1": "pwsh -NoProfile -File scripts/test-gate1.ps1",
     "test:staging-copy": "tsx scripts/test-staging-copy.ts",
     "test:review-import": "tsx scripts/test-review-import.ts",
+    "test:attendee-decomposition": "tsx scripts/test-attendee-decomposition.ts",
     "generate:lookup-seed": "tsx scripts/generate-lookup-seed.ts",
     "generate:roster-seed": "tsx scripts/generate-roster-seed.ts",
     "baseline:write": "tsx scripts/write-baseline.ts",
