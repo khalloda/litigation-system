@@ -485,10 +485,17 @@ BEGIN
     LOOP
         --  `خطابات الأتعاب.Matter` is staged as `خطابات الأتعاب__Matter`.
         EXECUTE format(
-            'SELECT count(*) FROM quarantine.finding f
-              WHERE f.src_table = %L
-                AND NOT EXISTS (SELECT 1 FROM staging.%I s
-                                 WHERE s.src_file = f.src_file AND s.src_row_num = f.src_row_num)',
+            'SELECT
+               (SELECT count(*) FROM quarantine.finding f
+                 WHERE f.src_table = %L
+                   AND NOT EXISTS (SELECT 1 FROM staging.%I s
+                                    WHERE s.src_record_key = f.src_record_key))
+               +
+               (SELECT count(*) FROM quarantine.exclusion e
+                 WHERE e.src_table = %L
+                   AND NOT EXISTS (SELECT 1 FROM staging.%I s
+                                    WHERE s.src_record_key = e.src_record_key))',
+            r.src_table, replace(r.src_table, '.', '__'),
             r.src_table, replace(r.src_table, '.', '__'))
            INTO n;
         IF n > 0 THEN
@@ -510,10 +517,15 @@ BEGIN
                    count(*) FILTER (WHERE has_finding AND is_excluded)
               FROM (
                 SELECT EXISTS (SELECT 1 FROM quarantine.finding f
-                                WHERE f.src_file = s.src_file AND f.src_row_num = s.src_row_num) AS has_finding,
+                                WHERE f.src_table = %L
+                                  AND f.src_record_key = s.src_record_key) AS has_finding,
                        EXISTS (SELECT 1 FROM quarantine.exclusion e
-                                WHERE e.src_file = s.src_file AND e.src_row_num = s.src_row_num) AS is_excluded
-                  FROM staging.%I s) z$f$, r.table_name)
+                                WHERE e.src_table = %L
+                                  AND e.src_record_key = s.src_record_key) AS is_excluded
+                  FROM staging.%I s) z$f$,
+            replace(r.table_name, '__', '.'),
+            replace(r.table_name, '__', '.'),
+            r.table_name)
            INTO n, quarantined, excluded, clean, staged;
 
         IF staged > 0 THEN
@@ -550,7 +562,7 @@ BEGIN
         UNION ALL SELECT src_file, src_row_num FROM staging."Contacts__Attachments"
         UNION ALL SELECT src_file, src_row_num FROM staging."خطابات الأتعاب__Matter") z;
 
-    SELECT count(DISTINCT (src_file, src_row_num)) INTO quarantined FROM quarantine.finding;
+    SELECT count(DISTINCT (src_table, src_record_key)) INTO quarantined FROM quarantine.finding;
     SELECT count(*) INTO excluded FROM quarantine.exclusion;
     clean := staged - quarantined - excluded;
 

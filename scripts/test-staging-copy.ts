@@ -68,12 +68,12 @@ if (result.status !== 0) {
  * reaching the assertions — would otherwise read as success.
  */
 const proved = (output.match(/PROVED:/g) ?? []).length;
-if (proved !== 2) {
+if (proved !== 3) {
   console.error(
-    `\ntest:staging-copy — FAILED: expected 2 PROVED notices, saw ${proved}.\n` +
+    `\ntest:staging-copy — FAILED: expected 3 PROVED notices, saw ${proved}.\n` +
       '  psql exited 0, but the assertions did not run.\n',
   );
   process.exit(1);
 }
 
-console.log('\ntest:staging-copy — NULL and the empty string stay distinct. 2 proofs.\n');
+console.log('\ntest:staging-copy — CSV values and durable identity agree. 3 proofs.\n');

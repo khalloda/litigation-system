@@ -117,8 +117,10 @@ A load can never fail on a type conversion, so **no row is rejected at the
 door**. Bad dates and non-numeric numbers arrive intact and are dealt with in
 Stage C, where the decision is visible and reversible.
 
-Every staging row carries `src_row_num` and `src_file`, so any target row traces
-back to its origin.
+Every staging row carries four provenance fields: `src_file` and `src_row_num`
+trace it back to the exact extracted record; `src_record_key` identifies the
+source record independently of filename and row order; and
+`src_extraction_sha256` names the Access file that produced it.
 
 ### `src_row_num` is the CSV record ordinal — never insertion order
 
@@ -136,6 +138,25 @@ A number that is usually the line number is not a line number.
 
 Note that the ordinal is over **records**, not lines. A memo field in this
 database can contain a newline, so record 400 may begin well past line 400.
+
+### Source identity is content, not position — corrected 24 August 2026
+
+`src_file` and `src_row_num` are trace information, not identity. Access does
+not promise a stable `SELECT *` order, so the same unchanged record may move to
+another CSV row on a later extraction. Findings and human answers must move
+with the record, not remain attached to its old position.
+
+`src_record_key` is a SHA-256 of the table name and **every source value**, with
+field lengths encoded and `NULL` deliberately distinct from the empty string,
+plus an occurrence suffix for byte-identical duplicate rows. Reordering
+different rows therefore changes no key. Changing any source value creates a
+new key and cannot silently inherit an old answer. `src_extraction_sha256` is
+the SHA-256 of the complete Access source file, so a workbook from another
+extraction is refused even when an individual value happens to look the same.
+
+The database recomputes all 31,227 keys in `npm run db:check`, checks the 20
+unique indexes and all quarantine links, and verifies the three identity
+triggers by definition. The one-time migration is not the only guard.
 
 ### The staging schema — built at task 2.2, 23 August 2026
 
@@ -190,7 +211,7 @@ is worse than an empty one.
 | **Three** totals, each labelled with how many tables it covers | 30,885 over the 17 extracted tables — the figure Gate 1 reported — plus 342 from the complex columns, giving 31,227 staged over 20 tables |
 | The extracted-table subtotal equals `summary.total_rows` | Ties Gate 2 back to a figure the extraction recorded **independently** and Gate 1 has already accepted. A total checked only against its own sum proves almost nothing |
 | Every NULL and every empty string, counted across all 204 source columns | See below |
-| All 20 tables carry `src_file` and `src_row_num` | Every target row must be traceable to a source line |
+| All 20 tables carry `src_file`, `src_row_num`, `src_record_key` and `src_extraction_sha256` | Every target row is traceable, survives reordering, and names its source extraction |
 
 **The three totals are a correction made during the task.** The first version
 reported one figure — 31,227 — and compared it against its own sum of the rows
@@ -239,9 +260,10 @@ it is exactly why it had to be insisted on: nothing about a load that lost
 them would have looked wrong. No row count moves. No error is raised. The two
 cells simply become the same as the other 316.
 
-**The loader keeps them by never decoding them.** It finds record boundaries
-and passes each record's **original text** through untouched, prepending only
-`src_file` and `src_row_num`. Decoding the CSV into values and re-encoding it
+**The loader keeps them by never replacing the original record with a decoded
+and re-encoded copy.** It reads field values to validate the header and compute
+the durable hash, but passes each record's **original CSV text** through
+untouched after the four provenance fields. Re-encoding the source fields
 would have been the obvious way to write that script, and would have collapsed
 both cells silently.
 
@@ -1347,6 +1369,42 @@ inference.
 
 Write the workbooks with ExcelJS and `rightToLeft` set on every sheet, the same
 as the reporting engine at task 6.1.
+
+#### Durable workbook identity — corrected 24 August 2026
+
+The visible filename and CSV row number are a trace for a person; they are not
+the key used to return an answer. Every new workbook has a very-hidden
+`__identity` sheet containing the source extraction SHA-256 and the complete
+identity of every expected answer. For a finding that includes the durable
+complete-row key, source table, original trace, column and original value. For
+a value question it includes the exact topic and source value. The ordered
+manifest has its own SHA-256 so deleting or changing one hidden row is also a
+hard failure.
+
+The importer has an independent list of the six required answer sheets. It
+therefore refuses a sheet deleted together with its hidden identities, not
+just a visible/hidden count mismatch. It also refuses any missing visible row,
+blank expected answer, unexpected sheet, wrong extraction fingerprint, changed
+source value or incomplete identity. Only after the whole workbook and the
+whole current review queue agree does it write, in one serializable database
+transaction. A failure on the last answer rolls back the first 743.
+
+The returned workbook dated 23 August predates this contract and is accepted
+only when its complete file SHA-256 is the one recorded in code. Its attendee
+display values were deliberately decomposed after review, so the displayed
+text cannot safely be used as a key. The old importer used database ids for
+value questions and source table/row/column for findings. Migration 0031 adds
+an immutable `legacy_workbook_id` bridge; the one-time attachment recorded it
+only after all 744 stored answer payloads and all finding source descriptions
+matched that exact workbook. `npm run db:check` now guards the two columns,
+positive checks, unique indexes, protection triggers, 668 + 76 mapping counts,
+the exact mapping digest and the original answer digest.
+
+`npm run test:review-import` includes deliberately broken workbooks and a
+throwaway PostgreSQL database. It proves row reordering does not move an
+answer, missing sheets and answers cannot pass, wrong identities are refused,
+NULL remains distinct from the empty string, and a forced late database error
+leaves zero partial answers.
 
 #### What was built — `npm run review:workbook`
 

@@ -31,9 +31,9 @@ BEGIN;
 -- on a source column, this proof would inherit it and fail.
 CREATE TEMP TABLE proof (LIKE staging."lawyers" INCLUDING ALL);
 
-\copy proof (src_file, src_row_num, "اسم المحامي", "LawyerID", "LawyerName", "Title", "AttTrack") FROM STDIN WITH (FORMAT csv, HEADER false)
-"lawyers.csv",1,,"","plain value","إيهاب حمدي","a ""quoted"" word"
-"lawyers.csv",2,"","he said, ""hello""","line one
+\copy proof (src_file, src_row_num, src_record_key, src_extraction_sha256, "اسم المحامي", "LawyerID", "LawyerName", "Title", "AttTrack") FROM STDIN WITH (FORMAT csv, HEADER false)
+"lawyers.csv",1,"595b3f47de8165c21f5eec9b4d2522197f991eb960453f44d7ba74802e8717ec:000001","AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",,"","plain value","إيهاب حمدي","a ""quoted"" word"
+"lawyers.csv",2,"88ede5a147be6d9aea179fa6cfdc8438963791f274c349877e9144df6cf68ae6:000001","AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","","he said, ""hello""","line one
 line two",,"trailing spaces   "
 \.
 
@@ -97,12 +97,23 @@ BEGIN
     SELECT count(*) INTO n FROM proof;
     IF n <> 2 THEN RAISE EXCEPTION 'expected 2 rows, got %', n; END IF;
 
+    SELECT count(*) INTO n FROM proof
+     WHERE src_record_key = _migration.source_record_hash(
+             'lawyers',
+             ARRAY["اسم المحامي", "LawyerID", "LawyerName", "Title", "AttTrack"]::text[]
+           ) || ':000001';
+    IF n <> 2 THEN
+        RAISE EXCEPTION 'TypeScript fixture keys and PostgreSQL source_record_hash disagree on % row(s)', 2 - n;
+    END IF;
+
     RAISE NOTICE 'PROVED: bare empty -> NULL, quoted empty -> empty string, and they stay apart';
     RAISE NOTICE 'PROVED: Arabic, embedded comma, embedded newline, doubled quote, trailing spaces all intact';
+    RAISE NOTICE 'PROVED: TypeScript and PostgreSQL compute the same complete-row identity';
 END
 $PROOF$;
 
 ROLLBACK;
 
--- Nothing was written. Confirm the staging tables are still empty.
-SELECT count(*) AS lawyers_rows FROM staging."lawyers";
+-- Nothing was written to any project table. Show the live row count without
+-- claiming the Stage 2 staging table is empty.
+SELECT count(*) AS unchanged_live_lawyers_rows FROM staging."lawyers";

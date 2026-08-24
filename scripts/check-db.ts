@@ -34,6 +34,14 @@ function one<T>(rows: T[], what: string): T {
   return row;
 }
 
+function sqlIdentifier(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function sqlLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
 async function main() {
   // 1. Can we connect at all?
   const { version } = one(
@@ -223,7 +231,7 @@ async function main() {
     branchesPresent === 15 && branchTotal === 15 && notBranches === 0 && freeZone === 1
       ? 'all 15 present by name'
       : `${branchesPresent}/15 approved present, ${branchTotal} rows in total, ` +
-        `${notBranches} non-branches, free zone ${freeZone === 1 ? 'kept' : 'MISSING'}`,
+          `${notBranches} non-branches, free zone ${freeZone === 1 ? 'kept' : 'MISSING'}`,
     branchesPresent === 15 && branchTotal === 15 && notBranches === 0 && freeZone === 1,
   );
 
@@ -407,11 +415,11 @@ async function main() {
             ? `, ${added.aliases + added.crosswalk} new since`
             : '')
       : `${drift.length} CHANGED — ` +
-        drift
-          .slice(0, 3)
-          .map((d) => `${d.subject}: ${d.actual}`)
-          .join('; ') +
-        (drift.length > 3 ? ` (+${drift.length - 3} more)` : ''),
+          drift
+            .slice(0, 3)
+            .map((d) => `${d.subject}: ${d.actual}`)
+            .join('; ') +
+          (drift.length > 3 ? ` (+${drift.length - 3} more)` : ''),
     drift.length === 0,
   );
 
@@ -541,7 +549,7 @@ async function main() {
     primaryCounts.length === 0 && notOwnName.length === 0
       ? 'all 135 correct'
       : `${primaryCounts.length} with the wrong number, ` +
-        `${notOwnName.length} not the person's own name`,
+          `${notOwnName.length} not the person's own name`,
     primaryCounts.length === 0 && notOwnName.length === 0,
   );
 
@@ -791,7 +799,7 @@ async function main() {
     caseIsText && logoBinary.length === 0
       ? 'text, no binary'
       : `${caseIsText ? 'text' : `case_number_ar is ${caseNumber[0]?.data_type ?? 'absent'}`}` +
-        `${logoBinary.length > 0 ? `, client_logos holds ${logoBinary.map((r) => r.column_name).join(', ')}` : ''}`,
+          `${logoBinary.length > 0 ? `, client_logos holds ${logoBinary.map((r) => r.column_name).join(', ')}` : ''}`,
     caseIsText && logoBinary.length === 0,
   );
 
@@ -897,7 +905,9 @@ async function main() {
   //     and wrong — in a report a partner sends to a client. Gate 4
   //     reconciles totals against Access, and that only means something if
   //     both sides add up exactly.
-  const inexactMoney = await db.$queryRaw<{ table_name: string; column_name: string; data_type: string }[]>`
+  const inexactMoney = await db.$queryRaw<
+    { table_name: string; column_name: string; data_type: string }[]
+  >`
     SELECT table_name, column_name, data_type FROM information_schema.columns
      WHERE table_schema = 'public' AND data_type <> 'numeric'
        AND (table_name, column_name) IN (
@@ -1042,9 +1052,7 @@ async function main() {
   record(
     'Arabic search folds, and does not over-fold',
     '10 of 10',
-    failedFolds.length === 0
-      ? '10 of 10'
-      : `FAILED: ${failedFolds.map((f) => f.label).join(', ')}`,
+    failedFolds.length === 0 ? '10 of 10' : `FAILED: ${failedFolds.map((f) => f.label).join(', ')}`,
     failedFolds.length === 0,
   );
 
@@ -1085,8 +1093,8 @@ async function main() {
   //     above would only notice once a row changed.
   const triggerRows = await db.$queryRaw<
     { name: string; tbl: string; enabled: string; def: string }[]
-  //     tgenabled is PostgreSQL's internal "char" type, which the driver
-  //     cannot deserialize; cast it to text at the source.
+    //     tgenabled is PostgreSQL's internal "char" type, which the driver
+    //     cannot deserialize; cast it to text at the source.
   >`SELECT t.tgname AS name, c.relname AS tbl, t.tgenabled::text AS enabled,
            pg_get_triggerdef(t.oid) AS def
       FROM pg_trigger t
@@ -1100,7 +1108,12 @@ async function main() {
     ['matters_case_number_ar_normalise', 'matters', 'case_number_ar', 'case_number_ar_normalised'],
     ['matters_subject_normalise', 'matters', 'subject', 'subject_normalised'],
     ['people_name_ar_normalise', 'people', 'name_ar', 'name_ar_normalised'],
-    ['person_name_alias_alias_ar_normalise', 'person_name_alias', 'alias_ar', 'alias_ar_normalised'],
+    [
+      'person_name_alias_alias_ar_normalise',
+      'person_name_alias',
+      'alias_ar',
+      'alias_ar_normalised',
+    ],
     ['contacts_contact_name_normalise', 'contacts', 'contact_name', 'contact_name_normalised'],
   ];
   const searchProblems: string[] = [];
@@ -1185,11 +1198,15 @@ async function main() {
           WHERE table_schema = 'staging')                                 AS columns,
         (SELECT count(*) FROM information_schema.columns
           WHERE table_schema = 'staging'
-            AND column_name NOT IN ('src_file', 'src_row_num')
+            AND column_name NOT IN (
+              'src_file', 'src_row_num', 'src_record_key', 'src_extraction_sha256'
+            )
             AND data_type <> 'text')                                      AS not_text,
         (SELECT count(*) FROM information_schema.columns
           WHERE table_schema = 'staging'
-            AND column_name NOT IN ('src_file', 'src_row_num')
+            AND column_name NOT IN (
+              'src_file', 'src_row_num', 'src_record_key', 'src_extraction_sha256'
+            )
             AND is_nullable <> 'YES')                                     AS not_nullable,
         (SELECT count(*) FROM information_schema.columns
           WHERE table_schema = 'staging'
@@ -1205,9 +1222,9 @@ async function main() {
   );
   record(
     'Staging columns',
-    '244 (204 from Access + 20 x 2 bookkeeping)',
+    '284 (204 from Access + 20 x 4 provenance and identity)',
     String(staging.columns),
-    staging.columns === 244n,
+    staging.columns === 284n,
   );
   //     Every source column text, nullable, undefaulted. Three separate ways
   //     for a row to be refused at the door, asserted separately so the
@@ -1258,6 +1275,96 @@ async function main() {
     (byType.get('p') ?? 0n) === 20n,
   );
 
+  const identityIndex = one(
+    await db.$queryRaw<{ indexes: bigint; metadata_columns: bigint }[]>`
+      SELECT
+        (SELECT count(*)
+           FROM pg_index i
+           JOIN pg_class t ON t.oid = i.indrelid
+           JOIN pg_namespace ns ON ns.oid = t.relnamespace
+          WHERE ns.nspname = 'staging'
+            AND i.indisunique AND i.indisvalid AND i.indisready
+            AND i.indnkeyatts = 1
+            AND (SELECT a.attname FROM pg_attribute a
+                  WHERE a.attrelid = t.oid AND a.attnum = i.indkey[0]) = 'src_record_key') AS indexes,
+        (SELECT count(*) FROM information_schema.columns
+          WHERE table_schema = 'staging'
+            AND column_name IN ('src_record_key', 'src_extraction_sha256')
+            AND data_type = 'text' AND is_nullable = 'NO'
+            AND column_default IS NULL) AS metadata_columns`,
+    'staging identity structure',
+  );
+
+  const identityTables = await db.$queryRaw<{ table_name: string; columns: string[] }[]>`
+    SELECT table_name::text AS table_name,
+           array_agg(column_name::text ORDER BY ordinal_position) AS columns
+      FROM information_schema.columns
+     WHERE table_schema = 'staging'
+       AND column_name NOT IN (
+         'src_file', 'src_row_num', 'src_record_key', 'src_extraction_sha256'
+       )
+     GROUP BY table_name
+     ORDER BY table_name`;
+  const identityProblems = (
+    await Promise.all(
+      identityTables.map(async (table): Promise<string | null> => {
+        const sourceColumns = table.columns
+          .map((column) => `s.${sqlIdentifier(column)}`)
+          .join(', ');
+        const result = one(
+          await db.$queryRawUnsafe<{ wrong: bigint }[]>(`
+            WITH content AS (
+              SELECT src_file, src_row_num,
+                     _migration.source_record_hash(
+                       ${sqlLiteral(table.table_name)}, ARRAY[${sourceColumns}]::text[]
+                     ) AS content_hash
+                FROM staging.${sqlIdentifier(table.table_name)} s
+            ), ranked AS (
+              SELECT src_file, src_row_num, content_hash,
+                     row_number() OVER (
+                       PARTITION BY content_hash ORDER BY src_file, src_row_num
+                     ) AS occurrence
+                FROM content
+            )
+            SELECT count(*) FILTER (
+                     WHERE s.src_record_key IS DISTINCT FROM
+                           ranked.content_hash || ':' || lpad(ranked.occurrence::text, 6, '0')
+                        OR s.src_extraction_sha256 !~ '^[0-9A-F]{64}$'
+                   ) AS wrong
+              FROM staging.${sqlIdentifier(table.table_name)} s
+              JOIN ranked USING (src_file, src_row_num)`),
+          `staging identity ${table.table_name}`,
+        );
+        return result.wrong === 0n ? null : `${table.table_name}: ${result.wrong} wrong`;
+      }),
+    )
+  ).filter((problem): problem is string => problem !== null);
+  const stagingFingerprint = one(
+    await db.$queryRaw<{ fingerprint: string }[]>`
+      SELECT _migration.current_staging_fingerprint() AS fingerprint`,
+    'staging fingerprint',
+  ).fingerprint;
+  if (!/^[0-9A-F]{64}$/.test(stagingFingerprint)) {
+    identityProblems.push('the extraction fingerprint is malformed');
+  }
+  if (identityIndex.indexes !== 20n) {
+    identityProblems.push(`${identityIndex.indexes} of 20 unique identity indexes`);
+  }
+  if (identityIndex.metadata_columns !== 40n) {
+    identityProblems.push(`${identityIndex.metadata_columns} of 40 protected metadata columns`);
+  }
+  if (identityTables.length !== 20) {
+    identityProblems.push(`${identityTables.length} of 20 staging tables checked`);
+  }
+  record(
+    'Staging durable source identity',
+    'all 20 tables: complete-row hash, unique key, one source fingerprint',
+    identityProblems.length === 0
+      ? `20 tables, fingerprint ${stagingFingerprint}`
+      : identityProblems.join('; '),
+    identityProblems.length === 0,
+  );
+
   // ---- quarantine, task 2.4 ------------------------------------------------
   //
   //  Rule 16 again: the migration asserted the shape once. These re-prove the
@@ -1270,6 +1377,9 @@ async function main() {
         blank_detail: bigint;
         both_states: bigint;
         truncate_guard: bigint;
+        identity_columns: bigint;
+        malformed_identity: bigint;
+        wrong_fingerprint: bigint;
       }[]
     >`
       SELECT
@@ -1281,11 +1391,32 @@ async function main() {
         (SELECT count(*) FROM quarantine.finding WHERE btrim(detail) = '')       AS blank_detail,
         (SELECT count(*) FROM quarantine.finding f
           WHERE EXISTS (SELECT 1 FROM quarantine.exclusion e
-                         WHERE e.src_file = f.src_file
-                           AND e.src_row_num = f.src_row_num))                   AS both_states,
+                         WHERE e.src_table = f.src_table
+                           AND e.src_record_key = f.src_record_key))             AS both_states,
         (SELECT count(*) FROM pg_trigger
           WHERE tgrelid = 'quarantine.finding'::regclass
-            AND tgname = 'finding_truncate_guard')                               AS truncate_guard`,
+            AND tgname = 'finding_truncate_guard')                              AS truncate_guard,
+        (SELECT count(*) FROM information_schema.columns
+          WHERE table_schema = 'quarantine'
+            AND (
+              (table_name IN ('finding', 'exclusion')
+                AND column_name IN ('src_record_key', 'extraction_sha256'))
+              OR (table_name = 'review_value' AND column_name = 'extraction_sha256')
+            )
+            AND data_type = 'text' AND is_nullable = 'NO')                      AS identity_columns,
+        ((SELECT count(*) FROM quarantine.finding
+           WHERE src_record_key !~ '^[0-9a-f]{64}:[0-9]{6}$')
+         +
+         (SELECT count(*) FROM quarantine.exclusion
+           WHERE src_record_key !~ '^[0-9a-f]{64}:[0-9]{6}$'))                  AS malformed_identity,
+        ((SELECT count(*) FROM quarantine.finding
+           WHERE extraction_sha256 <> _migration.current_staging_fingerprint())
+         +
+         (SELECT count(*) FROM quarantine.exclusion
+           WHERE extraction_sha256 <> _migration.current_staging_fingerprint())
+         +
+         (SELECT count(*) FROM quarantine.review_value
+           WHERE extraction_sha256 <> _migration.current_staging_fingerprint())) AS wrong_fingerprint`,
     'quarantine schema',
   );
 
@@ -1325,6 +1456,304 @@ async function main() {
     'the truncate guard is installed',
     quarantine.truncate_guard === 1n ? 'installed' : 'MISSING',
     quarantine.truncate_guard === 1n,
+  );
+
+  const findingIdentity = one(
+    await db.$queryRaw<{ definition: string | null }[]>`
+      SELECT pg_get_constraintdef(oid) AS definition
+        FROM pg_constraint
+       WHERE conrelid = 'quarantine.finding'::regclass
+         AND conname = 'finding_identity'`,
+    'finding durable identity constraint',
+  ).definition;
+  const identityTriggers = await db.$queryRaw<
+    {
+      name: string;
+      enabled: string;
+      definition: string;
+    }[]
+  >`
+    SELECT tgname AS name, tgenabled::text AS enabled,
+           pg_get_triggerdef(oid) AS definition
+      FROM pg_trigger
+     WHERE NOT tgisinternal
+       AND tgname IN (
+         'finding_source_identity',
+         'exclusion_source_identity',
+         'review_value_fingerprint'
+       )
+     ORDER BY tgname`;
+  const expectedTriggerParts = new Map([
+    [
+      'finding_source_identity',
+      [
+        'BEFORE INSERT OR UPDATE ON quarantine.finding',
+        'quarantine.sync_finding_source_identity()',
+      ],
+    ],
+    [
+      'exclusion_source_identity',
+      [
+        'BEFORE INSERT OR UPDATE ON quarantine.exclusion',
+        'quarantine.sync_exclusion_source_identity()',
+      ],
+    ],
+    [
+      'review_value_fingerprint',
+      [
+        'BEFORE INSERT OR UPDATE ON quarantine.review_value',
+        'quarantine.sync_review_value_fingerprint()',
+      ],
+    ],
+  ]);
+  const triggerProblems: string[] = [];
+  for (const [name, parts] of expectedTriggerParts) {
+    const trigger = identityTriggers.find((candidate) => candidate.name === name);
+    if (trigger === undefined) triggerProblems.push(`${name} is missing`);
+    else if (trigger.enabled !== 'O' || parts.some((part) => !trigger.definition.includes(part))) {
+      triggerProblems.push(`${name} is disabled or has the wrong event, table or function`);
+    }
+  }
+  if (identityTriggers.length !== 3)
+    triggerProblems.push(`${identityTriggers.length} identity triggers found`);
+
+  const quarantineSources = await db.$queryRaw<{ src_table: string }[]>`
+    SELECT DISTINCT src_table FROM quarantine.finding
+    UNION
+    SELECT DISTINCT src_table FROM quarantine.exclusion
+    ORDER BY src_table`;
+  let orphanedIdentities = 0n;
+  for (const source of quarantineSources) {
+    const stagingTable = source.src_table.replace('.', '__');
+    const result = one(
+      await db.$queryRawUnsafe<{ n: bigint }[]>(`
+        SELECT
+          (SELECT count(*) FROM quarantine.finding f
+            WHERE f.src_table = ${sqlLiteral(source.src_table)}
+              AND NOT EXISTS (
+                SELECT 1 FROM staging.${sqlIdentifier(stagingTable)} s
+                 WHERE s.src_record_key = f.src_record_key
+              ))
+          +
+          (SELECT count(*) FROM quarantine.exclusion e
+            WHERE e.src_table = ${sqlLiteral(source.src_table)}
+              AND NOT EXISTS (
+                SELECT 1 FROM staging.${sqlIdentifier(stagingTable)} s
+                 WHERE s.src_record_key = e.src_record_key
+              )) AS n`),
+      `quarantine durable source ${source.src_table}`,
+    );
+    orphanedIdentities += result.n;
+  }
+  if (
+    findingIdentity !== 'UNIQUE NULLS NOT DISTINCT (topic, src_table, src_record_key, column_name)'
+  ) {
+    triggerProblems.push(`finding_identity is ${findingIdentity ?? 'missing'}`);
+  }
+  if (quarantine.identity_columns !== 5n) {
+    triggerProblems.push(`${quarantine.identity_columns} of 5 non-null identity columns`);
+  }
+  if (quarantine.malformed_identity !== 0n) {
+    triggerProblems.push(`${quarantine.malformed_identity} malformed durable identities`);
+  }
+  if (quarantine.wrong_fingerprint !== 0n) {
+    triggerProblems.push(
+      `${quarantine.wrong_fingerprint} rows carry another extraction fingerprint`,
+    );
+  }
+  if (orphanedIdentities !== 0n) {
+    triggerProblems.push(`${orphanedIdentities} quarantine rows name no staged identity`);
+  }
+  record(
+    'Quarantine answers stay on their source records',
+    'durable constraint, 3 exact triggers, 0 orphaned identities',
+    triggerProblems.length === 0
+      ? 'durable constraint, 3 exact triggers, 0 orphaned identities'
+      : triggerProblems.join('; '),
+    triggerProblems.length === 0,
+  );
+
+  const legacyIdentity = one(
+    await db.$queryRaw<
+      {
+        columns: bigint;
+        value_mappings: bigint;
+        finding_mappings: bigint;
+        unanswered_mappings: bigint;
+        digest: string;
+      }[]
+    >`
+      SELECT
+        (SELECT count(*) FROM information_schema.columns
+          WHERE table_schema = 'quarantine'
+            AND table_name IN ('review_value', 'finding')
+            AND column_name = 'legacy_workbook_id'
+            AND data_type = 'bigint' AND is_nullable = 'YES'
+            AND column_default IS NULL) AS columns,
+        (SELECT count(*) FROM quarantine.review_value
+          WHERE legacy_workbook_id IS NOT NULL) AS value_mappings,
+        (SELECT count(*) FROM quarantine.finding
+          WHERE legacy_workbook_id IS NOT NULL) AS finding_mappings,
+        ((SELECT count(*) FROM quarantine.review_value
+           WHERE legacy_workbook_id IS NOT NULL AND answered_at IS NULL)
+         +
+         (SELECT count(*) FROM quarantine.finding
+           WHERE legacy_workbook_id IS NOT NULL AND answered_at IS NULL)) AS unanswered_mappings,
+        (SELECT encode(sha256(convert_to(
+           string_agg(payload, E'\n' ORDER BY kind, target_id), 'UTF8'
+         )), 'hex')
+           FROM (
+             SELECT 'V' AS kind, id AS target_id,
+                    jsonb_build_array(id, legacy_workbook_id)::text AS payload
+               FROM quarantine.review_value WHERE legacy_workbook_id IS NOT NULL
+             UNION ALL
+             SELECT 'F', id, jsonb_build_array(id, legacy_workbook_id)::text
+               FROM quarantine.finding WHERE legacy_workbook_id IS NOT NULL
+           ) mapped) AS digest`,
+    'legacy workbook identity',
+  );
+  const legacyConstraints = await db.$queryRaw<{ name: string; definition: string }[]>`
+    SELECT conname AS name, pg_get_constraintdef(oid) AS definition
+      FROM pg_constraint
+     WHERE conrelid IN ('quarantine.review_value'::regclass, 'quarantine.finding'::regclass)
+       AND conname IN (
+         'review_value_legacy_workbook_id_positive',
+         'finding_legacy_workbook_id_positive'
+       )
+     ORDER BY conname`;
+  const legacyIndexes = await db.$queryRaw<{ name: string; definition: string }[]>`
+    SELECT indexname AS name, indexdef AS definition
+      FROM pg_indexes
+     WHERE schemaname = 'quarantine'
+       AND indexname IN ('review_value_legacy_workbook_id', 'finding_legacy_workbook_id')
+     ORDER BY indexname`;
+  const legacyTriggers = await db.$queryRaw<
+    {
+      name: string;
+      enabled: string;
+      definition: string;
+    }[]
+  >`
+    SELECT tgname AS name, tgenabled::text AS enabled,
+           pg_get_triggerdef(oid) AS definition
+      FROM pg_trigger
+     WHERE NOT tgisinternal
+       AND tgname IN (
+         'review_value_legacy_workbook_identity',
+         'finding_legacy_workbook_identity'
+       )
+     ORDER BY tgname`;
+  const legacyFunction = one(
+    await db.$queryRaw<{ definition: string }[]>`
+      SELECT pg_get_functiondef('quarantine.protect_legacy_workbook_identity()'::regprocedure)
+             AS definition`,
+    'legacy workbook protection function',
+  ).definition;
+  const legacyProblems: string[] = [];
+  if (legacyIdentity.columns !== 2n) {
+    legacyProblems.push(`${legacyIdentity.columns} of 2 nullable bigint columns`);
+  }
+  if (
+    legacyConstraints.length !== 2 ||
+    legacyConstraints.some(
+      (row) => !row.definition.includes('legacy_workbook_id') || !row.definition.includes('> 0'),
+    )
+  ) {
+    legacyProblems.push('positive-id constraints are missing or wrong');
+  }
+  if (
+    legacyIndexes.length !== 2 ||
+    legacyIndexes.some(
+      (row) =>
+        !row.definition.includes('CREATE UNIQUE INDEX') ||
+        !row.definition.includes('(legacy_workbook_id)') ||
+        !row.definition.includes('WHERE (legacy_workbook_id IS NOT NULL)'),
+    )
+  ) {
+    legacyProblems.push('partial unique indexes are missing or wrong');
+  }
+  if (
+    legacyTriggers.length !== 2 ||
+    legacyTriggers.some(
+      (row) =>
+        row.enabled !== 'O' ||
+        !row.definition.includes('BEFORE UPDATE') ||
+        !row.definition.includes('quarantine.protect_legacy_workbook_identity()'),
+    )
+  ) {
+    legacyProblems.push('identity protection triggers are missing, disabled or wrong');
+  }
+  if (
+    !legacyFunction.includes('OLD.legacy_workbook_id IS NOT NULL') ||
+    !legacyFunction.includes('NEW.legacy_workbook_id IS DISTINCT FROM OLD.legacy_workbook_id') ||
+    !legacyFunction.includes('NEW.answered_at IS NULL')
+  ) {
+    legacyProblems.push('identity protection function no longer locks recorded mappings');
+  }
+  if (legacyIdentity.value_mappings !== 668n || legacyIdentity.finding_mappings !== 76n) {
+    legacyProblems.push(
+      `${legacyIdentity.value_mappings} + ${legacyIdentity.finding_mappings} of 668 + 76 mappings`,
+    );
+  }
+  if (legacyIdentity.unanswered_mappings !== 0n) {
+    legacyProblems.push(`${legacyIdentity.unanswered_mappings} unanswered rows carry a legacy id`);
+  }
+  const expectedLegacyIdentityDigest =
+    'bebf8f20140a63d272f80d454d8363d68e1dc7bf12d82b43a45096281b059f51';
+  if (legacyIdentity.digest !== expectedLegacyIdentityDigest) {
+    legacyProblems.push(`mapping digest is ${legacyIdentity.digest}`);
+  }
+  record(
+    'Historic workbook identities cannot drift',
+    '744 exact, immutable and unique answer associations',
+    legacyProblems.length === 0
+      ? `668 + 76, digest ${legacyIdentity.digest}`
+      : legacyProblems.join('; '),
+    legacyProblems.length === 0,
+  );
+
+  const answerBaseline = one(
+    await db.$queryRaw<
+      {
+        value_answers: bigint;
+        finding_answers: bigint;
+        digest: string;
+      }[]
+    >`
+      SELECT
+        (SELECT count(*) FROM quarantine.review_value WHERE answered_at IS NOT NULL) AS value_answers,
+        (SELECT count(*) FROM quarantine.finding WHERE answered_at IS NOT NULL) AS finding_answers,
+        encode(sha256(convert_to(
+          coalesce(string_agg(payload, E'\n' ORDER BY kind, id), ''), 'UTF8'
+        )), 'hex') AS digest
+      FROM (
+        SELECT 'V' AS kind, id,
+               jsonb_build_array(
+                 id, topic, value, firm_answer, firm_person, firm_note
+               )::text AS payload
+          FROM quarantine.review_value
+         WHERE answered_at IS NOT NULL
+        UNION ALL
+        SELECT 'F' AS kind, id,
+               jsonb_build_array(
+                 id, topic, src_table, src_file, src_row_num, column_name,
+                 original_value, firm_answer, firm_note
+               )::text AS payload
+          FROM quarantine.finding
+         WHERE answered_at IS NOT NULL
+      ) answered`,
+    'review answer baseline',
+  );
+  const expectedAnswerDigest = 'cd19213bcad7ad24912c6067384f25aade84f5a1d479be37f0608755d9f75a35';
+  const answerBaselineOk =
+    answerBaseline.value_answers === 668n &&
+    answerBaseline.finding_answers === 76n &&
+    answerBaseline.digest === expectedAnswerDigest;
+  record(
+    "The firm's original 744 answers remain attached to the same values",
+    '668 value answers + 76 finding answers, exact reviewed payload',
+    `${answerBaseline.value_answers} + ${answerBaseline.finding_answers}, digest ${answerBaseline.digest}`,
+    answerBaselineOk,
   );
 
   // ---- clients and contacts, task 2.5 --------------------------------------
@@ -1373,8 +1802,7 @@ async function main() {
     'Every staged contact was transformed',
     `${transformed.staged_contacts} (staging)`,
     String(transformed.contacts),
-    transformed.contacts === transformed.staged_contacts &&
-      transformed.orphan_contacts === 0n,
+    transformed.contacts === transformed.staged_contacts && transformed.orphan_contacts === 0n,
   );
   //     The whole NULL-versus-'' argument, at its destination. Two clients had
   //     something typed into Cash/probono and cleared it. A transform that

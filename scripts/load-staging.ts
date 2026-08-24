@@ -30,10 +30,10 @@
  * HOW NULL AND '' STAY APART
  *
  * By never being decoded. The scanner finds record boundaries and hands the
- * record's ORIGINAL TEXT through untouched; this script only prepends
- * `src_file` and `src_row_num` in front of it. A bare empty field stays bare
- * and a quoted empty field stays quoted, so PostgreSQL's CSV COPY makes the
- * same distinction it always would.
+ * record's ORIGINAL TEXT through untouched; this script prepends the four
+ * provenance fields without re-encoding the source fields. A bare empty field
+ * stays bare and a quoted empty field stays quoted, so PostgreSQL's CSV COPY
+ * makes the same distinction it always would.
  *
  * Across the whole extraction that difference is 193,445 NULLs against 2 empty
  * strings. Two cells, both in العملاء."Cash/probono". Decoding and re-encoding
@@ -47,6 +47,7 @@ import { mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { db } from '../src/lib/db';
+import { sourceRecordKeys } from './lib/source-identity';
 
 const META = '_migration/meta';
 const CONTAINER_DIR = '/tmp/staging-load';
@@ -233,6 +234,9 @@ async function main() {
         '  Loading it would carry a known fault forward.',
     );
   }
+  if (!/^[0-9A-F]{64}$/.test(summary.source_sha256)) {
+    fail('the extraction summary has no valid uppercase SHA-256 source fingerprint');
+  }
 
   /* ---- 2. what staging expects -------------------------------------- */
 
@@ -240,7 +244,9 @@ async function main() {
     SELECT table_name, column_name
       FROM information_schema.columns
      WHERE table_schema = 'staging'
-       AND column_name NOT IN ('src_file', 'src_row_num')
+       AND column_name NOT IN (
+           'src_file', 'src_row_num', 'src_record_key', 'src_extraction_sha256'
+       )
      ORDER BY table_name, ordinal_position`;
 
   if (stagingColumns.length === 0) {
@@ -295,7 +301,8 @@ async function main() {
     /* `العملاء.logo` is staged as `العملاء__logo`, as the schema generator
      * named it. */
     const dot = source.lastIndexOf('.');
-    const staging = kind === 'complex' ? `${source.slice(0, dot)}__${source.slice(dot + 1)}` : source;
+    const staging =
+      kind === 'complex' ? `${source.slice(0, dot)}__${source.slice(dot + 1)}` : source;
 
     const columns = columnsOf.get(staging);
     if (columns === undefined) {
@@ -335,6 +342,7 @@ async function main() {
       );
     }
 
+    const recordKeys = sourceRecordKeys(staging, data);
     let nulls = 0;
     let empties = 0;
     const lines: string[] = [];
@@ -352,9 +360,12 @@ async function main() {
           else nulls += 1;
         }
       }
-      /* The record's ORIGINAL text, with only the two bookkeeping fields in
-       * front of it. Nothing is re-encoded, so nothing is lost re-encoding. */
-      lines.push(`${srcFile},${k + 1},${rec.raw}`);
+      /* The record's ORIGINAL text, with its positional trace, content-derived
+       * identity, and extraction fingerprint in front. The source fields are
+       * still not decoded and re-encoded. */
+      lines.push(
+        `${srcFile},${k + 1},${csvQuote(recordKeys[k]!)},${csvQuote(summary.source_sha256)},${rec.raw}`,
+      );
     });
 
     const workFile = `${String(index).padStart(2, '0')}.csv`;
@@ -394,7 +405,10 @@ async function main() {
         `but the extraction summary says ${Number(summary.total_rows).toLocaleString('en-US')}`,
     );
   }
-  if (expectedComplexRows !== Number(summary.total_attachments) + Number(summary.total_mvf_values)) {
+  if (
+    expectedComplexRows !==
+    Number(summary.total_attachments) + Number(summary.total_mvf_values)
+  ) {
     fail(
       `the complex files hold ${expectedComplexRows.toLocaleString('en-US')} rows but the ` +
         `extraction summary says ${summary.total_attachments} attachments + ` +
@@ -437,7 +451,15 @@ async function main() {
     for (const l of loads) sql.push(`TRUNCATE staging.${ident(l.staging)};`);
   }
   for (const l of loads) {
-    const cols = ['src_file', 'src_row_num', ...l.columns].map(ident).join(', ');
+    const cols = [
+      'src_file',
+      'src_row_num',
+      'src_record_key',
+      'src_extraction_sha256',
+      ...l.columns,
+    ]
+      .map(ident)
+      .join(', ');
     /* A psql meta-command has to be one line. */
     sql.push(
       `\\copy staging.${ident(l.staging)} (${cols}) FROM '${CONTAINER_DIR}/${l.workFile}' WITH (FORMAT csv)`,
@@ -450,6 +472,7 @@ async function main() {
       total: expectedTotal,
       nulls: expectedNulls,
       empties: expectedEmpties,
+      extractionSha256: summary.source_sha256,
     }),
   );
   sql.push('COMMIT;');
@@ -497,9 +520,9 @@ async function main() {
    * so the proofs are counted rather than assumed.
    */
   const proved = (output.match(/PROVED:/g) ?? []).length;
-  if (proved !== 7) {
+  if (proved !== 8) {
     console.error(
-      `\nGATE 2 INCONCLUSIVE: expected 7 PROVED notices, saw ${proved}.\n` +
+      `\nGATE 2 INCONCLUSIVE: expected 8 PROVED notices, saw ${proved}.\n` +
         '  psql exited 0, but the checks did not all run.\n',
     );
     process.exit(1);
@@ -521,10 +544,11 @@ type Gate2Figures = {
   total: number;
   nulls: number;
   empties: number;
+  extractionSha256: string;
 };
 
 function gate2(loads: Load[], figures: Gate2Figures): string {
-  const { tableRows, complexRows, total, nulls, empties } = figures;
+  const { tableRows, complexRows, total, nulls, empties, extractionSha256 } = figures;
   const rows = loads
     .map((l) => `        (${lit(l.staging)}, ${l.expected}, ${lit(l.kind)})`)
     .join(',\n');
@@ -538,6 +562,8 @@ DECLARE
     lo          bigint;
     hi          bigint;
     files       bigint;
+    identities  bigint;
+    fingerprints bigint;
     running     bigint := 0;
     table_rows  bigint := 0;
     cplx_rows   bigint := 0;
@@ -554,9 +580,9 @@ ${rows}
         ) AS t(staging_table, expected, kind)
     LOOP
         EXECUTE format(
-            'SELECT count(*), count(DISTINCT src_row_num), min(src_row_num), max(src_row_num), count(DISTINCT src_file) FROM staging.%I',
+            'SELECT count(*), count(DISTINCT src_row_num), min(src_row_num), max(src_row_num), count(DISTINCT src_file), count(DISTINCT src_record_key), count(DISTINCT src_extraction_sha256) FROM staging.%I',
             r.staging_table)
-           INTO n, distinct_n, lo, hi, files;
+           INTO n, distinct_n, lo, hi, files, identities, fingerprints;
 
         running := running + n;
         IF r.kind = 'table' THEN
@@ -584,6 +610,21 @@ ${rows}
                 problems := problems || format('%s: rows came from %s different files',
                                                r.staging_table, files);
             END IF;
+            IF identities <> n THEN
+                problems := problems || format('%s: %s durable identities for %s rows',
+                                               r.staging_table, identities, n);
+            END IF;
+            IF fingerprints <> 1 THEN
+                problems := problems || format('%s: rows carry %s extraction fingerprints',
+                                               r.staging_table, fingerprints);
+            END IF;
+            EXECUTE format(
+                'SELECT count(*) FROM staging.%I WHERE src_record_key !~ ''^[0-9a-f]{64}:[0-9]{6}$'' OR src_extraction_sha256 <> %L',
+                r.staging_table, ${lit(extractionSha256)}) INTO c;
+            IF c <> 0 THEN
+                problems := problems || format('%s: %s rows carry a malformed identity or the wrong extraction fingerprint',
+                                               r.staging_table, c);
+            END IF;
         END IF;
 
         RAISE NOTICE '  % %  of %', rpad(r.staging_table, 24),
@@ -596,6 +637,7 @@ ${rows}
 
     RAISE NOTICE 'PROVED: every table staged exactly the number of rows the extraction read';
     RAISE NOTICE 'PROVED: src_row_num runs 1..n with no gaps and no repeats, one file per table';
+    RAISE NOTICE 'PROVED: every staged row has one unique content identity and the extraction fingerprint ${extractionSha256}';
 
     --  3. THE TOTALS, as a cross-check and nothing more. A total cannot tell a
     --     missing table from a larger one elsewhere — that is what the
@@ -627,7 +669,9 @@ ${rows}
     FOR r IN
         SELECT table_name, column_name FROM information_schema.columns
          WHERE table_schema = 'staging'
-           AND column_name NOT IN ('src_file', 'src_row_num')
+           AND column_name NOT IN (
+               'src_file', 'src_row_num', 'src_record_key', 'src_extraction_sha256'
+           )
     LOOP
         EXECUTE format('SELECT count(*) FROM staging.%I WHERE %I IS NULL',
                        r.table_name, r.column_name) INTO c;
@@ -649,11 +693,12 @@ ${rows}
 
     --  5. Every staged row can name the file it came from and where in it.
     SELECT count(*) INTO n FROM information_schema.columns
-     WHERE table_schema = 'staging' AND column_name = 'src_file';
-    IF n <> ${loads.length} THEN
-        RAISE EXCEPTION 'GATE 2 FAILED: % tables carry src_file, expected ${loads.length}', n;
+     WHERE table_schema = 'staging'
+       AND column_name IN ('src_file', 'src_row_num', 'src_record_key', 'src_extraction_sha256');
+    IF n <> ${loads.length * 4} THEN
+        RAISE EXCEPTION 'GATE 2 FAILED: % provenance columns, expected ${loads.length * 4}', n;
     END IF;
-    RAISE NOTICE 'PROVED: all % staged tables carry src_file and src_row_num', n;
+    RAISE NOTICE 'PROVED: all ${loads.length} staged tables carry file, row, durable record key and extraction fingerprint';
 END
 $GATE2$;
 `;

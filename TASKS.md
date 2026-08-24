@@ -416,7 +416,7 @@ only ever seen good data is not known to work.
 
       Output is in `_migration/` — 9.8 MB, gitignored, never committed.
 
-- [x] **2.2 Staging schema** — every column `text`, plus `src_row_num`.
+- [x] **2.2 Staging schema** — every source column `text`, plus durable provenance.
       **Done 23 August 2026, migration 0024.**
 
       **20 tables · 204 source columns, all `text`** — 17 extracted plus 3 for
@@ -438,7 +438,12 @@ only ever seen good data is not known to work.
       a bad date into a lost row. The only constraint is the primary key on
       `(src_file, src_row_num)`, which is ours and cannot fail on the firm's
       data — it makes loading the same file twice an error instead of a silent
-      doubling. Five checks in `npm run db:check` re-prove it (rule 16), and
+      doubling. Correction A on 24 August added `src_record_key` (a complete-row
+      hash, with NULL distinct from empty text) and `src_extraction_sha256` to
+      every table. The old filename and row number remain trace information;
+      they are no longer treated as identity. `npm run db:check` recomputes
+      every key and verifies all 20 unique indexes (rule 16). Five original
+      staging-shape checks still re-prove the loading-dock rules, and
       all five were proved to fire against a deliberately wrong table.
 
       **Column names verbatim** — `الموقف الحالي`, `Cash/probono`, `Inv-No`.
@@ -467,17 +472,18 @@ only ever seen good data is not known to work.
       the extracted-table subtotal tied to `summary.total_rows` — a figure the
       extraction recorded independently; **193,445 NULL cells and 2
       empty-string cells** across all 204 source columns; all 20 tables carry
-      `src_file` and `src_row_num`. Seven proofs, counted rather than assumed.
+      `src_file`, `src_row_num`, a durable record key and the source
+      fingerprint. Eight proofs, counted rather than assumed.
 
       **`src_row_num` is the CSV record ordinal**, counted by the loader as it
       streams — never insertion order, per the firm's ruling. Records, not
       lines: a memo field here can contain a newline.
 
       **NULL versus `''` is 193,445 against 2.** Both empty strings are in
-      `العملاء."Cash/probono"`. The loader keeps them by never decoding the
-      records — it passes each record's original text through and prepends only
-      the two bookkeeping fields. Decoding and re-encoding would have lost both
-      cells without moving a single count.
+      `العملاء."Cash/probono"`. The loader reads field values for validation and
+      hashing but passes each record's original CSV text through unchanged after
+      the four provenance fields. Re-encoding the source fields would have lost
+      both cells without moving a single count.
 
       **A real bug the header check caught**, before any row was loaded: the
       loader's scanner appended the CR of every CRLF to the last field of every
@@ -533,8 +539,9 @@ only ever seen good data is not known to work.
       case numbers matching `matterAR`, not `matterID`. A join that fails for
       *every* row is evidence about the join, not the data.
 
-      **The workbook: 7 sheets, RTL, colour-coded by computed confidence,
-      read back and verified after writing** — proved to catch a failure by
+      **The workbook: 7 visible sheets plus one very-hidden identity contract,
+      RTL, colour-coded by computed confidence, read back and verified after
+      writing** — proved to catch a failure by
       writing the sheets left-to-right. `**` appears in 4,132 hearings and is
       asked about **once**, not 4,132 times.
 
@@ -557,6 +564,24 @@ only ever seen good data is not known to work.
 
       ExcelJS with `rightToLeft` on every sheet, as at task 6.1.
       Detail: "Gate 3 ships as XLSX workbooks" in `docs/MIGRATION.md`.
+
+      **Correction A, 24 August 2026 — review answers now have durable source
+      identity.** Every new workbook carries one source-extraction fingerprint
+      and a checksum over the complete, very-hidden identity manifest. A
+      finding is matched by its complete-row source key, never its CSV filename
+      or row position. Every expected sheet, visible row, hidden identity and
+      answer is mandatory; the importer validates the complete file before it
+      writes, then applies all answers in one serializable transaction. A late
+      failure rolls back every earlier answer.
+
+      The exact 23 August workbook predates that contract. Its 744 associations
+      were captured once only after its 668 value answers and 76 finding answers
+      matched the database byte for byte. Those historic workbook ids are now
+      unique and immutable. `npm run db:check` protects their exact association
+      digest as well as the original answer digest. `npm run test:review-import`
+      proves reordered source rows, missing sheets, missing and blank answers,
+      wrong identities, and a forced late database failure are all refused.
+      `db:check` is now **55 checks**.
 
 - [x] **2.5 Transform: people, lookups, clients, contacts**
       **Clients and contacts done 23 August 2026, migration 0027.**

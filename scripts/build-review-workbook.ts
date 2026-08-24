@@ -28,9 +28,9 @@
  * missing hamza already caused twice in this project. It is not a gap to be
  * filled in later by inference.
  *
- * EVERY ROW CARRIES ITS DATABASE ID in the first column. Reading the answers
- * back matches on that id and never on the Arabic text — matching Arabic back
- * is exactly the fragile thing this project keeps getting wrong.
+ * EVERY ROW CARRIES ITS DATABASE ID in the first column, and the very-hidden
+ * contract carries the complete durable identity. Reading answers back never
+ * matches on Arabic text or CSV position — both have already failed here.
  */
 
 import 'dotenv/config';
@@ -38,6 +38,14 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import ExcelJS from 'exceljs';
 import { db } from '../src/lib/db';
+import {
+  CONTRACT_SHEET,
+  contractSha256,
+  parseWorkbookContract,
+  REVIEW_SHEET_SPECS,
+  WORKBOOK_FORMAT,
+  type ContractRow,
+} from './lib/review-workbook-contract';
 
 /*
  * Every visible string, in one place. The workbook is read by the firm in
@@ -100,6 +108,7 @@ type ReviewRow = {
   nearest: unknown;
   confidence: string;
   kind: string | null;
+  extraction_sha256: string;
 };
 
 type FindingRow = {
@@ -107,10 +116,13 @@ type FindingRow = {
   topic: string;
   severity: string;
   src_table: string;
+  src_file: string;
   src_row_num: number;
+  src_record_key: string;
   column_name: string | null;
   original_value: string | null;
   detail: string;
+  extraction_sha256: string;
 };
 
 function nearestText(nearest: unknown): string {
@@ -159,14 +171,16 @@ function styleAnswerCells(row: ExcelJS.Row, from: number, to: number) {
 
 async function main() {
   const reviews = await db.$queryRaw<ReviewRow[]>`
-    SELECT id, topic, value, occurrences, years, matters, clients, nearest, confidence, kind
+    SELECT id, topic, value, occurrences, years, matters, clients, nearest, confidence, kind,
+           extraction_sha256
       FROM quarantine.review_value
      ORDER BY topic,
               array_position(ARRAY['none','low','medium','high','exact'], confidence) DESC,
               occurrences DESC, value`;
 
   const findings = await db.$queryRaw<FindingRow[]>`
-    SELECT id, topic, severity, src_table, src_row_num, column_name, original_value, detail
+    SELECT id, topic, severity, src_table, src_file, src_row_num, src_record_key,
+           column_name, original_value, detail, extraction_sha256
       FROM quarantine.finding
      WHERE severity = 'review'
      ORDER BY topic, src_table, src_row_num`;
@@ -177,6 +191,32 @@ async function main() {
   book.views = [
     { x: 0, y: 0, width: 20000, height: 20000, firstSheet: 0, activeTab: 0, visibility: 'visible' },
   ];
+  const contractRows: ContractRow[] = [];
+  const mappedReviewTopics = new Set(
+    REVIEW_SHEET_SPECS.filter((spec) => spec.kind === 'review_value').flatMap(
+      (spec) => spec.topics,
+    ),
+  );
+  const mappedFindingTopics = new Set(
+    REVIEW_SHEET_SPECS.filter((spec) => spec.kind === 'finding').flatMap((spec) => spec.topics),
+  );
+  const unmappedReviews = reviews.filter((row) => !mappedReviewTopics.has(row.topic));
+  const workbookFindings = findings.filter((row) => mappedFindingTopics.has(row.topic));
+  if (unmappedReviews.length > 0) {
+    throw new Error(
+      `review workbook would omit ${unmappedReviews.length} review value(s) whose topics have no sheet`,
+    );
+  }
+  const fingerprints = new Set([
+    ...reviews.map((r) => r.extraction_sha256),
+    ...workbookFindings.map((f) => f.extraction_sha256),
+  ]);
+  if (fingerprints.size !== 1) {
+    throw new Error(
+      `review rows carry ${fingerprints.size} extraction fingerprints, expected exactly one`,
+    );
+  }
+  const extractionSha256 = [...fingerprints][0]!;
 
   // ---- the cover ---------------------------------------------------------
   const cover = newSheet(book, T.readFirst, [4, 110]);
@@ -184,20 +224,32 @@ async function main() {
   const lines: [string, boolean][] = [
     ['مراجعة بيانات الترحيل', true],
     ['', false],
-    ['هذه الأوراق بها القيم التي لم نستطع ربطها تلقائيًا. لا شيء محذوف — كل قيمة موجودة كما هي في أكسيس.', false],
+    [
+      'هذه الأوراق بها القيم التي لم نستطع ربطها تلقائيًا. لا شيء محذوف — كل قيمة موجودة كما هي في أكسيس.',
+      false,
+    ],
     ['', false],
     ['كيف تُجيب', true],
     ['١ — الأعمدة الخضراء في آخر كل ورقة هي أعمدتك. اكتب فيها فقط.', false],
     [`٢ — في عمود «الإجابة» اكتب واحدة من: ${T.answersAr}`, false],
-    ['٣ — «شخص غير معروف» إجابة صحيحة ونهائية. لا تخمّن. اسم مخمَّن يُلحق عمل شخص بشخص آخر.', false],
-    ['٤ — الألوان: الأخضر تطابق شبه مؤكد، الأصفر محتمل، البرتقالي بعيد، الرمادي لا يوجد ما يقترحه الحاسب.', false],
+    [
+      '٣ — «شخص غير معروف» إجابة صحيحة ونهائية. لا تخمّن. اسم مخمَّن يُلحق عمل شخص بشخص آخر.',
+      false,
+    ],
+    [
+      '٤ — الألوان: الأخضر تطابق شبه مؤكد، الأصفر محتمل، البرتقالي بعيد، الرمادي لا يوجد ما يقترحه الحاسب.',
+      false,
+    ],
     ['٥ — لا تُغيّر عمود # ولا القيمة الأصلية. بهما نُعيد إجاباتك إلى مكانها.', false],
     ['', false],
     ['يُفضَّل الإجابة بحضور زميل قديم بالمكتب — أغلب هذا ذاكرة بشرية لا توجد في الملف.', false],
     ['', false],
     ['HOW TO ANSWER — the last columns of each sheet, shaded green, are yours.', true],
     ['"unknown person" is a correct, permanent answer. Never guess a name.', false],
-    ['Do not change the # column or the original value: the answers are read back by id.', false],
+    [
+      'Do not change the # column or the original value: both are checked against the hidden source identity.',
+      false,
+    ],
   ];
   for (const [text, bold] of lines) {
     const row = cover.addRow(['', text]);
@@ -207,15 +259,9 @@ async function main() {
   }
 
   // ---- value-driven sheets ----------------------------------------------
-  const valueTopics: [string, string][] = [
-    ['attendee_name', T.sheets.attendee_name],
-    ['admin_assignee', T.sheets.admin_assignee],
-    ['open_question', T.sheets.open_question],
-  ];
-
-  for (const [topic, title] of valueTopics) {
-    const rows = reviews.filter((r) => r.topic === topic);
-    if (rows.length === 0) continue;
+  for (const spec of REVIEW_SHEET_SPECS.filter((candidate) => candidate.kind === 'review_value')) {
+    const title = spec.name;
+    const rows = reviews.filter((r) => spec.topics.includes(r.topic));
 
     const sheet = newSheet(book, title, [7, 34, 16, 11, 12, 14, 46, 10, 16, 22, 30]);
     header(
@@ -268,21 +314,27 @@ async function main() {
         errorTitle: 'One of the four',
         error: T.answers.join(' / '),
       };
+      contractRows.push({
+        sheet: title,
+        kind: 'review_value',
+        workbookId: Number(r.id),
+        topic: r.topic,
+        value: r.value,
+        srcTable: null,
+        srcFile: null,
+        srcRowNum: null,
+        srcRecordKey: null,
+        columnName: null,
+        originalValue: null,
+        extractionSha256: r.extraction_sha256,
+      });
     }
   }
 
   // ---- finding-driven sheets --------------------------------------------
-  const findingSheets: [string, string[]][] = [
-    ['fee_letter_matter', ['fee_letter_matter_unmatched', 'fee_letter_matter_ambiguous']],
-    ['unlinked_rows', ['hearing_no_matter', 'matter_no_client', 'poa_no_client', 'admin_task_no_matter']],
-    ['task_actions', ['task_action_orphan']],
-  ];
-
-  for (const [key, topics] of findingSheets) {
-    const rows = findings.filter((f) => topics.includes(f.topic));
-    if (rows.length === 0) continue;
-
-    const title = T.sheets[key as keyof typeof T.sheets];
+  for (const spec of REVIEW_SHEET_SPECS.filter((candidate) => candidate.kind === 'finding')) {
+    const rows = workbookFindings.filter((f) => spec.topics.includes(f.topic));
+    const title = spec.name;
     const sheet = newSheet(book, title, [7, 22, 11, 16, 40, 60, 22, 30]);
     header(
       sheet,
@@ -315,10 +367,70 @@ async function main() {
       row.alignment = { vertical: 'top', wrapText: true };
       row.getCell(5).font = { name: 'Consolas', size: 11 };
       if (f.original_value === null) {
-        row.getCell(5).font = { name: 'Consolas', size: 11, italic: true, color: { argb: 'FF888888' } };
+        row.getCell(5).font = {
+          name: 'Consolas',
+          size: 11,
+          italic: true,
+          color: { argb: 'FF888888' },
+        };
       }
       styleAnswerCells(row, 7, 8);
+      contractRows.push({
+        sheet: title,
+        kind: 'finding',
+        workbookId: Number(f.id),
+        topic: f.topic,
+        value: null,
+        srcTable: f.src_table,
+        srcFile: f.src_file,
+        srcRowNum: f.src_row_num,
+        srcRecordKey: f.src_record_key,
+        columnName: f.column_name,
+        originalValue: f.original_value,
+        extractionSha256: f.extraction_sha256,
+      });
     }
+  }
+
+  // ---- machine-readable identity contract -------------------------------
+  // Very hidden rather than merely hidden: a user cannot accidentally expose
+  // and edit it from Excel's ordinary Unhide dialog. The visible source text
+  // remains a human cross-check; this sheet is the complete machine identity.
+  const contract = newSheet(book, CONTRACT_SHEET, [24, 18, 10, 28, 42, 24, 44, 12, 76, 24, 48, 70]);
+  contract.state = 'veryHidden';
+  contract.addRow(['format', WORKBOOK_FORMAT]);
+  contract.addRow(['extraction_sha256', extractionSha256]);
+  const completeContractSha256 = contractSha256(contractRows);
+  contract.addRow(['contract_sha256', completeContractSha256]);
+  contract.addRow([
+    'sheet',
+    'kind',
+    'id',
+    'topic',
+    'value',
+    'src_table',
+    'src_file',
+    'src_row_num',
+    'src_record_key',
+    'column_name',
+    'original_value',
+    'extraction_sha256',
+  ]);
+  for (const r of contractRows) {
+    contract.addRow([
+      r.sheet,
+      r.kind,
+      r.workbookId,
+      r.topic,
+      JSON.stringify(r.value),
+      JSON.stringify(r.srcTable),
+      JSON.stringify(r.srcFile),
+      r.srcRowNum,
+      JSON.stringify(r.srcRecordKey),
+      JSON.stringify(r.columnName),
+      JSON.stringify(r.originalValue),
+      r.extractionSha256,
+    ]);
   }
 
   // ---- write -------------------------------------------------------------
@@ -363,6 +475,36 @@ async function main() {
      * kind of wrong nobody reports: they just find the workbook awkward. */
     if (sheet.views[0]?.rightToLeft !== true) {
       problems.push(`${sheet.name}: not right-to-left`);
+    }
+  }
+
+  const checkedContract = check.getWorksheet(CONTRACT_SHEET);
+  if (checkedContract === undefined || checkedContract.state !== 'veryHidden') {
+    problems.push(`${CONTRACT_SHEET}: identity contract is missing or not very hidden`);
+  } else {
+    if (checkedContract.getCell('B1').text !== WORKBOOK_FORMAT) {
+      problems.push(`${CONTRACT_SHEET}: workbook format did not survive the write`);
+    }
+    if (checkedContract.getCell('B2').text !== extractionSha256) {
+      problems.push(`${CONTRACT_SHEET}: extraction fingerprint did not survive the write`);
+    }
+    if (checkedContract.getCell('B3').text !== completeContractSha256) {
+      problems.push(`${CONTRACT_SHEET}: complete-manifest checksum did not survive the write`);
+    }
+    if (checkedContract.rowCount - 4 !== contractRows.length) {
+      problems.push(
+        `${CONTRACT_SHEET}: ${checkedContract.rowCount - 4} identities in the file, ${contractRows.length} written`,
+      );
+    }
+    try {
+      const parsedContract = parseWorkbookContract(check);
+      if (parsedContract === null || parsedContract.rows.length !== contractRows.length) {
+        problems.push(`${CONTRACT_SHEET}: complete identity manifest did not parse back`);
+      }
+    } catch (error: unknown) {
+      problems.push(
+        `${CONTRACT_SHEET}: ${error instanceof Error ? error.message : 'identity manifest did not parse back'}`,
+      );
     }
   }
 
