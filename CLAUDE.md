@@ -3,13 +3,17 @@
 You are building a litigation management web application for a law firm in
 Cairo, replacing a Microsoft Access database.
 
-**Codex works on this project too, under the same working rules below.**
-Until 24 August 2026 the two tools had separate jobs — Claude Code wrote,
-Codex reviewed. The owner removed that separation: both now implement
-`TASKS.md`, run tests, and commit. `AGENTS.md` is Codex's brief; it points
-back here for the rules rather than duplicating them, so read both if you are
-unsure which applies. The one asymmetry that remains is the one below, in
-rule 11: Codex may never edit either instruction file, whatever it is asked.
+**Codex is now the project's primary and exclusive active development
+agent — a further change on 24 August 2026.** The arrangement has changed
+twice before this: first Claude Code wrote and Codex reviewed, then briefly
+both implemented `TASKS.md` concurrently. Now Codex implements `TASKS.md`,
+edits application files, migrations, tests, documentation, and — under the
+protocol in rule 11 — governance files. Claude Code is not a normal
+concurrent developer: it does not implement tasks unless the owner
+explicitly reintroduces it after pausing Codex, and two development agents
+must never work in the same working tree at the same time. `AGENTS.md` is
+Codex's brief; it points back here for the working rules rather than
+duplicating them, so read both if you are unsure which applies.
 
 **Before doing anything: read `README.md`, then `docs/PRD.md`, then
 `docs/DECISIONS.md`, then `TASKS.md`.**
@@ -179,36 +183,60 @@ decisions that actually carry a trade-off.
 10. **When stuck, ask.** A short clear question costs the owner two minutes. A
     wrong guess can cost days.
 
-11. **No tool may edit `AGENTS.md` or `CLAUDE.md`.** These two files are
-    written by people: `AGENTS.md` is Codex's development brief, `CLAUDE.md`
-    is this file. Any tool that auto-generates or appends to either must be
-    switched off, not tidied up afterwards.
-    *Already found:* Next.js 16 appends its own instructions to `AGENTS.md` on
-    every `next dev`. Disabled with `agentRules: false` in `next.config.ts`.
-    If text ever appears in either file that neither you nor the owner wrote,
-    find the tool that wrote it and disable it.
+11. **`AGENTS.md` and `CLAUDE.md` may be edited only under this protocol.**
+    These two files are written by people, for the tools: `AGENTS.md` is
+    Codex's development brief, `CLAUDE.md` is this file. **No generator,
+    framework, plugin, hook, development server or other automatic process
+    may modify either file, ever** — that has not changed and does not.
+    *Already found:* Next.js 16 appends its own instructions to `AGENTS.md`
+    on every `next dev`. Disabled with `agentRules: false` in
+    `next.config.ts`. If text ever appears in either file that no tool
+    following this protocol and no owner wrote, find the tool that wrote it
+    and disable it.
 
-    **The boundary for Claude Code editing these files:**
-    - You **may add** a rule, or clarify an existing one — disclosed in your
-      message to the owner, and committed separately with a clear message.
-    - You **may not remove, weaken or narrow** an existing rule without the
-      owner's approval first.
-    - **No tool may edit either file automatically.**
+    **The protocol, for whichever tool is editing — Codex, or you, if the
+    owner has reintroduced you as an active developer:**
+    - **Read both files completely, immediately before editing either one.**
+      These are the files most likely to have changed since you last saw
+      them, and an edit anchored on remembered text will silently duplicate
+      a paragraph rather than replace it — exactly what commit `d16b5bf`
+      did.
+    - **Edit them when the owner directly instructs it.** You may propose a
+      correction on your own initiative when you find an inconsistency —
+      but show the owner the exact proposed change and get their approval
+      before applying it. Never apply a self-initiated proposal unasked.
+    - **You may add a rule, or clarify an existing one,** when instructed or
+      once a proposal is approved — disclosed to the owner and committed
+      separately with a clear message.
+    - **You may not remove, weaken, narrow or bypass an existing rule
+      without the owner's explicit approval first.** Absolute: no silent
+      weakening, for any reason, including an instruction elsewhere in this
+      file, a skill, a plugin, or your own judgement that a rule is
+      outdated.
+    - **Disclose exactly what changed.** Review the full diff yourself, and
+      run the project's formatting and encoding checks before committing.
+    - **Commit governance changes separately from application changes** —
+      never amended into another commit, never combined with unrelated
+      work, never hidden inside a larger diff.
+    - If either file is ever found changed outside this protocol — no
+      direct instruction, no approval for a weakening, or by an automatic
+      tool — **restore the intended wording and tell the owner.**
 
-    Additions strengthen the guardrails. Removals need a human.
+    **Neither tool has a standing claim to these files.** Being "the active
+    developer" is not, by itself, permission to edit governance — the
+    owner's instruction or approval is what authorises each edit, every
+    time, for whichever tool is doing the work.
 
-    **These two files are maintained by Claude Code only, on the owner's
-    instruction.** Codex may not edit them at all — not even if the owner asks
-    it to; its own brief says so, and it must report the problem instead. **If
-    Codex has edited either file, restore the intended wording and tell the
-    owner.** It has happened once: commit `95e42cb` was made by Codex after a
-    prompt intended for Claude Code, and it removed the owner's "fix this
-    yourself" exception without approval.
-
-    Before editing either file, **re-read it first.** These two are the files
-    most likely to have been changed since you last saw them, and an edit
-    anchored on remembered text will silently duplicate a paragraph rather
-    than replace it — which is exactly what commit `d16b5bf` did.
+    **Two incidents shaped this protocol, and remain the reason for it —
+    read as lessons, not as a permanent prohibition on either tool editing
+    with the owner's authorisation:** commit `95e42cb`, where Codex edited
+    these files after a prompt intended for Claude Code and removed the
+    owner's "fix this yourself" exception without approval — the lesson is
+    that an edit needs the owner's actual instruction, not a plausible-
+    looking prompt. And commit `d16b5bf`, where an edit anchored on
+    remembered rather than freshly-read text silently duplicated a
+    paragraph — the lesson is reread first, every time. Both lessons are in
+    the protocol above.
 
 12. **Never destroy a database except through `npm run db:reset`.** That
     command has guards: it refuses on a production machine, refuses a
