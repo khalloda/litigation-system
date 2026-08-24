@@ -32,7 +32,9 @@ cross-reference — so read `CLAUDE.md` now if you have not. In brief:
    real.
 5. Never guess at Arabic legal terminology. Check `docs/GLOSSARY.md`; if a
    term is not there, ask.
-6. The data is real and confidential — see **Confidentiality** below.
+6. The owner classifies all data supplied or made available for this project
+   as non-confidential and authorises Codex to process it for this project —
+   see **Owner-approved data classification and handling** below.
 7. Nothing is ever deleted in migration. An unmappable value is parked in a
    review table with its original text intact — see `docs/MIGRATION.md`.
 8. Test with real volumes — 13,279 hearings, not 20 rows.
@@ -99,7 +101,8 @@ reviewing one.
 - **Independently evaluate, rather than agree to be agreeable.** Weigh his
   answers, assumptions, requested solutions, UI preferences and business
   decisions against the evidence, the source data, `docs/DECISIONS.md`, the
-  application's requirements, security and confidentiality, data integrity,
+  application's requirements, security, the owner's data-classification and
+  handling rules, data integrity,
   usability and accessibility, the Arabic/RTL requirements, and the cost of
   building and maintaining the result. If something looks wrong, unsafe,
   incomplete, inconsistent, unnecessarily expensive, hard to maintain, or
@@ -117,7 +120,7 @@ reviewing one.
   budget, legal, security or usability consequence: for a safe, reversible,
   low-impact technical choice, use the professional default and tell him
   what you chose; for anything irreversible, destructive, security- or
-  confidentiality-sensitive, legally significant, migration-sensitive or
+  data-handling-sensitive, legally significant, migration-sensitive or
   materially expensive, stop and get his explicit approval first.
 - When there is a genuinely material decision to make, number the
   questions — see "Numbered decisions" below.
@@ -156,7 +159,7 @@ usability consequence — number the questions, and give, for each:
 7. The estimated cost and impact — whichever of these are relevant:
    development time, testing time, his review or data-cleanup time,
    financial or licensing cost, technical complexity, migration or
-   data-loss risk, security or confidentiality risk, risk of future rework,
+   data-loss risk, security or data-handling risk, risk of future rework,
    performance impact, long-term maintenance burden, and effect on users
    and training.
 
@@ -419,12 +422,39 @@ asking the owner first and explaining exactly what will be destroyed.
 
 ---
 
-## Confidentiality
+## Owner-approved data classification and handling
 
-The database holds real client names, case records and billing for a working
-law firm. Do not copy it anywhere. Do not commit data files — nothing
-matching `.accdb`, `.csv` or `.xlsx` should ever be in git. If you find data
-committed to git, report it as a **MUST FIX** immediately.
+The owner has made this binding factual declaration for this project:
+
+- All data the owner supplied or made available for this project is
+  classified by the owner as **non-confidential**. This includes client
+  names, matter names, case information, financial figures, spreadsheets,
+  the Access database, extracted data and migration-review data.
+- Codex is explicitly authorised to read and process this data when
+  reasonably necessary for development, testing, migration verification,
+  reconciliation and review of this application.
+- Do not repeatedly challenge, reopen or block work based only on a general
+  presumption that law-firm data must be confidential.
+- Raise the classification issue again only if you discover new concrete
+  evidence of credentials, secrets, data outside the scope of the owner's
+  authorisation, or a specific legal or contractual restriction — not merely
+  because the data contains names, cases or financial figures.
+
+This classification and authorisation do **not** permit:
+
+- publishing the raw data publicly;
+- committing Access databases, spreadsheets, CSVs, PDFs, database dumps or
+  extracted data to Git;
+- uploading it to Gmail, Google Drive, browser tools or unrelated external
+  services; or
+- transmitting it to anyone outside the project without the owner's specific
+  instruction.
+
+These restrictions remain in force for repository size, permanent Git
+history, operational control, data integrity, privacy discipline and
+avoidance of accidental distribution — not because the project should
+presume the supplied data is confidential. If prohibited data is found in
+Git, report it as a **MUST FIX** immediately.
 
 ---
 
