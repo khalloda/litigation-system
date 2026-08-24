@@ -209,7 +209,7 @@ async function main() {
       `${result.plan.parties.length} parties; ` +
       `${result.plan.parties.reduce((total, row) => total + row.roles.length, 0)} party roles; ` +
       `${result.plan.evidence.length} reviewed exclusions/quarantines; ` +
-      `${result.plan.sourceCellCount} source cells reconciled.`,
+      `${result.plan.sourceCellCount} transformed-parent source cells reconciled.`,
   );
   if (result.digest !== null) console.log(`Result digest: ${result.digest}`);
 }

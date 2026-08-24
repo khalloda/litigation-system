@@ -7,6 +7,7 @@ import {
   reconcileMatterRelationships,
 } from './lib/matter-relationship-reconciliation';
 import { correctedMultiPersonRules } from './lib/matter-relationship-rules';
+import { matterRelationshipStructureFailures } from './lib/matter-relationship-structure';
 import { runMatterRelationshipTransform } from './transform-matter-relationships';
 
 const FINGERPRINT = 'A'.repeat(64);
@@ -76,9 +77,44 @@ async function insertSourceMatter(
   return sourceKey;
 }
 
+async function insertParentQuarantinedMatter(db: Client, sequence: number, lawyerA: string) {
+  const sourceKey = `${sequence.toString(16).padStart(64, '0')}:000001`;
+  await db.query(
+    `INSERT INTO staging."الدعاوى" (
+       src_file, src_row_num, src_record_key, src_extraction_sha256,
+       "matterID", "lawyerA"
+     ) VALUES ('fixture/parent-quarantine.csv', $1, $2, $3, $4, $5)`,
+    [sequence, sourceKey, FINGERPRINT, String(9000 + sequence), lawyerA],
+  );
+  await db.query(
+    `INSERT INTO quarantine.matter_transform (
+       src_record_key, extraction_sha256, src_file, src_row_num,
+       legacy_matter_id, reason_codes, reason_details, source_payload
+     )
+     SELECT src_record_key, src_extraction_sha256, src_file, src_row_num,
+            "matterID", ARRAY['fixture_parent_quarantine'],
+            jsonb_build_array(jsonb_build_object('fixture', true)),
+            to_jsonb(s) - ARRAY[
+              'src_file','src_row_num','src_record_key','src_extraction_sha256'
+            ]
+       FROM staging."الدعاوى" s
+      WHERE src_record_key = $1`,
+    [sourceKey],
+  );
+  return sourceKey;
+}
+
 async function assertClean(db: Client) {
   const result = await reconcileMatterRelationships(db);
   assert.deepEqual(result.defects, [], 'fixture must return to a clean reconciled state');
+}
+
+async function assertStructureClean(db: Client) {
+  assert.deepEqual(
+    await matterRelationshipStructureFailures(db),
+    [],
+    'fixture catalog safeguards must return to their exact definitions',
+  );
 }
 
 async function proveFailure(
@@ -96,6 +132,27 @@ async function proveFailure(
     await db.query('ROLLBACK');
   }
   await assertClean(db);
+  console.log(`  ok    ${label}`);
+}
+
+async function proveStructureFailure(
+  db: Client,
+  label: string,
+  mutate: () => Promise<unknown>,
+  expected: RegExp,
+) {
+  await db.query('BEGIN');
+  try {
+    await mutate();
+    assert.match(
+      (await matterRelationshipStructureFailures(db)).join('\n'),
+      expected,
+      `${label}: exact catalog check did not fail`,
+    );
+  } finally {
+    await db.query('ROLLBACK');
+  }
+  await assertStructureClean(db);
   console.log(`  ok    ${label}`);
 }
 
@@ -138,12 +195,15 @@ async function main() {
         clientCap: 'شركة الاختبار\n"مدعي، مستأنف"',
         opponentCap: 'خصم أول\r\n"مدعى عليه"\r\n\r\nخصم ثان',
       });
-      await insertSourceMatter(db, 2, { lawyerA: corrected.rawValue });
+      const correctedKey = await insertSourceMatter(db, 2, {
+        lawyerA: corrected.rawValue,
+      });
       await insertSourceMatter(db, 3, { lawyerA: 'تركيب غير مراجع' });
       await insertSourceMatter(db, 4, { lawyerA: 'الدكتور' });
       await insertSourceMatter(db, 5, {
         clientCap: 'طرف اختبار\n"صفة قانونية غير مراجعة"',
       });
+      const parentQuarantinedKey = await insertParentQuarantinedMatter(db, 6, firstAlias);
 
       const dryRun = await runMatterRelationshipTransform({
         databaseUrl: fixtureUrl.toString(),
@@ -171,6 +231,27 @@ async function main() {
       const first = await runMatterRelationshipTransform({ databaseUrl: fixtureUrl.toString() });
       assert.deepEqual(first.defects, []);
       await assertClean(db);
+      assert.deepEqual(
+        {
+          sourceMatters: first.reconciliation?.sourceMatters,
+          transformedMatters: first.reconciliation?.transformedMatters,
+          parentQuarantinedMatters: first.reconciliation?.parentQuarantinedMatters,
+          allSourceCells: first.reconciliation?.allSourceCells,
+          transformedParentCells: first.reconciliation?.transformedParentCells,
+          parentQuarantinedCells: first.reconciliation?.parentQuarantinedCells,
+        },
+        {
+          sourceMatters: 6,
+          transformedMatters: 5,
+          parentQuarantinedMatters: 1,
+          allSourceCells: 9,
+          transformedParentCells: 8,
+          parentQuarantinedCells: 1,
+        },
+      );
+      console.log(
+        '  ok    all source cells partition between transformed and parent-quarantined matters',
+      );
       const fixtureCounts = await db.query<{
         lawyers: string;
         parties: string;
@@ -211,6 +292,66 @@ async function main() {
       const second = await runMatterRelationshipTransform({ databaseUrl: fixtureUrl.toString() });
       assert.equal(second.digest, digest);
       console.log('  ok    identical rerun preserves ids, timestamps and all values');
+
+      await db.query('BEGIN');
+      try {
+        const nativePerson = await db.query<{ id: number }>(`
+          INSERT INTO people (name_ar, is_staff, is_active, updated_at)
+          VALUES ('شخص تطبيق أصلي', false, true, CURRENT_TIMESTAMP)
+          RETURNING id`);
+        const nativeMatter = await db.query<{ id: number }>(
+          'SELECT id FROM matters WHERE legacy_source_record_key = $1',
+          [directKey],
+        );
+        await db.query(
+          `INSERT INTO matter_lawyers (
+             matter_id, person_id, role, position, updated_at
+           ) VALUES ($1, $2, 'support', 900, CURRENT_TIMESTAMP)`,
+          [nativeMatter.rows[0]!.id, nativePerson.rows[0]!.id],
+        );
+        const nativeParty = await db.query<{ id: number }>(
+          `INSERT INTO matter_parties (
+             matter_id, side, party_name, ordinal, updated_at
+           ) VALUES ($1, 'client', 'طرف أضيف داخل التطبيق', 900, CURRENT_TIMESTAMP)
+           RETURNING id`,
+          [nativeMatter.rows[0]!.id],
+        );
+        await db.query(
+          `INSERT INTO matter_party_roles (
+             party_id, role_id, ordinal, updated_at
+           ) SELECT $1, id, 1, CURRENT_TIMESTAMP
+               FROM lookup_party_role ORDER BY id LIMIT 1`,
+          [nativeParty.rows[0]!.id],
+        );
+        await assertClean(db);
+        assert.equal(
+          await matterRelationshipResultDigest(db),
+          digest,
+          'application-native rows must not redefine the legacy migration digest',
+        );
+
+        await db.query('SAVEPOINT legacy_mutation');
+        await db.query(`
+          UPDATE matter_lawyers
+             SET position = position + 100
+           WHERE id = (
+             SELECT min(id) FROM matter_lawyers
+              WHERE legacy_source_record_key IS NOT NULL
+           )`);
+        assert.match(
+          (await reconcileMatterRelationships(db)).defects.join('\n'),
+          /matter lawyers missing or changed|matter lawyers extra or changed/,
+        );
+        await db.query('ROLLBACK TO SAVEPOINT legacy_mutation');
+        await assertClean(db);
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      await assertClean(db);
+      assert.equal(await matterRelationshipResultDigest(db), digest);
+      console.log(
+        '  ok    application-native lawyer/party/role rows are ignored while a changed legacy row still fails',
+      );
 
       const rawProof = await db.query<{ lawyer_raw: boolean; party_raw: boolean; arabic: boolean }>(
         `
@@ -353,40 +494,154 @@ async function main() {
       );
       await proveFailure(
         db,
+        'wrong party fragmentation fails the independent SQL checker',
+        () =>
+          db.query(
+            `UPDATE matter_parties
+                SET party_name = 'خصم أول / خصم ثان'
+              WHERE legacy_source_record_key = $1
+                AND source_field = 'opponent&Cap'
+                AND source_fragment_ordinal = 1`,
+            [directKey],
+          ),
+        /matter parties missing or changed|matter parties extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'a role attached to the wrong party fails the independent SQL checker',
+        () =>
+          db.query(
+            `UPDATE matter_party_roles role
+                SET party_id = (
+                  SELECT id FROM matter_parties
+                   WHERE legacy_source_record_key = $1
+                     AND source_field = 'opponent&Cap'
+                     AND source_fragment_ordinal = 2
+                )
+              WHERE role.id = (
+                SELECT min(r.id)
+                  FROM matter_party_roles r
+                  JOIN matter_parties p ON p.id = r.party_id
+                 WHERE p.legacy_source_record_key = $1
+                   AND p.source_field = 'client&Cap'
+              )`,
+            [directKey],
+          ),
+        /matter party roles missing or changed|matter party roles extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'a wrong lawyer source field fails the independent SQL checker',
+        () =>
+          db.query(
+            `UPDATE matter_lawyers
+                SET source_field = 'lawyerB'
+              WHERE legacy_source_record_key = $1
+                AND source_member_ordinal = 1`,
+            [correctedKey],
+          ),
+        /matter lawyers missing or changed|matter lawyers extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'a wrong reviewed rule member ordinal fails the independent SQL checker',
+        () =>
+          db.query(
+            `UPDATE matter_lawyers
+                SET source_member_ordinal = 99
+              WHERE legacy_source_record_key = $1
+                AND source_member_ordinal = 1`,
+            [correctedKey],
+          ),
+        /matter lawyers missing or changed|matter lawyers extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'a target row and quarantine row for one source cell fail exclusivity',
+        () =>
+          db.query(
+            `INSERT INTO quarantine.matter_relationship_transform (
+               relationship_kind, source_field, side, src_record_key,
+               extraction_sha256, src_file, src_row_num, legacy_matter_id,
+               raw_value, outcome, reason_codes, reason_details, source_payload
+             )
+             SELECT 'lawyer', 'lawyerA', NULL, src_record_key,
+                    src_extraction_sha256, src_file, src_row_num, "matterID",
+                    "lawyerA", 'quarantined', ARRAY['unreviewed_person_value'],
+                    jsonb_build_array(jsonb_build_object(
+                      'alias_matches', 0,
+                      'rule_matches', 0,
+                      'exclusion_matches', 0
+                    )),
+                    to_jsonb(s) - ARRAY[
+                      'src_file','src_row_num','src_record_key','src_extraction_sha256'
+                    ]
+               FROM staging."الدعاوى" s
+              WHERE src_record_key = $1`,
+            [directKey],
+          ),
+        /source cells with both target and evidence|relationship evidence extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'a source cell with neither target nor evidence fails exclusivity',
+        () =>
+          db.query(
+            `DELETE FROM matter_lawyers
+              WHERE legacy_source_record_key = $1
+                AND source_field = 'lawyerB'`,
+            [directKey],
+          ),
+        /source cells with neither target nor evidence|matter lawyers missing or changed/,
+      );
+      await proveFailure(
+        db,
         'a missing lawyer relationship fails permanently',
         () =>
           db.query('DELETE FROM matter_lawyers WHERE id = (SELECT min(id) FROM matter_lawyers)'),
-        /matter lawyers: 1 missing/,
+        /matter lawyers missing or changed: 1/,
       );
       await proveFailure(
         db,
         'an extra relationship fails permanently',
         () =>
           db.query(`
-            INSERT INTO matter_lawyers (matter_id, person_id, role, position, updated_at)
-            SELECT m.id, p.id, 'support', 999, CURRENT_TIMESTAMP
+            INSERT INTO matter_lawyers (
+              matter_id, person_id, role, position, legacy_source,
+              legacy_source_record_key, legacy_source_extraction_sha256,
+              source_field, source_member_ordinal, updated_at
+            )
+            SELECT m.id, p.id, 'support', 999, 'extra legacy fixture',
+                   '${'e'.repeat(64)}:000001', '${FINGERPRINT}',
+                   'lawyerB', 1, CURRENT_TIMESTAMP
               FROM matters m CROSS JOIN people p
              WHERE NOT EXISTS (SELECT 1 FROM matter_lawyers x
                                 WHERE x.matter_id=m.id AND x.person_id=p.id)
              LIMIT 1`),
-        /matter lawyers: 1 extra/,
+        /matter lawyers extra or changed: 1/,
       );
       await proveFailure(
         db,
         'a missing party relationship fails permanently',
         () =>
           db.query('DELETE FROM matter_parties WHERE id = (SELECT min(id) FROM matter_parties)'),
-        /matter parties: 1 missing or changed/,
+        /matter parties missing or changed: 1/,
       );
       await proveFailure(
         db,
         'an extra party relationship fails permanently',
         () =>
           db.query(`
-            INSERT INTO matter_parties (matter_id, side, party_name, ordinal, updated_at)
-            SELECT id, 'client', 'طرف زائد للاختبار', 999, CURRENT_TIMESTAMP
+            INSERT INTO matter_parties (
+              matter_id, side, party_name, ordinal, legacy_raw,
+              legacy_source_record_key, legacy_source_extraction_sha256,
+              source_field, source_fragment_ordinal, updated_at
+            )
+            SELECT id, 'client', 'طرف زائد للاختبار', 999,
+                   'طرف زائد للاختبار', '${'f'.repeat(64)}:000001',
+                   '${FINGERPRINT}', 'client&Cap', 1, CURRENT_TIMESTAMP
               FROM matters LIMIT 1`),
-        /matter parties: 1 extra or changed/,
+        /matter parties extra or changed: 1/,
       );
       await db.query('BEGIN');
       try {
@@ -440,7 +695,7 @@ async function main() {
                                     AND already.role_id=lookup_party_role.id)
                LIMIT 1)
              WHERE id = (SELECT min(id) FROM matter_party_roles)`),
-        /matter parties: 1 missing or changed|matter parties: 1 extra or changed/,
+        /matter party roles missing or changed|matter party roles extra or changed/,
       );
       await proveFailure(
         db,
@@ -457,7 +712,68 @@ async function main() {
                   ORDER BY raw_value LIMIT 1)
              WHERE q.outcome = 'excluded'`);
         },
-        /relationship evidence/,
+        /relationship evidence missing or changed|relationship evidence extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'altered quarantine reason and detail fail permanently',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.matter_relationship_transform DISABLE TRIGGER matter_relationship_transform_source_immutable',
+          );
+          await db.query(`
+            UPDATE quarantine.matter_relationship_transform
+               SET reason_codes = ARRAY['changed_reason'],
+                   reason_details = jsonb_build_array(jsonb_build_object('changed', true))
+             WHERE outcome = 'quarantined'
+               AND id = (
+                 SELECT min(id) FROM quarantine.matter_relationship_transform
+                  WHERE outcome = 'quarantined'
+               )`);
+        },
+        /relationship evidence missing or changed|relationship evidence extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'a changed quarantine filename fails permanently',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.matter_relationship_transform DISABLE TRIGGER matter_relationship_transform_source_immutable',
+          );
+          await db.query(`
+            UPDATE quarantine.matter_relationship_transform
+               SET src_file = 'fixture/wrong-file.csv'
+             WHERE id = (SELECT min(id) FROM quarantine.matter_relationship_transform)`);
+        },
+        /relationship evidence missing or changed|relationship evidence extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'a changed quarantine row number fails permanently',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.matter_relationship_transform DISABLE TRIGGER matter_relationship_transform_source_immutable',
+          );
+          await db.query(`
+            UPDATE quarantine.matter_relationship_transform
+               SET src_row_num = src_row_num + 1000
+             WHERE id = (SELECT min(id) FROM quarantine.matter_relationship_transform)`);
+        },
+        /relationship evidence missing or changed|relationship evidence extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'a changed quarantine source payload fails permanently',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.matter_relationship_transform DISABLE TRIGGER matter_relationship_transform_source_immutable',
+          );
+          await db.query(`
+            UPDATE quarantine.matter_relationship_transform
+               SET source_payload = source_payload || '{"fixture_change":true}'::jsonb
+             WHERE id = (SELECT min(id) FROM quarantine.matter_relationship_transform)`);
+        },
+        /relationship evidence missing or changed|relationship evidence extra or changed/,
       );
       await proveFailure(
         db,
@@ -468,7 +784,7 @@ async function main() {
               WHERE id = (SELECT min(id) FROM matter_lawyers)`,
             [`${'c'.repeat(64)}:000001`],
           ),
-        /matter lawyers/,
+        /matter lawyers missing or changed|matter lawyers extra or changed/,
       );
       await proveFailure(
         db,
@@ -479,7 +795,19 @@ async function main() {
               WHERE id = (SELECT min(id) FROM matter_lawyers)`,
             ['B'.repeat(64)],
           ),
-        /matter lawyers/,
+        /matter lawyers missing or changed|matter lawyers extra or changed/,
+      );
+      await proveFailure(
+        db,
+        'an unaccounted populated cell on a parent-quarantined matter fails permanently',
+        () =>
+          db.query(
+            `UPDATE staging."الدعاوى"
+                SET "lawyerA" = "lawyerA" || ' changed'
+              WHERE src_record_key = $1`,
+            [parentQuarantinedKey],
+          ),
+        /parent-quarantined source payload mismatches/,
       );
 
       const beforeMove = await matterRelationshipResultDigest(db);
@@ -494,6 +822,88 @@ async function main() {
       assert.equal(afterMove.digest, beforeMove);
       console.log(
         '  ok    source filename/row reordering does not change durable identities or results',
+      );
+
+      await assertStructureClean(db);
+      await proveStructureFailure(
+        db,
+        'a weakened source/provenance CHECK is detected by complete definition',
+        () =>
+          db.query(`
+            ALTER TABLE matter_lawyers
+              DROP CONSTRAINT matter_lawyers_legacy_source_shape,
+              ADD CONSTRAINT matter_lawyers_legacy_source_shape CHECK (
+                legacy_source_record_key IS NULL OR source_member_ordinal >= 1
+              )`),
+        /CHECK definition: matter_lawyers_legacy_source_shape/,
+      );
+      await proveStructureFailure(
+        db,
+        'a unique index recreated in the wrong column order is detected',
+        async () => {
+          await db.query('DROP INDEX matter_lawyers_legacy_source_key');
+          await db.query(`
+            CREATE UNIQUE INDEX matter_lawyers_legacy_source_key
+                ON matter_lawyers(
+                  source_member_ordinal, source_field, legacy_source_record_key
+                )`);
+        },
+        /unique index definition: matter_lawyers_legacy_source_key/,
+      );
+      await proveStructureFailure(
+        db,
+        'a foreign key with the wrong delete action is detected',
+        () =>
+          db.query(`
+            ALTER TABLE matter_lawyers
+              DROP CONSTRAINT matter_lawyers_reviewed_rule_id_fkey,
+              ADD CONSTRAINT matter_lawyers_reviewed_rule_id_fkey
+                FOREIGN KEY (reviewed_rule_id)
+                REFERENCES migration_multi_person_rule(id)
+                ON DELETE CASCADE ON UPDATE CASCADE`),
+        /foreign key definition: matter_lawyers_reviewed_rule_id_fkey/,
+      );
+      await proveStructureFailure(
+        db,
+        'a disabled quarantine immutability trigger is detected',
+        () =>
+          db.query(`
+            ALTER TABLE quarantine.matter_relationship_transform
+            DISABLE TRIGGER matter_relationship_transform_source_immutable`),
+        /trigger definition: matter_relationship_transform_source_immutable/,
+      );
+      await proveStructureFailure(
+        db,
+        'an immutability function that stops protecting evidence is detected',
+        () =>
+          db.query(`
+            CREATE OR REPLACE FUNCTION quarantine.protect_matter_relationship_transform_source()
+            RETURNS trigger
+            LANGUAGE plpgsql
+            AS $FUNCTION$
+            BEGIN
+                IF NEW.src_record_key IS DISTINCT FROM OLD.src_record_key THEN
+                    RAISE EXCEPTION 'fixture weakened protection';
+                END IF;
+                RETURN NEW;
+            END;
+            $FUNCTION$`),
+        /trigger function definition: quarantine.protect_matter_relationship_transform_source/,
+      );
+      await proveStructureFailure(
+        db,
+        'an erasure trigger that stops covering TRUNCATE is detected',
+        async () => {
+          await db.query(`
+            DROP TRIGGER matter_relationship_transform_no_erasure
+              ON quarantine.matter_relationship_transform`);
+          await db.query(`
+            CREATE TRIGGER matter_relationship_transform_no_erasure
+            BEFORE DELETE ON quarantine.matter_relationship_transform
+            FOR EACH STATEMENT
+            EXECUTE FUNCTION quarantine.refuse_matter_relationship_transform_erasure()`);
+        },
+        /trigger definition: matter_relationship_transform_no_erasure/,
       );
 
       await assert.rejects(

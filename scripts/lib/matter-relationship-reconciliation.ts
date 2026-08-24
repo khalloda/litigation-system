@@ -1,64 +1,81 @@
+import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
 import {
-  buildMatterRelationshipPlan,
-  type ExpectedMatterLawyer,
-  type ExpectedMatterParty,
-  type ExpectedRelationshipEvidence,
-} from './matter-relationship-plan';
+  matterRelationshipRuleFailures,
+  readMatterRelationshipRules,
+} from './matter-relationship-rules';
 
-type ActualLawyer = {
-  matter_id: number;
-  person_id: number;
-  role: ExpectedMatterLawyer['role'];
-  position: number;
-  legacy_source: string;
-  legacy_source_record_key: string;
-  legacy_source_extraction_sha256: string;
-  source_field: ExpectedMatterLawyer['sourceField'];
-  reviewed_rule_id: number | null;
-  source_member_ordinal: number;
+export const MATTER_RELATIONSHIP_RECONCILIATION_SQL = readFileSync(
+  new URL('../../sql/check-matter-relationship-reconciliation.sql', import.meta.url),
+  'utf8',
+);
+
+type Count = bigint | number | string;
+
+type ReconciliationRow = {
+  source_matters: Count;
+  transformed_matters: Count;
+  parent_quarantined_matters: Count;
+  parent_partition_defects: Count;
+  all_source_cells: Count;
+  transformed_parent_cells: Count;
+  parent_quarantined_cells: Count;
+  cell_partition_defects: Count;
+  parent_quarantine_payload_mismatches: Count;
+  rule_count: Count;
+  rule_member_count: Count;
+  exclusion_count: Count;
+  empty_rules: Count;
+  rule_ordinal_defects: Count;
+  rule_duplicate_person_defects: Count;
+  rule_member_alias_defects: Count;
+  expected_lawyers: Count;
+  actual_lawyers: Count;
+  missing_lawyers: Count;
+  extra_lawyers: Count;
+  expected_parties: Count;
+  actual_parties: Count;
+  missing_parties: Count;
+  extra_parties: Count;
+  expected_party_roles: Count;
+  actual_party_roles: Count;
+  missing_party_roles: Count;
+  extra_party_roles: Count;
+  expected_evidence: Count;
+  actual_evidence: Count;
+  missing_evidence: Count;
+  extra_evidence: Count;
+  expected_both_outcomes: Count;
+  expected_neither_outcome: Count;
+  actual_both_outcomes: Count;
+  actual_neither_outcome: Count;
+  excluded_with_target: Count;
+  quarantined_with_target: Count;
+  duplicated_parent_quarantine_evidence: Count;
 };
 
-type ActualParty = {
+type StoredRuleRow = {
   id: number;
-  matter_id: number;
-  side: ExpectedMatterParty['side'];
-  party_name: string;
-  gender: ExpectedMatterParty['gender'];
-  ordinal: number;
-  legacy_raw: string;
-  legacy_source_record_key: string;
-  legacy_source_extraction_sha256: string;
-  source_field: ExpectedMatterParty['sourceField'];
-  source_fragment_ordinal: number;
-};
-
-type ActualRole = {
-  party_id: number;
-  role_id: number;
-  ordinal: number;
-  legacy_role_raw: string;
-};
-
-type ActualEvidence = {
-  relationship_kind: ExpectedRelationshipEvidence['relationshipKind'];
-  source_field: ExpectedRelationshipEvidence['sourceField'];
-  side: ExpectedRelationshipEvidence['side'];
-  src_record_key: string;
-  extraction_sha256: string;
-  src_file: string;
-  src_row_num: number;
-  legacy_matter_id: string | null;
   raw_value: string;
-  outcome: ExpectedRelationshipEvidence['outcome'];
-  reason_codes: string[];
-  reason_details: Array<Record<string, unknown>>;
-  source_payload: Record<string, unknown>;
-  reviewed_exclusion_raw_value: string | null;
+  occurrences: number;
+  reviewer_note: string;
+  person_name: string | null;
+  ordinal: number | null;
+};
+
+type StoredExclusionRow = {
+  raw_value: string;
+  occurrences: number;
+  reason: string;
 };
 
 export type MatterRelationshipReconciliation = {
-  sourceCells: number;
+  sourceMatters: number;
+  transformedMatters: number;
+  parentQuarantinedMatters: number;
+  allSourceCells: number;
+  transformedParentCells: number;
+  parentQuarantinedCells: number;
   expectedLawyers: number;
   actualLawyers: number;
   expectedParties: number;
@@ -70,190 +87,177 @@ export type MatterRelationshipReconciliation = {
   defects: string[];
 };
 
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (value !== null && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
-      a < b ? -1 : a > b ? 1 : 0,
-    );
-    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
+function number(value: Count): number {
+  const result = Number(value);
+  if (!Number.isSafeInteger(result) || result < 0) {
+    throw new Error(`invalid reconciliation count: ${String(value)}`);
   }
-  return JSON.stringify(value);
+  return result;
 }
 
-function compareSets(name: string, expected: unknown[], actual: unknown[]): string[] {
-  const expectedCounts = new Map<string, number>();
-  const actualCounts = new Map<string, number>();
-  for (const row of expected) {
-    const key = canonical(row);
-    expectedCounts.set(key, (expectedCounts.get(key) ?? 0) + 1);
+function addCountDefect(defects: string[], label: string, value: Count, expected = 0): void {
+  const actual = number(value);
+  if (actual !== expected) defects.push(`${label}: ${actual}/${expected}`);
+}
+
+async function storedRuleSourceFailures(db: ClientBase): Promise<string[]> {
+  const rulesResult = await db.query<StoredRuleRow>(`
+      SELECT r.id, r.raw_value, r.occurrences, r.reviewer_note,
+             member.person_name, member.ordinal
+        FROM migration_multi_person_rule r
+        LEFT JOIN migration_multi_person_rule_member member
+          ON member.rule_id = r.id
+       ORDER BY r.id, member.ordinal`);
+  const exclusionsResult = await db.query<StoredExclusionRow>(`
+      SELECT raw_value, occurrences, reason
+        FROM migration_excluded_name
+       ORDER BY raw_value`);
+  const storedRules = new Map<
+    number,
+    {
+      rawValue: string;
+      occurrences: number;
+      reviewerNote: string;
+      members: Array<{ personName: string; ordinal: number }>;
+    }
+  >();
+  for (const row of rulesResult.rows) {
+    const rule = storedRules.get(row.id) ?? {
+      rawValue: row.raw_value,
+      occurrences: row.occurrences,
+      reviewerNote: row.reviewer_note,
+      members: [],
+    };
+    if (row.person_name !== null && row.ordinal !== null) {
+      rule.members.push({ personName: row.person_name, ordinal: row.ordinal });
+    }
+    storedRules.set(row.id, rule);
   }
-  for (const row of actual) {
-    const key = canonical(row);
-    actualCounts.set(key, (actualCounts.get(key) ?? 0) + 1);
+
+  const canonical = readMatterRelationshipRules();
+  const failures = matterRelationshipRuleFailures(canonical);
+  if (JSON.stringify([...storedRules.values()]) !== JSON.stringify(canonical.rules)) {
+    failures.push('database multi-person rules differ from canonical reviewed SQL');
   }
-  const missing = [...expectedCounts].reduce(
-    (total, [key, count]) => total + Math.max(0, count - (actualCounts.get(key) ?? 0)),
-    0,
-  );
-  const extra = [...actualCounts].reduce(
-    (total, [key, count]) => total + Math.max(0, count - (expectedCounts.get(key) ?? 0)),
-    0,
-  );
-  return [
-    ...(missing === 0 ? [] : [`${name}: ${missing} missing or changed`]),
-    ...(extra === 0 ? [] : [`${name}: ${extra} extra or changed`]),
-  ];
-}
-
-function expectedLawyerRow(row: ExpectedMatterLawyer) {
-  return {
-    matter_id: row.matterId,
-    person_id: row.personId,
-    role: row.role,
-    position: row.position,
-    legacy_source: row.legacySource,
-    legacy_source_record_key: row.legacySourceRecordKey,
-    legacy_source_extraction_sha256: row.legacySourceExtractionSha256,
-    source_field: row.sourceField,
-    reviewed_rule_id: row.reviewedRuleId,
-    source_member_ordinal: row.sourceMemberOrdinal,
-  };
-}
-
-function expectedPartyRow(row: ExpectedMatterParty) {
-  return {
-    matter_id: row.matterId,
-    side: row.side,
-    party_name: row.partyName,
-    gender: row.gender,
-    ordinal: row.ordinal,
-    legacy_raw: row.legacyRaw,
-    legacy_source_record_key: row.legacySourceRecordKey,
-    legacy_source_extraction_sha256: row.legacySourceExtractionSha256,
-    source_field: row.sourceField,
-    source_fragment_ordinal: row.sourceFragmentOrdinal,
-    roles: row.roles.map((role) => ({
-      role_id: role.roleId,
-      ordinal: role.ordinal,
-      legacy_role_raw: role.legacyRoleRaw,
-    })),
-  };
-}
-
-function expectedEvidenceRow(row: ExpectedRelationshipEvidence) {
-  return {
-    relationship_kind: row.relationshipKind,
-    source_field: row.sourceField,
-    side: row.side,
-    src_record_key: row.srcRecordKey,
-    extraction_sha256: row.extractionSha256,
-    src_file: row.srcFile,
-    src_row_num: row.srcRowNum,
-    legacy_matter_id: row.legacyMatterId,
-    raw_value: row.rawValue,
-    outcome: row.outcome,
-    reason_codes: row.reasonCodes,
-    reason_details: row.reasonDetails,
-    source_payload: row.sourcePayload,
-    reviewed_exclusion_raw_value: row.reviewedExclusionRawValue,
-  };
+  const byRawValue = (a: { rawValue: string }, b: { rawValue: string }) =>
+    a.rawValue < b.rawValue ? -1 : a.rawValue > b.rawValue ? 1 : 0;
+  const storedExclusions = exclusionsResult.rows
+    .map((row) => ({
+      rawValue: row.raw_value,
+      occurrences: row.occurrences,
+      reason: row.reason,
+    }))
+    .sort(byRawValue);
+  if (
+    JSON.stringify(storedExclusions) !== JSON.stringify([...canonical.exclusions].sort(byRawValue))
+  ) {
+    failures.push('database excluded names differ from canonical reviewed SQL');
+  }
+  return failures;
 }
 
 export async function reconcileMatterRelationships(
   db: ClientBase,
 ): Promise<MatterRelationshipReconciliation> {
-  const plan = await buildMatterRelationshipPlan(db);
-  const lawyerResult = await db.query<ActualLawyer>(`
-      SELECT matter_id, person_id, role, position, legacy_source,
-             legacy_source_record_key, legacy_source_extraction_sha256,
-             source_field, reviewed_rule_id, source_member_ordinal
-        FROM matter_lawyers ORDER BY id`);
-  const partyResult = await db.query<ActualParty>(`
-      SELECT id, matter_id, side, party_name, gender, ordinal, legacy_raw,
-             legacy_source_record_key, legacy_source_extraction_sha256,
-             source_field, source_fragment_ordinal
-        FROM matter_parties ORDER BY id`);
-  const roleResult = await db.query<ActualRole>(`
-      SELECT party_id, role_id, ordinal, legacy_role_raw
-        FROM matter_party_roles ORDER BY party_id, ordinal, id`);
-  const evidenceResult = await db.query<ActualEvidence>(`
-      SELECT relationship_kind, source_field, side, src_record_key,
-             extraction_sha256, src_file, src_row_num, legacy_matter_id,
-             raw_value, outcome, reason_codes, reason_details, source_payload,
-             reviewed_exclusion_raw_value
-        FROM quarantine.matter_relationship_transform ORDER BY id`);
-
-  const rolesByParty = new Map<number, ActualRole[]>();
-  for (const role of roleResult.rows) {
-    const rows = rolesByParty.get(role.party_id) ?? [];
-    rows.push(role);
-    rolesByParty.set(role.party_id, rows);
+  const result = await db.query<ReconciliationRow>(MATTER_RELATIONSHIP_RECONCILIATION_SQL);
+  if (result.rows.length !== 1) {
+    throw new Error(`relationship reconciliation returned ${result.rows.length} rows`);
   }
-  const actualParties = partyResult.rows.map((party) => ({
-    matter_id: party.matter_id,
-    side: party.side,
-    party_name: party.party_name,
-    gender: party.gender,
-    ordinal: party.ordinal,
-    legacy_raw: party.legacy_raw,
-    legacy_source_record_key: party.legacy_source_record_key,
-    legacy_source_extraction_sha256: party.legacy_source_extraction_sha256,
-    source_field: party.source_field,
-    source_fragment_ordinal: party.source_fragment_ordinal,
-    roles: (rolesByParty.get(party.id) ?? []).map((role) => ({
-      role_id: role.role_id,
-      ordinal: role.ordinal,
-      legacy_role_raw: role.legacy_role_raw,
-    })),
-  }));
+  const row = result.rows[0]!;
+  const defects = await storedRuleSourceFailures(db);
 
-  const expectedCellKeys = new Set([
-    ...plan.lawyers.map((row) => `${row.legacySourceRecordKey}\0${row.sourceField}`),
-    ...plan.parties.map((row) => `${row.legacySourceRecordKey}\0${row.sourceField}`),
-    ...plan.evidence.map((row) => `${row.srcRecordKey}\0${row.sourceField}`),
-  ]);
-  const defects = [...plan.ruleFailures];
-  if (expectedCellKeys.size !== plan.sourceCellCount) {
-    defects.push(
-      `source-cell accounting: ${expectedCellKeys.size}/${plan.sourceCellCount} represented`,
-    );
-  }
-  defects.push(
-    ...compareSets('matter lawyers', plan.lawyers.map(expectedLawyerRow), lawyerResult.rows),
-    ...compareSets('matter parties', plan.parties.map(expectedPartyRow), actualParties),
-    ...compareSets(
-      'relationship evidence',
-      plan.evidence.map(expectedEvidenceRow),
-      evidenceResult.rows,
-    ),
+  addCountDefect(defects, 'rules', row.rule_count, 33);
+  addCountDefect(defects, 'members', row.rule_member_count, 84);
+  addCountDefect(defects, 'exclusions', row.exclusion_count, 38);
+  addCountDefect(defects, 'empty database rule', row.empty_rules);
+  addCountDefect(defects, 'database ordinal gap or duplicate', row.rule_ordinal_defects);
+  addCountDefect(defects, 'database duplicate person in rule', row.rule_duplicate_person_defects);
+  addCountDefect(
+    defects,
+    'member alias does not resolve exactly to stored person',
+    row.rule_member_alias_defects,
+  );
+  addCountDefect(defects, 'matter parent partition defects', row.parent_partition_defects);
+  addCountDefect(defects, 'source-cell parent partition defects', row.cell_partition_defects);
+  addCountDefect(
+    defects,
+    'parent-quarantined source payload mismatches',
+    row.parent_quarantine_payload_mismatches,
+  );
+  addCountDefect(defects, 'expected source cells with both outcomes', row.expected_both_outcomes);
+  addCountDefect(
+    defects,
+    'expected source cells with neither outcome',
+    row.expected_neither_outcome,
+  );
+  addCountDefect(defects, 'source cells with both target and evidence', row.actual_both_outcomes);
+  addCountDefect(
+    defects,
+    'source cells with neither target nor evidence',
+    row.actual_neither_outcome,
+  );
+  addCountDefect(defects, 'excluded source cells with target rows', row.excluded_with_target);
+  addCountDefect(
+    defects,
+    'quarantined source cells with partial target rows',
+    row.quarantined_with_target,
+  );
+  addCountDefect(
+    defects,
+    'parent-quarantined cells duplicated into Task 2.7 evidence',
+    row.duplicated_parent_quarantine_evidence,
   );
 
+  const comparisons = [
+    ['matter lawyers missing or changed', row.missing_lawyers],
+    ['matter lawyers extra or changed', row.extra_lawyers],
+    ['matter parties missing or changed', row.missing_parties],
+    ['matter parties extra or changed', row.extra_parties],
+    ['matter party roles missing or changed', row.missing_party_roles],
+    ['matter party roles extra or changed', row.extra_party_roles],
+    ['relationship evidence missing or changed', row.missing_evidence],
+    ['relationship evidence extra or changed', row.extra_evidence],
+  ] as const;
+  for (const [label, value] of comparisons) addCountDefect(defects, label, value);
+
   return {
-    sourceCells: plan.sourceCellCount,
-    expectedLawyers: plan.lawyers.length,
-    actualLawyers: lawyerResult.rows.length,
-    expectedParties: plan.parties.length,
-    actualParties: partyResult.rows.length,
-    expectedPartyRoles: plan.parties.reduce((total, party) => total + party.roles.length, 0),
-    actualPartyRoles: roleResult.rows.length,
-    expectedEvidence: plan.evidence.length,
-    actualEvidence: evidenceResult.rows.length,
+    sourceMatters: number(row.source_matters),
+    transformedMatters: number(row.transformed_matters),
+    parentQuarantinedMatters: number(row.parent_quarantined_matters),
+    allSourceCells: number(row.all_source_cells),
+    transformedParentCells: number(row.transformed_parent_cells),
+    parentQuarantinedCells: number(row.parent_quarantined_cells),
+    expectedLawyers: number(row.expected_lawyers),
+    actualLawyers: number(row.actual_lawyers),
+    expectedParties: number(row.expected_parties),
+    actualParties: number(row.actual_parties),
+    expectedPartyRoles: number(row.expected_party_roles),
+    actualPartyRoles: number(row.actual_party_roles),
+    expectedEvidence: number(row.expected_evidence),
+    actualEvidence: number(row.actual_evidence),
     defects,
   };
 }
 
 export async function matterRelationshipResultDigest(db: ClientBase): Promise<string> {
   const result = await db.query<{ digest: string }>(`
-    SELECT encode(sha256(convert_to(coalesce(string_agg(payload, E'\n' ORDER BY kind, identity), ''), 'UTF8')), 'hex') AS digest
+    SELECT encode(sha256(convert_to(coalesce(string_agg(payload, E'\\n' ORDER BY kind, identity), ''), 'UTF8')), 'hex') AS digest
       FROM (
-        SELECT 'L' kind, id::text identity, to_jsonb(ml)::text payload FROM matter_lawyers ml
+        SELECT 'L' kind, id::text identity, to_jsonb(ml)::text payload
+          FROM matter_lawyers ml
+         WHERE legacy_source_record_key IS NOT NULL
         UNION ALL
-        SELECT 'P', id::text, to_jsonb(mp)::text FROM matter_parties mp
+        SELECT 'P', id::text, to_jsonb(mp)::text
+          FROM matter_parties mp
+         WHERE legacy_source_record_key IS NOT NULL
         UNION ALL
-        SELECT 'R', id::text, to_jsonb(mpr)::text FROM matter_party_roles mpr
+        SELECT 'R', role.id::text, to_jsonb(role)::text
+          FROM matter_party_roles role
+          JOIN matter_parties party ON party.id = role.party_id
+         WHERE party.legacy_source_record_key IS NOT NULL
         UNION ALL
-        SELECT 'Q', id::text, to_jsonb(q)::text FROM quarantine.matter_relationship_transform q
+        SELECT 'Q', id::text, to_jsonb(q)::text
+          FROM quarantine.matter_relationship_transform q
       ) rows`);
   return result.rows[0]!.digest;
 }

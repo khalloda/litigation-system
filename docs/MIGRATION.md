@@ -1670,11 +1670,23 @@ The matter-only result is:
 | party roles | 2,199 |
 | immutable exclusions/quarantines | 926 source cells |
 
-Every populated source cell has exactly one outcome: one or more target rows,
-or one immutable evidence row. The complete original value, durable source
-record key and extraction fingerprint are retained. Reviewed compound lawyers
-also retain the rule id and member ordinal. Parties retain their side and
-fragment ordinal; each role retains the exact capacity fragment.
+The source contains **4,576 populated relationship cells across all 1,744
+matters**. They partition exactly:
+
+| Parent outcome | Populated relationship cells | Task 2.7 outcome |
+|---|---:|---|
+| 1,689 transformed matters | **4,418** | one or more target rows, or one immutable task 2.7 evidence row |
+| 55 parent-quarantined matters | **158** | retained inside the complete task 2.6 quarantine payload; no relationship row is created |
+| **all 1,744 matters** | **4,576** | no cell in both partitions and none in neither |
+
+Within the 4,418 eligible cells, every populated source cell has exactly one
+outcome: one or more target rows, or one immutable evidence row. The complete
+original value, durable source record key and extraction fingerprint are
+retained. Reviewed compound lawyers also retain the rule id and member
+ordinal. Parties retain their side and fragment ordinal; each role retains the
+exact capacity fragment. The 158 cells whose parent matter remains in task
+2.6 quarantine are not duplicated into the task 2.7 evidence table: their
+complete parent payload is already their durable outcome.
 
 Only reviewed deterministic separation is accepted. An exact person alias
 produces one lawyer; an exact multi-person rule produces its ordered members;
@@ -1690,15 +1702,32 @@ and plural capacities eventually collapse to the base role, but the repository
 does not yet contain a reviewed value-by-value crosswalk for those spellings.
 Turning one into another by Arabic word shape would be guessing legal meaning.
 
-The transform runs in one serializable transaction and the permanent
-reconciliation independently rebuilds the expected set from staging, exact
-aliases and reviewed rule tables. It compares every target field, role,
+The transform runs in one serializable transaction. Its permanent
+reconciliation is a **separate read-only SQL oracle** in
+`sql/check-matter-relationship-reconciliation.sql`: it does not import, call or
+wrap the TypeScript transform planner or `parseParty()`. It reconstructs the
+expected rows directly from staging, exact aliases, reviewed database rules,
+exclusions and D7 role labels, then compares every target field, role,
 position, source value, source identity, fingerprint, rule provenance and
-every quarantine reason/detail. The isolated fixture proves broken rule
-membership, unresolved and ambiguous aliases, ordinal defects, duplicate
-members, missing/extra relationships, incorrect roles, unreviewed values,
-wrong exclusions, altered evidence and a forced late failure. The late failure
-leaves all four result tables empty. The second identical live run retained
+every quarantine reason/detail. `db:check`, the transform's pre-commit gate
+and the disposable fixture all execute that same SQL.
+
+The migration comparison selects only relationships whose
+`legacy_source_record_key` is non-null; roles are included only through such a
+legacy-derived party. A lawyer, party or party role created later by the web
+application has null legacy provenance and is neither an extra migration row
+nor part of the stable migration digest. The database provenance CHECKs still
+refuse a half-native/half-legacy row.
+
+The isolated fixture proves broken rule membership, unresolved and ambiguous
+aliases, ordinal defects, duplicate members, wrong party fragmentation, a role
+on the wrong party, wrong lawyer provenance, missing/extra relationships,
+target-plus-evidence and neither-outcome cells, altered reasons and trace
+evidence, application-native rows and an unaccounted parent-quarantined cell.
+It also verifies complete catalog definitions—not names or counts—for the
+three source CHECKs, five unique indexes, four foreign keys, two triggers and
+both complete trigger-function bodies. A forced late failure leaves all four
+result tables empty. The second identical live run retained the legacy-derived
 digest `39a453b615bf00998692afd18bcc2f75efcaf3146358d21e932d0aa9fb859e52`,
 including IDs and timestamps.
 

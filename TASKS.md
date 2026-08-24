@@ -851,11 +851,28 @@ only ever seen good data is not known to work.
 
       The transform and permanent `db:check` rebuild expectations from
       staging plus exact reviewed rules, rather than trusting counts or a
-      one-time plan. The fixture proves empty/missing/malformed rules,
-      unresolved and ambiguous aliases, ordinal defects, duplicate members,
-      missing/extra relationships, wrong roles, altered evidence/identity and
-      a late transactional failure. An identical second live run preserved
-      the exact result digest, including IDs and timestamps.
+      one-time plan. **Post-review correction:** the permanent oracle is a
+      standalone read-only SQL implementation; it does not import or call the
+      TypeScript transform planner or its party parser. Application-native
+      relationships with null legacy provenance are deliberately outside that
+      migration comparison and outside its stable result digest.
+
+      **The populated-cell total is 4,576 across all 1,744 source matters:**
+      4,418 belong to the 1,689 transformed matters and are handled here; 158
+      belong to the 55 parent-quarantined matters and remain protected inside
+      their complete task 2.6 payloads. The permanent check proves those two
+      partitions are disjoint and complete. Parent-quarantined cells are not
+      duplicated into the task 2.7 evidence table.
+
+      The fixture proves empty/missing/malformed rules, unresolved and
+      ambiguous aliases, ordinal defects, duplicate members, wrong
+      fragmentation, missing/extra relationships, wrong roles and provenance,
+      both/neither outcomes, altered evidence/identity, application-native
+      rows, parent-quarantined cells and a late transactional failure. It also
+      breaks and restores the complete definitions of all three provenance
+      CHECKs, five unique indexes, four foreign keys and both evidence
+      triggers/functions. An identical second live run preserved the exact
+      legacy-derived result digest, including IDs and timestamps.
 
 - [ ] **2.8 Transform: hearings and attendees**
       The current extraction holds 13,382 hearings; 13,279 is the 19 August

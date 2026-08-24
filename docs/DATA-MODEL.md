@@ -182,7 +182,9 @@ position. **At most one `lead` per matter.**
 
 Task 2.7 result: 927 relationships on 708 matters. Another 180 source lawyer
 cells are retained for review because they match neither an exact alias nor a
-reviewed split rule; none was guessed.
+reviewed split rule; none was guessed. Migration reconciliation covers only
+rows with non-null legacy provenance, so future lawyer assignments created in
+the application are valid native rows rather than false migration extras.
 
 ### `matter_parties`  +  `matter_party_roles`
 Replaces `client&Cap` and `opponent&Cap`, which held name and legal capacity in
@@ -196,6 +198,12 @@ several roles per party, with the exact capacity fragment preserved.
 
 Task 2.7 result: 2,615 parties and 2,199 roles. Unreviewed or structurally
 ambiguous source cells remain in `quarantine.matter_relationship_transform`.
+The same legacy-provenance scope applies to parties and their roles.
+
+Across all staged matters there are 4,576 populated lawyer/party cells: 4,418
+on the 1,689 transformed matters, and 158 on the 55 matters still held in the
+task 2.6 parent quarantine. Those 158 remain in their complete parent payload;
+they do not create relationship rows or duplicate task 2.7 evidence.
 
 ---
 

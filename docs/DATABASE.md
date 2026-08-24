@@ -156,7 +156,10 @@ against the database.
 The strict catalog-definition checks introduced in commit `92d5c3f` were
 verified against **PostgreSQL 17.11**. Keep them strict: they protect the full
 definitions of constraints, indexes, triggers and trigger functions, not just
-object names or counts.
+object names or counts. The task 2.7 post-review correction applies the same
+rule to all three relationship-provenance CHECKs, all five relationship unique
+indexes, all four reviewed-rule foreign keys, both evidence triggers and both
+complete trigger-function bodies.
 
 A future PostgreSQL major version may change how `pg_get_constraintdef`,
 `pg_get_indexdef` or `pg_get_triggerdef` formats the same database semantics.
