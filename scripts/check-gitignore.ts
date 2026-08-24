@@ -166,10 +166,9 @@ for (const path of MUST_BE_TRACKABLE) {
  * Belt and braces: nothing of the dangerous kind may already be committed.
  * check-ignore says what WOULD happen; this says what HAS happened.
  */
-const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' })
-  .split('\n')
-  .filter(Boolean);
-const bannedExtension = /\.(csv|tsv|xlsx?|xlsm|xlsb|ods|accdb|mdb|accde|mde|pdf|sqlite3?|db|zip|7z|rar|tar|gz|tgz|bak|dump|pem|key|p12)$/i;
+const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+const bannedExtension =
+  /\.(csv|tsv|xlsx?|xlsm|xlsb|ods|accdb|mdb|accde|mde|pdf|sqlite3?|db|zip|7z|rar|tar|gz|tgz|bak|dump|pem|key|p12)$/i;
 const committed = tracked.filter((f) => bannedExtension.test(f) || f === '.env');
 
 for (const file of committed) {

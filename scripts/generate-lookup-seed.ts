@@ -95,7 +95,7 @@ const LOOKUPS: Lookup[] = [
   {
     table: 'lookup_hearing_action',
     source: PART2,
-    expected: 20,   // 23 before the 21 Aug 2026 merges
+    expected: 20, // 23 before the 21 Aug 2026 merges
     columns: ['label_ar', 'sort_order'],
   },
   {
@@ -107,7 +107,7 @@ const LOOKUPS: Lookup[] = [
   {
     table: 'lookup_client_branch',
     source: PART2,
-    expected: 31,   // 32 before جنح merged into الجنح
+    expected: 31, // 32 before جنح merged into الجنح
     columns: ['label_ar', 'sort_order'],
   },
 ];
@@ -240,7 +240,9 @@ for (const lookup of LOOKUPS) {
    */
   const columns = [...lookup.columns, 'updated_at'].join(', ');
   for (const values of rows) {
-    out.push(`INSERT INTO "${lookup.table}" (${columns}) VALUES (${[...values, 'now()'].join(', ')});`);
+    out.push(
+      `INSERT INTO "${lookup.table}" (${columns}) VALUES (${[...values, 'now()'].join(', ')});`,
+    );
   }
   out.push('');
 }
@@ -282,7 +284,9 @@ out.push('');
 out.push('    -- Exactly one default matter type. Matters fall back to it (تقاضي).');
 out.push('    SELECT count(*) INTO actual FROM "lookup_matter_type" WHERE is_default;');
 out.push('    IF actual <> 1 THEN');
-out.push("        RAISE EXCEPTION 'lookup_matter_type: % rows marked default, expected 1', actual;");
+out.push(
+  "        RAISE EXCEPTION 'lookup_matter_type: % rows marked default, expected 1', actual;",
+);
 out.push('    END IF;');
 out.push('');
 out.push(`    RAISE NOTICE 'lookups seeded: % rows across ${LOOKUPS.length} lists', grand;`);
@@ -296,7 +300,8 @@ if (!target) {
 }
 
 const existing = readFileSync(target, 'utf8');
-const MARKER = '-- ==========================================================================\n--  SEED';
+const MARKER =
+  '-- ==========================================================================\n--  SEED';
 if (existing.includes(MARKER)) {
   throw new Error(`${target} already contains a seed section. Regenerate from a fresh migration.`);
 }

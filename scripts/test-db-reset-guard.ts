@@ -128,7 +128,7 @@ function dropThrowaway() {
     psql('postgres', `DROP DATABASE IF EXISTS ${quoted(DATABASE)} WITH (FORCE)`);
   } catch (error) {
     console.error(`\nCould not drop ${DATABASE}: ${String(error)}`);
-    console.error('Drop it by hand — it holds nothing but this suite\'s fixtures.\n');
+    console.error("Drop it by hand — it holds nothing but this suite's fixtures.\n");
   }
 }
 
@@ -165,7 +165,9 @@ function assertNoProjectData() {
   );
 
   if (databases.length !== 2) {
-    console.error(`\nREFUSING TO RUN: expected the throwaway and postgres, found ${databases.length}.\n`);
+    console.error(
+      `\nREFUSING TO RUN: expected the throwaway and postgres, found ${databases.length}.\n`,
+    );
     process.exit(1);
   }
 
@@ -486,7 +488,9 @@ function testParser(): number {
       console.log('  ok    parser reads names containing | and = and Arabic');
     } else {
       bad += 1;
-      console.log(`  FAIL  parser misread the awkward names — ${parsed.length} rows, ${total} total`);
+      console.log(
+        `  FAIL  parser misread the awkward names — ${parsed.length} rows, ${total} total`,
+      );
     }
   } catch (error) {
     bad += 1;
@@ -603,8 +607,8 @@ function main() {
     console.log('  Fully proving it needs a throwaway CLUSTER: a second compose service');
     console.log('  with its own volume, and db-reset.ts able to be pointed at it. That');
     console.log('  puts a service-selecting override into the most safety-critical');
-    console.log('  script in the project, so it is the firm\'s decision, not this');
-    console.log('  suite\'s. Until then, this case proves six of the seven checks and');
+    console.log("  script in the project, so it is the firm's decision, not this");
+    console.log("  suite's. Until then, this case proves six of the seven checks and");
     console.log('  says so rather than reporting a pass it has not earned.');
   }
 }

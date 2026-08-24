@@ -3,6 +3,7 @@
 
 # Generated or vendored — not ours to format.
 src/generated/
+scripts/baselines/reviewed-links.json
 
 # Deliberately broken fixtures for the check:rtl self-test. Reformatting them
 # would quietly change what is being tested.
@@ -22,7 +23,7 @@ assets/
 # SQL and PowerShell are hand-formatted with aligned columns and Arabic
 # comments. Prettier does not understand either and would wreck the alignment.
 sql/
-scripts/
+scripts/**/*.ps1
 
 # Reference documents. Prettier reflows Arabic paragraphs and tables badly.
 docs/

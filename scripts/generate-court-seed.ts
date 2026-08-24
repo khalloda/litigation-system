@@ -113,7 +113,10 @@ function main() {
     })
     .map((line) => {
       const rewritten = line
-        .replace('INSERT INTO lookup_court (label_ar, sort_order)', 'INSERT INTO "lookup_court" (label_ar, sort_order, updated_at)')
+        .replace(
+          'INSERT INTO lookup_court (label_ar, sort_order)',
+          'INSERT INTO "lookup_court" (label_ar, sort_order, updated_at)',
+        )
         .replace(/VALUES \((.*)\);/, 'VALUES ($1, now());');
       if (!rewritten.includes('now()')) {
         throw new Error(`could not rewrite a court insert:\n${line}`);
@@ -162,15 +165,13 @@ function main() {
 
   writeFileSync(target, header, 'utf8');
   appendFileSync(target, '-- ---- 309 courts ----\n' + courts.join('\n') + '\n\n', 'utf8');
-  appendFileSync(
-    target,
-    '-- ---- 94 crosswalk rules ----\n' + crosswalk.join('\n') + '\n',
-    'utf8',
-  );
+  appendFileSync(target, '-- ---- 94 crosswalk rules ----\n' + crosswalk.join('\n') + '\n', 'utf8');
 
   console.log(`Wrote ${target}`);
   console.log(`  courts stated     ${STATED_COURTS}`);
-  console.log(`  dropped           ${droppedAsMergeSource.length} (also a merge source: ${droppedAsMergeSource.join(', ')})`);
+  console.log(
+    `  dropped           ${droppedAsMergeSource.length} (also a merge source: ${droppedAsMergeSource.join(', ')})`,
+  );
   console.log(`  courts written    ${courts.length}`);
   console.log(`  crosswalk rules   ${crosswalk.length}`);
   console.log(`  splits resolved   ${splitsResolved} (court part was a merge source)`);

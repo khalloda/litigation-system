@@ -284,10 +284,7 @@ export function compare(
     field === null ? '(discarded)' : value === null ? field : `${field}/${value}`;
 
   const ruleNow = new Map(
-    current.crosswalk.map((c) => [
-      ruleKey(c),
-      target(c.targetField, c.targetValue),
-    ]),
+    current.crosswalk.map((c) => [ruleKey(c), target(c.targetField, c.targetValue)]),
   );
   for (const link of baseline.crosswalk) {
     const key = ruleKey(link);
@@ -323,8 +320,6 @@ export function additions(
   const knownRules = new Set(baseline.crosswalk.map((c) => ruleKey(c)));
   return {
     aliases: current.aliases.filter((a) => !knownAliases.has(a.alias)).length,
-    crosswalk: current.crosswalk.filter(
-      (c) => !knownRules.has(ruleKey(c)),
-    ).length,
+    crosswalk: current.crosswalk.filter((c) => !knownRules.has(ruleKey(c))).length,
   };
 }

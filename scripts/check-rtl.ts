@@ -359,10 +359,7 @@ function checkFile(file: string): Problem[] {
 
       const labelMatch = LABEL_KEY.exec(code);
       if (labelMatch && !looksTechnical(labelMatch[1] ?? '')) {
-        add(
-          `displayed label "${labelMatch[1]}" — move it to src/strings.ts (D12)`,
-          'label-key',
-        );
+        add(`displayed label "${labelMatch[1]}" — move it to src/strings.ts (D12)`, 'label-key');
       }
 
       const textMatch = JSX_TEXT.exec(code);

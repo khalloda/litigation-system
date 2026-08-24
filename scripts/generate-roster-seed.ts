@@ -133,18 +133,18 @@ push(`-- ---- people: ${people.length} rows ------------------------------------
 push(...people.map(withUpdatedAt), '');
 
 // ---- teams, before the aliases that no rule needs, but after people -------
-const teamInserts = statements(
-  TEAMS,
-  'INSERT INTO lookup_team (',
-  EXPECTED.teams,
-  'lookup_team',
-);
+const teamInserts = statements(TEAMS, 'INSERT INTO lookup_team (', EXPECTED.teams, 'lookup_team');
 push(`-- ---- lookup_team: ${teamInserts.length} rows -----------------------------------`);
 push(
-  ...teamInserts.map((s) => s.replace('VALUES (', 'VALUES (').replace(');', ', now());').replace(
-    'INSERT INTO lookup_team (code, label_ar, sort_order)',
-    'INSERT INTO lookup_team (code, label_ar, sort_order, updated_at)',
-  )),
+  ...teamInserts.map((s) =>
+    s
+      .replace('VALUES (', 'VALUES (')
+      .replace(');', ', now());')
+      .replace(
+        'INSERT INTO lookup_team (code, label_ar, sort_order)',
+        'INSERT INTO lookup_team (code, label_ar, sort_order, updated_at)',
+      ),
+  ),
   '',
 );
 
@@ -169,7 +169,11 @@ push(...aliases, '');
 // ---- team reviewer and membership -----------------------------------------
 const teamUpdates = readFileSync(TEAMS, 'utf8')
   .split('\n')
-  .filter((l) => l.startsWith('UPDATE lookup_team SET reviewer_id') || l.startsWith('UPDATE people p SET team_id'));
+  .filter(
+    (l) =>
+      l.startsWith('UPDATE lookup_team SET reviewer_id') ||
+      l.startsWith('UPDATE people p SET team_id'),
+  );
 push(
   '-- ---- teams: reviewer and membership ------------------------------------',
   '--',
@@ -250,7 +254,11 @@ assertion(
 );
 assertion('external people', 'count(*) FROM people WHERE NOT is_staff', EXPECTED.external);
 assertion('teams', 'count(*) FROM lookup_team', EXPECTED.teams);
-assertion('people with a team', 'count(*) FROM people WHERE team_id IS NOT NULL', EXPECTED.teamMembers);
+assertion(
+  'people with a team',
+  'count(*) FROM people WHERE team_id IS NOT NULL',
+  EXPECTED.teamMembers,
+);
 assertion(
   'current staff with a team',
   'count(*) FROM people WHERE is_staff AND is_active AND team_id IS NOT NULL',
@@ -334,7 +342,10 @@ const existing = readFileSync(target, 'utf8');
 if (existing.includes('--  SEED — the people roster')) {
   throw new Error(`${target} already contains a roster seed. Regenerate from a fresh migration.`);
 }
-if (existing.includes('--  SEED — the nine lookup lists') || existing.includes('LOOKUP CORRECTIONS')) {
+if (
+  existing.includes('--  SEED — the nine lookup lists') ||
+  existing.includes('LOOKUP CORRECTIONS')
+) {
   throw new Error(
     `${target} is a different migration — it already holds the lookup seed or the\n` +
       `lookup corrections. This script only ever writes into a NEW, EMPTY migration\n` +
