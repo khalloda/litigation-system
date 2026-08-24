@@ -19,7 +19,7 @@
  * A baseline records every link the firm actually reviewed, as a pair:
  *
  *     alias      "احمد سعيد"  ->  the person أحمد سعيد
- *     crosswalk  client_branch/النقض  ->  degree/نقض
+ *     crosswalk  client_branch/النقض  ->  degree/نقض + its operational note
  *
  * `npm run db:check` then proves every recorded pair still holds. It is
  * deliberately one-directional:
@@ -58,6 +58,10 @@ export type CrosswalkLink = {
   sourceValue: string;
   targetField: string | null;
   targetValue: string | null;
+  /* Optional only while reading a baseline created before task 2.6. Newly
+   * written baselines always carry it. SPLIT rules use this as structured
+   * migration data, so changing it can move a circuit or note. */
+  reviewerNote?: string | null;
 };
 
 export type Baseline = {
@@ -179,11 +183,15 @@ export function parseBaseline(raw: string): Baseline {
 
   const crosswalk: CrosswalkLink[] = rawCrosswalk.map((entry, i) => {
     const row = entry as Record<string, unknown>;
+    const reviewerNote = row['reviewerNote'];
     return {
       sourceField: str(row['sourceField'], `crosswalk[${i}].sourceField`),
       sourceValue: str(row['sourceValue'], `crosswalk[${i}].sourceValue`),
       targetField: strOrNull(row['targetField'], `crosswalk[${i}].targetField`),
       targetValue: strOrNull(row['targetValue'], `crosswalk[${i}].targetValue`),
+      ...(reviewerNote === undefined
+        ? {}
+        : { reviewerNote: strOrNull(reviewerNote, `crosswalk[${i}].reviewerNote`) }),
     };
   });
 
@@ -283,9 +291,7 @@ export function compare(
   const target = (field: string | null, value: string | null): string =>
     field === null ? '(discarded)' : value === null ? field : `${field}/${value}`;
 
-  const ruleNow = new Map(
-    current.crosswalk.map((c) => [ruleKey(c), target(c.targetField, c.targetValue)]),
-  );
+  const ruleNow = new Map(current.crosswalk.map((c) => [ruleKey(c), c]));
   for (const link of baseline.crosswalk) {
     const key = ruleKey(link);
     const now = ruleNow.get(key);
@@ -297,12 +303,22 @@ export function compare(
         expected: was,
         actual: 'the rule is no longer in the database',
       });
-    } else if (now !== was) {
+    } else if (target(now.targetField, now.targetValue) !== was) {
       drift.push({
         kind: 'crosswalk',
         subject: `${link.sourceField}/${link.sourceValue}`,
         expected: was,
-        actual: `now points at ${now}`,
+        actual: `now points at ${target(now.targetField, now.targetValue)}`,
+      });
+    } else if (
+      Object.prototype.hasOwnProperty.call(link, 'reviewerNote') &&
+      now.reviewerNote !== link.reviewerNote
+    ) {
+      drift.push({
+        kind: 'crosswalk',
+        subject: `${link.sourceField}/${link.sourceValue}`,
+        expected: `reviewer note ${link.reviewerNote ?? '(none)'}`,
+        actual: `reviewer note is now ${now.reviewerNote ?? '(none)'}`,
       });
     }
   }

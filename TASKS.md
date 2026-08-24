@@ -727,20 +727,50 @@ only ever seen good data is not known to work.
       the branch values resolved by **D19** move into `matter_category`. Where
       a matter already has one, **quarantine the conflict** for the firm — do
       not replace it and do not silently keep the old one. Either way the
-      original branch text stays in `clients.legacy_branch_raw`.
+      original branch text stays in `matters.legacy_branch_raw`.
       Every affected `migration_crosswalk` row carries this in its
       `reviewer_note`.
 
-- [ ] **2.6 Transform: matters** — including the four classification columns via
+- [x] **2.6 Transform: matters** — including the four classification columns via
       the crosswalk, and `legacy_*_raw` preserved.
 
+      **Completed 24 August 2026.** All 1,744 staged matters have exactly one
+      durable outcome: **1,689 transformed and 55 quarantined**. The 55 are
+      18 unreviewed importance values, 14 `separate_client` cases, 10 branches
+      requiring review, 5 category conflicts, 4 type conflicts, 3 court
+      remainders that belong on a hearing note, and 1 matter with no client.
+      No reasons overlap in the current data.
+
+      The transform loads the 90 firm-reviewed `matterCategory` / `matterDegree`
+      rules from `sql/lookups-and-crosswalk.sql`; it never retypes those
+      mappings. The reviewed-link baseline protects both their destinations
+      and operational split notes. It preserves the four mapped source values
+      byte for byte and keeps all 38 source columns in a complete JSONB audit
+      payload. The write is one serializable transaction. A forced failure
+      after all assertions left zero rows, and a live rerun reproduced the same
+      result digest and timestamps without an update or duplicate. `npm run
+      db:check` now rebuilds expected destinations from the reviewed crosswalk
+      and checks the partition, clients, mappings, raw values, payloads,
+      constraints, indexes and quarantine protection permanently.
+
       **QUESTION FOR ONCE THE DATA HAS LANDED: split the circuit?**
-      `circuit` is text by **D20** — 1,281 distinct values that are a circuit
-      number plus a specialism (`1 عمال`, `12 عمال`, `8 تجاري`, `7 استئناف`,
-      `4 أفراد`), varying by court. Splitting it into number + specialism
-      would give perhaps 15 specialisms and a free number, which is a real
-      improvement. **Do not attempt it before the values are loaded** — decide
-      it with them in front of you.
+      `circuit` is text by **D20**. The planning evidence came from 1,281
+      distinct hearing values, many of them a circuit number plus a specialism
+      (`1 عمال`, `12 عمال`, `8 تجاري`, `7 استئناف`, `4 أفراد`), varying by
+      court. Splitting the matter values into number + specialism might improve
+      filtering. **Do not attempt it before the values are loaded** — decide it
+      with them in front of you.
+
+      **Evaluated after loading. Recommendation: keep `circuit` as text for
+      now, as D20 says.** Only 255 of 1,689 transformed matters have a circuit,
+      across 122 exact values. 193 rows begin with a number and could be split
+      mechanically, but they already contain **31** different suffixes, not
+      the expected 15. The other 62 rows do not begin with a number at all;
+      examples include `مدني`, `جنح`, weekday descriptions, committee names
+      and text naming a chairperson. A partial split today would create two
+      incomplete fields while every report still needs the original text.
+      Reconsider only if the firm needs circuit-wide filtering; that would
+      first require review of the 62 non-number-led rows and the 31 suffixes.
 
       **RULE (b) — THE THREE `separate_client` VALUES ARE A CORRECTNESS
       PROBLEM, NOT A MIS-LABEL.** `سيجما للإعلام (تليفزيون الحياة)`,

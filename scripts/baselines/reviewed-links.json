@@ -1,11 +1,11 @@
 {
-  "note": "Every alias and crosswalk link the firm reviewed. npm run db:check proves each one still holds. Adding links is allowed; changing one fails the check. Regenerate with npm run baseline:write -- --accept-changes, and commit it on its own. See scripts/lib/reviewed-links.ts.",
-  "generatedAt": "2026-08-23",
+  "note": "Every alias and crosswalk outcome the firm reviewed, including operational notes. npm run db:check proves each one still holds. Adding links is allowed; changing one fails the check. Regenerate with npm run baseline:write -- --accept-changes, and commit it on its own. See scripts/lib/reviewed-links.ts.",
+  "generatedAt": "2026-08-24",
   "counts": {
     "aliases": 348,
-    "crosswalk": 114
+    "crosswalk": 204
   },
-  "digest": "e59a609447fb9f772186e96ef9437a949bb70fec51456ebf99d1ac55384275ba",
+  "digest": "ed1d9ce58ff479560b6511322e48e36bff28e95ac2305cbee676ee414ed18ae0",
   "aliases": [
     {
       "alias": "10- محمود شعبان",
@@ -1405,685 +1405,1429 @@
       "sourceField": "client_branch",
       "sourceValue": "آراء قانونية",
       "targetField": "matter_type",
-      "targetValue": "رأي قانوني"
+      "targetValue": "رأي قانوني",
+      "reviewerNote": "CONFIRMED BY THE FIRM 21 Aug 2026. A legal opinion is a kind of work, not a practice area (D8), and رأي قانوني is distinct from استشارات — settled during the classification review. The original instruction said matter_category; that was a slip and no such category exists. No new matter_category was created."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "ألفا مصر للتجارة",
       "targetField": "separate_client",
-      "targetValue": null
+      "targetValue": null,
+      "reviewerNote": "RULE (b): a client in its own right, not a branch. Any matter carrying this value is attached to THE WRONG CLIENT ENTIRELY. Quarantine at task 2.6. DO NOT GUESS the right client — the firm decides."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "أولاً: طلب وشكوى أمام الهيئة العامة للاستثمار",
       "targetField": null,
-      "targetValue": null
+      "targetValue": null,
+      "reviewerNote": "A heading pasted out of a document, not data. Discarded with the agreement of the firm: 1 matter loses its branch. The original text survives in clients.legacy_branch_raw."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "إقتصادي",
       "targetField": "matter_category",
-      "targetValue": "اقتصادي"
+      "targetValue": "اقتصادي",
+      "reviewerNote": "Practice area, not a branch. Hamza variant of the list value. RULE (a): never overwrite an existing matter_category — quarantine the conflict."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "الجنح",
       "targetField": "matter_category",
-      "targetValue": "جنح"
+      "targetValue": "جنح",
+      "reviewerNote": "Practice area, not a branch. Also the destination of the collapsed جنح chain. RULE (a): never overwrite an existing matter_category — quarantine the conflict."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "القضاء الإداري",
       "targetField": "matter_category",
-      "targetValue": "قضاء إداري"
+      "targetValue": "قضاء إداري",
+      "reviewerNote": "Practice area, not a branch. Same value with the definite article. RULE (a): never overwrite an existing matter_category — quarantine the conflict."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "النقض",
       "targetField": "degree",
-      "targetValue": "نقض"
+      "targetValue": "نقض",
+      "reviewerNote": "Court instance, not a branch. Same value with the definite article."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "تعويضات",
       "targetField": "matter_category",
-      "targetValue": "تعويضات"
+      "targetValue": "تعويضات",
+      "reviewerNote": "Practice area, not a branch. RULE (a): never overwrite an existing matter_category — quarantine the conflict."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "ثانياً: النزاعات القضائية المقامة من وضد شركتي الإمارات هايتس ويافا ماك",
       "targetField": null,
-      "targetValue": null
+      "targetValue": null,
+      "reviewerNote": "A heading pasted out of a document, not data. Discarded with the agreement of the firm: 13 matters lose their branch. The original text survives in clients.legacy_branch_raw."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "جنح",
       "targetField": "matter_category",
-      "targetValue": "جنح"
+      "targetValue": "جنح",
+      "reviewerNote": "Was client_branch -> الجنح (migration 0003). الجنح itself moved to matter_category جنح on 21 Aug 2026, so the two-step chain is collapsed to one step. RULE (a): never overwrite an existing matter_category — quarantine the conflict."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "دعاوى عمالية",
       "targetField": "matter_category",
-      "targetValue": "عمال"
+      "targetValue": "عمال",
+      "reviewerNote": "Practice area, not a branch. RULE (a): never overwrite an existing matter_category — quarantine the conflict."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "دعاوى قضائية",
       "targetField": "quarantine",
-      "targetValue": null
+      "targetValue": null,
+      "reviewerNote": "A work type, not a branch, and not specific enough to map anywhere. Send to the review queue."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "سيجما للإعلام (تليفزيون الحياة)",
       "targetField": "separate_client",
-      "targetValue": null
+      "targetValue": null,
+      "reviewerNote": "RULE (b): a client in its own right, not a branch. Any matter carrying this value is attached to THE WRONG CLIENT ENTIRELY. Quarantine at task 2.6. DO NOT GUESS the right client — the firm decides."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "سيجما للصناعات الدوائية",
       "targetField": "separate_client",
-      "targetValue": null
+      "targetValue": null,
+      "reviewerNote": "RULE (b): a client in its own right, not a branch. Any matter carrying this value is attached to THE WRONG CLIENT ENTIRELY. Quarantine at task 2.6. DO NOT GUESS the right client — the firm decides."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "ضرائب",
       "targetField": "matter_category",
-      "targetValue": "ضرائب"
+      "targetValue": "ضرائب",
+      "reviewerNote": "Practice area, not a branch. RULE (a): never overwrite an existing matter_category — quarantine the conflict."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "قضاء إداري",
       "targetField": "matter_category",
-      "targetValue": "قضاء إداري"
+      "targetValue": "قضاء إداري",
+      "reviewerNote": "Practice area, not a branch. RULE (a): never overwrite an existing matter_category — quarantine the conflict."
     },
     {
       "sourceField": "client_branch",
       "sourceValue": "مدني",
       "targetField": "matter_category",
-      "targetValue": "مدني"
+      "targetValue": "مدني",
+      "reviewerNote": "Practice area, not a branch. RULE (a): never overwrite an existing matter_category — quarantine the conflict."
     },
     {
       "sourceField": "court",
       "sourceValue": "/",
       "targetField": null,
-      "targetValue": null
+      "targetValue": null,
+      "reviewerNote": "Not a value. Discard; the original stays in legacy_court_raw."
     },
     {
       "sourceField": "court",
       "sourceValue": "26",
       "targetField": "circuit",
-      "targetValue": "26"
+      "targetValue": "26",
+      "reviewerNote": "CIRCUIT, not a discard. The firm, 23 Aug 2026: this row has no circuit recorded and the circuit number was typed into the court box. Load circuit='26'. THE COURT IS UNKNOWN — leave it NULL, never '26', never inferred. legacy_court_raw keeps the original."
     },
     {
       "sourceField": "court",
       "sourceValue": "6 أكتوبر (جنوب الجيزة)",
       "targetField": "court",
-      "targetValue": "6 أكتوبر -جنوب الجيزة الكلية"
+      "targetValue": "6 أكتوبر -جنوب الجيزة الكلية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "6 أكتوبر -جنوب الجزة الكلية",
       "targetField": "court",
-      "targetValue": "6 أكتوبر -جنوب الجيزة الكلية"
+      "targetValue": "6 أكتوبر -جنوب الجيزة الكلية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "أستئناف القاهرة",
       "targetField": "court",
-      "targetValue": "استئناف القاهرة"
+      "targetValue": "استئناف القاهرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "أكتوبر",
       "targetField": "court",
-      "targetValue": "6 أكتوبر"
+      "targetValue": "6 أكتوبر",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف",
       "targetField": "court",
-      "targetValue": "الاستئناف"
+      "targetValue": "الاستئناف",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف الإسكندرية بأبيس",
       "targetField": "court",
-      "targetValue": "استئناف الإسكندرية (أبيس)"
+      "targetValue": "استئناف الإسكندرية (أبيس)",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف الخانكة و العبور",
       "targetField": "court",
-      "targetValue": "استئناف الخانكة والعبور"
+      "targetValue": "استئناف الخانكة والعبور",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف الزقازيق \\n  \\n 19 استئناف",
       "targetField": "SPLIT",
-      "targetValue": "استئناف الزقازيق"
+      "targetValue": "استئناف الزقازيق",
+      "reviewerNote": "Split: court='استئناف الزقازيق', circuit='19 استئناف'"
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف القاهرة \\n  \\n 50 تجاري",
       "targetField": "SPLIT",
-      "targetValue": "استئناف القاهرة"
+      "targetValue": "استئناف القاهرة",
+      "reviewerNote": "Split: court='استئناف القاهرة', circuit='50 تجاري'"
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف القاهرة \\n  \\n 62 تجاري",
       "targetField": "SPLIT",
-      "targetValue": "استئناف القاهرة"
+      "targetValue": "استئناف القاهرة",
+      "reviewerNote": "Split: court='استئناف القاهرة', circuit='62 تجاري'"
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف القاهرة مأمورية استئناف الجيزة \\n  \\n 118 تعويضات",
       "targetField": "SPLIT",
-      "targetValue": "استئناف القاهرة مأمورية استئناف الجيزة"
+      "targetValue": "استئناف القاهرة مأمورية استئناف الجيزة",
+      "reviewerNote": "Split: court='استئناف القاهرة مأمورية استئناف الجيزة', circuit='118 تعويضات'"
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف شمال الجيزة شارع السودان",
       "targetField": "court",
-      "targetValue": "استئناف شمال الجيزة (السودان)"
+      "targetValue": "استئناف شمال الجيزة (السودان)",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف شمال القاهرة \\n  \\n 87 تعويضات",
       "targetField": "SPLIT",
-      "targetValue": "استئناف شمال القاهرة"
+      "targetValue": "استئناف شمال القاهرة",
+      "reviewerNote": "Split: court='استئناف شمال القاهرة', circuit='87 تعويضات'"
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف عال القاهرة",
       "targetField": "court",
-      "targetValue": "استئناف عالي القاهرة"
+      "targetValue": "استئناف عالي القاهرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف عال شبين الكوم",
       "targetField": "court",
-      "targetValue": "استئناف عالي شبين الكوم"
+      "targetValue": "استئناف عالي شبين الكوم",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف عالي القاهرة \\n  \\n 4 تعويضات",
       "targetField": "SPLIT",
-      "targetValue": "استئناف عالي القاهرة"
+      "targetValue": "استئناف عالي القاهرة",
+      "reviewerNote": "Split: court='استئناف عالي القاهرة', circuit='4 تعويضات'"
     },
     {
       "sourceField": "court",
       "sourceValue": "استئناف عالي طنطا \\n مأمورية شبين الكوم",
       "targetField": "SPLIT",
-      "targetValue": "استئناف عالي طنطا"
+      "targetValue": "استئناف عالي طنطا",
+      "reviewerNote": "Split: court='استئناف عالي طنطا', circuit='مأمورية شبين الكوم'"
     },
     {
       "sourceField": "court",
       "sourceValue": "اسرة العجوزة",
       "targetField": "court",
-      "targetValue": "أسرة العجوزة"
+      "targetValue": "أسرة العجوزة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "الأدارية العليا",
       "targetField": "court",
-      "targetValue": "الإدارية العليا"
+      "targetValue": "الإدارية العليا",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "الإدارية العليا \\n  \\n 1 طعون عليا",
       "targetField": "SPLIT",
-      "targetValue": "الإدارية العليا"
+      "targetValue": "الإدارية العليا",
+      "reviewerNote": "Split: court='الإدارية العليا', circuit='1 طعون عليا'"
     },
     {
       "sourceField": "court",
       "sourceValue": "الإدارية العليا \\n  \\n 1 موضوعي",
       "targetField": "SPLIT",
-      "targetValue": "الإدارية العليا"
+      "targetValue": "الإدارية العليا",
+      "reviewerNote": "Split: court='الإدارية العليا', circuit='1 موضوعي'"
     },
     {
       "sourceField": "court",
       "sourceValue": "الإدارية العليا \\n  \\n 2 فحص",
       "targetField": "SPLIT",
-      "targetValue": "الإدارية العليا"
+      "targetValue": "الإدارية العليا",
+      "reviewerNote": "Split: court='الإدارية العليا', circuit='2 فحص'"
     },
     {
       "sourceField": "court",
       "sourceValue": "الاسكندرية الاقتصادية",
       "targetField": "court",
-      "targetValue": "الإسكندرية الاقتصادية"
+      "targetValue": "الإسكندرية الاقتصادية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "الجيزة الابتدائية  \\n (السودان)",
       "targetField": "SPLIT",
-      "targetValue": "الجيزة الابتدائية"
+      "targetValue": "الجيزة الابتدائية",
+      "reviewerNote": "Split: court='الجيزة الابتدائية', circuit='(السودان)'"
     },
     {
       "sourceField": "court",
       "sourceValue": "الجيزة الابتدائية \\n  \\n 4 مدني حكومة",
       "targetField": "SPLIT",
-      "targetValue": "الجيزة الابتدائية"
+      "targetValue": "الجيزة الابتدائية",
+      "reviewerNote": "Split: court='الجيزة الابتدائية', circuit='4 مدني حكومة'"
     },
     {
       "sourceField": "court",
       "sourceValue": "السادس من أكتوبر",
       "targetField": "court",
-      "targetValue": "6 أكتوبر"
+      "targetValue": "6 أكتوبر",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "القاهرة الأقتصادية",
       "targetField": "court",
-      "targetValue": "القاهرة الاقتصادية"
+      "targetValue": "القاهرة الاقتصادية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "القاهرة الاقتصادية \\n  \\n 2 اقتصادي",
       "targetField": "SPLIT",
-      "targetValue": "القاهرة الاقتصادية"
+      "targetValue": "القاهرة الاقتصادية",
+      "reviewerNote": "Split: court='القاهرة الاقتصادية', circuit='2 اقتصادي'"
     },
     {
       "sourceField": "court",
       "sourceValue": "القاهرة الاقتصادية \\n  \\n 4 استئناف",
       "targetField": "SPLIT",
-      "targetValue": "القاهرة الاقتصادية"
+      "targetValue": "القاهرة الاقتصادية",
+      "reviewerNote": "Split: court='القاهرة الاقتصادية', circuit='4 استئناف'"
     },
     {
       "sourceField": "court",
       "sourceValue": "القاهرة الجديدة \\n  \\n 14 تعويضات",
       "targetField": "SPLIT",
-      "targetValue": "القاهرة الجديدة"
+      "targetValue": "القاهرة الجديدة",
+      "reviewerNote": "Split: court='القاهرة الجديدة', circuit='14 تعويضات'"
     },
     {
       "sourceField": "court",
       "sourceValue": "القاهرة الجديدة \\n استئناف محكمة الأسرة",
       "targetField": "SPLIT",
-      "targetValue": "القاهرة الجديدة"
+      "targetValue": "القاهرة الجديدة",
+      "reviewerNote": "Split: court='القاهرة الجديدة', circuit='استئناف محكمة الأسرة'"
     },
     {
       "sourceField": "court",
       "sourceValue": "القاهرة الجديدة الابتدائية",
       "targetField": "court",
-      "targetValue": "القاهرة الجديدة الأبتدائية"
+      "targetValue": "القاهرة الجديدة الأبتدائية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "القضاء الأداري",
       "targetField": "court",
-      "targetValue": "القضاء الإداري"
+      "targetValue": "القضاء الإداري",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "القضاء الإداري \\n  \\n 7 مفوضي استثمار",
       "targetField": "SPLIT",
-      "targetValue": "القضاء الإداري"
+      "targetValue": "القضاء الإداري",
+      "reviewerNote": "Split: court='القضاء الإداري', circuit='7 مفوضي استثمار'"
     },
     {
       "sourceField": "court",
       "sourceValue": "القضاء الإداري \\n  \\n 8 عقود",
       "targetField": "SPLIT",
-      "targetValue": "القضاء الإداري"
+      "targetValue": "القضاء الإداري",
+      "reviewerNote": "Split: court='القضاء الإداري', circuit='8 عقود'"
     },
     {
       "sourceField": "court",
       "sourceValue": "القضاء الإداري \\n 3 أفراد مفوضين",
       "targetField": "SPLIT",
-      "targetValue": "القضاء الإداري"
+      "targetValue": "القضاء الإداري",
+      "reviewerNote": "Split: court='القضاء الإداري', circuit='3 أفراد مفوضين'"
     },
     {
       "sourceField": "court",
       "sourceValue": "القضاء الاداري بالعباسية",
       "targetField": "court",
-      "targetValue": "القضاء الإداري بالعباسية"
+      "targetValue": "القضاء الإداري بالعباسية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "المحكمة الإدارية العليا",
       "targetField": "court",
-      "targetValue": "الإدارية العليا"
+      "targetValue": "الإدارية العليا",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "النقض \\n  \\n جنائي",
       "targetField": "SPLIT",
-      "targetValue": "النقض"
+      "targetValue": "النقض",
+      "reviewerNote": "Split: court='النقض', circuit='جنائي'"
     },
     {
       "sourceField": "court",
       "sourceValue": "النقض \\n  \\n مدني",
       "targetField": "SPLIT",
-      "targetValue": "النقض"
+      "targetValue": "النقض",
+      "reviewerNote": "Split: court='النقض', circuit='مدني'"
     },
     {
       "sourceField": "court",
       "sourceValue": "الهيئة العامة للأستثمار  - المنطقة الحرة",
       "targetField": "court",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "الهيئة العامة للأستثمار - المنطقة الحرة",
       "targetField": "court",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "الهيئة العامة للأستثمار في صلاح سالم",
       "targetField": "court",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "الهيئة العامة للاستثمار",
       "targetField": "court",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "الهيئة العامة للاستثمار بالمنطقة الحرة",
       "targetField": "court",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "جنوب الجيزة  \\n  \\n 7 مدني كلي",
       "targetField": "SPLIT",
-      "targetValue": "جنوب الجيزة"
+      "targetValue": "جنوب الجيزة",
+      "reviewerNote": "Split: court='جنوب الجيزة', circuit='7 مدني كلي'"
     },
     {
       "sourceField": "court",
       "sourceValue": "جنوب الجيزة  \\n  \\n 9 مدني كلي",
       "targetField": "SPLIT",
-      "targetValue": "جنوب الجيزة"
+      "targetValue": "جنوب الجيزة",
+      "reviewerNote": "Split: court='جنوب الجيزة', circuit='9 مدني كلي'"
     },
     {
       "sourceField": "court",
       "sourceValue": "جنوب الجيزة \\n  \\n 12 مدني",
       "targetField": "SPLIT",
-      "targetValue": "جنوب الجيزة"
+      "targetValue": "جنوب الجيزة",
+      "reviewerNote": "Split: court='جنوب الجيزة', circuit='12 مدني'"
     },
     {
       "sourceField": "court",
       "sourceValue": "جنوب الجيزة \\n  \\n 13 تعويضات",
       "targetField": "SPLIT",
-      "targetValue": "جنوب الجيزة"
+      "targetValue": "جنوب الجيزة",
+      "reviewerNote": "Split: court='جنوب الجيزة', circuit='13 تعويضات'"
     },
     {
       "sourceField": "court",
       "sourceValue": "جنوب الجيزة \\n  \\n 6 مدني",
       "targetField": "SPLIT",
-      "targetValue": "جنوب الجيزة"
+      "targetValue": "جنوب الجيزة",
+      "reviewerNote": "Split: court='جنوب الجيزة', circuit='6 مدني'"
     },
     {
       "sourceField": "court",
       "sourceValue": "جنوب الجيزة الأبتدائية",
       "targetField": "court",
-      "targetValue": "جنوب الجيزة الابتدائية"
+      "targetValue": "جنوب الجيزة الابتدائية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "جنوب القاهرة \\n  \\n 16 عمال",
       "targetField": "SPLIT",
-      "targetValue": "جنوب القاهرة"
+      "targetValue": "جنوب القاهرة",
+      "reviewerNote": "Split: court='جنوب القاهرة', circuit='16 عمال'"
     },
     {
       "sourceField": "court",
       "sourceValue": "جنوب القاهرة الابتدائية",
       "targetField": "court",
-      "targetValue": "جنوب القاهرة الأبتدائية"
+      "targetValue": "جنوب القاهرة الأبتدائية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "جهاز التنفيذي للمنطقة الصناعية و مديرية المساحة",
       "targetField": "court",
-      "targetValue": "الجهاز التنفيذي للمنطقة الصناعية و مديرية المساحة"
+      "targetValue": "الجهاز التنفيذي للمنطقة الصناعية و مديرية المساحة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "حلوان الابتدائية",
       "targetField": "court",
-      "targetValue": "حلوان الأبتدائية"
+      "targetValue": "حلوان الأبتدائية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "خبراء القاهرة الأقتصادية",
       "targetField": "court",
-      "targetValue": "خبراء القاهرة الاقتصادية"
+      "targetValue": "خبراء القاهرة الاقتصادية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "خبراء مجلس الدولة (خبير/محمد هاشم)",
       "targetField": "SPLIT",
-      "targetValue": "خبراء مجلس الدولة"
+      "targetValue": "خبراء مجلس الدولة",
+      "reviewerNote": "Split: court='خبراء مجلس الدولة', hearing_note='خبير/محمد هاشم'"
     },
     {
       "sourceField": "court",
       "sourceValue": "شمال القاهرة \\n  \\n 45 مدني",
       "targetField": "SPLIT",
-      "targetValue": "شمال القاهرة"
+      "targetValue": "شمال القاهرة",
+      "reviewerNote": "Split: court='شمال القاهرة', circuit='45 مدني'"
     },
     {
       "sourceField": "court",
       "sourceValue": "شمال القاهرة7",
       "targetField": "SPLIT",
-      "targetValue": "شمال القاهرة"
+      "targetValue": "شمال القاهرة",
+      "reviewerNote": "Split: court='شمال القاهرة', circuit='7'"
     },
     {
       "sourceField": "court",
       "sourceValue": "قصر النيل- عابدين",
       "targetField": "court",
-      "targetValue": "قصر النيل - عابدين"
+      "targetValue": "قصر النيل - عابدين",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "قضاء إداري",
       "targetField": "court",
-      "targetValue": "القضاء الإداري"
+      "targetValue": "القضاء الإداري",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "قضاء الأداري",
       "targetField": "court",
-      "targetValue": "القضاء الإداري"
+      "targetValue": "القضاء الإداري",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "كايرو فيستيفال سيتي",
       "targetField": "matter_destination",
-      "targetValue": "كايرو فيستيفال سيتي"
+      "targetValue": "كايرو فيستيفال سيتي",
+      "reviewerNote": "Not a court — a venue or destination. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "لجنة تفتيش بهيئة الأستثمار",
       "targetField": "court",
-      "targetValue": "لجنة التفتيش - الهيئة العامة للاستثمار"
+      "targetValue": "لجنة التفتيش - الهيئة العامة للاستثمار",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة أستئناف القاهرة",
       "targetField": "court",
-      "targetValue": "استئناف القاهرة"
+      "targetValue": "استئناف القاهرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة استئناف اسرة التجمع 21826/142 ق",
       "targetField": "SPLIT",
-      "targetValue": "محكمة استئناف اسرة التجمع"
+      "targetValue": "محكمة استئناف اسرة التجمع",
+      "reviewerNote": "Split: court='محكمة استئناف اسرة التجمع', case_number='21826/142 ق'"
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة القاهرة الجديدة",
       "targetField": "court",
-      "targetValue": "القاهرة الجديدة"
+      "targetValue": "القاهرة الجديدة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة النقض",
       "targetField": "court",
-      "targetValue": "النقض"
+      "targetValue": "النقض",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة جنوب القاهرة",
       "targetField": "court",
-      "targetValue": "جنوب القاهرة"
+      "targetValue": "جنوب القاهرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة حلوان",
       "targetField": "court",
-      "targetValue": "حلوان"
+      "targetValue": "حلوان",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة حلوان الابتدائية",
       "targetField": "court",
-      "targetValue": "حلوان الأبتدائية"
+      "targetValue": "حلوان الأبتدائية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة شمال الجيزة",
       "targetField": "court",
-      "targetValue": "شمال الجيزة"
+      "targetValue": "شمال الجيزة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة شمال الجيزة الابتدائية تنعقد في جنوب الجيزة",
       "targetField": "court",
-      "targetValue": "شمال الجيزة - تنعقد في جنوب الجيزة"
+      "targetValue": "شمال الجيزة - تنعقد في جنوب الجيزة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة عابدين",
       "targetField": "court",
-      "targetValue": "عابدين"
+      "targetValue": "عابدين",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة مجلس الدولة بالرحاب",
       "targetField": "court",
-      "targetValue": "مجلس الدولة بالرحاب"
+      "targetValue": "مجلس الدولة بالرحاب",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "محكمة مدينة نصر",
       "targetField": "court",
-      "targetValue": "مدينة نصر"
+      "targetValue": "مدينة نصر",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "مركز التسوية والتحكيم الرياضي",
       "targetField": "court",
-      "targetValue": "مركز التسوية و التحكيم الرياضي المصري"
+      "targetValue": "مركز التسوية و التحكيم الرياضي المصري",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "مقر شركة أدخنة النخلة بشبين الكوم",
       "targetField": "matter_destination",
-      "targetValue": "مقر شركة أدخنة النخلة بشبين الكوم"
+      "targetValue": "مقر شركة أدخنة النخلة بشبين الكوم",
+      "reviewerNote": "Not a court — a venue or destination. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "مكتب بريد المعادي",
       "targetField": "matter_destination",
-      "targetValue": "مكتب بريد المعادي"
+      "targetValue": "مكتب بريد المعادي",
+      "reviewerNote": "Not a court — a venue or destination. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "مكتب خبراء العباسية",
       "targetField": "court",
-      "targetValue": "مكتب خبراء شرق القاهرة -  العباسية"
+      "targetValue": "مكتب خبراء شرق القاهرة -  العباسية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "مكتب خبراء شرق القاهرة بالعباسية",
       "targetField": "court",
-      "targetValue": "مكتب خبراء شرق القاهرة -  العباسية"
+      "targetValue": "مكتب خبراء شرق القاهرة -  العباسية",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "مكتب خبراء وزارة العدل بجنوب الجيزة - (مروة السيد)",
       "targetField": "SPLIT",
-      "targetValue": "مكتب خبراء وزارة العدل بجنوب الجيزة"
+      "targetValue": "مكتب خبراء وزارة العدل بجنوب الجيزة",
+      "reviewerNote": "Split: court='مكتب خبراء وزارة العدل بجنوب الجيزة', hearing_note='مروة السيد'"
     },
     {
       "sourceField": "court",
       "sourceValue": "نادي المقطم الرياضي",
       "targetField": "matter_destination",
-      "targetValue": "نادي المقطم الرياضي"
+      "targetValue": "نادي المقطم الرياضي",
+      "reviewerNote": "Not a court — a venue or destination. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "نقابة الأطباء",
       "targetField": "matter_destination",
-      "targetValue": "نقابة الأطباء"
+      "targetValue": "نقابة الأطباء",
+      "reviewerNote": "Not a court — a venue or destination. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "نقض",
       "targetField": "court",
-      "targetValue": "النقض"
+      "targetValue": "النقض",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "نيابة الأموال العامة \\n العليا",
       "targetField": "SPLIT",
-      "targetValue": "نيابة الأموال العامة"
+      "targetValue": "نيابة الأموال العامة",
+      "reviewerNote": "Split: court='نيابة الأموال العامة', circuit='العليا'"
     },
     {
       "sourceField": "court",
       "sourceValue": "نيابة الشئون المالية والتجارية \\n  \\n وكيل نيابة/ أسامة الطنطاوي",
       "targetField": "SPLIT",
-      "targetValue": "نيابة الشئون المالية والتجارية"
+      "targetValue": "نيابة الشئون المالية والتجارية",
+      "reviewerNote": "Split: court='نيابة الشئون المالية والتجارية', hearing_note='وكيل نيابة/ أسامة الطنطاوي'"
     },
     {
       "sourceField": "court",
       "sourceValue": "هيئة الأستثمار - المنطقة الحرة",
       "targetField": "court",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "هيئة الأستثمار بمدينة نصر",
       "targetField": "court",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "هيئة الاستثمار",
       "targetField": "court",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "court",
       "sourceValue": "هيئة الاستثمار  \\n  \\n لجان فض المنازعات",
       "targetField": "SPLIT",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Split: court='هيئة الاستثمار', circuit='لجان فض المنازعات'"
     },
     {
       "sourceField": "court",
       "sourceValue": "هيئة الاستثمار - المنطقة الحرة",
       "targetField": "court",
-      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة"
+      "targetValue": "الهيئة العامة للاستثمار والمناطق الحرة",
+      "reviewerNote": "Spelling variant. Confirmed by the firm."
     },
     {
       "sourceField": "hearing_action",
       "sourceValue": "رفع الدعوي",
       "targetField": "hearing_action",
-      "targetValue": "رفع الدعوى"
+      "targetValue": "رفع الدعوى",
+      "reviewerNote": "Typo: ي for ى. Confirmed by the firm 21 Aug 2026."
     },
     {
       "sourceField": "hearing_action",
       "sourceValue": "مجكمة",
       "targetField": "hearing_action",
-      "targetValue": "محكمة"
+      "targetValue": "محكمة",
+      "reviewerNote": "Typo: ج for ح, adjacent keys. Confirmed by the firm 21 Aug 2026."
     },
     {
       "sourceField": "hearing_action",
       "sourceValue": "محكمه",
       "targetField": "hearing_action",
-      "targetValue": "محكمة"
+      "targetValue": "محكمة",
+      "reviewerNote": "Typo: ه for ة. Confirmed by the firm 21 Aug 2026."
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "أحوال شخصية",
+      "targetField": "matter_category",
+      "targetValue": "أحوال شخصية",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "أسرة",
+      "targetField": "matter_category",
+      "targetValue": "أسرة",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "إبتدائي",
+      "targetField": "degree",
+      "targetValue": "ابتدائي",
+      "reviewerNote": "Hamza variant of ابتدائي"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "إجراءات",
+      "targetField": "matter_type",
+      "targetValue": "إجراءات",
+      "reviewerNote": "Your note: company-establishment procedures. 2 of 10 rows already carry degree=إجراءات"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "إداري",
+      "targetField": "matter_category",
+      "targetValue": "إداري",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "إشكال",
+      "targetField": "matter_type",
+      "targetValue": "إشكال",
+      "reviewerNote": "You kept إشكال as a degree too — confirm which field"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "إقتصادي",
+      "targetField": "matter_category",
+      "targetValue": "اقتصادي",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "إلتماس",
+      "targetField": "matter_type",
+      "targetValue": "إلتماس",
+      "reviewerNote": "Petition for reconsideration — new type"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "ابتدائي",
+      "targetField": "degree",
+      "targetValue": "ابتدائي",
+      "reviewerNote": "A degree, not a practice area"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "استشارات",
+      "targetField": "matter_type",
+      "targetValue": "استشارات",
+      "reviewerNote": "4 of 11 rows already carry degree=استشارات — the same concept typed twice"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "استشارة",
+      "targetField": "matter_type",
+      "targetValue": "استشارات",
+      "reviewerNote": "Singular; degree empty on this row"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "استشارة قانونية",
+      "targetField": "matter_type",
+      "targetValue": "استشارات",
+      "reviewerNote": "You changed this to استشارات in the review"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "استشكال",
+      "targetField": "matter_type",
+      "targetValue": "إشكال",
+      "reviewerNote": "Variant of إشكال (execution objection)"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "اقتصادي",
+      "targetField": "matter_category",
+      "targetValue": "اقتصادي",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "النقض",
+      "targetField": "degree",
+      "targetValue": "نقض",
+      "reviewerNote": "Definite article"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "بنوك",
+      "targetField": "matter_category",
+      "targetValue": "بنوك",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "تجاري",
+      "targetField": "matter_category",
+      "targetValue": "تجاري",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "تحكيم",
+      "targetField": "venue",
+      "targetValue": "تحكيم",
+      "reviewerNote": "You confirmed تحكيم is a distinct CATEGORY from تحكيم رياضي — but it is also a venue. Confirm"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "تحكيم رياضي",
+      "targetField": "matter_category",
+      "targetValue": "تحكيم رياضي",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "تظلم",
+      "targetField": "matter_type",
+      "targetValue": "تظلم",
+      "reviewerNote": "2 of 14 rows already carry degree=تظلم"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "تظلمات",
+      "targetField": "matter_type",
+      "targetValue": "تظلم",
+      "reviewerNote": "Plural of تظلم"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "تعويض",
+      "targetField": "matter_category",
+      "targetValue": "تعويضات",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "تعويضات",
+      "targetField": "matter_category",
+      "targetValue": "تعويضات",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "تفتيش",
+      "targetField": "matter_type",
+      "targetValue": "تفتيش",
+      "reviewerNote": "Inspection"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "جنايات",
+      "targetField": "matter_category",
+      "targetValue": "جنايات",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "جناية",
+      "targetField": "matter_category",
+      "targetValue": "جنايات",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "جنح",
+      "targetField": "matter_category",
+      "targetValue": "جنح",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "جنح مستأنف",
+      "targetField": "matter_category",
+      "targetValue": "جنح مستأنف",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "جنحة",
+      "targetField": "matter_category",
+      "targetValue": "جنح",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "حكومي",
+      "targetField": "matter_category",
+      "targetValue": "حكومي",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "رأي قانوني",
+      "targetField": "matter_type",
+      "targetValue": "رأي قانوني",
+      "reviewerNote": "You confirmed it is distinct from استشارات"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "رياضة",
+      "targetField": "matter_category",
+      "targetValue": "رياضة",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "شركات",
+      "targetField": "matter_category",
+      "targetValue": "شركات",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "شق مستعجل",
+      "targetField": "matter_category",
+      "targetValue": "شق مستعجل",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "ضرائب",
+      "targetField": "matter_category",
+      "targetValue": "ضرائب",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "طلب قانوني",
+      "targetField": "matter_type",
+      "targetValue": "طلب",
+      "reviewerNote": "Confirm whether distinct from طلب"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "عقود",
+      "targetField": "matter_category",
+      "targetValue": "عقود",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "عمال",
+      "targetField": "matter_category",
+      "targetValue": "عمال",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "فض منازعات",
+      "targetField": "matter_category",
+      "targetValue": "فض منازعات",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "قضاء إداري",
+      "targetField": "matter_category",
+      "targetValue": "قضاء إداري",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "لجنة",
+      "targetField": "venue",
+      "targetValue": "لجنة",
+      "reviewerNote": "22 of 23 rows already carry degree=لجنة — redundant duplicate"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "لجنة تظلمات",
+      "targetField": "matter_type",
+      "targetValue": "تظلم",
+      "reviewerNote": "Committee grievance. Venue=لجنة already on this row, so the committee part is captured"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "لجنة تفتيش",
+      "targetField": "matter_type",
+      "targetValue": "تفتيش",
+      "reviewerNote": "Venue=لجنة captures the committee part"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "لجنة تفتيش الهيئة العامة للاستثمار والمناطق",
+      "targetField": "SPLIT",
+      "targetValue": "category=لجنة تفتيش + distination=الهيئة العامة للاستثمار والمناطق",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "محضر إداري",
+      "targetField": "matter_type",
+      "targetValue": "محضر إداري",
+      "reviewerNote": "You kept محضر إداري as a valid degree too — confirm which field it belongs in"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "مدني",
+      "targetField": "matter_category",
+      "targetValue": "مدني",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "منازعة تنفيذ",
+      "targetField": "matter_type",
+      "targetValue": "منازعة تنفيذ",
+      "reviewerNote": "Execution dispute — new type"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "نقض",
+      "targetField": "degree",
+      "targetValue": "نقض",
+      "reviewerNote": "7 of 12 rows already carry degree=نقض — redundant duplicate"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "نيابة",
+      "targetField": "venue",
+      "targetValue": "نيابة",
+      "reviewerNote": "8 of 10 rows already carry degree=نيابة. You moved نيابة to venue"
+    },
+    {
+      "sourceField": "matterCategory",
+      "sourceValue": "هامة",
+      "targetField": "importance",
+      "targetValue": "هامة",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "...",
+      "targetField": null,
+      "targetValue": null,
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "أاستئناف",
+      "targetField": "degree",
+      "targetValue": "استئناف",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "أبتدائي",
+      "targetField": "degree",
+      "targetValue": "ابتدائي",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "أستئناف",
+      "targetField": "degree",
+      "targetValue": "استئناف",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "أول درجة",
+      "targetField": "degree",
+      "targetValue": "أول درجة",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "إبتدائي",
+      "targetField": "degree",
+      "targetValue": "ابتدائي",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "إجراءات",
+      "targetField": "matter_type",
+      "targetValue": "إجراءات",
+      "reviewerNote": "Legal procedures as for company establishment procedures - type not degree"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "إدارية عليا",
+      "targetField": "venue",
+      "targetValue": "إدارية عليا",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "إشكال",
+      "targetField": "degree",
+      "targetValue": "إشكال",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "ابتدائي",
+      "targetField": "degree",
+      "targetValue": "ابتدائي",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "اسئناف",
+      "targetField": "degree",
+      "targetValue": "استئناف",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "استئناف",
+      "targetField": "degree",
+      "targetValue": "استئناف",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "استشارات",
+      "targetField": "matter_type",
+      "targetValue": "استشارات",
+      "reviewerNote": "type not degree"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "الدستورية",
+      "targetField": "venue",
+      "targetValue": "المحكمة الدستورية العليا",
+      "reviewerNote": "Venue"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "الدستورية العليا",
+      "targetField": "venue",
+      "targetValue": "المحكمة الدستورية العليا",
+      "reviewerNote": "venue"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "القضاء الإداري",
+      "targetField": "venue",
+      "targetValue": "قضاء إداري",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "اول درجة",
+      "targetField": "degree",
+      "targetValue": "أول درجة",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "تحكيم",
+      "targetField": "venue",
+      "targetValue": "تحكيم",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "تظلم",
+      "targetField": "matter_type",
+      "targetValue": "تظلم",
+      "reviewerNote": "type"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "جزئي",
+      "targetField": "degree",
+      "targetValue": "جزئي",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "جنح",
+      "targetField": "degree",
+      "targetValue": "جنح",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "جنح إقتصادي",
+      "targetField": "degree",
+      "targetValue": "جنح إقتصادي",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "جنحة",
+      "targetField": "degree",
+      "targetValue": "جنح",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "حرجة",
+      "targetField": "importance",
+      "targetValue": "حرجة",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "طعن",
+      "targetField": "matter_type",
+      "targetValue": "طعن",
+      "reviewerNote": "distinct - type not degree"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "طعن إداري",
+      "targetField": "degree",
+      "targetValue": "طعن إداري",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "طلب",
+      "targetField": "matter_type",
+      "targetValue": "طلب",
+      "reviewerNote": "type not degree"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "طلب رد",
+      "targetField": "matter_type",
+      "targetValue": "طلب رد",
+      "reviewerNote": "type not degree"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "عليا",
+      "targetField": "venue",
+      "targetValue": "إدارية عليا",
+      "reviewerNote": "venue"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "فضاء إداري",
+      "targetField": "venue",
+      "targetValue": "قضاء إداري",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "قضاء إداري",
+      "targetField": "venue",
+      "targetValue": "قضاء إداري",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "لجنة",
+      "targetField": "venue",
+      "targetValue": "لجنة",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "متابعة قانونية",
+      "targetField": "matter_type",
+      "targetValue": "متابعة قانونية",
+      "reviewerNote": "type not degree"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "مجلس الدولة",
+      "targetField": "venue",
+      "targetValue": "مجلس الدولة",
+      "reviewerNote": "venue"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "مجلس دولة",
+      "targetField": "venue",
+      "targetValue": "مجلس الدولة",
+      "reviewerNote": "venue"
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "محضر",
+      "targetField": "degree",
+      "targetValue": "محضر",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "محضر إداري",
+      "targetField": "degree",
+      "targetValue": "محضر إداري",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "مستأنف",
+      "targetField": "degree",
+      "targetValue": "مستأنف",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "نقض",
+      "targetField": "degree",
+      "targetValue": "نقض",
+      "reviewerNote": null
+    },
+    {
+      "sourceField": "matterDegree",
+      "sourceValue": "نيابة",
+      "targetField": "venue",
+      "targetValue": "نيابة",
+      "reviewerNote": null
     }
   ]
 }

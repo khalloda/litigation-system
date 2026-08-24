@@ -19,7 +19,13 @@ export async function readLinksFromDatabase(): Promise<{
     select: { aliasAr: true, person: { select: { nameAr: true } } },
   });
   const crosswalkRows = await db.migrationCrosswalk.findMany({
-    select: { sourceField: true, sourceValue: true, targetField: true, targetValue: true },
+    select: {
+      sourceField: true,
+      sourceValue: true,
+      targetField: true,
+      targetValue: true,
+      reviewerNote: true,
+    },
   });
 
   return {
@@ -29,6 +35,7 @@ export async function readLinksFromDatabase(): Promise<{
       sourceValue: r.sourceValue,
       targetField: r.targetField,
       targetValue: r.targetValue,
+      reviewerNote: r.reviewerNote,
     })),
   };
 }

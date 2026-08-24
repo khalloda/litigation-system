@@ -248,7 +248,7 @@ model LookupMatterDestination {
 ///
 /// The 16 that were not branches were removed and each one recorded in
 /// migration_crosswalk, so Stage 2 still maps the old text. Every client
-/// keeps its original branch text in clients.legacy_branch_raw (task 1.3).
+/// keeps its original branch text in matters.legacy_branch_raw (task 2.6).
 ///
 /// المنطقة الحرة IS a branch — the third site of أدخنة النخلة. An earlier
 /// note had it moving to lookup_venue; the firm corrected that, and venue
@@ -266,6 +266,7 @@ model LookupClientBranch {
   updatedBy Int?     @map("updated_by")
 
   clients Client[]
+  matters Matter[]
 
   @@map("lookup_client_branch")
 }
@@ -781,9 +782,10 @@ model Contact {
   @@map("contacts")
 }
 
-/// Matters — the central table. 1,730 rows at Stage 2.
+/// Matters — the central table. Task 2.6: 1,689 transformed + 55 quarantined
+/// from 1,744 staged source rows.
 ///
-/// In Access this was 47 columns mixing identity, court logistics, money,
+/// The extracted Access source has 38 columns mixing identity, court logistics, money,
 /// classification and free text. Only what the Dashboard actually reaches is
 /// built (D1), and the classification is split into four independent lists
 /// (D8) instead of the two overloaded ones Access had.
@@ -791,6 +793,15 @@ model Matter {
   id       Int  @id @default(autoincrement())
   /// Access matterID.
   legacyId Int? @unique @map("legacy_id")
+
+  /// Durable identity of the complete staged source row. The Access id above
+  /// is the business key; this hash proves which exact source values produced
+  /// the migrated row and is independent of CSV filename and row order.
+  legacySourceRecordKey       String? @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  /// Complete 38-column source row for lossless migration audit. This does not
+  /// reintroduce D6's team concept or perform task 2.7's lawyer/party split.
+  legacySourcePayload Json? @map("legacy_source_payload") @db.JsonB
 
   /// **MULTI-LINE. NEVER SPLIT, NEVER COLLAPSED TO ONE LINE — D9.**
   /// 308 matters (18%) hold several case numbers stacked with line breaks:
@@ -801,12 +812,21 @@ model Matter {
   /// see migration 0016. A generated column cannot be used because Prisma
   /// would include it in every INSERT and PostgreSQL refuses that.
   caseNumberArNormalised String? @map("case_number_ar_normalised")
+  /// Access matterEN, retained for the possible future bilingual version.
+  caseNumberEn String? @map("case_number_en")
   /// 98% filled.
   subject      String?
   subjectNormalised String? @map("subject_normalised")
 
   clientId Int?    @map("client_id")
   client   Client? @relation(fields: [clientId], references: [id])
+
+  /// D19: the source branch is a property of the matter, because one client
+  /// can have several sites. Removed non-branch values leave this null.
+  branchId Int?                @map("branch_id") @db.SmallInt
+  branch   LookupClientBranch? @relation(fields: [branchId], references: [id])
+  /// Byte-exact Access clientBranch, including discarded and quarantined text.
+  legacyBranchRaw String? @map("legacy_branch_raw")
 
   // ---- classification: four independent lists, D8 ------------------------
   matterTypeId     Int?                     @map("matter_type_id") @db.SmallInt
@@ -828,8 +848,26 @@ model Matter {
   legacyCategoryRaw String? @map("legacy_category_raw")
   legacyDegreeRaw   String? @map("legacy_degree_raw")
 
-  /// سارية 493 / منتهية 1,223 / null 14.
+  /// Source extraction: سارية 507 / منتهية 1,223 / null 14.
   status String?
+
+  /// Access fields whose names do not establish a safer semantic model. They
+  /// are migrated, retained, and not surfaced until a screen/report needs them.
+  notes1                        String? @map("notes_1")
+  notes2                        String? @map("notes_2")
+  startDate                     DateTime? @map("start_date") @db.Date
+  endDate                       DateTime? @map("end_date") @db.Date
+  askedAmount                   Decimal? @map("asked_amount") @db.Decimal(18, 2)
+  judgedAmount                  Decimal? @map("judged_amount") @db.Decimal(18, 2)
+  legacySelected                Boolean? @map("legacy_selected")
+  evaluation                    String?
+  currentStatus                 String? @map("current_status")
+  legacyClientTypeRaw           String? @map("legacy_client_type_raw")
+  legacyFinancialAllocationRaw  String? @map("legacy_financial_allocation_raw")
+  legalOpinion                  String? @map("legal_opinion")
+  legacyContractIdRaw           String? @map("legacy_contract_id_raw")
+  /// Preserved for task 2.7. It is never matched directly to a person name.
+  legacyPartnerRaw              String? @map("legacy_partner_raw")
 
   // ---- where it is heard -------------------------------------------------
   /// court and circuit are TWO SEPARATE FIELDS, not one. Reports join them
@@ -847,6 +885,7 @@ model Matter {
   /// data. Whether to split it into number + specialism is a question for
   /// AFTER the data lands: see task 2.6. Do not attempt the split now.
   circuit String?
+  circuitSecretary String? @map("circuit_secretary")
 
   // ---- court logistics ---------------------------------------------------
   /// Kept on the matter rather than in a matter_court_details table. Four
@@ -880,6 +919,7 @@ model Matter {
   feeLetters FeeLetterMatter[]
 
   @@index([clientId])
+  @@index([branchId])
   @@index([status])
   @@index([courtId])
   /// The trigram index that makes a LIKE '%…%' search fast. DECLARED HERE ON

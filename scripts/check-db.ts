@@ -106,7 +106,7 @@ async function main() {
     ['hearing_action', () => db.lookupHearingAction.count(), 20],
     //  27 + 4: the firm ruled that four of the seven "not a court" values are
     //  destinations. See sql/court-wrong-destinations.sql.
-    ['matter_destination', () => db.lookupMatterDestination.count(), 31],
+    ['matter_destination', () => db.lookupMatterDestination.count(), 32],
     ['client_branch', () => db.lookupClientBranch.count(), 15],
   ];
 
@@ -119,9 +119,9 @@ async function main() {
   }
   record(
     'Lookup lists (9)',
-    '134 rows',
+    '135 rows',
     wrong.length === 0 ? `${lookupTotal} rows` : wrong.join(', '),
-    wrong.length === 0 && lookupTotal === 134,
+    wrong.length === 0 && lookupTotal === 135,
   );
 
   // The default matter type is what a matter falls back to. Exactly one.
@@ -253,14 +253,11 @@ async function main() {
     matter_type: new Set((await db.lookupMatterType.findMany()).map((r) => r.labelAr)),
     degree: new Set((await db.lookupDegree.findMany()).map((r) => r.labelAr)),
     venue: new Set((await db.lookupVenue.findMany()).map((r) => r.labelAr)),
+    importance: new Set((await db.lookupImportance.findMany()).map((r) => r.labelAr)),
     matter_destination: new Set(
       (await db.lookupMatterDestination.findMany()).map((r) => r.labelAr),
     ),
     court: courtNames,
-    //  A SPLIT writes to more than one column. Its target_value is the COURT
-    //  part and must resolve like any other court; the remainder is carried
-    //  in the reviewer_note and goes to circuit, case number or hearing note.
-    SPLIT: courtNames,
   };
   //    Markers are not lists: they carry no target_value and resolve to
   //    nothing. NULL means the value is discarded.
@@ -282,16 +279,53 @@ async function main() {
   //    it counts as dangling, exactly like a list rule pointing at nothing.
   const textTargets = new Set(['circuit']);
 
+  const specialTargets = new Set(['SPLIT']);
   const unrecognised = crosswalk.filter(
     (c) =>
       c.targetField !== null &&
       !(c.targetField in listTargets) &&
       !markers.has(c.targetField) &&
-      !textTargets.has(c.targetField),
+      !textTargets.has(c.targetField) &&
+      !specialTargets.has(c.targetField),
   );
+  const splitIsValid = (
+    sourceField: string,
+    targetValue: string | null,
+    reviewerNote: string | null,
+  ): boolean => {
+    if (targetValue === null) return false;
+    if (sourceField === 'court') {
+      if (!courtNames.has(targetValue) || reviewerNote === null) return false;
+      const remainderValues = ['circuit', 'hearing_note', 'case_number']
+        .map((field) => reviewerNote.match(new RegExp(`${field}='([^']+)'`))?.[1])
+        .filter((value): value is string => value !== undefined && value.trim() !== '');
+      return remainderValues.length === 1;
+    }
+    if (sourceField !== 'matterCategory') return false;
+
+    const structured = targetValue.match(/^category=(.+) \+ distination=(.+)$/);
+    if (structured?.[1] === undefined || structured[2] === undefined) return false;
+    const categoryPart = structured[1].trim();
+    const destinationPart = structured[2].trim();
+    const nested = crosswalk.find(
+      (row) => row.sourceField === 'matterCategory' && row.sourceValue === categoryPart,
+    );
+    const venue = nested?.reviewerNote?.match(/Venue=([^ ]+)/)?.[1];
+    return (
+      nested !== undefined &&
+      nested.targetField !== null &&
+      nested.targetField in listTargets &&
+      nested.targetValue !== null &&
+      listTargets[nested.targetField]!.has(nested.targetValue) &&
+      venue !== undefined &&
+      listTargets['venue']!.has(venue) &&
+      listTargets['matter_destination']!.has(destinationPart)
+    );
+  };
   const dangling = crosswalk.filter((c) => {
     const field = c.targetField;
     if (field === null || markers.has(field)) return false;
+    if (field === 'SPLIT') return !splitIsValid(c.sourceField, c.targetValue, c.reviewerNote);
     //  A text target carries its own text. No text is nothing to carry.
     if (textTargets.has(field)) return c.targetValue === null || c.targetValue.trim() === '';
     const list = listTargets[field];
@@ -302,9 +336,9 @@ async function main() {
   });
   record(
     'Crosswalk rules resolve',
-    '114 rules, 0 dangling, 0 unrecognised',
+    '204 rules, 0 dangling, 0 unrecognised',
     `${crosswalk.length} rules, ${dangling.length} dangling, ${unrecognised.length} unrecognised`,
-    crosswalk.length === 114 && dangling.length === 0 && unrecognised.length === 0,
+    crosswalk.length === 204 && dangling.length === 0 && unrecognised.length === 0,
   );
 
   //    NO TWO-STEP CHAINS. A lookup value that is ALSO a crosswalk source for
@@ -1365,7 +1399,7 @@ async function main() {
     identityProblems.length === 0,
   );
 
-  // ---- quarantine, task 2.4 ------------------------------------------------
+  // ---- quarantine, tasks 2.4 and 2.6 ---------------------------------------
   //
   //  Rule 16 again: the migration asserted the shape once. These re-prove the
   //  properties the quarantine layer exists for, every time anyone looks.
@@ -1422,9 +1456,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '3 (finding, exclusion, review_value)',
+    '4 (finding, exclusion, review_value, matter_transform)',
     String(quarantine.tables),
-    quarantine.tables === 3n,
+    quarantine.tables === 4n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -1830,6 +1864,309 @@ async function main() {
     '0 rows',
     String(transformed.invented_branch),
     transformed.invented_branch === 0n,
+  );
+
+  // ---- matters, task 2.6 --------------------------------------------------
+  //     Prisma cannot declare the quarantine table, its immutability trigger,
+  //     or the source-identity CHECK. A later schema tidy-up could therefore
+  //     remove them without a Prisma error. Assert the actual database objects.
+  const matterSupport = one(
+    await db.$queryRaw<
+      {
+        support_columns: bigint;
+        source_constraint: bigint;
+        branch_fk: bigint;
+        quarantine_constraints: bigint;
+        immutable_trigger: bigint;
+        support_indexes: bigint;
+        reviewed_key: bigint;
+        reviewed_key_behaviour: boolean;
+      }[]
+    >`
+      SELECT
+        (SELECT count(*) FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'matters'
+            AND column_name IN (
+              'legacy_source_record_key','legacy_source_extraction_sha256','legacy_source_payload',
+              'case_number_en','branch_id','legacy_branch_raw','notes_1','notes_2','start_date',
+              'end_date','circuit_secretary','asked_amount','judged_amount','legacy_selected',
+              'evaluation','current_status','legacy_client_type_raw',
+              'legacy_financial_allocation_raw','legal_opinion','legacy_contract_id_raw',
+              'legacy_partner_raw')) AS support_columns,
+        (SELECT count(*) FROM pg_constraint
+          WHERE conrelid = 'matters'::regclass AND conname = 'matters_source_identity_shape'
+            AND convalidated) AS source_constraint,
+        (SELECT count(*) FROM pg_constraint
+          WHERE conrelid = 'matters'::regclass AND conname = 'matters_branch_id_fkey'
+            AND contype = 'f' AND convalidated) AS branch_fk,
+        (SELECT count(*) FROM pg_constraint
+          WHERE conrelid = 'quarantine.matter_transform'::regclass
+            AND conname IN ('matter_transform_source_key_shape','matter_transform_extraction_shape',
+                            'matter_transform_has_reason','matter_transform_details_are_array',
+                            'matter_transform_reasons_reconcile','matter_transform_payload_is_object')
+            AND convalidated) AS quarantine_constraints,
+        (SELECT count(*) FROM pg_trigger
+          WHERE tgrelid = 'quarantine.matter_transform'::regclass
+            AND tgname IN ('matter_transform_source_immutable','matter_transform_no_erasure')
+            AND tgenabled <> 'D') AS immutable_trigger,
+        (SELECT count(*) FROM pg_indexes
+          WHERE schemaname = 'public' AND tablename = 'matters'
+            AND indexname IN ('matters_legacy_source_record_key_key','matters_branch_id_idx')) AS support_indexes,
+        (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE n.nspname = '_migration' AND p.proname = 'reviewed_text_key'
+            AND p.provolatile = 'i' AND p.proparallel = 's') AS reviewed_key,
+        _migration.reviewed_text_key(E'  عمال \r\n ابتدائي  ')
+          = E'عمال\nابتدائي'
+          AND _migration.reviewed_text_key(E'\r\n إدارية عليا \r\n') = 'إدارية عليا'
+          AND _migration.reviewed_text_key('القضاء الإداري')
+              <> _migration.reviewed_text_key('القضاء الإداري بالعباسية') AS reviewed_key_behaviour`,
+    'matter transform support',
+  );
+  const supportActual = [
+    matterSupport.support_columns,
+    matterSupport.source_constraint,
+    matterSupport.branch_fk,
+    matterSupport.quarantine_constraints,
+    matterSupport.immutable_trigger,
+    matterSupport.support_indexes,
+    matterSupport.reviewed_key,
+  ].join('/');
+  record(
+    'Matter transform safeguards still exist',
+    '21/1/1/6/2/2/1 and reviewed key exact',
+    `${supportActual}, key ${matterSupport.reviewed_key_behaviour ? 'exact' : 'WRONG'}`,
+    supportActual === '21/1/1/6/2/2/1' && matterSupport.reviewed_key_behaviour,
+  );
+
+  //     Rebuild the expected destinations from the reviewed rows. This is
+  //     deliberately independent of the one-time transform transaction: a
+  //     count can agree while a matter points at the wrong category or court.
+  const matterResult = one(
+    await db.$queryRaw<
+      {
+        source_rows: bigint;
+        target_rows: bigint;
+        quarantine_rows: bigint;
+        missing_or_duplicate: bigint;
+        stale_target: bigint;
+        stale_quarantine: bigint;
+        target_payload_mismatch: bigint;
+        quarantine_payload_mismatch: bigint;
+        raw_mismatch: bigint;
+        client_mismatch: bigint;
+        mapping_mismatch: bigint;
+        mapping_coverage: bigint;
+        mapping_key_collisions: bigint;
+        separate_client_in_target: bigint;
+        conflicts_in_target: bigint;
+        unsafe_court_in_target: bigint;
+      }[]
+    >`
+      WITH classification_split AS (
+        SELECT s.src_record_key,
+               btrim(substring(cw.target_value FROM 'category=([^+]+)')) AS category_part,
+               btrim(substring(cw.target_value FROM 'distination=(.*)$')) AS destination_part
+          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
+            ON cw.source_field = 'matterCategory' AND cw.target_field = 'SPLIT'
+           AND _migration.reviewed_text_key(cw.source_value)
+               = _migration.reviewed_text_key(s."matterCategory")
+      ), rule_output AS (
+        SELECT s.src_record_key, cw.target_field, cw.target_value
+          FROM staging."الدعاوى" s
+         CROSS JOIN LATERAL (VALUES ('matterCategory'::text, s."matterCategory"),
+                                    ('matterDegree', s."matterDegree")) source(source_field, raw_value)
+          JOIN migration_crosswalk cw ON cw.source_field = source.source_field
+           AND _migration.reviewed_text_key(cw.source_value)
+               = _migration.reviewed_text_key(source.raw_value)
+         WHERE source.raw_value IS NOT NULL
+           AND cw.target_field IN ('matter_type','matter_category','degree','venue','importance')
+        UNION ALL
+        SELECT split.src_record_key, nested.target_field, nested.target_value
+          FROM classification_split split JOIN migration_crosswalk nested
+            ON nested.source_field = 'matterCategory'
+           AND _migration.reviewed_text_key(nested.source_value)
+               = _migration.reviewed_text_key(split.category_part)
+         WHERE nested.target_field IN ('matter_type','matter_category','degree','venue','importance')
+        UNION ALL
+        SELECT split.src_record_key, 'venue', substring(nested.reviewer_note FROM 'Venue=([^ ]+)')
+          FROM classification_split split JOIN migration_crosswalk nested
+            ON nested.source_field = 'matterCategory'
+           AND _migration.reviewed_text_key(nested.source_value)
+               = _migration.reviewed_text_key(split.category_part)
+         WHERE nested.reviewer_note LIKE '%Venue=%'
+        UNION ALL
+        SELECT src_record_key, 'matter_destination', destination_part FROM classification_split
+        UNION ALL
+        SELECT s.src_record_key, 'importance', l.label_ar
+          FROM staging."الدعاوى" s JOIN lookup_importance l ON l.label_ar = s."matterImportance"
+        UNION ALL
+        SELECT s.src_record_key, 'matter_destination', l.label_ar
+          FROM staging."الدعاوى" s JOIN lookup_matter_destination l
+            ON l.label_ar = s."matterDistination"
+        UNION ALL
+        SELECT s.src_record_key, 'branch', l.label_ar
+          FROM staging."الدعاوى" s JOIN lookup_client_branch l
+            ON _migration.reviewed_text_key(l.label_ar)
+               = _migration.reviewed_text_key(s."clientBranch")
+        UNION ALL
+        SELECT s.src_record_key, cw.target_field, cw.target_value
+          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
+            ON cw.source_field = 'client_branch'
+           AND _migration.reviewed_text_key(cw.source_value)
+               = _migration.reviewed_text_key(s."clientBranch")
+         WHERE cw.target_field IN ('matter_type','matter_category','degree')
+        UNION ALL
+        SELECT s.src_record_key, 'court', l.label_ar
+          FROM staging."الدعاوى" s JOIN lookup_court l
+            ON _migration.reviewed_text_key(l.label_ar)
+               = _migration.reviewed_text_key(s."matterCourt")
+         WHERE NOT EXISTS (SELECT 1 FROM migration_crosswalk cw
+                 WHERE cw.source_field = 'court'
+                   AND _migration.reviewed_text_key(cw.source_value)
+                       = _migration.reviewed_text_key(s."matterCourt"))
+        UNION ALL
+        SELECT s.src_record_key, 'court', cw.target_value
+          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
+            ON cw.source_field = 'court' AND cw.target_field IN ('court','SPLIT')
+           AND _migration.reviewed_text_key(cw.source_value)
+               = _migration.reviewed_text_key(s."matterCourt")
+        UNION ALL
+        SELECT s.src_record_key, 'matter_destination', cw.target_value
+          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
+            ON cw.source_field = 'court' AND cw.target_field = 'matter_destination'
+           AND _migration.reviewed_text_key(cw.source_value)
+               = _migration.reviewed_text_key(s."matterCourt")
+        UNION ALL
+        SELECT s.src_record_key, 'circuit', substring(cw.reviewer_note FROM $REGEX$circuit='([^']+)'$REGEX$)
+          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
+            ON cw.source_field = 'court' AND cw.target_field = 'SPLIT'
+           AND cw.reviewer_note LIKE '%circuit=%'
+           AND _migration.reviewed_text_key(cw.source_value)
+               = _migration.reviewed_text_key(s."matterCourt")
+        UNION ALL
+        SELECT src_record_key, 'circuit', "matterCircut" FROM staging."الدعاوى"
+         WHERE "matterCircut" IS NOT NULL
+      ), expected AS (
+        SELECT src_record_key,
+               max(target_value) FILTER (WHERE target_field = 'matter_type') matter_type,
+               max(target_value) FILTER (WHERE target_field = 'matter_category') matter_category,
+               max(target_value) FILTER (WHERE target_field = 'degree') degree,
+               max(target_value) FILTER (WHERE target_field = 'venue') venue,
+               max(target_value) FILTER (WHERE target_field = 'importance') importance,
+               max(target_value) FILTER (WHERE target_field = 'matter_destination') destination,
+               max(target_value) FILTER (WHERE target_field = 'branch') branch,
+               max(target_value) FILTER (WHERE target_field = 'court') court,
+               max(target_value) FILTER (WHERE target_field = 'circuit') circuit
+          FROM rule_output GROUP BY src_record_key
+      ), conflicts AS (
+        SELECT src_record_key, target_field FROM rule_output
+         GROUP BY src_record_key, target_field HAVING count(DISTINCT target_value) > 1
+      )
+      SELECT
+        (SELECT count(*) FROM staging."الدعاوى") AS source_rows,
+        (SELECT count(*) FROM matters WHERE legacy_source_record_key IS NOT NULL) AS target_rows,
+        (SELECT count(*) FROM quarantine.matter_transform) AS quarantine_rows,
+        (SELECT count(*) FROM staging."الدعاوى" s
+          WHERE (SELECT count(*) FROM matters m WHERE m.legacy_source_record_key = s.src_record_key)
+              + (SELECT count(*) FROM quarantine.matter_transform q WHERE q.src_record_key = s.src_record_key) <> 1)
+          AS missing_or_duplicate,
+        (SELECT count(*) FROM matters m WHERE m.legacy_source_record_key IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM staging."الدعاوى" s
+                           WHERE s.src_record_key = m.legacy_source_record_key)) AS stale_target,
+        (SELECT count(*) FROM quarantine.matter_transform q
+          WHERE NOT EXISTS (SELECT 1 FROM staging."الدعاوى" s
+                             WHERE s.src_record_key = q.src_record_key)) AS stale_quarantine,
+        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
+            ON s.src_record_key = m.legacy_source_record_key
+          WHERE m.legacy_source_payload IS DISTINCT FROM
+                to_jsonb(s) - ARRAY['src_file','src_row_num','src_record_key','src_extraction_sha256'])
+          AS target_payload_mismatch,
+        (SELECT count(*) FROM quarantine.matter_transform q JOIN staging."الدعاوى" s
+            ON s.src_record_key = q.src_record_key
+          WHERE q.source_payload IS DISTINCT FROM
+                to_jsonb(s) - ARRAY['src_file','src_row_num','src_record_key','src_extraction_sha256'])
+          AS quarantine_payload_mismatch,
+        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
+            ON s.src_record_key = m.legacy_source_record_key
+          WHERE m.legacy_category_raw IS DISTINCT FROM s."matterCategory"
+             OR m.legacy_degree_raw IS DISTINCT FROM s."matterDegree"
+             OR m.legacy_branch_raw IS DISTINCT FROM s."clientBranch"
+             OR m.legacy_court_raw IS DISTINCT FROM s."matterCourt") AS raw_mismatch,
+        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
+            ON s.src_record_key = m.legacy_source_record_key
+          LEFT JOIN clients c ON c.id = m.client_id
+          WHERE c.legacy_id::text IS DISTINCT FROM s."clientID") AS client_mismatch,
+        (SELECT count(*) FROM matters m JOIN expected e
+            ON e.src_record_key = m.legacy_source_record_key
+          LEFT JOIN lookup_matter_type mt ON mt.id = m.matter_type_id
+          LEFT JOIN lookup_matter_category mc ON mc.id = m.matter_category_id
+          LEFT JOIN lookup_degree d ON d.id = m.degree_id
+          LEFT JOIN lookup_venue v ON v.id = m.venue_id
+          LEFT JOIN lookup_importance i ON i.id = m.importance_id
+          LEFT JOIN lookup_matter_destination md ON md.id = m.destination_id
+          LEFT JOIN lookup_client_branch b ON b.id = m.branch_id
+          LEFT JOIN lookup_court c ON c.id = m.court_id
+          WHERE mt.label_ar IS DISTINCT FROM coalesce(e.matter_type,
+                    (SELECT label_ar FROM lookup_matter_type WHERE is_default))
+             OR mc.label_ar IS DISTINCT FROM e.matter_category
+             OR d.label_ar IS DISTINCT FROM e.degree
+             OR v.label_ar IS DISTINCT FROM e.venue
+             OR i.label_ar IS DISTINCT FROM e.importance
+             OR md.label_ar IS DISTINCT FROM e.destination
+             OR b.label_ar IS DISTINCT FROM e.branch
+             OR c.label_ar IS DISTINCT FROM e.court
+             OR m.circuit IS DISTINCT FROM e.circuit) AS mapping_mismatch,
+        (SELECT count(*) FROM staging."الدعاوى" s
+          CROSS JOIN LATERAL (VALUES ('matterCategory'::text, s."matterCategory"),
+                                     ('matterDegree', s."matterDegree")) source(source_field, raw_value)
+          WHERE source.raw_value IS NOT NULL
+            AND (SELECT count(*) FROM migration_crosswalk cw
+                  WHERE cw.source_field = source.source_field
+                    AND _migration.reviewed_text_key(cw.source_value)
+                        = _migration.reviewed_text_key(source.raw_value)) <> 1) AS mapping_coverage,
+        (SELECT count(*) FROM (
+           SELECT source_field, _migration.reviewed_text_key(source_value)
+             FROM migration_crosswalk GROUP BY 1,2 HAVING count(*) > 1) collision)
+          AS mapping_key_collisions,
+        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
+            ON s.src_record_key = m.legacy_source_record_key JOIN migration_crosswalk cw
+            ON cw.source_field = 'client_branch' AND cw.target_field = 'separate_client'
+           AND _migration.reviewed_text_key(cw.source_value)
+               = _migration.reviewed_text_key(s."clientBranch")) AS separate_client_in_target,
+        (SELECT count(*) FROM matters m JOIN conflicts c
+            ON c.src_record_key = m.legacy_source_record_key) AS conflicts_in_target,
+        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
+            ON s.src_record_key = m.legacy_source_record_key JOIN migration_crosswalk cw
+            ON cw.source_field = 'court'
+           AND _migration.reviewed_text_key(cw.source_value)
+               = _migration.reviewed_text_key(s."matterCourt")
+          WHERE (cw.target_field = 'SPLIT' AND cw.reviewer_note LIKE '%hearing_note=%')
+             OR cw.target_field = 'circuit') AS unsafe_court_in_target`,
+    'matter transform reconciliation',
+  );
+  const matterProblems =
+    matterResult.missing_or_duplicate +
+    matterResult.stale_target +
+    matterResult.stale_quarantine +
+    matterResult.target_payload_mismatch +
+    matterResult.quarantine_payload_mismatch +
+    matterResult.raw_mismatch +
+    matterResult.client_mismatch +
+    matterResult.mapping_mismatch +
+    matterResult.mapping_coverage +
+    matterResult.mapping_key_collisions +
+    matterResult.separate_client_in_target +
+    matterResult.conflicts_in_target +
+    matterResult.unsafe_court_in_target;
+  record(
+    'Every staged matter has one safe destination',
+    '1,744 = 1,689 transformed + 55 quarantined; 0 defects',
+    `${matterResult.source_rows} = ${matterResult.target_rows} + ${matterResult.quarantine_rows}; ` +
+      `${matterProblems} defects`,
+    matterResult.source_rows === 1744n &&
+      matterResult.target_rows === 1689n &&
+      matterResult.quarantine_rows === 55n &&
+      matterProblems === 0n,
   );
 
   // ---- report --------------------------------------------------------------

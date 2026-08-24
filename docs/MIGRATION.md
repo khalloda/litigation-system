@@ -1563,11 +1563,64 @@ it is classified as one, recorded as a `note` against each hearing, and asked
 about **once**. Quarantining 4,132 rows for review would have buried the 544
 real questions underneath them.
 
+## Matter transform — completed 24 August 2026
+
+Task 2.6 started with 1,744 staged matter rows and an empty matter target. It
+finished with **1,689 matters and 55 durable quarantine rows**, exactly one
+outcome per source identity:
+
+| Quarantine reason | Rows |
+|---|---:|
+| unreviewed `matterImportance` | 18 |
+| the three `separate_client` classifications | 14 |
+| branch requires a firm decision | 10 |
+| branch conflicts with the existing matter category | 5 |
+| branch conflicts with the existing matter type | 4 |
+| a court split leaves a hearing note, not a matter field | 3 |
+| no source client | 1 |
+| **total** | **55** |
+
+The 90 reviewed `matterCategory` and `matterDegree` rules are generated into
+the migration from `sql/lookups-and-crosswalk.sql`. The database holds 204
+crosswalk rows after the load; the reviewed-link baseline records all 204
+destinations and their operational reviewer notes, so changing either part is
+a permanent `db:check` failure rather than an unnoticed data move. The one
+reviewed structured category also adds its
+reviewed destination, bringing the destination lookup to 32.
+
+`_migration.reviewed_text_key()` reconciles only representation noise used by
+the reviewed rules: CRLF, bare CR, literal `\n`, edge spaces and edge-only line
+breaks. It does not fold Arabic or internal wording. This mattered for one
+source `matterDegree` whose bytes begin with CRLF before `إدارية عليا`; the
+first transaction refused it and rolled back every insert. The corrected
+function matched the already-reviewed value without changing the raw source.
+
+The transform is one serializable transaction with a task-specific advisory
+lock. It inserts by the durable complete-row identity and never updates a
+different result into place. A fixture forces an error after all twelve
+assertions and proves both target and quarantine remain empty. An identical
+live rerun retained result digest
+`2e233ad118731386e042a0479638ed8b303e8682c13f87366fffcda5ed790888`
+and the original timestamps exactly.
+
+All 38 source columns survive in `legacy_source_payload`, with JSON null still
+different from `""`. The four many-to-one source values also have named,
+byte-exact columns: `legacy_category_raw`, `legacy_degree_raw`,
+`legacy_branch_raw` and `legacy_court_raw`. The quarantine table holds the same
+complete payload and refuses UPDATE of evidence, DELETE and TRUNCATE.
+
+The post-load circuit evaluation supports **D20's text field**. There are 255
+filled circuits and 122 exact values. 193 rows are number + text, with 31
+different text suffixes; 62 rows are not number-led and include categories,
+weekday descriptions, committees and names. Keep the combined text now.
+Splitting it safely later would require a firm review of those 62 rows and 31
+suffixes, followed by an additive migration that retains `circuit` unchanged.
+
 ## The `_raw` rule
 
 Every normalised column keeps the original text beside it —
 `legacy_category_raw`, `legacy_degree_raw`, `capacity_raw`,
-`legacy_action_raw` (hearings) and `legacy_branch_raw` (clients).
+`legacy_action_raw` (hearings) and `legacy_branch_raw` (matters).
 
 ### The audit — every many-to-one mapping, and whether it keeps the original
 
@@ -1577,7 +1630,7 @@ Done 21 August 2026 after `hearings.legacy_action_raw` was found missing.
 |---|---|---|
 | `matters.matter_type_id` / `matter_category_id` / `degree_id` / `venue_id` | `matterCategory` (50) + `matterDegree` (40) | ✅ `legacy_category_raw`, `legacy_degree_raw` |
 | `hearings.action_id` | `الإجراء` (23 → 20) | ✅ `legacy_action_raw` |
-| `clients.branch_id` | `clientBranch` (32 → 15) | ✅ `legacy_branch_raw` |
+| `matters.branch_id` | `clientBranch` (32 → 15) | ✅ `legacy_branch_raw` |
 | `matter_parties` + `matter_party_roles` | `client&Cap` / `opponent&Cap`, 242 capacity strings | ✅ `legacy_raw` |
 | `matter_lawyers.person_id` | `lawyerA` / `lawyerB` + combination strings | ✅ `legacy_source` holds the exact source string |
 | **`hearing_attendees.person_id`** | `الحاضر` + `حاضر 1`–`حاضر 4`, **373 spellings → 135 people**, multi-person strings split into rows | ❌ **NOTHING** |
@@ -1597,14 +1650,13 @@ Fix in task 1.3, before any of these tables is loaded:
 a raw column on whatever table holds the POA lawyer list.
 
 **`legacy_action_raw` and `legacy_branch_raw` were added on 21 August 2026
-and show why the rule is not optional.** Those two columns mapped one to one until four lookup values were
-merged that day. A one-to-one mapping loses nothing; a many-to-one mapping
-loses the original unless it is kept. **Whenever a lookup gains a merge, the
-column that uses it needs a `_raw` partner, or the merge becomes
-irreversible.** Even where 50
-spellings collapse into one list entry, the byte-exact original stays
-queryable. A wrong mapping can be corrected and re-derived without going back to
-the Access file.
+and show why the rule is not optional.** Those two columns mapped one to one
+until four lookup values were merged that day. A one-to-one mapping loses
+nothing; a many-to-one mapping loses the original unless it is kept.
+**Whenever a lookup gains a merge, the column that uses it needs a `_raw`
+partner, or the merge becomes irreversible.** Even where 50 spellings
+collapse into one list entry, the byte-exact original stays queryable. A wrong
+mapping can be corrected and re-derived without going back to the Access file.
 
 ## Load order
 

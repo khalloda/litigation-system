@@ -48,13 +48,17 @@ async function main() {
   if (existing !== null) {
     const drift = compare(existing, current);
     const added = additions(existing, current);
+    const missingReviewerNotes = existing.crosswalk.filter(
+      (rule) => !Object.prototype.hasOwnProperty.call(rule, 'reviewerNote'),
+    ).length;
 
     if (drift.length === 0) {
       console.log(
         `No reviewed link has changed. ` +
-          `${added.aliases} new spellings and ${added.crosswalk} new rules to record.`,
+          `${added.aliases} new spellings, ${added.crosswalk} new rules, and ` +
+          `${missingReviewerNotes} existing rules needing note protection.`,
       );
-      if (added.aliases === 0 && added.crosswalk === 0) {
+      if (added.aliases === 0 && added.crosswalk === 0 && missingReviewerNotes === 0) {
         console.log('The baseline is already up to date. Nothing written.');
         return;
       }
@@ -86,8 +90,9 @@ async function main() {
   const crosswalk = sortCrosswalk(current.crosswalk);
   const baseline = {
     note:
-      'Every alias and crosswalk link the firm reviewed. npm run db:check proves each one ' +
-      'still holds. Adding links is allowed; changing one fails the check. Regenerate with ' +
+      'Every alias and crosswalk outcome the firm reviewed, including operational notes. ' +
+      'npm run db:check proves each one still holds. Adding links is allowed; changing one ' +
+      'fails the check. Regenerate with ' +
       'npm run baseline:write -- --accept-changes, and commit it on its own. ' +
       'See scripts/lib/reviewed-links.ts.',
     generatedAt: new Date().toISOString().slice(0, 10),

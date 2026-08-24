@@ -65,7 +65,7 @@ Login accounts. Linked to `people`. Role is one of the four in
 > Whether the model should gain a `responsible_person_id` is on the review
 > workbook.
 
-#### A client can have several branches, and the model has room for one
+#### A client can have several branches, so the branch belongs on the matter
 
 `clientBranch` is a column on **`الدعاوى`, the matter** — 560 matters, 32
 distinct values, 12 clients. **Eight of those twelve carry more than one:**
@@ -83,11 +83,11 @@ five genuine sites and الفطيم five subsidiaries. **`clients.branch_id` can
 represent that, and `clients.legacy_branch_raw` could keep only one of eight
 original texts** — which is the `_raw` rule failing outright, not a rounding.
 
-The likely answer is that the branch belongs on the **matter**, where Access
-put it: *which site of this client does this matter concern?* That would mean
-`matters.branch_id` and `matters.legacy_branch_raw`, and dropping
-`clients.branch_id`. **It is the firm's decision and it is on the review
-workbook.** Nothing is written to either column until then.
+The branch therefore belongs on the **matter**, where Access put it: *which
+site of this client does this matter concern?* Task 2.6 writes the reviewed
+branch to `matters.branch_id` and the exact Access text to
+`matters.legacy_branch_raw`. The older nullable client columns remain empty;
+they are not used to guess one branch for a client that has several.
 
 **`legacy_branch_raw`** — the original clientBranch text, byte for byte.
 Not optional. The 32 original values resolve to 15 (**D19**): 9 move to
@@ -129,27 +129,34 @@ Client contact people. Note `Contacts.Attachments` in Access is **empty**.
 
 ## Matters
 
-### `matters` — 1,730 rows
-The central table. In Access it was 47 columns mixing identity, court
-logistics, money, classification and free text.
+### `matters` — 1,689 transformed + 55 quarantined from 1,744 source rows
+The central table. The extracted source has 38 columns mixing identity, court
+logistics, money, classification and free text. Task 2.6 gives every source
+row exactly one durable outcome; none is discarded.
 
 | Column | Notes |
 |---|---|
 | `case_number_ar` | **Multi-line. 18% hold several case numbers. Do not split — see D9.** |
 | `case_number_ar_normalised` | Generated, for search |
+| `case_number_en` | Original `matterEN`, retained for a future bilingual version |
 | `subject` | 98% filled |
 | `client_id` | FK |
+| `branch_id` | FK to the reviewed matter branch — D19 |
 | `matter_type_id` | FK, defaults to تقاضي |
 | `matter_category_id` | FK, nullable |
 | `degree_id` | FK, nullable |
 | `venue_id` | FK, nullable |
 | `importance_id` | FK, nullable |
-| `status` | سارية 493 / منتهية 1,223 / null 14 |
+| `status` | سارية 507 / منتهية 1,223 / null 14 in this extraction |
 | `legacy_category_raw` | Original Access text, never overwritten |
 | `legacy_degree_raw` | Original Access text, never overwritten |
+| `legacy_branch_raw` | Original Access `clientBranch`, never overwritten |
 | `court_id` | FK to `lookup_court` — **D20** |
-| `legacy_court_raw` | The original court text. ~305 spellings clean up to a list at 2.5 |
-| `circuit` | **Text, not a list — D20.** 1,281 distinct values, a number plus a specialism |
+| `legacy_court_raw` | The original court text, never overwritten |
+| `circuit` | **Text, not a list — D20.** 255 filled rows / 122 exact values after task 2.6 |
+| `legacy_source_record_key`, `legacy_source_extraction_sha256` | Durable complete-row identity and extraction fingerprint |
+| `legacy_source_payload` | All 38 source columns, preserving Arabic, line breaks, NULL and empty text |
+| `start_date`, `end_date`, `asked_amount`, `judged_amount`, `notes_1`, `notes_2` | Typed scalar values retained from Access |
 | `court_floor`, `court_hall`, `court_shelf`, `court_secretary_room` | Court logistics — **D21**, they stay here |
 | `fee_letter_ref` | `الدعاوى.[خطاب الأتعاب]`, text not a FK. 412 carry a value and **all 412 resolve** — 289 by `contractID`, 123 by `mfilesID`. **Corrected 23 August 2026; it said "289 match nothing", which was the wrong column.** See "Two key spaces" below |
 | `legacy_id` | The Access `matterID`. See "Legacy identifiers" below |
@@ -588,8 +595,9 @@ Never retype this list: `npm run generate:court-seed -- <new migration.sql>`.
 
 **Four rules for Stage 2** are in the source file: a SPLIT writes to more than
 one column and the remainder is never discarded; three raw values carry an
-individual's name and go to the **hearing** note (`الجلسات.ملاحظات`), not the
-matter note; `(السودان)` on `الجيزة الابتدائية` loads as circuit text and is
+individual's name and belong on a **hearing** note (`الجلسات.ملاحظات`), not a
+matter note, so task 2.6 quarantines those matters rather than guessing a
+hearing; `(السودان)` on `الجيزة الابتدائية` loads as circuit text and is
 flagged at Gate 3; and a court in neither the crosswalk nor the list is a
 quarantine case.
 
@@ -600,17 +608,20 @@ All are **tables, not enums**, each with `label_ar`, `label_en`, `sort_order`,
 
 `matter_type` (14) · `matter_category` (21) · `degree` (12) · `venue` (7) ·
 `importance` (3) · `party_role` (11) · `hearing_action` (20) ·
-`matter_destination` (31) · `client_branch` (15) — **134 rows total**
+`matter_destination` (32) · `client_branch` (15) — **135 rows total**
 
 `matter_destination` went 27 → 31 on 23 August 2026: four of the seven values
 the court review found to be "not a court" are real places where something
 happened, and that list already holds exactly this kind of value. See
-`sql/court-wrong-destinations.sql`.
+`sql/court-wrong-destinations.sql`. Task 2.6 added the 32nd destination named
+by the firm's structured matter-category split.
 
 A tenth list, **`lookup_court`**, holds **308** courts and is **not** counted
-in the 134. See below.
+in the 135. See below.
 
-Was 150, then 146, now 130. Four values were merged on 21 August 2026 after
+Was 150, then 146, then 130 after the branch resolution. Court destinations
+and the structured matter split brought the current total to 135. Four values
+were merged on 21 August 2026 after
 three lists were found to have been marked "already clean" without inspection
 (`sql/lookup-corrections.sql`). Then `client_branch` was resolved from 31
 values to 15 — a branch is a site or subsidiary of a client and nothing else
