@@ -753,6 +753,19 @@ only ever seen good data is not known to work.
       and checks the partition, clients, mappings, raw values, payloads,
       constraints, indexes and quarantine protection permanently.
 
+      **Post-review correction, 24 August 2026.** The permanent check now
+      compares all 26 application-facing direct and typed matter fields
+      independently against staging, rather than treating the complete JSON
+      payload as proof that each target column was filled correctly. It also
+      rebuilds every quarantine reason and detail from staging and the reviewed
+      rules, checks every trace/evidence field, and validates the definitions
+      and events of the source-identity constraint, unique index, branch
+      foreign key and quarantine triggers/functions. The isolated fixture
+      proves it catches swapped notes, a changed typed date, a changed source
+      fingerprint, wrong reasons/details and changed quarantine trace data;
+      every deliberate change is rolled back before the fixture database is
+      dropped.
+
       **QUESTION FOR ONCE THE DATA HAS LANDED: split the circuit?**
       `circuit` is text by **D20**. The planning evidence came from 1,281
       distinct hearing values, many of them a circuit number plus a specialism

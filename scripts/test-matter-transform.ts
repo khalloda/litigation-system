@@ -2,6 +2,15 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import {
+  asBigInt,
+  MATTER_RECONCILIATION_SQL,
+  MATTER_STRUCTURE_SQL,
+  matterReconciliationFailures,
+  matterStructureFailures,
+  type MatterReconciliationRow,
+  type MatterStructureRow,
+} from './lib/matter-reconciliation';
 import { compare, type Baseline, type CrosswalkLink } from './lib/reviewed-links';
 import { runMatterTransform } from './transform-matters';
 
@@ -124,6 +133,40 @@ async function resultDigest(db: Client): Promise<string> {
   return result.rows[0]!.digest;
 }
 
+async function reconciliation(db: Client): Promise<MatterReconciliationRow> {
+  const result = await db.query<MatterReconciliationRow>(MATTER_RECONCILIATION_SQL);
+  assert.equal(result.rowCount, 1, 'matter reconciliation must return exactly one result row');
+  return result.rows[0]!;
+}
+
+async function assertReconciliationClean(db: Client) {
+  assert.deepEqual(
+    matterReconciliationFailures(await reconciliation(db)),
+    [],
+    'fixture must return to a fully reconciled state after a negative proof',
+  );
+}
+
+async function proveReconciliationFailure(
+  db: Client,
+  message: string,
+  mutate: () => Promise<unknown>,
+  expectedFields: string[],
+) {
+  await db.query('BEGIN');
+  try {
+    await mutate();
+    const changed = await reconciliation(db);
+    for (const field of expectedFields) {
+      assert.ok(asBigInt(changed[field]!) > 0n, `${message}: ${field} did not fail`);
+    }
+  } finally {
+    await db.query('ROLLBACK');
+  }
+  await assertReconciliationClean(db);
+  console.log(`  ok    ${message}`);
+}
+
 async function runFixture() {
   const protectedRule: CrosswalkLink = {
     sourceField: 'court',
@@ -171,6 +214,13 @@ async function runFixture() {
     const db = new Client({ connectionString: fixtureUrl.toString() });
     await db.connect();
     try {
+      const structure = await db.query<MatterStructureRow>(MATTER_STRUCTURE_SQL);
+      assert.equal(structure.rowCount, 1);
+      assert.deepEqual(matterStructureFailures(structure.rows[0]!), []);
+      console.log(
+        '  ok    catalog verification accepts the exact constraint, index, foreign key and triggers',
+      );
+
       await db.query(
         `INSERT INTO clients (legacy_id, name_ar, updated_at)
          VALUES (1, 'عميل اختبار تقني — ليس بيانات حقيقية', CURRENT_TIMESTAMP)`,
@@ -294,6 +344,69 @@ async function runFixture() {
       ]);
       console.log(
         '  ok    conflicts, wrong clients, unknown values and unsafe remainders quarantine',
+      );
+
+      await assertReconciliationClean(db);
+      console.log('  ok    the permanent reconciliation accepts the untouched fixture result');
+
+      await proveReconciliationFailure(
+        db,
+        'permanent reconciliation catches swapped direct note fields',
+        () =>
+          db.query(`
+            UPDATE matters
+               SET notes_1 = notes_2, notes_2 = notes_1
+             WHERE legacy_id = 1001`),
+        ['notes_1_mismatch', 'notes_2_mismatch'],
+      );
+
+      await proveReconciliationFailure(
+        db,
+        'permanent reconciliation catches a changed typed date',
+        () => db.query(`UPDATE matters SET start_date = DATE '2026-01-01' WHERE legacy_id = 1001`),
+        ['start_date_mismatch'],
+      );
+
+      await proveReconciliationFailure(
+        db,
+        'permanent reconciliation catches a changed extraction fingerprint',
+        () =>
+          db.query(
+            `UPDATE matters SET legacy_source_extraction_sha256 = $1 WHERE legacy_id = 1001`,
+            ['B'.repeat(64)],
+          ),
+        ['legacy_source_extraction_sha256_mismatch'],
+      );
+
+      await proveReconciliationFailure(
+        db,
+        'permanent reconciliation catches incorrect quarantine reasons and details',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.matter_transform DISABLE TRIGGER matter_transform_source_immutable',
+          );
+          await db.query(`
+            UPDATE quarantine.matter_transform
+               SET reason_codes = ARRAY['incorrect_fixture_reason'],
+                   reason_details = jsonb_build_array(jsonb_build_object('changed', true))
+             WHERE legacy_matter_id = '1201'`);
+        },
+        ['quarantine_reason_codes_mismatch', 'quarantine_reason_details_mismatch'],
+      );
+
+      await proveReconciliationFailure(
+        db,
+        'permanent reconciliation catches changed quarantine trace evidence',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.matter_transform DISABLE TRIGGER matter_transform_source_immutable',
+          );
+          await db.query(`
+            UPDATE quarantine.matter_transform
+               SET src_file = 'fixture/changed-trace.csv', src_row_num = 777
+             WHERE legacy_matter_id = '1201'`);
+        },
+        ['quarantine_src_file_mismatch', 'quarantine_src_row_mismatch'],
       );
 
       const raw = await db.query<{

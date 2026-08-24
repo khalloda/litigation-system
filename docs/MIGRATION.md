@@ -1609,6 +1609,32 @@ byte-exact columns: `legacy_category_raw`, `legacy_degree_raw`,
 `legacy_branch_raw` and `legacy_court_raw`. The quarantine table holds the same
 complete payload and refuses UPDATE of evidence, DELETE and TRUNCATE.
 
+**Post-review permanent reconciliation, 24 August 2026.** The complete payload
+is evidence that no source column vanished; it is not evidence that each
+application-facing column received the right source value. `db:check` now
+compares all 26 direct and typed matter fields independently with staging. Its
+date, number, boolean and identifier comparisons use fresh PostgreSQL input
+interpretation rather than the transform's temporary plan. Client,
+classification, branch, destination, court and circuit values continue to be
+rebuilt from the reviewed rules.
+
+The same check independently recomputes the complete expected quarantine set,
+including the exact ordered reason codes and reason details, and compares every
+source identity, extraction fingerprint, filename, row number, legacy id and
+payload. A safe row in quarantine, an unsafe row outside it, or changed trace
+evidence therefore fails permanently. Catalog inspection compares the actual
+definitions of the source-identity CHECK, unique source-key index and its
+column, branch foreign key and destination, both quarantine triggers, their
+events and their trigger-function bodies — object names and counts alone are
+not accepted.
+
+The isolated fixture deliberately swaps the two note fields, changes a typed
+date, changes the extraction fingerprint, substitutes an incorrect quarantine
+reason and detail, and changes quarantine filename/row trace evidence. Each
+change makes the permanent reconciliation fail inside a transaction; each is
+rolled back and the clean result is re-proved before the throwaway database is
+dropped.
+
 The post-load circuit evaluation supports **D20's text field**. There are 255
 filled circuits and 122 exact values. 193 rows are number + text, with 31
 different text suffixes; 62 rows are not number-led and include categories,

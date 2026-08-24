@@ -898,12 +898,12 @@ model Matter {
   courtShelf         String? @map("court_shelf")
   courtSecretaryRoom String? @map("court_secretary_room")
 
-  /// الدعاوى.[خطاب الأتعاب] — a reference to the mfiles_id of a fee letter,
-  /// NOT a foreign key. 412 matters carry a value and 289 of them match no
-  /// fee letter. This is a DIFFERENT relationship from fee_letter_matters
-  /// (288 values across 195 parents, task 1.4) and the two numbers must not
-  /// be reconciled against each other. Kept as text so the unmatched ones can
-  /// be quarantined with their original value intact.
+  /// الدعاوى.[خطاب الأتعاب] — text in two key spaces, not a foreign key.
+  /// 412 matters carry a reference: 289 resolve through contractID and 123
+  /// through mfilesID; none resolve through both and none through neither.
+  /// Task 2.9 must apply the firm's reviewed explicit rule and preserve this
+  /// original text. This is separate from fee_letter_matters (288 values
+  /// across 195 parents), and the two counts must not be reconciled together.
   feeLetterRef String? @map("fee_letter_ref")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

@@ -11,6 +11,15 @@
 
 import 'dotenv/config';
 import { db } from '../src/lib/db';
+import {
+  asBigInt,
+  MATTER_RECONCILIATION_SQL,
+  MATTER_STRUCTURE_SQL,
+  matterReconciliationFailures,
+  matterStructureFailures,
+  type MatterReconciliationRow,
+  type MatterStructureRow,
+} from './lib/matter-reconciliation';
 import { readLinksFromDatabase } from './lib/read-links';
 import { additions, compare, readBaseline } from './lib/reviewed-links';
 
@@ -1938,6 +1947,18 @@ async function main() {
     supportActual === '21/1/1/6/2/2/1' && matterSupport.reviewed_key_behaviour,
   );
 
+  const matterStructure = one(
+    await db.$queryRawUnsafe<MatterStructureRow[]>(MATTER_STRUCTURE_SQL),
+    'matter transform safeguard definitions',
+  );
+  const structureFailures = matterStructureFailures(matterStructure);
+  record(
+    'Matter safeguard definitions are exact',
+    'source identity, index, branch FK, triggers and functions exact',
+    structureFailures.length === 0 ? 'all definitions exact' : structureFailures.join('; '),
+    structureFailures.length === 0,
+  );
+
   //     Rebuild the expected destinations from the reviewed rows. This is
   //     deliberately independent of the one-time transform transaction: a
   //     count can agree while a matter points at the wrong category or court.
@@ -2167,6 +2188,26 @@ async function main() {
       matterResult.target_rows === 1689n &&
       matterResult.quarantine_rows === 55n &&
       matterProblems === 0n,
+  );
+
+  const permanentMatterResult = one(
+    await db.$queryRawUnsafe<MatterReconciliationRow[]>(MATTER_RECONCILIATION_SQL),
+    'permanent matter target and quarantine reconciliation',
+  );
+  const permanentMatterFailures = matterReconciliationFailures(permanentMatterResult);
+  record(
+    'Matter target fields and quarantine evidence reconcile',
+    '1,744 = 1,689 transformed + 55 quarantined; every target field and quarantine value exact',
+    `${asBigInt(permanentMatterResult.source_rows)} = ` +
+      `${asBigInt(permanentMatterResult.target_rows)} + ` +
+      `${asBigInt(permanentMatterResult.quarantine_rows)}; ` +
+      (permanentMatterFailures.length === 0
+        ? 'all target fields, reasons and evidence exact'
+        : permanentMatterFailures.join(', ')),
+    asBigInt(permanentMatterResult.source_rows) === 1744n &&
+      asBigInt(permanentMatterResult.target_rows) === 1689n &&
+      asBigInt(permanentMatterResult.quarantine_rows) === 55n &&
+      permanentMatterFailures.length === 0,
   );
 
   // ---- report --------------------------------------------------------------
