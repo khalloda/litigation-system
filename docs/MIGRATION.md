@@ -1973,6 +1973,40 @@ their triggers, and the full function definition including empty `proconfig`.
 Identical live runs retained IDs, timestamps and result digest
 `a863b3e4fa372d58ddd18e2b5c97db1da0a20523b8e6ec2e27cbb17dd700a7af`.
 
+## Task 2.9D — fee letters and both matter-link directions (25 August 2026)
+
+Migrations 0042–0043 added durable source identity to fee letters and their
+forward multi-value links, a separate table for the reverse matter-side
+reference, application-native rows without legacy provenance, and three
+immutable quarantine tables. The serializable transform reconciled
+**331 fee-letter sources = 331 targets + 0 quarantines**.
+
+The two Access relationships remain deliberately separate:
+
+- `خطابات الأتعاب.Matter`: **288 sources = 231 target links + 57
+  quarantines**. The quarantines are 32 unresolved case numbers, 24 whose
+  matching matter is already quarantined, and 1 case number matching two
+  matters. The full value, parent `contractID`, ordinal and source payload are
+  retained.
+- `الدعاوى.[خطاب الأتعاب]`: **412 sources = 393 target links + 19
+  quarantines**. All 19 have a matter already quarantined by Task 2.6; the
+  fee-letter resolution itself remains recorded rather than being discarded.
+
+The firm's exact reviewed answer is part of both the planner and the
+independent permanent oracle. It resolves 289 matter references through
+`contractID` and 123 through `mfilesID`; none resolve through both and none
+through neither. There are two values present in both identifier columns, but
+no current matter uses either value. A reference that matches both spaces, no
+space or multiple M-Files rows aborts rather than choosing.
+
+`db:check` independently rebuilds every parent value, both link directions,
+the exact identifier-space result, all quarantine reasons/details and all
+source identities from staging. Its PostgreSQL 17.11 catalog checker pins all
+constraints, indexes, foreign keys, triggers and the complete immutable
+function definition, including empty `proconfig`. Identical live runs retained
+IDs, timestamps and result digest
+`3b647f438dbe76ced036dd7a333f9626e5430cf1bab6cda63e37eb64835a7454`.
+
 ## Load order
 
 Parents before children.
@@ -1983,8 +2017,9 @@ Parents before children.
  7 matter_lawyers    8 matter_parties   9 hearings
 10 hearing_attendees 11 powers_of_attorney
 12 documents        13 fee_letters     14 fee_letter_matters
-15 invoices         16 payments        17 admin_tasks
-18 task_actions     19 attendance
+15 matter_fee_letter_references        16 invoices
+17 payments         18 admin_tasks     19 task_actions
+20 attendance
 ```
 
 ## Gate 4 — proving it worked

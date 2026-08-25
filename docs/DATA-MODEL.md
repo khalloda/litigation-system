@@ -312,17 +312,20 @@ available for future application-native records. Precedent exists:
 
 ### `fee_letters` — 331 rows
 `contract_id` **must survive migration unchanged** — future invoicing attaches
-to these records. Still actively used (latest entry Nov 2025).
+to these records. Still actively used (latest entry Nov 2025). Task 2.9D
+transformed all 331 and preserved `mfilesID` independently in both its typed
+and byte-exact raw forms.
 
-### `fee_letter_matters` — 288 rows
+### `fee_letter_matters` — 231 transformed rows, 57 quarantined sources
 From the Access multi-value column `خطابات الأتعاب.Matter` — **288 values
 across 195 parent rows**. Values are case-number *strings* (`1039 / 20ق`), not
 IDs.
 
 **They match `الدعاوى.matterAR`, the Arabic case number — not `matterID`,
-which is a surrogate integer.** Matched correctly, **256 of the 288 resolve
-and 32 do not**; one resolves to *two* matters and is queued. Quarantine the
-32; do not drop them.
+which is a surrogate integer.** Task 2.9D created **231 target links**. Of the
+remaining 57, 32 match no matter, 24 match a matter already quarantined by
+Task 2.6, and 1 matches *two* matters. All 57 remain in immutable quarantine
+with the complete source evidence; none are dropped or guessed.
 
 > **Corrected 23 August 2026.** This section previously said matching "will
 > produce unmatched rows" without a figure, and the summary table below gave
@@ -334,6 +337,15 @@ and 32 do not**; one resolves to *two* matters and is queued. Quarantine the
 `الدعاوى.[خطاب الأتعاب]` → the fee letters: **412 matters carry a value and
 all 412 resolve.** These are two different relationships and two different
 numbers; do not try to reconcile 288 against 412.
+
+### `matter_fee_letter_references` — 393 rows
+
+The resolved application relationship for that second direction. The other
+19 source references remain in immutable quarantine because their parent
+matters are already quarantined. Every row records whether the reviewed rule
+used `contractID` or `mfilesID`, and retains the original reference and full
+matter-source payload. References created later in the application use the
+same relationship table with all legacy provenance fields left null.
 
 #### Two key spaces in one column
 
@@ -357,7 +369,9 @@ but nothing prevents one. The transform must therefore:
    A silent pick attaches a matter to the wrong fee letter and nothing looks
    wrong afterwards.
 
-**That assertion must survive into Phase 2 data entry.** The moment anyone can
+Task 2.9D enforces both rules permanently in `npm run db:check`.
+
+**That assertion must also survive into Phase 2 data entry.** The moment anyone can
 type a fee-letter reference into a form, the same ambiguity can be created by
 hand — so the check belongs in `npm run db:check` and in the entry validation,
 not only in the migration that first found it.

@@ -918,7 +918,7 @@ only ever seen good data is not known to work.
       Task 2.8's application-schema/provenance work is migration 0037; its
       cross-schema attendee provenance trigger is migration 0038.
 
-- [ ] **2.9 Transform: admin works, POAs, documents, fee letters**
+- [x] **2.9 Transform: admin works, POAs, documents, fee letters**
 
       **A — administrative works completed 25 August 2026 (migration 0039).**
       4,238 source tasks reconcile to 3,694 targets and 544 immutable
@@ -955,16 +955,28 @@ only ever seen good data is not known to work.
       proved null while the full source payload remains intact. Result digest:
       `a863b3e4fa372d58ddd18e2b5c97db1da0a20523b8e6ec2e27cbb17dd700a7af`.
 
+      **D — fee letters completed 25 August 2026 (migrations 0042–0043).** All 331
+      fee-letter parents transformed. The 288 forward multi-value entries
+      became 231 links and 57 immutable quarantines: 32 unresolved case
+      numbers, 24 whose parent matter is already quarantined, and 1 ambiguous
+      case number. The separate 412 matter-side references became 393 links
+      and 19 immutable quarantines whose matters are already quarantined.
+      The firm's reviewed rule resolves 289 through `contractID` and 123
+      through `mfilesID`, none through both and none through neither. The
+      original reference, complete source payload and durable identity remain
+      attached. Result digest:
+      `3b647f438dbe76ced036dd7a333f9626e5430cf1bab6cda63e37eb64835a7454`.
+
       **`الدعاوى.[خطاب الأتعاب]` CARRIES TWO KEY SPACES — this is a hazard,
       not just an explanation.** Found at 2.4. It resolves against
       `contractID` (1–332) for 289 matters and `mfilesID` (1–59,225) for 123,
       none by both and none by neither.
 
-      Three things are required here, and none of them is optional:
+      The completed transform and permanent `db:check` enforce three things:
 
       1. **Resolve by an explicit rule the firm has confirmed**, recorded in
          the transform — never by "whichever column happens to match". The
-         question is on the `أسئلة عامة` sheet of the review workbook.
+         answer remains tied to the `أسئلة عامة` review row.
       2. **Assert that no value resolves BOTH ways**, and fail loudly if one
          does. A silent pick attaches a matter to the wrong fee letter and
          nothing looks wrong afterwards. **Two values already exist in both
@@ -973,8 +985,9 @@ only ever seen good data is not known to work.
       3. **Keep the reference's original text** in a `_raw` column, per the
          `_raw` rule, so a wrong resolution can be undone.
 
-      **The assertion must survive into `npm run db:check`** — rule 16. It is
-      not enough for the migration to prove it once.
+      **The assertion survives in `npm run db:check`** — rule 16. The
+      permanent independent oracle also reconstructs all three source
+      partitions, both link directions and complete immutable evidence.
 
       **The `26` row is here.** It is an `admin work table` row, and the
       crosswalk rule for it (migration 0023) writes **circuit = `26` and

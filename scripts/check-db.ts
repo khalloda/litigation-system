@@ -38,6 +38,8 @@ import { reconcilePowersOfAttorney } from './lib/poa-reconciliation';
 import { poaStructureFailures } from './lib/poa-structure';
 import { reconcileDocuments } from './lib/document-reconciliation';
 import { documentStructureFailures } from './lib/document-structure';
+import { reconcileFeeLetters } from './lib/fee-letter-reconciliation';
+import { feeLetterStructureFailures } from './lib/fee-letter-structure';
 import { ATTENDEE_AUDIT_BASELINE, REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
@@ -721,6 +723,7 @@ async function main() {
     'matter_party_roles',
     'hearing_attendees',
     'fee_letter_matters',
+    'matter_fee_letter_references',
     // task 1.5
     'invoices',
     'payments',
@@ -759,6 +762,8 @@ async function main() {
     ['matter_lawyers', 'legacy_source'],
     ['matter_parties', 'legacy_raw'],
     ['fee_letter_matters', 'legacy_matter_ref'],
+    ['fee_letters', 'legacy_mfiles_id_raw'],
+    ['matter_fee_letter_references', 'legacy_reference_raw'],
     //  Not a mapping raw column but the same idea: the abandoned duplicate of
     //  الصفة, kept under D10 and never read.
     ['powers_of_attorney', 'poa_capacity_duplicate'],
@@ -1483,9 +1488,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '13 (the 11 prior tables plus two document evidence tables)',
+    '16 (the 13 prior tables plus three fee-letter evidence tables)',
     String(quarantine.tables),
-    quarantine.tables === 13n,
+    quarantine.tables === 16n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -2429,6 +2434,38 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : documentStructure.join('; '),
       documentStructure.length === 0,
+    );
+    const feeResult = await reconcileFeeLetters(relationshipDb);
+    record(
+      'Fee letters and both matter-link directions reconcile',
+      '331 fee letters; 288 forward links; 412 reverse references; every value, rule and evidence row exact',
+      feeResult.defects.length === 0
+        ? `${feeResult.feeSourceCount} = ${feeResult.feeTargetCount} transformed + ${feeResult.feeQuarantineCount} quarantined; ` +
+            `${feeResult.forwardSourceCount} = ${feeResult.forwardTargetCount} forward links + ${feeResult.forwardQuarantineCount} quarantined; ` +
+            `${feeResult.reverseSourceCount} = ${feeResult.reverseTargetCount} reverse links + ${feeResult.reverseQuarantineCount} quarantined; ` +
+            `${feeResult.contractReferences}/${feeResult.mfilesReferences} contract/M-Files references`
+        : feeResult.defects.join('; '),
+      feeResult.feeSourceCount === 331 &&
+        feeResult.feeTargetCount === 331 &&
+        feeResult.feeQuarantineCount === 0 &&
+        feeResult.forwardSourceCount === 288 &&
+        feeResult.forwardTargetCount === 231 &&
+        feeResult.forwardQuarantineCount === 57 &&
+        feeResult.reverseSourceCount === 412 &&
+        feeResult.reverseTargetCount === 393 &&
+        feeResult.reverseQuarantineCount === 19 &&
+        feeResult.contractReferences === 289 &&
+        feeResult.mfilesReferences === 123 &&
+        feeResult.defects.length === 0,
+    );
+    const feeStructure = await feeLetterStructureFailures(relationshipDb);
+    record(
+      'Fee-letter constraints and evidence guards',
+      'complete PostgreSQL 17.11 definitions, including function configuration',
+      feeStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : feeStructure.join('; '),
+      feeStructure.length === 0,
     );
   } finally {
     await relationshipDb.end();

@@ -948,10 +948,15 @@ model Matter {
   /// الدعاوى.[خطاب الأتعاب] — text in two key spaces, not a foreign key.
   /// 412 matters carry a reference: 289 resolve through contractID and 123
   /// through mfilesID; none resolve through both and none through neither.
-  /// Task 2.9 must apply the firm's reviewed explicit rule and preserve this
+  /// Task 2.9D applied the firm's reviewed explicit rule and preserved this
   /// original text. This is separate from fee_letter_matters (288 values
   /// across 195 parents), and the two counts must not be reconciled together.
   feeLetterRef String? @map("fee_letter_ref")
+
+  /// Task 2.9D's resolved reverse reference. Kept separate from
+  /// fee_letter_matters because the two Access relationships have different
+  /// source columns and different cardinalities.
+  feeLetterReferenceLink MatterFeeLetterReference?
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -1412,7 +1417,8 @@ model FeeLetter {
   client   Client? @relation(fields: [clientId], references: [id])
 
   /// Access `mfilesID`, 92% — 306 of 331 rows.
-  mfilesId String? @map("mfiles_id")
+  mfilesId          String? @map("mfiles_id")
+  legacyMfilesIdRaw String? @map("legacy_mfiles_id_raw")
 
   /// Access `Client`, 65% — the client name as typed. `clientID` at 100% is
   /// the authoritative link.
@@ -1431,14 +1437,20 @@ model FeeLetter {
   /// deleted (D10). **Do not build a screen around it.**
   status String? @map("status")
 
+  legacySourceRecordKey        String? @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
-  matters  FeeLetterMatter[]
-  invoices Invoice[]
+  matters            FeeLetterMatter[]
+  referencingMatters MatterFeeLetterReference[]
+  invoices           Invoice[]
 
+  @@unique([legacySourceRecordKey], map: "fee_letters_legacy_source_record_key_key")
   @@index([clientId])
   @@map("fee_letters")
 }
@@ -1456,8 +1468,8 @@ model FeeLetter {
 //    الحاضر and حاضر 1-4, 373 spellings            ->  hearing_attendees
 //    خطابات الأتعاب.Matter, a multi-value column    ->  fee_letter_matters
 //
-//  ALL EMPTY. Stage 2 fills them, at tasks 2.7 (lawyers and parties), 2.8
-//  (attendees) and 2.9 (fee letters).
+//  Stage 2 filled them at tasks 2.7 (lawyers and parties), 2.8 (attendees)
+//  and 2.9 (fee letters), with unsafe source values retained in quarantine.
 //
 //  THE FIFTH RAW COLUMN IS HERE. hearing_attendees.legacy_name_raw completes
 //  the five that task 1.3 required — 373 spellings collapse to 135 people,
@@ -1657,15 +1669,15 @@ model HearingAttendee {
 /// across 195 parents** (D11). A normal CSV export of that column gives
 /// integers that look like data and are internal pointers.
 ///
-/// **The values are case-number STRINGS (`1039 / 20ق`), not ids**, so
-/// matching them to matters will leave rows unmatched — 289 of them are
-/// already expected. Those load with a null matter_id and are quarantined.
-/// **Do not drop them.**
+/// **The values are case-number STRINGS (`1039 / 20ق`), not ids.** Task 2.9D
+/// created 231 links. It quarantined 32 unresolved values, 24 values whose
+/// matching matter is already quarantined, and 1 ambiguous value. **Do not
+/// drop them.**
 ///
 /// **This is NOT the same relationship as `matters.fee_letter_ref`**, which
-/// runs the other way — 412 matters carry a value and 289 match no fee
-/// letter. Two different links and two different numbers that happen to share
-/// a digit. Do not try to reconcile 288 against 289.
+/// runs the other way — 412 matters carry a value and all resolve to a fee
+/// letter through the reviewed two-key-space rule. Two different links and
+/// two different numbers must not be reconciled together.
 model FeeLetterMatter {
   id          Int       @id @default(autoincrement())
   feeLetterId Int       @map("fee_letter_id")
@@ -1682,14 +1694,44 @@ model FeeLetterMatter {
   /// Order within the parent fee letter.
   ordinal Int?
 
+  legacyParentContractIdRaw    String? @map("legacy_parent_contract_id_raw")
+  legacySourceRecordKey        String? @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  @@unique([legacySourceRecordKey], map: "fee_letter_matters_legacy_source_record_key_key")
   @@index([feeLetterId])
   @@index([matterId])
   @@map("fee_letter_matters")
+}
+
+/// The reverse Access relationship from `الدعاوى.[خطاب الأتعاب]`. It is not
+/// the same source as the 288 forward multi-value links above. Each source
+/// value resolves through exactly one reviewed identifier space. Rows created
+/// later in the application keep every legacy provenance field null.
+model MatterFeeLetterReference {
+  id                           Int       @id @default(autoincrement())
+  matterId                     Int       @unique @map("matter_id")
+  matter                       Matter    @relation(fields: [matterId], references: [id], onDelete: Restrict, map: "matter_fee_letter_references_matter_fk")
+  feeLetterId                  Int       @map("fee_letter_id")
+  feeLetter                    FeeLetter @relation(fields: [feeLetterId], references: [id], onDelete: Restrict, map: "matter_fee_letter_references_fee_fk")
+  identifierSpace              String?   @map("identifier_space")
+  legacyReferenceRaw           String?   @map("legacy_reference_raw")
+  legacySourceRecordKey        String?   @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String?   @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?     @map("legacy_source_payload")
+  createdAt                    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                    Int?      @map("created_by")
+  updatedAt                    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy                    Int?      @map("updated_by")
+
+  @@index([feeLetterId])
+  @@map("matter_fee_letter_references")
 }
 
 // ===========================================================================
