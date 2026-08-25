@@ -17,7 +17,6 @@ import {
 } from './migration-baselines';
 
 export const ATTENDEE_SOURCE_TABLE = 'الجلسات';
-export const ATTENDEE_CELL_DIGEST = ATTENDEE_SOURCE_BASELINE.digest;
 
 type SourceCellRow = {
   src_record_key: string;

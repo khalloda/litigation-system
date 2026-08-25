@@ -67,6 +67,7 @@ type FunctionRow = {
   security_definer: boolean;
   leakproof: boolean;
   parallel_safety: string;
+  configuration: string[] | null;
   body: string;
 };
 
@@ -373,6 +374,7 @@ const EXPECTED_FUNCTIONS = [
     volatility: 'i',
     strict: true,
     parallel: 's',
+    configuration: null,
     body: `
     SELECT encode(sha256(convert_to(
         octet_length('attendee-cell-v1')::text || ':attendee-cell-v1' ||
@@ -392,6 +394,7 @@ const EXPECTED_FUNCTIONS = [
     volatility: 'i',
     strict: true,
     parallel: 's',
+    configuration: null,
     body: `
     SELECT encode(sha256(convert_to(
         octet_length('attendee-cell-content-v1')::text || ':attendee-cell-content-v1' ||
@@ -409,6 +412,7 @@ const EXPECTED_FUNCTIONS = [
     volatility: 'i',
     strict: true,
     parallel: 's',
+    configuration: null,
     body: `
     SELECT encode(sha256(convert_to(
         octet_length('attendee-fragment-v1')::text || ':attendee-fragment-v1' ||
@@ -429,6 +433,7 @@ const EXPECTED_FUNCTIONS = [
     volatility: 'v',
     strict: false,
     parallel: 'u',
+    configuration: null,
     body: `
 BEGIN
     RAISE EXCEPTION '% is immutable migration evidence; % is refused',
@@ -445,6 +450,7 @@ END;
     volatility: 'v',
     strict: false,
     parallel: 'u',
+    configuration: null,
     body: `
 BEGIN
     RAISE EXCEPTION '% is immutable migration evidence; DELETE/TRUNCATE is refused',
@@ -459,6 +465,10 @@ function canonical(value: string): string {
 }
 
 function sameStrings(actual: string[], expected: readonly string[]): boolean {
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function sameConfiguration(actual: string[] | null, expected: readonly string[] | null): boolean {
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
@@ -532,7 +542,8 @@ export async function attendeeAuditStructureFailures(db: ClientBase): Promise<st
             language.lanname AS language_name, p.prokind::text AS function_kind,
             p.provolatile::text AS volatility, p.proisstrict AS strict,
             p.prosecdef AS security_definer, p.proleakproof AS leakproof,
-            p.proparallel::text AS parallel_safety, p.prosrc AS body
+            p.proparallel::text AS parallel_safety, p.proconfig AS configuration,
+            p.prosrc AS body
        FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
        JOIN pg_language language ON language.oid=p.prolang
       WHERE p.oid=ANY($1::regprocedure[]) ORDER BY p.oid::regprocedure::text`,
@@ -634,6 +645,7 @@ export async function attendeeAuditStructureFailures(db: ClientBase): Promise<st
       actual.security_definer ||
       actual.leakproof ||
       actual.parallel_safety !== expected.parallel ||
+      !sameConfiguration(actual.configuration, expected.configuration) ||
       canonical(actual.body) !== canonical(expected.body)
     )
       failures.push(`function definition: ${expected.signature}`);

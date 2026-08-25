@@ -553,11 +553,20 @@ async function main(): Promise<void> {
           CREATE OR REPLACE FUNCTION _migration.refuse_attendee_audit_row_change()
           RETURNS trigger LANGUAGE plpgsql AS $f$
           BEGIN
-            PERFORM TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME;
+            PERFORM '% is immutable migration evidence; % is refused'::text;
             RETURN NEW;
           END
           $f$`),
         /function definition: _migration.refuse_attendee_audit_row_change/u,
+      );
+      await proveStructureFailure(
+        db,
+        'a per-function search_path configuration is detected',
+        () =>
+          db.query(`
+          ALTER FUNCTION _migration.attendee_cell_id(text,text,text)
+          SET search_path TO pg_catalog, _migration`),
+        /function definition: _migration.attendee_cell_id/u,
       );
       await proveStructureFailure(
         db,

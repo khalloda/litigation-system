@@ -795,9 +795,11 @@ firm's ruling, and a normaliser that loose will merge people it should not.
 
 #### Correction B — the fixture-proven decomposition contract
 
-**Built 24 August 2026. Not applied to staging, quarantine or the target
-tables.** This correction defines and tests the decomposition before it is
-allowed near the live migration.
+**Built 24 August 2026 as fixture-only work; at that date it had not been
+applied to staging, quarantine or the target tables. It was subsequently
+applied on 25 August through migration 0036 and the separate serializable
+transaction documented below.** This correction defined and tested the
+decomposition before it was allowed near the live migration.
 
 The read-only inventory of the five attendee columns found **12,732 non-empty
 cells and 708 byte-distinct values**. Of those cells, 713 contain a line break,
