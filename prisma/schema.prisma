@@ -226,6 +226,7 @@ model LookupMatterDestination {
 
   matters    Matter[]
   adminTasks AdminTask[]
+  hearings   Hearing[]
 
   @@map("lookup_matter_destination")
 }
@@ -971,7 +972,8 @@ model Matter {
   @@map("matters")
 }
 
-/// Hearings and their decisions. 13,279 rows at Stage 2 — the largest table.
+/// Hearings and their decisions. 13,382 source rows at task 2.8 — the largest
+/// table; 13,055 transformed and 327 retained in durable quarantine.
 ///
 /// Every list screen and report over this table needs paging and indexed
 /// filters (task 4.3). The indexes at the foot are the ones the traced screens
@@ -990,6 +992,15 @@ model Hearing {
   hearingDate     DateTime? @map("hearing_date") @db.Date
   nextHearingDate DateTime? @map("next_hearing_date") @db.Date
 
+  /// Access تقرير: a stored boolean flag, preserved even though its business
+  /// use has not yet been surfaced in the web application.
+  report             Boolean?
+  /// Access lastDecision, retained verbatim.
+  previousDecision   String?  @map("previous_decision")
+  /// Access حضور الجلسة القادمة. This is raw text, not a boolean and not the
+  /// same field as client_notified.
+  nextAttendanceRaw  String?  @map("next_attendance_raw")
+
   actionId        Int?                 @map("action_id") @db.SmallInt
   action          LookupHearingAction? @relation(fields: [actionId], references: [id])
   /// The original الإجراء text. 23 actions merged to 20 on 21 August 2026
@@ -1005,10 +1016,29 @@ model Hearing {
   courtId        Int?         @map("court_id") @db.SmallInt
   court          LookupCourt? @relation(fields: [courtId], references: [id])
   legacyCourtRaw String?      @map("legacy_court_raw")
+  /// Set only by a firm-reviewed court rule saying the source value is a
+  /// destination rather than a court. The independent Access الجهة text is
+  /// preserved separately and is never overwritten by that rule.
+  destinationId        Int?                     @map("destination_id") @db.SmallInt
+  destination          LookupMatterDestination? @relation(fields: [destinationId], references: [id])
+  legacyDestinationRaw String?                   @map("legacy_destination_raw")
   /// Text, for the same reason as Matter.circuit.
-  circuit        String?
+  circuit          String?
+  legacyCircuitRaw String? @map("legacy_circuit_raw")
+
+  /// A reviewed court split may supply a hearing note. The exact source note
+  /// remains beside it so the derivation is reversible.
+  notes          String?
+  legacyNotesRaw String? @map("legacy_notes_raw")
+  shortDecision  String? @map("short_decision")
 
   clientNotified Boolean? @map("client_notified")
+
+  /// Durable complete-row identity. Filename and row number are trace only.
+  legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  /// All 21 source columns, preserving NULL, empty text, Arabic and line breaks.
+  legacySourcePayload          Json?   @map("legacy_source_payload")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -1021,6 +1051,7 @@ model Hearing {
   @@index([hearingDate])
   @@index([nextHearingDate])
   @@index([courtId])
+  @@index([destinationId])
   @@map("hearings")
 }
 
@@ -1488,12 +1519,14 @@ model MatterPartyRole {
 
 /// Who attended a hearing.
 ///
-/// Replaces `الحاضر` and `حاضر 1`–`حاضر 4`: free text, **373 distinct
-/// spellings for 135 people**, plus multi-person strings with no consistent
-/// separator.
+/// Replaces `الحاضر` and `حاضر 1`–`حاضر 4`: 12,732 non-empty source cells,
+/// 708 byte-distinct complete values and multi-person strings. Correction B
+/// proved 9,113 person occurrences; task 2.8 creates 8,884 target rows across
+/// 39 people and retains the other 229 under quarantined parents.
 ///
 /// **`**` MEANS NO ATTENDANCE RECORDED AND BECOMES NO ROWS, NOT A PERSON.**
-/// It appears 4,143 times. The same for `لا يوجد حضور` and `متابعة`. A person
+/// It is the complete value of 4,130 cells. The same principle applies to
+/// `لا يوجد حضور` and `متابعة`. A person
 /// called `**` would then appear in dropdowns and reports for ever.
 model HearingAttendee {
   id        Int     @id @default(autoincrement())
@@ -1521,6 +1554,16 @@ model HearingAttendee {
   /// multi-person string.
   ordinal Int?
 
+  /// Task 2.8 never reparses the source cell. These fields point back to the
+  /// immutable Correction B cell/span that proved this person occurrence.
+  legacySourceRecordKey        String? @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  sourceColumn                 String? @map("source_column")
+  sourceColumnOrdinal          Int?    @map("source_column_ordinal") @db.SmallInt
+  sourceCellId                 String? @map("source_cell_id")
+  sourceSpanId                 String? @unique @map("source_span_id")
+  sourceSpanSequence           Int?    @map("source_span_sequence")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1528,6 +1571,7 @@ model HearingAttendee {
 
   @@index([hearingId])
   @@index([personId])
+  @@unique([hearingId, ordinal], map: "hearing_attendees_hearing_ordinal_key")
   @@map("hearing_attendees")
 }
 

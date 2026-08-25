@@ -923,6 +923,82 @@ serializable transaction and an identical rerun produced stable result digest
 `7e62b9d4f4d1ceb7e3e152095d69b98bce5b7ea0dcc40a055bd368347d5251b4`.
 No hearing or hearing-attendee target row was created in this step.
 
+### Hearing and attendee transform — completed 25 August 2026
+
+Task 2.8 consumed the immutable Correction B audit, never the attendee parser.
+The complete live partition is:
+
+| Outcome | Rows |
+|---|---:|
+| transformed hearings | **13,055** |
+| durable hearing quarantine | **327** |
+| **source hearings** | **13,382** |
+
+The quarantine reasons are exact, ordered evidence rather than a status label:
+
+| Reason | Hearings | Treatment |
+|---|---:|---|
+| parent matter remains quarantined | 313 | keep the complete hearing and all attendee audit evidence; create no detached target |
+| reviewed court split conflicts with the source circuit | 11 | keep both circuit facts; never overwrite either one |
+| court spelling absent from the reviewed list and crosswalk | 3 | keep the raw court and ask for review later; never infer by hamza/fuzzy similarity |
+
+The three unmapped rows are two occurrences of
+`اسرة محكمة مصر الجديدة` and one of `الادارية العليا`. They look close to
+existing court labels, but D22 requires firm review of every court mapping;
+the transform therefore refuses to make that apparently obvious guess.
+
+The target also holds **8,884 attendee occurrences across 39 people**. Every
+one comes from an immutable Correction B span already classified as `person`
+and backed by exactly one `person_name_alias`. The target row retains the
+complete original cell, source column, cell identity, span identity, both
+orders, durable hearing identity and extraction fingerprint. It never
+reconstructs a person from the raw source a second time.
+
+All **12,732 attendee source cells** remain in one of two complete parent
+partitions: 12,432 belong to transformed hearings and 300 belong to
+quarantined hearings. The latter hold 229 proved person spans. Those spans stay
+available in the immutable audit but create no attendee until their hearing
+can safely transform. Dates, titles, placeholders, notes, `**` and the ten
+ambiguous spans create no person in either partition.
+
+Migration 0037 adds complete hearing provenance, source/raw partners for every
+reviewed many-to-one field, attendee span provenance, exact unique/FK/CHECK
+safeguards and an immutable `quarantine.hearing_transform`. The application
+schema declares every application-visible addition in the same change.
+
+Migration 0038 replaces two cross-schema attendee foreign keys with an
+immediate provenance trigger. Prisma cannot model a public application table
+that points into the private `_migration` schema without exposing that schema
+to application code. The replacement is stricter than either foreign key: on
+every insert or update it requires the cell and span to describe the same
+hearing source, extraction, column, complete original cell, sequence and
+proved person. `db:check` verifies the exact trigger and function definitions
+and refuses the return of either cross-schema foreign key.
+
+The writer and permanent verifier are independent implementations. The writer
+builds a TypeScript plan from source rows, reviewed tables and audit spans. The
+standalone SQL oracle rebuilds every expected typed/direct target field,
+reviewed action/court/destination outcome, complete payload, exact quarantine
+reason/detail and attendee evidence. `db:check` runs the oracle permanently and
+also inspects the actual constraint, index, foreign-key, trigger and function
+definitions. The exact catalog strings were verified on PostgreSQL 17.11; the
+same reviewed-upgrade warning recorded for task 2.7 applies before changing an
+expectation after any future PostgreSQL major-version upgrade.
+
+The disposable fixture changes a direct scalar, typed date, extraction
+fingerprint, quarantine reason and trace; removes and adds attendees; attempts
+to create an attendee from a quarantined parent and from `**`; disables a
+protection trigger; weakens its function; removes the unique source-identity
+index; drops the source-identity constraint; and forces a late transactional
+failure. Every defect is caught and rolled back. Application-
+native hearings and attendees have NULL legacy provenance and are deliberately
+outside migration reconciliation and the stable migration digest.
+
+The live transform ran twice with the same IDs, timestamps, counts and digest:
+`e9cad0a8b0302d819d38b14046afe4824caa0d1337ee0ca25c9534665afb2cf4`.
+Staging, all 744 review answers, prior transformed data and the Correction B
+audit remained unchanged.
+
 ### A join that fails for every row is evidence about the join
 
 **100% is not a data-quality figure. It is the shape of a wrong column.**
@@ -1758,21 +1834,22 @@ Done 21 August 2026 after `hearings.legacy_action_raw` was found missing.
 | `matters.branch_id` | `clientBranch` (32 → 15) | ✅ `legacy_branch_raw` |
 | `matter_parties` + `matter_party_roles` | `client&Cap` / `opponent&Cap`, 242 capacity strings | ✅ `legacy_raw` |
 | `matter_lawyers.person_id` | `lawyerA` / `lawyerB` + combination strings | ✅ `legacy_source` holds the exact source string |
-| **`hearing_attendees.person_id`** | `الحاضر` + `حاضر 1`–`حاضر 4`, **373 spellings → 135 people**, multi-person strings split into rows | ❌ **NOTHING** |
+| `hearing_attendees.person_id` | `الحاضر` + `حاضر 1`–`حاضر 4`, multi-person strings split into rows | ✅ complete cell in `legacy_name_raw`; immutable cell/span provenance beside it |
 | **`admin_tasks.assigned_to_person_id`** | a typed name | ❌ **NOTHING** |
 | **`powers_of_attorney`** lawyers | `المحامون الصادر لهم التوكيل`, up to twelve names in one field | ❌ **NOTHING** |
 
-**The three gaps are all person-name mappings, which is the worst place for
-them.** Names are the highest-ratio mapping in this project — 373 spellings
+**The two remaining gaps are person-name mappings, which is the worst place
+for gaps.** Names are the highest-ratio mapping in this project — 373 spellings
 collapse to 135 people — and the one that has already gone wrong twice: a
 missing hamza made `أحمد إسماعيل` into two people, one carrying 1,309
 hearings. If such a merge is later judged wrong, splitting it back apart
 needs to know which spelling stood in each row. `person_name_alias` records
 that a spelling exists; it does not record which hearing used it.
 
-Fix in task 1.3, before any of these tables is loaded:
-`hearing_attendees.legacy_name_raw`, `admin_tasks.legacy_assignee_raw`, and
-a raw column on whatever table holds the POA lawyer list.
+Correction B and task 2.8 completed the attendee fix with immutable source-cell
+and person-span evidence as well as `hearing_attendees.legacy_name_raw`. The
+remaining task 2.9 work is `admin_tasks.legacy_assignee_raw` and a raw column on
+whatever table holds the POA lawyer list.
 
 **`legacy_action_raw` and `legacy_branch_raw` were added on 21 August 2026
 and show why the rule is not optional.** Those two columns mapped one to one

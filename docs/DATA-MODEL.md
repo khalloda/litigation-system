@@ -209,14 +209,34 @@ they do not create relationship rows or duplicate task 2.7 evidence.
 
 ## Hearings
 
-### `hearings` — 13,279 rows
-Largest table. `matter_id`, `hearing_date`, `next_hearing_date`, `action_id`,
-`decision`, `outcome` (صالح / ضد), `court_id` + `legacy_court_raw`, `circuit`,
-`client_notified`.
+### `hearings` — 13,055 transformed + 327 quarantined from 13,382 source rows
+Largest table. Task 2.8 gives every source row exactly one durable outcome.
+
+`matter_id`, `hearing_date`, `next_hearing_date`, `action_id`, `decision`,
+`report`, `previous_decision`, `outcome` (صالح / ضد), `court_id` +
+`legacy_court_raw`, `destination_id` + `legacy_destination_raw`,
+`next_attendance_raw`, `circuit` + `legacy_circuit_raw`, `notes` +
+`legacy_notes_raw`, `short_decision`, `client_notified`.
+
+The less obvious direct fields are still source facts, not inferred meanings:
+`report` is Access `تقرير` (a boolean); `previous_decision` is
+`lastDecision`; `next_attendance_raw` is `حضور الجلسة القادمة`; the destination
+raw value is `الجهة`; and `short_decision` is `shortDecision`. All are retained
+even where the first web screen does not surface them.
+
+`destination_id` is set only by a firm-reviewed court rule saying that the raw
+court value is actually a destination. It never overwrites Access `الجهة`.
+A reviewed court split may fill `circuit` or `notes` only when the separate
+source field is empty; a conflicting source fact quarantines the hearing with
+both values intact.
+
+Every transformed row also keeps `legacy_source_record_key`,
+`legacy_source_extraction_sha256` and `legacy_source_payload`. The payload has
+all 21 Access columns and preserves NULL, empty text, Arabic and line breaks.
 
 `matter_id` is **nullable** — 4 hearings have no matter and must still load.
 
-Indexed on `matter_id`, `hearing_date` and `next_hearing_date`: 13,279 rows,
+Indexed on `matter_id`, `hearing_date` and `next_hearing_date`: 13,382 source rows,
 and the dashboard reads the next date every time anyone opens it.
 
 **`legacy_action_raw`** — the original الإجراء text, byte for byte.
@@ -229,14 +249,24 @@ column the original text is **unrecoverable** — the merge could never be
 reversed if it were later judged wrong. See D10 and the `_raw` rule in
 `docs/MIGRATION.md`.
 
-### `hearing_attendees`
+### `hearing_attendees` — 8,884 rows across 39 people
 Replaces `الحاضر` and `حاضر 1`–`حاضر 4`, which held free text — 373 distinct
 spellings for 135 people, plus multi-person strings with no consistent
 separator.
 
-`hearing_id`, `person_id`, `ordinal`.
+`hearing_id`, `person_id`, `ordinal`, plus the durable hearing source key and
+extraction fingerprint, exact source column and column order, immutable source
+cell id, immutable person-span id and span sequence. `legacy_name_raw` holds
+the **complete original cell**, not the separated name fragment.
 
-**`**` appears 4,143 times and means "no attendance recorded".** It becomes an
+Task 2.8 consumes only Correction B's proved `person` spans; it does not parse
+the original text again. All 12,732 non-empty source cells remain accounted
+for: 12,432 belong to transformed hearings and 300 to quarantined hearings.
+The latter retain 229 person spans in the immutable audit without creating a
+detached attendee.
+
+**`**` appears as the complete value of 4,130 cells and means "no attendance
+recorded".** It becomes an
 absence of rows, not a person. Same for `لا يوجد حضور` and `متابعة`.
 
 ---

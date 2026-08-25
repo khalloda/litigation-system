@@ -31,6 +31,7 @@ import {
   attendeeAuditStructureFailures,
   reconcileAttendeeAudit,
 } from './lib/attendee-audit-reconciliation';
+import { hearingStructureFailures, reconcileHearings } from './lib/hearing-reconciliation';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
 
@@ -1417,7 +1418,7 @@ async function main() {
     identityProblems.length === 0,
   );
 
-  // ---- quarantine, tasks 2.4, 2.6 and 2.7 ----------------------------------
+  // ---- quarantine, tasks 2.4, 2.6, 2.7 and 2.8 -----------------------------
   //
   //  Rule 16 again: the migration asserted the shape once. These re-prove the
   //  properties the quarantine layer exists for, every time anyone looks.
@@ -1474,9 +1475,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '6 (finding, exclusion, review_value, matter_transform, matter_relationship_transform, attendee_span)',
+    '7 (finding, exclusion, review_value, matter_transform, matter_relationship_transform, attendee_span, hearing_transform)',
     String(quarantine.tables),
-    quarantine.tables === 6n,
+    quarantine.tables === 7n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -2313,6 +2314,32 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : attendeeStructure.join('; '),
       attendeeStructure.length === 0,
+    );
+
+    const hearingResult = await reconcileHearings(relationshipDb);
+    record(
+      'Hearings, attendees and quarantine reconcile',
+      '13,382 = 13,055 transformed + 327 quarantined; 8,884 attendees; every value and evidence item exact',
+      hearingResult.defects.length === 0
+        ? `${hearingResult.sourceHearings} = ${hearingResult.transformedHearings} + ` +
+            `${hearingResult.quarantinedHearings}; ${hearingResult.attendees} attendees; ` +
+            `${hearingResult.auditCells} audit cells partitioned`
+        : hearingResult.defects.join('; '),
+      hearingResult.sourceHearings === 13_382 &&
+        hearingResult.transformedHearings === 13_055 &&
+        hearingResult.quarantinedHearings === 327 &&
+        hearingResult.attendees === 8_884 &&
+        hearingResult.auditCells === 12_732 &&
+        hearingResult.defects.length === 0,
+    );
+    const hearingStructure = await hearingStructureFailures(relationshipDb);
+    record(
+      'Hearing transform constraints and evidence guards',
+      'complete provenance constraints, unique indexes, foreign keys and quarantine protections',
+      hearingStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : hearingStructure.join('; '),
+      hearingStructure.length === 0,
     );
   } finally {
     await relationshipDb.end();

@@ -884,13 +884,35 @@ only ever seen good data is not known to work.
       triggers/functions. An identical second live run preserved the exact
       legacy-derived result digest, including IDs and timestamps.
 
-- [ ] **2.8 Transform: hearings and attendees**
+- [x] **2.8 Transform: hearings and attendees**
       The current extraction holds 13,382 hearings; 13,279 is the 19 August
       shape figure, not the reconciliation target. `**` becomes no rows, not a
       person. Apply Correction B's fixture-proven decomposition through the
       separate dry-run, answer-reconciliation and transactional procedure in
       `docs/MIGRATION.md` before this transform; do not parse the live cells ad
       hoc here.
+
+      **Completed 25 August 2026.** All 13,382 source hearings have exactly one
+      durable outcome: **13,055 transformed + 327 quarantined**. The quarantine
+      is 313 hearings whose parent matter remains in task 2.6 quarantine, 11
+      reviewed court splits whose derived circuit conflicts with the separate
+      source circuit, and 3 new court spellings absent from both the reviewed
+      308-court list and its 94 crosswalk rules. None was guessed.
+
+      **8,884 attendee rows across 39 people** were created only from Correction
+      B's proved person spans. Each row retains the complete source cell, cell
+      and span identities, source column, both orders, durable hearing identity
+      and extraction fingerprint. The 300 attendee cells and 229 person spans
+      whose parent hearing is quarantined remain in the immutable audit; they
+      do not become detached target rows. `**`, dates, titles, notes,
+      placeholders and all 10 ambiguous spans create no attendee.
+
+      The TypeScript writer and a standalone SQL oracle independently derive
+      the complete targets and exact ordered quarantine reasons. A disposable
+      fixture proves scalar, typed, fingerprint, quarantine, attendee and
+      safeguard corruption is detected, and a late failure leaves no partial
+      rows. An identical live rerun preserved IDs, timestamps and result digest
+      `e9cad0a8b0302d819d38b14046afe4824caa0d1337ee0ca25c9534665afb2cf4`.
 
 - [ ] **2.9 Transform: admin works, POAs, documents, fee letters**
 
