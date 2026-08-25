@@ -490,8 +490,10 @@ Staff leave register. `person_id`, `date`, `status`.
 **Not meeting attendance** — see D2.
 
 ### `invoice_allocations`
-Replaces `تقسيم التحصيلات` (47 rows) and `LawyerShare4Invoices` (empty).
-`invoice_id`, `person_id`, `share` — shares per invoice must sum to 1.
+Task 2.10A transforms the 47 rows in `تقسيم التحصيلات` into this table.
+`LawyerShare4Invoices` is a reference-only source table and is asserted to be
+exactly empty; it produces no target row. `invoice_id`, `person_id`, `share` —
+shares per invoice must sum to 1.
 
 ---
 

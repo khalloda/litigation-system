@@ -1978,9 +1978,11 @@ model Payment {
   @@map("payments")
 }
 
-/// How a collection is split between lawyers. Empty at Stage 2.
+/// How a collection is split between lawyers. Task 2.10A transforms the 47
+/// rows in `تقسيم التحصيلات`; it is not an empty Stage 2 source.
 ///
-/// Replaces `تقسيم التحصيلات` (47 rows) and `LawyerShare4Invoices` (empty).
+/// `LawyerShare4Invoices` is reference-only and asserted to be exactly empty,
+/// so it produces no target row.
 ///
 /// **The shares on one invoice must sum to 1.** That is a rule ACROSS rows,
 /// which no CHECK constraint can express, so it lives in npm run db:check —

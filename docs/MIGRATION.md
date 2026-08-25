@@ -2051,9 +2051,18 @@ Parents before children.
 10 hearing_attendees 11 powers_of_attorney
 12 documents        13 fee_letters     14 fee_letter_matters
 15 matter_fee_letter_references        16 invoices
-17 payments         18 admin_tasks     19 task_actions
-20 attendance
+17 payments         18 invoice_allocations
+19 admin_tasks      20 task_actions    21 attendance
 ```
+
+Task 2.10 is deliberately split. **2.10A** is the one-time migration of the
+historical billing records: invoices, payments and the 47 allocation rows from
+`تقسيم التحصيلات`. Those target records remain read-only in the Phase 1
+application (D4); “read-only” describes application behaviour, not a ban on
+the migration transaction that creates them. `LawyerShare4Invoices` stays
+reference-only and is required to contain exactly zero rows, so it creates no
+allocation. **2.10B** is the separate staff-attendance transform and is not
+part of the billing migration.
 
 ## Gate 4 — proving it worked
 

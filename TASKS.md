@@ -1012,7 +1012,27 @@ only ever seen good data is not known to work.
       failure — nobody knows which court that row was heard in, and unknown
       is the honest answer. `legacy_court_raw` keeps the original `26`.
 
-- [ ] **2.10 Transform: invoices and payments** — read-only. No `Pay-Date`.
+- [ ] **2.10A Transform: billing history** — invoices, payments and collection
+      allocations. Historical billing remains read-only in the application for
+      every role (D4, D14); this one-time migration is the deliberate write
+      that brings the Access history across.
+
+      Transform all 543 invoices, 597 payments and 47 rows from
+      `تقسيم التحصيلات`, preserving complete source payloads, durable source
+      identity and exact raw values. Invoices attach to fee letters through
+      `contractID`, never directly to clients. `الفواتير.Pay-Date` is excluded
+      completely (D4): it must not appear in a target column, raw payload,
+      digest, type or report. Payments keep `Credit` and `Debit` separate.
+      Allocation percentages are divided by 100 and keep their original text;
+      every invoice's resulting shares must reconcile exactly to 1.
+
+      `LawyerShare4Invoices` is reference-only and must remain exactly empty.
+      It produces no target row. The only allocation source in this extraction
+      is `تقسيم التحصيلات`.
+
+- [ ] **2.10B Transform: staff attendance** — `Attendance`, the 4,022-row
+      leave register. This is separate from billing and from meeting attendance
+      (D2). Do not implement it as part of 2.10A.
 
 - [ ] **2.11 Write the 54 client logos** to the server folder defined in
       **D15** — `/var/lib/litigation/client-logos/{client_id}/{filename}` —
