@@ -358,9 +358,13 @@ model MigrationMultiPersonRule {
   rawValue     String @unique @map("raw_value")
   occurrences  Int
   reviewerNote String @map("reviewer_note")
+  /// Only the three firm-corrected rules are approved for substring matching
+  /// in POA cells. All other reviewed rules require an exact whole-cell match.
+  poaMatchMode String? @map("poa_match_mode")
 
   members       MigrationMultiPersonRuleMember[]
   matterLawyers MatterLawyer[]
+  poaLawyers    PowerOfAttorneyLawyer[]
 
   @@map("migration_multi_person_rule")
 }
@@ -461,6 +465,7 @@ model Person {
   migrationMultiPersonRuleMembers MigrationMultiPersonRuleMember[]
   /// Hearings this person attended.
   hearingAttendees                HearingAttendee[]
+  powerOfAttorneyLawyers          PowerOfAttorneyLawyer[]
   /// Shares of collections allocated to this person.
   invoiceAllocations              InvoiceAllocation[]
   /// Leave register entries.
@@ -1180,12 +1185,13 @@ model TaskAction {
   @@map("task_actions")
 }
 
-/// Powers of attorney. 735 rows at Stage 2.
+/// Powers of attorney. 752 rows in the current Stage 2 extraction.
 ///
 /// Complete: all 15 Access columns are accounted for.
 ///
 /// **`الصفة` AND `صفة الموكل بالتوكيل` ARE THE SAME FIELD, DUPLICATED.**
-/// The firm compared them row by row across all 735: 565 identical, 164
+/// The firm compared them row by row across the original 735-row analysis:
+/// 565 identical, 164
 /// filled in `الصفة` only, **zero filled in the other only**, 4 different —
 /// and three of those four are typos of each other. One column a strict
 /// superset and the other never uniquely populated is the signature of a copy
@@ -1215,11 +1221,16 @@ model PowerOfAttorney {
   /// Access `المحامون الصادر لهم التوكيل`, 100% — up to twelve lawyers in one
   /// string, and where the 71 external people in the roster came from.
   ///
-  /// It stays TEXT here. The split into rows happens at task 2.9 and needs
-  /// the same treatment as the hearing attendees. This holds the field
-  /// exactly as typed — the third of the three person-name mappings that had
-  /// no raw column until the 21 August audit.
+  /// It stays TEXT here. Task 2.9B created reviewed lawyer rows while this
+  /// field continues to hold the complete cell exactly as typed.
   legacyLawyersRaw String? @map("legacy_lawyers_raw")
+
+  /// Durable Stage 2 source identity. All three fields are null together for
+  /// records created in the new application and populated together for Access
+  /// records. The payload preserves every original source column byte-for-byte.
+  legacySourceRecordKey        String? @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload")
 
   /// Access `مسلسل`, 82% — the sequence column on the powers-of-attorney
   /// report.
@@ -1263,7 +1274,7 @@ model PowerOfAttorney {
   /// those rows reads `عهدة إيهاب حمدي`. **Those rows are documents signed
   /// out, not errors.**
   ///
-  /// Distribution across the 735 rows: 0 on 113, 1 on 577, 2 on 29, 3 on 7,
+  /// Distribution in the original 735-row analysis: 0 on 113, 1 on 577, 2 on 29, 3 on 7,
   /// 4 on 2, 8 on one row, and 6 blank. So 39 rows (5%) hold more than one
   /// copy — normal practice, usually because the original was deposited at
   /// the Cassation court and certified copies were extracted
@@ -1279,13 +1290,12 @@ model PowerOfAttorney {
 
   /// Access `ملاحظات`, 53%.
   notes     String?  @map("notes")
-  /// Access `جرد`, 100% — a yes/no flag: 1 on 680 rows, 0 on 55.
-  ///
-  /// **PROBABLE, NOT CONFIRMED.** The firm's reading is "does it pass the
-  /// periodical inventory check", which fits 680 passing and 55 failing —
-  /// but they said "I think". Recorded as probable in docs/GLOSSARY.md.
-  /// **Nothing may depend on it until it is confirmed.**
-  inventory Boolean? @map("inventory")
+  /// Access `جرد`, 100% — confirmed by the firm's litigation assistant as the
+  /// editable setting controlling inclusion on the POA list report. Current
+  /// extraction: 697 shown and 55 hidden. It is not an inventory fact.
+  showOnPoaReport Boolean? @map("show_on_poa_report")
+
+  lawyers PowerOfAttorneyLawyer[]
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -1293,7 +1303,36 @@ model PowerOfAttorney {
   updatedBy Int?     @map("updated_by")
 
   @@index([clientId])
+  @@unique([legacySourceRecordKey], map: "powers_of_attorney_legacy_source_record_key_key")
   @@map("powers_of_attorney")
+}
+
+/// One reviewed lawyer on an Access power of attorney. The full source cell is
+/// repeated on every migrated member so a row remains independently auditable;
+/// the ordered rule/member provenance identifies the exact reviewed decision.
+model PowerOfAttorneyLawyer {
+  id                       Int                       @id @default(autoincrement())
+  powerOfAttorneyId        Int                       @map("power_of_attorney_id")
+  powerOfAttorney          PowerOfAttorney           @relation(fields: [powerOfAttorneyId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_poa_fk")
+  personId                 Int                       @map("person_id")
+  person                   Person                    @relation(fields: [personId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_person_fk")
+  legacySourceRecordKey    String?                   @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String?               @map("legacy_source_extraction_sha256")
+  legacyLawyersRaw         String?                   @map("legacy_lawyers_raw")
+  reviewedRuleId           Int?                      @map("reviewed_rule_id")
+  reviewedRule             MigrationMultiPersonRule? @relation(fields: [reviewedRuleId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_rule_fk")
+  sourceMemberOrdinal      Int?                      @map("source_member_ordinal")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@unique([powerOfAttorneyId, personId], map: "power_of_attorney_lawyers_poa_person_key")
+  @@unique([legacySourceRecordKey, reviewedRuleId, sourceMemberOrdinal], map: "power_of_attorney_lawyers_source_rule_ordinal_key")
+  @@index([personId])
+  @@index([reviewedRuleId])
+  @@map("power_of_attorney_lawyers")
 }
 
 /// The paper document register. 405 rows at Stage 2.

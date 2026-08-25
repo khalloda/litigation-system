@@ -931,6 +931,19 @@ only ever seen good data is not known to work.
       `26`. Result digest:
       `ab0cc3727705a6df865d88d7fb9b3c65c21c9cc1b13e708cf12edcf4212132c1`.
 
+      **B — powers of attorney completed 25 August 2026 (migration 0040).**
+      All 752 current source rows became POA targets; none needed record-level
+      quarantine. The current source-derived report setting is 697 shown / 55
+      hidden. Eighty-seven lawyer links were created only from exact aliases
+      or reviewed Task 2.7 members. The corrected compound rules occur 8 / 0 /
+      1 times: the first is a reviewed six-person substring inside eight longer
+      cells, the second remains approved for future data, and the third is one
+      exact eight-person cell. The unreviewed surrounding names were not
+      guessed. They remain among 717 immutable relationship-evidence rows (705
+      wholly unreviewed values, 8 partially reviewed cells, 3 reviewed
+      exclusions and 1 missing client link). Result digest:
+      `ac066ccba3ff5afad0534a4364ce146a9313b731afe5bfce4f58ec3016c0640a`.
+
       **`الدعاوى.[خطاب الأتعاب]` CARRIES TWO KEY SPACES — this is a hazard,
       not just an explanation.** Found at 2.4. It resolves against
       `contractID` (1–332) for 289 matters and `mfilesID` (1–59,225) for 123,
@@ -1099,8 +1112,8 @@ allows. Test with real volumes.
       **Do not build it now.**
 
       **The POA list report filters on `show_on_poa_report`** (Access `جرد`,
-      confirmed 23 August 2026). 680 of 735 powers of attorney are set to
-      show, 55 are not. It is a report setting the firm controls per record —
+      confirmed 23 August 2026). In the current extraction, 697 of 752 powers
+      of attorney are set to show and 55 are not. It is a report setting the firm controls per record —
       not a fact about the power of attorney — so the report must honour it
       and the record screen must let it be changed.
 - [ ] **6.8 The one report with an unknown layout** — do not start until the

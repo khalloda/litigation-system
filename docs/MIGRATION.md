@@ -1856,21 +1856,20 @@ Done 21 August 2026 after `hearings.legacy_action_raw` was found missing.
 | `matter_parties` + `matter_party_roles` | `client&Cap` / `opponent&Cap`, 242 capacity strings | ✅ `legacy_raw` |
 | `matter_lawyers.person_id` | `lawyerA` / `lawyerB` + combination strings | ✅ `legacy_source` holds the exact source string |
 | `hearing_attendees.person_id` | `الحاضر` + `حاضر 1`–`حاضر 4`, multi-person strings split into rows | ✅ complete cell in `legacy_name_raw`; immutable cell/span provenance beside it |
-| **`admin_tasks.assigned_to_person_id`** | a typed name | ❌ **NOTHING** |
-| **`powers_of_attorney`** lawyers | `المحامون الصادر لهم التوكيل`, up to twelve names in one field | ❌ **NOTHING** |
+| `admin_tasks.assigned_to_person_id` | a typed name | ✅ `legacy_assignee_raw` plus immutable source/quarantine provenance |
+| `power_of_attorney_lawyers.person_id` | `المحامون الصادر لهم التوكيل`, up to twelve names in one field | ✅ complete cell in `legacy_lawyers_raw`; reviewed rule and ordered member provenance beside it |
 
-**The two remaining gaps are person-name mappings, which is the worst place
-for gaps.** Names are the highest-ratio mapping in this project — 373 spellings
-collapse to 135 people — and the one that has already gone wrong twice: a
+Names are the highest-ratio mapping in this project — 373 spellings collapse
+to 135 people — and the one that has already gone wrong twice: a
 missing hamza made `أحمد إسماعيل` into two people, one carrying 1,309
 hearings. If such a merge is later judged wrong, splitting it back apart
 needs to know which spelling stood in each row. `person_name_alias` records
 that a spelling exists; it does not record which hearing used it.
 
 Correction B and task 2.8 completed the attendee fix with immutable source-cell
-and person-span evidence as well as `hearing_attendees.legacy_name_raw`. The
-remaining task 2.9 work is `admin_tasks.legacy_assignee_raw` and a raw column on
-whatever table holds the POA lawyer list.
+and person-span evidence as well as `hearing_attendees.legacy_name_raw`.
+Tasks 2.9A and 2.9B then completed the administrative-assignee and POA-lawyer
+gaps with raw text and durable reviewed provenance.
 
 **`legacy_action_raw` and `legacy_branch_raw` were added on 21 August 2026
 and show why the rule is not optional.** Those two columns mapped one to one
@@ -1909,6 +1908,41 @@ exact ordered quarantine evidence from staging. `db:check` also proves the
 special `26` row has circuit `26`, `court_id IS NULL`, and raw court text `26`,
 plus the complete PostgreSQL 17.11 constraint/index/trigger/function definitions
 including an empty `proconfig`.
+
+## Task 2.9B — powers of attorney (25 August 2026)
+
+Migration 0040 renamed the misleading empty target column `inventory` to the
+confirmed `show_on_poa_report`, added durable source identity, created the POA
+lawyer junction, and added immutable record/relationship evidence. The
+serializable transform reconciled **752 source rows = 752 targets + 0
+record-level quarantines**, with **697 shown / 55 hidden** derived from the
+current staged `جرد` values.
+
+Exactly **87 lawyer links** were safe: 31 whole-cell exact aliases, 48 ordered
+members from the approved six-person rule occurring inside eight longer cells,
+and 8 ordered members from the exact eight-person rule. The second corrected
+rule remains approved with zero current occurrences. No independent Arabic
+parsing or fuzzy matching was used. The eight longer cells retain their full
+original text; their unreviewed prefix/suffix is preserved in immutable
+evidence rather than guessed.
+
+There are **717 relationship-evidence rows**: 705 wholly unreviewed lawyer
+values, 8 partially reviewed compounds, 3 reviewed exclusions, and the one POA
+with no client link. This evidence does not discard the POA record. It states
+exactly which relationship could not be safely created and why.
+
+The independent SQL oracle reconstructs every direct field, safe typed value,
+client link, exact alias, reviewed rule member, ordered member provenance and
+evidence detail from staging and the reviewed rule tables. It also checks the
+33 rules, 84 members, 38 exclusions and corrected-rule occurrences 8 / 0 / 1.
+The three POA-approved rule identities and their ordered members are pinned by
+digest `e2325dfcb8faa5259869a0820b7ed6d2ae5a43edaec099411bd01ee21b3d7d42`,
+so substituting a different rule cannot pass merely by retaining the same
+occurrence counts.
+The catalog checker pins complete PostgreSQL 17.11 constraint, foreign-key,
+index, trigger and function definitions, including an empty `proconfig`.
+Identical live runs retained IDs, timestamps and result digest
+`ac066ccba3ff5afad0534a4364ce146a9313b731afe5bfce4f58ec3016c0640a`.
 
 ## Load order
 

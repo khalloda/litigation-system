@@ -105,7 +105,7 @@ For anyone reading the data or the schema. Do not guess at these.
 | مسلسل | Sequence | **Latin letters — A, B, C. Not a number** |
 | جهة الإصدار | Issuing authority | |
 | عدد النسخ | Copies in the safe | **A LIVE COUNT, not a static figure.** See below |
-| جرد | **Show on the POA list report** | **CONFIRMED 23 August 2026, source: the firm's litigation assistant.** A checkbox controlling whether the record appears on the powers-of-attorney list report. 1 on 680 rows, 0 on 55. **Not a fact about the power of attorney at all** — nothing to do with copies, courts or deposits. Migrated as `show_on_poa_report`. The earlier "inventory check" reading was a guess and was wrong |
+| جرد | **Show on the POA list report** | **CONFIRMED 23 August 2026, source: the firm's litigation assistant.** A checkbox controlling whether the record appears on the powers-of-attorney list report. The confirming 735-row extraction had 680 on and 55 off; the current Stage 2 extraction has 697 on and 55 off. **Not a fact about the power of attorney at all** — nothing to do with copies, courts or deposits. Migrated as `show_on_poa_report`. The earlier "inventory check" reading was a guess and was wrong |
 
 The powers-of-attorney report prints the reference as **`982 / أ / 2009`** —
 number / letter / year.

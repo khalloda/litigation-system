@@ -34,6 +34,8 @@ import {
 import { hearingStructureFailures, reconcileHearings } from './lib/hearing-reconciliation';
 import { reconcileAdminWorks } from './lib/admin-reconciliation';
 import { adminWorkStructureFailures } from './lib/admin-structure';
+import { reconcilePowersOfAttorney } from './lib/poa-reconciliation';
+import { poaStructureFailures } from './lib/poa-structure';
 import { ATTENDEE_AUDIT_BASELINE, REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
@@ -708,6 +710,7 @@ async function main() {
     'admin_tasks',
     'task_actions',
     'powers_of_attorney',
+    'power_of_attorney_lawyers',
     'documents',
     'fee_letters',
     // task 1.4
@@ -1478,9 +1481,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '9 (the 7 prior tables plus admin_task_transform and task_action_transform)',
+    '11 (the 9 prior tables plus two POA evidence tables)',
     String(quarantine.tables),
-    quarantine.tables === 9n,
+    quarantine.tables === 11n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -2388,6 +2391,24 @@ async function main() {
       'the one reviewed row has circuit 26, no court, and raw court 26',
       `${adminCourt26.exact} of ${adminCourt26.rows} exact`,
       adminCourt26.rows === '1' && adminCourt26.exact === '1',
+    );
+    const poaResult = await reconcilePowersOfAttorney(relationshipDb);
+    record(
+      'Powers of attorney reconcile to source and reviewed relationships',
+      '752 source records; every value, typed field, reviewed member and evidence row exact',
+      poaResult.defects.length === 0
+        ? `${poaResult.sourceCount} = ${poaResult.targetCount} transformed + ${poaResult.transformQuarantineCount} quarantined; ${poaResult.lawyerCount} reviewed lawyers; ${poaResult.relationshipEvidenceCount} relationship evidence rows`
+        : poaResult.defects.join('; '),
+      poaResult.defects.length === 0,
+    );
+    const poaStructure = await poaStructureFailures(relationshipDb);
+    record(
+      'POA constraints and evidence guards',
+      'complete PostgreSQL 17.11 definitions, including function configuration',
+      poaStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : poaStructure.join('; '),
+      poaStructure.length === 0,
     );
   } finally {
     await relationshipDb.end();

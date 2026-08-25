@@ -294,7 +294,7 @@ text and does not guess a date out of it.
 
 ## Documents, powers of attorney, contracts
 
-### `powers_of_attorney` — 735 rows
+### `powers_of_attorney` — 752 rows in the current Stage 2 extraction
 Includes `المحامون الصادر لهم التوكيل`, which names several lawyers in one
 field and is the main source of the 71 external people.
 
@@ -538,7 +538,7 @@ assume from the names which is primary — the firm checked.
 column (**D11**) and is **not migrated**. `db:check` asserts the column does
 not exist.
 
-### `powers_of_attorney` — 735 rows, 15 Access columns
+### `powers_of_attorney` — 752 rows, 15 Access columns
 
 | Column | Access | Filled |
 |---|---|---:|
@@ -560,8 +560,9 @@ not exist.
 
 `المحامون الصادر لهم التوكيل` holds **up to twelve lawyers in one string** and
 is where the 71 external people in the roster came from. It stays **text**;
-the split into rows happens at task **2.9** and needs the same treatment as
-the hearing attendees.
+task **2.9B** created 87 reviewed lawyer rows. Every row keeps the complete
+source cell and exact reviewed rule/member order; unreviewed text stays in
+immutable relationship evidence rather than being guessed.
 
 `عدد النسخ` **drives the yellow-row highlighting on the powers-of-attorney
 report** (`docs/REPORT-LAYOUTS.md`). It is stored as an integer and asserted to
