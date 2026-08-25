@@ -273,16 +273,22 @@ absence of rows, not a person. Same for `لا يوجد حضور` and `متابع
 
 ## Administrative works
 
-### `admin_tasks` — 4,207 rows
+### `admin_tasks` — 4,238 staged; 3,694 transformed; 544 quarantined
 `matter_id`, `required_work`, `assigned_to_person_id`, `execution_date`,
 `result`, `previous_decision`, `last_followup`, `court`, `circuit`,
 `destination`, `status`, `alert`, `deadline`.
 
 **This is the only area Paralegals can edit.**
 
-### `task_actions` — 4,130 rows
-Steps within a task. 36 rows have an orphan `ID_Task` and 39 have none — these
-load with a null link and go to the review queue. Do not discard them.
+### `task_actions` — 4,252 staged; 3,483 transformed; 769 quarantined
+Steps within a task. 36 rows have an orphan `ID_Task` and 39 have none. They
+remain in immutable quarantine with their complete source payload. Steps whose
+parent administrative task is quarantined remain there too; no detached legacy
+step is created.
+
+`آخر متابعة` is text, not a date. In this extraction it commonly holds a date
+followed by a multi-line administrative note. Task 2.9A preserves that complete
+text and does not guess a date out of it.
 
 ---
 

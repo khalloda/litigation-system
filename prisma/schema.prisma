@@ -1055,7 +1055,7 @@ model Hearing {
   @@map("hearings")
 }
 
-/// Administrative works. 4,207 rows at Stage 2.
+/// Administrative works. 4,238 rows in the Task 2.9 extraction.
 ///
 /// **The only area Paralegals can edit** (docs/PERMISSIONS.md).
 model AdminTask {
@@ -1082,7 +1082,9 @@ model AdminTask {
   executionDate    DateTime? @map("execution_date") @db.Date
   result           String?
   previousDecision String?   @map("previous_decision")
-  lastFollowup     DateTime? @map("last_followup") @db.Date
+  /// Access `آخر متابعة` is a multi-line follow-up note, often beginning with
+  /// a date but continuing with administrative text. It is not a date field.
+  lastFollowup     String?   @map("last_followup")
   deadline         DateTime? @db.Date
 
   courtId        Int?         @map("court_id") @db.SmallInt
@@ -1090,8 +1092,14 @@ model AdminTask {
   legacyCourtRaw String?      @map("legacy_court_raw")
   circuit        String?
 
-  destinationId Int?                     @map("destination_id") @db.SmallInt
-  destination   LookupMatterDestination? @relation(fields: [destinationId], references: [id])
+  destinationId        Int?                     @map("destination_id") @db.SmallInt
+  destination          LookupMatterDestination? @relation(fields: [destinationId], references: [id])
+  legacyDestinationRaw String?                  @map("legacy_destination_raw")
+
+  /// Access `الدائرة`, exactly as typed. `circuit` may additionally receive
+  /// the reviewed `26` correction from the court field; this raw column never
+  /// receives that derived value.
+  legacyCircuitRaw String? @map("legacy_circuit_raw")
 
   status String?
   alert  String?
@@ -1100,6 +1108,10 @@ model AdminTask {
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
+
+  legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload") @db.JsonB
 
   actions TaskAction[]
 
@@ -1110,13 +1122,13 @@ model AdminTask {
   @@map("admin_tasks")
 }
 
-/// Steps within an administrative task. 4,130 rows at Stage 2.
+/// Steps within an administrative task. 4,252 rows in the Task 2.9 extraction.
 ///
 /// Complete: all 7 Access columns are accounted for.
 ///
-/// task_id is nullable on purpose and the numbers are known in advance: 36
-/// rows have an ID_Task matching no task and 39 have none at all. All 75 load
-/// with a null link and go to the review queue. **Do not discard them.**
+/// task_id is nullable for application-native rows. In the Task 2.9 migration,
+/// 36 source rows name no task and 39 name none; they remain in immutable
+/// quarantine rather than becoming detached target steps.
 model TaskAction {
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
@@ -1149,6 +1161,14 @@ model TaskAction {
   /// Access `الموعد القادم`, **0% — seven rows in 4,130.** Migrated because
   /// nothing is deleted (D10), but effectively dead. Do not surface it.
   nextAppointment DateTime? @map("next_appointment") @db.Date
+
+  /// Stable order among the source steps of the same task, derived from the
+  /// unique Access ID_process rather than a CSV row position.
+  sourceOrdinal Int? @map("source_ordinal")
+
+  legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload") @db.JsonB
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")

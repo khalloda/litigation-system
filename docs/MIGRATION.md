@@ -1881,6 +1881,35 @@ partner, or the merge becomes irreversible.** Even where 50 spellings
 collapse into one list entry, the byte-exact original stays queryable. A wrong
 mapping can be corrected and re-derived without going back to the Access file.
 
+## Task 2.9A — administrative works (25 August 2026)
+
+Migration 0039 added durable source identity and immutable quarantine evidence
+for administrative tasks and their steps. The serializable transform reconciled
+**4,238 tasks = 3,694 transformed + 544 quarantined** and **4,252 steps =
+3,483 transformed + 769 quarantined**. An identical live rerun retained IDs,
+timestamps and result digest
+`ab0cc3727705a6df865d88d7fb9b3c65c21c9cc1b13e708cf12edcf4212132c1`.
+
+The largest deliberate quarantine groups are 351 unreviewed destinations, 190
+tasks whose parent matters are already quarantined, and 693 steps whose parent
+tasks are consequently quarantined. The 36 orphan step links and 39 absent
+links remain exact evidence rather than detached application rows. Two reviewed
+assignee values also remain quarantined: one says only "person" without naming
+the durable person identity, and one says "split" although the task has a
+single-assignee field. Neither was guessed.
+
+`آخر متابعة` was proved from staging to be multi-line text, not a date: many
+values begin with a date and continue with a status note. The target was empty,
+so migration 0039 safely corrected that column to text before loading it
+byte-for-byte.
+
+The permanent SQL oracle independently rebuilds all target fields, typed dates,
+reviewed court/circuit/destination rules, people, parent links, step order and
+exact ordered quarantine evidence from staging. `db:check` also proves the
+special `26` row has circuit `26`, `court_id IS NULL`, and raw court text `26`,
+plus the complete PostgreSQL 17.11 constraint/index/trigger/function definitions
+including an empty `proconfig`.
+
 ## Load order
 
 Parents before children.

@@ -32,6 +32,8 @@ import {
   reconcileAttendeeAudit,
 } from './lib/attendee-audit-reconciliation';
 import { hearingStructureFailures, reconcileHearings } from './lib/hearing-reconciliation';
+import { reconcileAdminWorks } from './lib/admin-reconciliation';
+import { adminWorkStructureFailures } from './lib/admin-structure';
 import { ATTENDEE_AUDIT_BASELINE, REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
@@ -1476,9 +1478,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '7 (finding, exclusion, review_value, matter_transform, matter_relationship_transform, attendee_span, hearing_transform)',
+    '9 (the 7 prior tables plus admin_task_transform and task_action_transform)',
     String(quarantine.tables),
-    quarantine.tables === 7n,
+    quarantine.tables === 9n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -2349,6 +2351,43 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : hearingStructure.join('; '),
       hearingStructure.length === 0,
+    );
+
+    const adminResult = await reconcileAdminWorks(relationshipDb);
+    record(
+      'Administrative works and task steps reconcile',
+      'every staged task and step is exactly transformed or quarantined',
+      adminResult.defects.length === 0
+        ? `${String(adminResult.row['task_source'])} tasks = ` +
+            `${String(adminResult.row['actual_tasks'])} transformed + ` +
+            `${String(adminResult.row['actual_task_q'])} quarantined; ` +
+            `${String(adminResult.row['action_source'])} steps = ` +
+            `${String(adminResult.row['actual_actions'])} transformed + ` +
+            `${String(adminResult.row['actual_action_q'])} quarantined`
+        : adminResult.defects.join('; '),
+      adminResult.defects.length === 0,
+    );
+    const adminStructure = await adminWorkStructureFailures(relationshipDb);
+    record(
+      'Administrative transform constraints and evidence guards',
+      'complete provenance constraints, unique indexes and immutable quarantine definitions',
+      adminStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : adminStructure.join('; '),
+      adminStructure.length === 0,
+    );
+    const adminCourt26 = (
+      await relationshipDb.query<{ rows: string; exact: string }>(`
+        SELECT count(*)::text rows,
+               count(*) FILTER (WHERE circuit='26' AND court_id IS NULL)::text exact
+          FROM admin_tasks WHERE legacy_source_record_key IS NOT NULL
+            AND legacy_court_raw='26'`)
+    ).rows[0]!;
+    record(
+      'Administrative court `26` remains circuit-only',
+      'the one reviewed row has circuit 26, no court, and raw court 26',
+      `${adminCourt26.exact} of ${adminCourt26.rows} exact`,
+      adminCourt26.rows === '1' && adminCourt26.exact === '1',
     );
   } finally {
     await relationshipDb.end();

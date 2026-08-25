@@ -920,6 +920,17 @@ only ever seen good data is not known to work.
 
 - [ ] **2.9 Transform: admin works, POAs, documents, fee letters**
 
+      **A — administrative works completed 25 August 2026 (migration 0039).**
+      4,238 source tasks reconcile to 3,694 targets and 544 immutable
+      quarantines; 4,252 source steps reconcile to 3,483 targets and 769
+      quarantines. `آخر متابعة` was corrected from an empty target DATE column
+      to TEXT after staging proved it contains multi-line notes. The permanent
+      independent oracle checks every field, typed value, raw value, parent,
+      source identity, step order and exact quarantine reason. The reviewed
+      court value `26` is permanently asserted as circuit `26`, no court, raw
+      `26`. Result digest:
+      `ab0cc3727705a6df865d88d7fb9b3c65c21c9cc1b13e708cf12edcf4212132c1`.
+
       **`الدعاوى.[خطاب الأتعاب]` CARRIES TWO KEY SPACES — this is a hazard,
       not just an explanation.** Found at 2.4. It resolves against
       `contractID` (1–332) for 289 matters and `mfilesID` (1–59,225) for 123,
