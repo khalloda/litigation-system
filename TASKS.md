@@ -989,6 +989,21 @@ only ever seen good data is not known to work.
       permanent independent oracle also reconstructs all three source
       partitions, both link directions and complete immutable evidence.
 
+      **Post-review correction, 25 August 2026 (migration 0044).** The
+      administrative oracle now validates all four calendar dates before any
+      cast, so an impossible date is quarantined instead of making
+      `db:check` itself crash. It also distinguishes “no court rule” from a
+      reviewed discard even when the discarded text exists in the court
+      lookup. Normal POA multi-person rules now match the complete source cell
+      only; embedded matching is limited to the three rules explicitly marked
+      `substring`. Document evidence now records every quarantined matter that
+      shares a referenced case number, in durable-key order, instead of keeping
+      whichever one a `Map` or `LIMIT 1` happened to return. Every Task 2.9
+      apply path checks its complete PostgreSQL 17.11 safeguard definitions
+      twice inside the serializable transaction: before the first write and
+      again before commit. A weakened safeguard therefore aborts and rolls
+      back the transform.
+
       **The `26` row is here.** It is an `admin work table` row, and the
       crosswalk rule for it (migration 0023) writes **circuit = `26` and
       leaves the court NULL**. Assert both halves on the loaded row, not just

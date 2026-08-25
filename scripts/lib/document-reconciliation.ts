@@ -84,12 +84,20 @@ export async function reconcileDocuments(db: ClientBase): Promise<DocumentReconc
         'unresolved_client_link' reason_code,jsonb_build_object('clientID',s."clientID") reason_detail,s.source_payload
       FROM source s LEFT JOIN clients c ON c.legacy_id::text=s."clientID" WHERE s.safe IS TRUE AND s."clientID" IS NOT NULL AND c.id IS NULL
       UNION ALL SELECT s.src_record_key,'matter',s.src_extraction_sha256,s.src_file,s.src_row_num,s."رقم الدعوى",
-        CASE WHEN mm.match_count>1 THEN 'ambiguous_matter_reference' WHEN q.src_record_key IS NOT NULL THEN 'parent_matter_quarantined' ELSE 'unresolved_matter_reference' END,
+        CASE WHEN mm.match_count>1 THEN 'ambiguous_matter_reference' WHEN q.match_count>0 THEN 'parent_matter_quarantined' ELSE 'unresolved_matter_reference' END,
         CASE WHEN mm.match_count>1 THEN jsonb_build_object('value',s."رقم الدعوى",'matter_ids',to_jsonb(mm.ids))
-             WHEN q.src_record_key IS NOT NULL THEN jsonb_build_object('value',s."رقم الدعوى",'matter_reason_codes',to_jsonb(q.reason_codes))
+             WHEN q.match_count=1 THEN jsonb_build_object('value',s."رقم الدعوى",'matter_reason_codes',q.matches->0->'reason_codes')
+             WHEN q.match_count>1 THEN jsonb_build_object('value',s."رقم الدعوى",'matter_source_keys',to_jsonb(q.source_keys),'matter_reason_codes',q.matches)
              ELSE jsonb_build_object('value',s."رقم الدعوى") END,s.source_payload
       FROM source s JOIN matter_matches mm USING(src_record_key)
-      LEFT JOIN LATERAL(SELECT q.src_record_key,q.reason_codes FROM quarantine.matter_transform q WHERE q.source_payload->>'matterAR'=s."رقم الدعوى" ORDER BY q.src_record_key LIMIT 1)q ON true
+      LEFT JOIN LATERAL(
+        SELECT count(*)::int match_count,array_agg(q.src_record_key ORDER BY q.src_record_key) source_keys,
+          jsonb_agg(jsonb_build_object(
+            'source_record_key',q.src_record_key,
+            'reason_codes',(SELECT jsonb_agg(code ORDER BY code) FROM unnest(q.reason_codes) code)
+          ) ORDER BY q.src_record_key) matches
+        FROM quarantine.matter_transform q WHERE q.source_payload->>'matterAR'=s."رقم الدعوى"
+      )q ON true
       WHERE s.safe IS TRUE AND s."رقم الدعوى" IS NOT NULL AND mm.match_count<>1
       UNION ALL SELECT s.src_record_key,'responsible_person',s.src_extraction_sha256,s.src_file,s.src_row_num,s."المحامي/الموظف المسئول",
         CASE WHEN e.raw_value IS NULL THEN 'unreviewed_responsible_person' ELSE 'reviewed_exclusion' END,

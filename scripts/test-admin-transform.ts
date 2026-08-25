@@ -102,6 +102,19 @@ async function main(): Promise<void> {
           'SELECT label_ar FROM lookup_matter_destination ORDER BY id LIMIT 1',
         )
       ).rows[0]!.label_ar;
+      const discardedCourt = 'محكمة مستبعدة للاختبار';
+      const discardedCourtId = (
+        await db.query<{ id: number }>(
+          `INSERT INTO lookup_court(label_ar,updated_at) VALUES($1,CURRENT_TIMESTAMP) RETURNING id`,
+          [discardedCourt],
+        )
+      ).rows[0]!.id;
+      await db.query(
+        `INSERT INTO migration_crosswalk(
+          source_field,source_value,rows_affected,target_field,target_value,reviewer_note
+        ) VALUES('court',$1,1,NULL,NULL,'fixture reviewed discard')`,
+        [discardedCourt],
+      );
       const matterKey = sourceKey(9001);
       await db.query(
         `INSERT INTO matters (
@@ -111,7 +124,10 @@ async function main(): Promise<void> {
       );
 
       const safeTaskKey = sourceKey(1),
-        quarantineTaskKey = sourceKey(2);
+        quarantineTaskKey = sourceKey(2),
+        invalidExecutionKey = sourceKey(5),
+        invalidDeadlineKey = sourceKey(6),
+        discardedCourtKey = sourceKey(7);
       await db.query(
         `INSERT INTO staging."admin work table" (
         src_file,src_row_num,src_record_key,src_extraction_sha256,"ID_Task","تاريخ التنفيذ",
@@ -122,11 +138,28 @@ async function main(): Promise<void> {
          'قرار',E'2026/08/25\\r\\nملاحظة','${court}',NULL,'${destination}','عمل','مفتوح','تنبيه',
          '2026-08-26 00:00:00','9001'),
         ('fixture/admin.csv',2,$2,$3,'1002',NULL,NULL,NULL,NULL,NULL,'${court}',NULL,
-         'جهة غير مراجعة','عمل آخر',NULL,NULL,NULL,'9001')`,
-        [safeTaskKey, quarantineTaskKey, FINGERPRINT, alias.alias_ar],
+         'جهة غير مراجعة','عمل آخر',NULL,NULL,NULL,'9001'),
+        ('fixture/admin.csv',5,$5,$3,'1005','2026-02-30 00:00:00',NULL,NULL,NULL,NULL,
+         '${court}',NULL,'${destination}','تاريخ تنفيذ غير صالح',NULL,NULL,NULL,'9001'),
+        ('fixture/admin.csv',6,$6,$3,'1006',NULL,NULL,NULL,NULL,NULL,'${court}',NULL,
+         '${destination}','آخر موعد غير صالح',NULL,NULL,'2026-02-30 00:00:00','9001'),
+        ('fixture/admin.csv',7,$7,$3,'1007',NULL,NULL,NULL,NULL,NULL,$8,NULL,
+         '${destination}','محكمة مستبعدة',NULL,NULL,NULL,'9001')`,
+        [
+          safeTaskKey,
+          quarantineTaskKey,
+          FINGERPRINT,
+          alias.alias_ar,
+          invalidExecutionKey,
+          invalidDeadlineKey,
+          discardedCourtKey,
+          discardedCourt,
+        ],
       );
       const safeActionKey = sourceKey(3),
-        quarantineActionKey = sourceKey(4);
+        quarantineActionKey = sourceKey(4),
+        invalidActionDateKey = sourceKey(8),
+        invalidNextAppointmentKey = sourceKey(9);
       await db.query(
         `INSERT INTO staging."إجراءات المهام" (
         src_file,src_row_num,src_record_key,src_extraction_sha256,"ID_process","ID_Task",
@@ -134,8 +167,17 @@ async function main(): Promise<void> {
       ) VALUES
         ('fixture/actions.csv',1,$1,$3,'2001','1001','2026-08-25 00:00:00',$4,
          'نتيجة إجراء','تقرير','2026-08-27 00:00:00'),
-        ('fixture/actions.csv',2,$2,$3,'2002',NULL,NULL,NULL,NULL,NULL,NULL)`,
-        [safeActionKey, quarantineActionKey, FINGERPRINT, alias.alias_ar],
+        ('fixture/actions.csv',2,$2,$3,'2002',NULL,NULL,NULL,NULL,NULL,NULL),
+        ('fixture/actions.csv',8,$5,$3,'2008','1001','2026-02-30 00:00:00',NULL,NULL,NULL,NULL),
+        ('fixture/actions.csv',9,$6,$3,'2009','1001',NULL,NULL,NULL,NULL,'2026-02-30 00:00:00')`,
+        [
+          safeActionKey,
+          quarantineActionKey,
+          FINGERPRINT,
+          alias.alias_ar,
+          invalidActionDateKey,
+          invalidNextAppointmentKey,
+        ],
       );
 
       const dry = await runAdminWorkTransform({ databaseUrl: fixtureUrl.toString() });
@@ -146,7 +188,7 @@ async function main(): Promise<void> {
           dry.plan.actions.length,
           dry.plan.actionQuarantine.length,
         ],
-        [1, 1, 1, 1],
+        [2, 3, 1, 3],
       );
       assert.equal((await db.query('SELECT count(*) FROM admin_tasks')).rows[0]!.count, '0');
       console.log('  ok    dry run has no writes and partitions both source tables');
@@ -157,6 +199,61 @@ async function main(): Promise<void> {
       });
       assert.ok(applied.digest);
       await clean(db);
+      assert.deepEqual(
+        (
+          await db.query(
+            `SELECT legacy_task_id,reason_codes,reason_details
+               FROM quarantine.admin_task_transform
+              WHERE src_record_key=ANY($1::text[]) ORDER BY legacy_task_id`,
+            [[invalidExecutionKey, invalidDeadlineKey]],
+          )
+        ).rows,
+        [
+          {
+            legacy_task_id: '1005',
+            reason_codes: ['invalid_execution_date'],
+            reason_details: [{ value: '2026-02-30 00:00:00' }],
+          },
+          {
+            legacy_task_id: '1006',
+            reason_codes: ['invalid_deadline'],
+            reason_details: [{ value: '2026-02-30 00:00:00' }],
+          },
+        ],
+      );
+      assert.deepEqual(
+        (
+          await db.query(
+            `SELECT legacy_action_id,reason_codes,reason_details
+               FROM quarantine.task_action_transform
+              WHERE src_record_key=ANY($1::text[]) ORDER BY legacy_action_id`,
+            [[invalidActionDateKey, invalidNextAppointmentKey]],
+          )
+        ).rows,
+        [
+          {
+            legacy_action_id: '2008',
+            reason_codes: ['invalid_action_date'],
+            reason_details: [{ value: '2026-02-30 00:00:00' }],
+          },
+          {
+            legacy_action_id: '2009',
+            reason_codes: ['invalid_next_appointment'],
+            reason_details: [{ value: '2026-02-30 00:00:00' }],
+          },
+        ],
+      );
+      console.log('  ok    all four impossible dates quarantine with exact ordered evidence');
+      assert.deepEqual(
+        (
+          await db.query(
+            `SELECT court_id,legacy_court_raw FROM admin_tasks WHERE legacy_source_record_key=$1`,
+            [discardedCourtKey],
+          )
+        ).rows[0],
+        { court_id: null, legacy_court_raw: discardedCourt },
+      );
+      console.log('  ok    a reviewed court discard wins even when the same text is a lookup');
       assert.deepEqual(await adminWorkStructureFailures(db), []);
       const proof = await db.query(
         `SELECT t.required_work,t.last_followup,t.legacy_assignee_raw,
@@ -211,6 +308,16 @@ async function main(): Promise<void> {
             `UPDATE admin_tasks SET execution_date='2026-08-24' WHERE legacy_source_record_key=$1`,
             [safeTaskKey],
           ),
+        /task_target_mismatch/,
+      );
+      await proveFailure(
+        db,
+        'a court attached to a reviewed discard is detected',
+        () =>
+          db.query(`UPDATE admin_tasks SET court_id=$2 WHERE legacy_source_record_key=$1`, [
+            discardedCourtKey,
+            discardedCourtId,
+          ]),
         /task_target_mismatch/,
       );
       await proveFailure(
@@ -284,11 +391,12 @@ async function main(): Promise<void> {
         '  ok    application-native rows remain outside legacy reconciliation and digest',
       );
 
+      const lateFailureKey = sourceKey(20);
       await db.query(
         `INSERT INTO staging."admin work table" (
         src_file,src_row_num,src_record_key,src_extraction_sha256,"ID_Task","matterID","العمل المطلوب"
-      ) VALUES ('fixture/admin.csv',5,$1,$2,'1005','9001','rollback')`,
-        [sourceKey(5), FINGERPRINT],
+      ) VALUES ('fixture/admin.csv',20,$1,$2,'1020','9001','rollback')`,
+        [lateFailureKey, FINGERPRINT],
       );
       await assert.rejects(
         runAdminWorkTransform({
@@ -301,16 +409,48 @@ async function main(): Promise<void> {
       assert.equal(
         (
           await db.query('SELECT count(*) FROM admin_tasks WHERE legacy_source_record_key=$1', [
-            sourceKey(5),
+            lateFailureKey,
           ])
         ).rows[0]!.count,
         '0',
       );
       console.log('  ok    forced late failure leaves zero partial rows');
       await db.query('DELETE FROM staging."admin work table" WHERE src_record_key=$1', [
-        sourceKey(5),
+        lateFailureKey,
       ]);
       await clean(db);
+
+      const weakenedStructureKey = sourceKey(21);
+      await db.query(
+        `INSERT INTO staging."admin work table" (
+        src_file,src_row_num,src_record_key,src_extraction_sha256,"ID_Task","matterID","العمل المطلوب"
+      ) VALUES ('fixture/admin.csv',21,$1,$2,'1021','9001','safeguard rollback')`,
+        [weakenedStructureKey, FINGERPRINT],
+      );
+      await assert.rejects(
+        runAdminWorkTransform({
+          databaseUrl: fixtureUrl.toString(),
+          apply: true,
+          fixtureOnlyWeakenStructureBeforeCommit: true,
+        }),
+        /database safeguards differ/,
+      );
+      assert.equal(
+        (
+          await db.query('SELECT count(*) FROM admin_tasks WHERE legacy_source_record_key=$1', [
+            weakenedStructureKey,
+          ])
+        ).rows[0]!.count,
+        '0',
+      );
+      assert.deepEqual(await adminWorkStructureFailures(db), []);
+      await db.query('DELETE FROM staging."admin work table" WHERE src_record_key=$1', [
+        weakenedStructureKey,
+      ]);
+      await clean(db);
+      console.log(
+        '  ok    weakened safeguard aborts the transform and the transaction restores it',
+      );
 
       await db.query('BEGIN');
       try {

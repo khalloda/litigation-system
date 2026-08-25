@@ -9,8 +9,18 @@ import {
   type DocumentTargetPlan,
 } from './lib/document-transform-plan';
 import { reconcileDocuments } from './lib/document-reconciliation';
+import { documentStructureFailures } from './lib/document-structure';
 import { task29cProtectedState } from './lib/task29c-protected-state';
 type Options = { databaseUrl?: string; apply?: boolean; forceFailure?: boolean };
+
+async function assertDocumentStructure(db: ClientBase): Promise<void> {
+  const failures = await documentStructureFailures(db);
+  assert.deepEqual(
+    failures,
+    [],
+    `Task 2.9C database safeguards differ from the reviewed definitions:\n${failures.join('\n')}`,
+  );
+}
 
 async function insertTargets(db: ClientBase, rows: readonly DocumentTargetPlan[]) {
   await db.query(
@@ -74,6 +84,7 @@ export async function runDocumentTransform(options: Options = {}) {
     const protectedBefore = await task29cProtectedState(db);
     await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     try {
+      await assertDocumentStructure(db);
       const plan = await buildDocumentTransformPlan(db);
       assert.equal(plan.sourceCount, preview.sourceCount);
       await insertTargets(db, plan.targets);
@@ -87,6 +98,7 @@ export async function runDocumentTransform(options: Options = {}) {
         protectedBefore,
         'prior protected state changed',
       );
+      await assertDocumentStructure(db);
       await db.query('COMMIT');
       return { plan, digest: await documentResultDigest(db) };
     } catch (error) {

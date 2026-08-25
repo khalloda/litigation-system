@@ -322,7 +322,12 @@ BEGIN
           FROM public.migration_multi_person_rule r
           JOIN public.migration_multi_person_rule_member m ON m.rule_id = r.id
          WHERE r.id = NEW.reviewed_rule_id
-           AND position(r.raw_value in NEW.legacy_lawyers_raw) > 0
+           AND (
+               (r.poa_match_mode IS NULL AND r.raw_value = NEW.legacy_lawyers_raw)
+               OR
+               (r.poa_match_mode = 'substring'
+                AND position(r.raw_value in NEW.legacy_lawyers_raw) > 0)
+           )
            AND m.ordinal = NEW.source_member_ordinal
            AND m.person_id = NEW.person_id
     ) THEN

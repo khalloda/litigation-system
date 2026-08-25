@@ -113,6 +113,150 @@ async function main(): Promise<void> {
       console.log(
         '  ok    complete constraints, indexes, foreign keys, triggers and functions are exact',
       );
+
+      const wholeValueRule = (
+        await db.query<{
+          id: number;
+          raw_value: string;
+          person_id: number;
+          ordinal: number;
+        }>(`
+          SELECT r.id,r.raw_value,m.person_id,m.ordinal
+            FROM migration_multi_person_rule r
+            JOIN migration_multi_person_rule_member m ON m.rule_id=r.id
+           WHERE r.poa_match_mode IS NULL
+           ORDER BY r.id,m.ordinal LIMIT 1`)
+      ).rows[0]!;
+      await db.query('BEGIN');
+      try {
+        const embeddedRaw = `قبل ${wholeValueRule.raw_value} بعد`;
+        const parent = (
+          await db.query<{ id: number }>(
+            `INSERT INTO powers_of_attorney(
+              legacy_lawyers_raw,legacy_source_record_key,
+              legacy_source_extraction_sha256,legacy_source_payload,updated_at
+            ) VALUES($1,$2,$3,'{}',CURRENT_TIMESTAMP) RETURNING id`,
+            [embeddedRaw, sourceKey(50), FINGERPRINT],
+          )
+        ).rows[0]!.id;
+        await assert.rejects(
+          db.query(
+            `INSERT INTO power_of_attorney_lawyers(
+              power_of_attorney_id,person_id,legacy_source_record_key,
+              legacy_source_extraction_sha256,legacy_lawyers_raw,reviewed_rule_id,
+              source_member_ordinal,updated_at
+            ) VALUES($1,$2,$3,$4,$5,$6,$7,CURRENT_TIMESTAMP)`,
+            [
+              parent,
+              wholeValueRule.person_id,
+              sourceKey(50),
+              FINGERPRINT,
+              embeddedRaw,
+              wholeValueRule.id,
+              wholeValueRule.ordinal,
+            ],
+          ),
+          /does not match the reviewed rule member/,
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      console.log('  ok    a normal whole-value rule cannot match inside longer text');
+
+      await db.query('BEGIN');
+      try {
+        await db.query(
+          'ALTER TABLE migration_multi_person_rule DROP CONSTRAINT migration_multi_person_rule_poa_match_mode_check',
+        );
+        await db.query(
+          `UPDATE migration_multi_person_rule SET poa_match_mode='unsupported' WHERE id=$1`,
+          [wholeValueRule.id],
+        );
+        const parent = (
+          await db.query<{ id: number }>(
+            `INSERT INTO powers_of_attorney(
+              legacy_lawyers_raw,legacy_source_record_key,
+              legacy_source_extraction_sha256,legacy_source_payload,updated_at
+            ) VALUES($1,$2,$3,'{}',CURRENT_TIMESTAMP) RETURNING id`,
+            [wholeValueRule.raw_value, sourceKey(51), FINGERPRINT],
+          )
+        ).rows[0]!.id;
+        await assert.rejects(
+          db.query(
+            `INSERT INTO power_of_attorney_lawyers(
+              power_of_attorney_id,person_id,legacy_source_record_key,
+              legacy_source_extraction_sha256,legacy_lawyers_raw,reviewed_rule_id,
+              source_member_ordinal,updated_at
+            ) VALUES($1,$2,$3,$4,$5,$6,$7,CURRENT_TIMESTAMP)`,
+            [
+              parent,
+              wholeValueRule.person_id,
+              sourceKey(51),
+              FINGERPRINT,
+              wholeValueRule.raw_value,
+              wholeValueRule.id,
+              wholeValueRule.ordinal,
+            ],
+          ),
+          /does not match the reviewed rule member/,
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      assert.deepEqual(await poaStructureFailures(db), []);
+      console.log('  ok    an unsupported match mode is refused even if its CHECK is weakened');
+
+      const substringRules = await db.query<{
+        id: number;
+        raw_value: string;
+        members: { person_id: number; ordinal: number }[];
+      }>(`
+        SELECT r.id,r.raw_value,
+          jsonb_agg(jsonb_build_object('person_id',m.person_id,'ordinal',m.ordinal)
+                    ORDER BY m.ordinal) members
+          FROM migration_multi_person_rule r
+          JOIN migration_multi_person_rule_member m ON m.rule_id=r.id
+         WHERE r.poa_match_mode='substring'
+         GROUP BY r.id,r.raw_value ORDER BY r.id`);
+      assert.equal(substringRules.rows.length, 3);
+      await db.query('BEGIN');
+      try {
+        for (const [index, approvedRule] of substringRules.rows.entries()) {
+          const embeddedRaw = `قبل ${approvedRule.raw_value} بعد`;
+          const fixtureKey = sourceKey(60 + index);
+          const parent = (
+            await db.query<{ id: number }>(
+              `INSERT INTO powers_of_attorney(
+                legacy_lawyers_raw,legacy_source_record_key,
+                legacy_source_extraction_sha256,legacy_source_payload,updated_at
+              ) VALUES($1,$2,$3,'{}',CURRENT_TIMESTAMP) RETURNING id`,
+              [embeddedRaw, fixtureKey, FINGERPRINT],
+            )
+          ).rows[0]!.id;
+          for (const member of approvedRule.members) {
+            await db.query(
+              `INSERT INTO power_of_attorney_lawyers(
+                power_of_attorney_id,person_id,legacy_source_record_key,
+                legacy_source_extraction_sha256,legacy_lawyers_raw,reviewed_rule_id,
+                source_member_ordinal,updated_at
+              ) VALUES($1,$2,$3,$4,$5,$6,$7,CURRENT_TIMESTAMP)`,
+              [
+                parent,
+                member.person_id,
+                fixtureKey,
+                FINGERPRINT,
+                embeddedRaw,
+                approvedRule.id,
+                member.ordinal,
+              ],
+            );
+          }
+        }
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      assert.deepEqual(await poaStructureFailures(db), []);
+      console.log('  ok    all three approved substring rules still accept embedded source text');
       const preserved = await db.query(
         `SELECT client_name,legacy_lawyers_raw,notes,show_on_poa_report,
         legacy_source_payload->>'ملاحظات' payload_notes FROM powers_of_attorney WHERE legacy_source_record_key=$1`,

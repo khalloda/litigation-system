@@ -9,9 +9,24 @@ import {
   type TaskActionTargetPlan,
 } from './lib/admin-transform-plan';
 import { reconcileAdminWorks } from './lib/admin-reconciliation';
+import { adminWorkStructureFailures } from './lib/admin-structure';
 import { task29ProtectedState } from './lib/task29-protected-state';
 
-type RunOptions = { databaseUrl?: string; apply?: boolean; forceFailure?: boolean };
+type RunOptions = {
+  databaseUrl?: string;
+  apply?: boolean;
+  forceFailure?: boolean;
+  fixtureOnlyWeakenStructureBeforeCommit?: boolean;
+};
+
+async function assertAdminWorkStructure(db: ClientBase): Promise<void> {
+  const failures = await adminWorkStructureFailures(db);
+  assert.deepEqual(
+    failures,
+    [],
+    `Task 2.9A database safeguards differ from the reviewed definitions:\n${failures.join('\n')}`,
+  );
+}
 
 async function insertTasks(db: ClientBase, rows: readonly AdminTaskTargetPlan[]): Promise<void> {
   await db.query(
@@ -130,6 +145,7 @@ export async function runAdminWorkTransform(options: RunOptions = {}) {
     const protectedBefore = await task29ProtectedState(db);
     await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     try {
+      await assertAdminWorkStructure(db);
       const plan = await buildAdminTransformPlan(db);
       assert.equal(plan.taskSourceCount, preview.taskSourceCount);
       assert.equal(plan.actionSourceCount, preview.actionSourceCount);
@@ -149,6 +165,16 @@ export async function runAdminWorkTransform(options: RunOptions = {}) {
         protectedBefore,
         'prior protected state changed',
       );
+      if (options.fixtureOnlyWeakenStructureBeforeCommit === true) {
+        assert.ok(
+          options.databaseUrl,
+          'fixture-only safeguard mutation requires an explicit database',
+        );
+        await db.query(
+          'ALTER FUNCTION quarantine.refuse_admin_work_evidence_change() SET search_path=public',
+        );
+      }
+      await assertAdminWorkStructure(db);
       await db.query('COMMIT');
       return { plan, digest: await adminWorkResultDigest(db) };
     } catch (error) {

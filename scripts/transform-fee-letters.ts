@@ -10,6 +10,7 @@ import {
   type Q,
 } from './lib/fee-letter-transform-plan';
 import { reconcileFeeLetters } from './lib/fee-letter-reconciliation';
+import { feeLetterStructureFailures } from './lib/fee-letter-structure';
 import { task29dProtectedState } from './lib/task29d-protected-state';
 type Options = {
   databaseUrl?: string;
@@ -22,6 +23,15 @@ type Options = {
     neither: number;
   };
 };
+
+async function assertFeeLetterStructure(db: ClientBase): Promise<void> {
+  const failures = await feeLetterStructureFailures(db);
+  assert.deepEqual(
+    failures,
+    [],
+    `Task 2.9D database safeguards differ from the reviewed definitions:\n${failures.join('\n')}`,
+  );
+}
 async function insertFees(db: ClientBase, rows: readonly FeeTarget[]) {
   await db.query(
     `INSERT INTO fee_letters(contract_id,client_id,mfiles_id,legacy_mfiles_id_raw,client_name,contract_type,contract_date,contract_details,contract_structure,status,legacy_source_record_key,legacy_source_extraction_sha256,legacy_source_payload,updated_at)SELECT x."contractId",x."clientId",x."mfilesId",x."legacyMfilesIdRaw",x."clientName",x."contractType",x."contractDate"::date,x."contractDetails",x."contractStructure",x.status,x."srcRecordKey",x."extractionSha256",x."sourcePayload",CURRENT_TIMESTAMP FROM jsonb_to_recordset($1::jsonb)x("srcRecordKey"text,"extractionSha256"text,"contractId"integer,"clientId"integer,"clientName"text,"mfilesId"text,"legacyMfilesIdRaw"text,"contractType"text,"contractDate"text,"contractDetails"text,"contractStructure"text,status text,"sourcePayload"jsonb)ON CONFLICT(legacy_source_record_key)DO NOTHING`,
@@ -89,6 +99,7 @@ export async function runFeeLetterTransform(options: Options = {}) {
     const before = await task29dProtectedState(db);
     await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     try {
+      await assertFeeLetterStructure(db);
       const plan = await buildFeeLetterPlan(db, expected);
       await insertFees(db, plan.fees);
       await insertQ(db, 'fee_letter_transform', plan.feeQuarantine);
@@ -104,6 +115,7 @@ export async function runFeeLetterTransform(options: Options = {}) {
       });
       assert.deepEqual(r.defects, [], r.defects.join('\n'));
       assert.equal(await task29dProtectedState(db), before);
+      await assertFeeLetterStructure(db);
       await db.query('COMMIT');
       return { plan, digest: await feeResultDigest(db) };
     } catch (e) {

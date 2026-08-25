@@ -1909,6 +1909,15 @@ special `26` row has circuit `26`, `court_id IS NULL`, and raw court text `26`,
 plus the complete PostgreSQL 17.11 constraint/index/trigger/function definitions
 including an empty `proconfig`.
 
+The 25 August post-review correction made all four date interpretations
+fail-safe: `تاريخ التنفيذ`, `آخر موعد`, `تاريخ الإجراء` and `الموعد القادم`
+must pass `pg_input_is_valid` before the independent SQL oracle casts them.
+An impossible calendar value such as 30 February therefore produces its exact
+ordered quarantine reason instead of aborting `db:check`. The same correction
+tracks whether a court crosswalk row exists separately from its nullable
+destination. A reviewed discard wins even if the same source text also appears
+in `lookup_court`; only the complete absence of a rule permits direct lookup.
+
 ## Task 2.9B — powers of attorney (25 August 2026)
 
 Migration 0040 renamed the misleading empty target column `inventory` to the
@@ -1944,6 +1953,14 @@ index, trigger and function definitions, including an empty `proconfig`.
 Identical live runs retained IDs, timestamps and result digest
 `ac066ccba3ff5afad0534a4364ce146a9313b731afe5bfce4f58ec3016c0640a`.
 
+Migration 0044 tightened the database provenance trigger without rewriting
+any POA data. A reviewed rule with `poa_match_mode IS NULL` must equal the
+complete legacy lawyer cell. Only the three firm-approved rules with
+`poa_match_mode = 'substring'` may occur inside longer text; any unsupported
+mode is refused. The disposable fixture proves an ordinary whole-cell rule
+cannot be smuggled through inside a longer value and separately proves that
+all three approved substring rules still accept their ordered members.
+
 ## Task 2.9C — paper documents (25 August 2026)
 
 Migration 0041 added every omitted source field, durable source identity and
@@ -1972,6 +1989,13 @@ all relationship foreign keys and indexes, both immutable evidence tables,
 their triggers, and the full function definition including empty `proconfig`.
 Identical live runs retained IDs, timestamps and result digest
 `a863b3e4fa372d58ddd18e2b5c97db1da0a20523b8e6ec2e27cbb17dd700a7af`.
+
+Document matter evidence no longer selects one quarantined matter with a
+single-value `Map` or SQL `LIMIT 1`. If several quarantined matters share the
+referenced case number, the evidence retains every durable matter source key
+and each matter's alphabetically ordered reason codes, ordered by source key.
+Trace-only filenames and row positions do not choose or order the result, and
+a rerun therefore produces the same evidence.
 
 ## Task 2.9D — fee letters and both matter-link directions (25 August 2026)
 
@@ -2006,6 +2030,15 @@ constraints, indexes, foreign keys, triggers and the complete immutable
 function definition, including empty `proconfig`. Identical live runs retained
 IDs, timestamps and result digest
 `3b647f438dbe76ced036dd7a333f9626e5430cf1bab6cda63e37eb64835a7454`.
+
+Every Task 2.9 apply path now runs its own complete catalog-definition checker
+inside the serializable transaction before the first write and again
+immediately before commit. These are the same strict PostgreSQL 17.11
+constraint, index, foreign-key, trigger and function expectations used by
+`db:check`. If a safeguard is missing or weakened, the transform refuses to
+start or rolls back everything it wrote. The PostgreSQL major-version upgrade
+warning in `docs/DATABASE.md` still applies: review any changed catalog output
+semantically and never weaken or automatically accept it.
 
 ## Load order
 

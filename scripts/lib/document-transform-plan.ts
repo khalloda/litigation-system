@@ -21,7 +21,11 @@ type SourceDocument = {
 };
 type Basic = { id: number };
 type Matter = { id: number; case_number_ar: string | null };
-type MatterQ = { case_number_ar: string | null; reason_codes: string[] };
+type MatterQ = {
+  src_record_key: string;
+  case_number_ar: string | null;
+  reason_codes: string[];
+};
 type Alias = { alias_ar: string; person_id: number };
 type Exclusion = { raw_value: string; reason: string };
 type Detail = Record<string, unknown>;
@@ -140,9 +144,9 @@ export async function buildDocumentTransformPlan(db: ClientBase): Promise<Docume
   const matters = await db.query<Matter>(
     'SELECT id,case_number_ar FROM matters WHERE legacy_source_record_key IS NOT NULL',
   );
-  const matterQ = await db.query<MatterQ>(
-    `SELECT source_payload->>'matterAR' case_number_ar,reason_codes FROM quarantine.matter_transform`,
-  );
+  const matterQ = await db.query<MatterQ>(`
+    SELECT src_record_key,source_payload->>'matterAR' case_number_ar,reason_codes
+      FROM quarantine.matter_transform ORDER BY src_record_key`);
   const aliases = await db.query<Alias>('SELECT alias_ar,person_id FROM person_name_alias');
   const exclusions = await db.query<Exclusion>(
     'SELECT raw_value,reason FROM migration_excluded_name',
@@ -152,11 +156,11 @@ export async function buildDocumentTransformPlan(db: ClientBase): Promise<Docume
   for (const row of matters.rows)
     if (row.case_number_ar !== null)
       matterMap.set(row.case_number_ar, [...(matterMap.get(row.case_number_ar) ?? []), row.id]);
-  const qMatterMap = new Map(
-    matterQ.rows
-      .filter((row) => row.case_number_ar !== null)
-      .map((row) => [row.case_number_ar!, row.reason_codes]),
-  );
+  const qMatterMap = new Map<string, MatterQ[]>();
+  for (const row of matterQ.rows) {
+    if (row.case_number_ar === null) continue;
+    qMatterMap.set(row.case_number_ar, [...(qMatterMap.get(row.case_number_ar) ?? []), row]);
+  }
   const aliasMap = new Map(aliases.rows.map((row) => [row.alias_ar, row.person_id]));
   const exclusionMap = new Map(exclusions.rows.map((row) => [row.raw_value, row.reason]));
   const targets: DocumentTargetPlan[] = [];
@@ -195,14 +199,28 @@ export async function buildDocumentTransformPlan(db: ClientBase): Promise<Docume
             matter_ids: matches,
           }),
         );
-      else if (qMatterMap.has(row.matter_ref_raw))
+      else if (qMatterMap.has(row.matter_ref_raw)) {
+        const quarantinedMatters = qMatterMap.get(row.matter_ref_raw)!;
+        const ordered = quarantinedMatters
+          .map((matter) => ({
+            source_record_key: matter.src_record_key,
+            reason_codes: [...matter.reason_codes].sort((left, right) =>
+              left.localeCompare(right, 'en'),
+            ),
+          }))
+          .sort((left, right) => left.source_record_key.localeCompare(right.source_record_key));
         outputEvidence.push(
           evidence(row, 'matter', row.matter_ref_raw, 'parent_matter_quarantined', {
             value: row.matter_ref_raw,
-            matter_reason_codes: qMatterMap.get(row.matter_ref_raw),
+            ...(ordered.length === 1
+              ? { matter_reason_codes: ordered[0]!.reason_codes }
+              : {
+                  matter_source_keys: ordered.map((matter) => matter.source_record_key),
+                  matter_reason_codes: ordered,
+                }),
           }),
         );
-      else
+      } else
         outputEvidence.push(
           evidence(row, 'matter', row.matter_ref_raw, 'unresolved_matter_reference', {
             value: row.matter_ref_raw,

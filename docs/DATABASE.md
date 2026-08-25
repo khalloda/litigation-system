@@ -169,6 +169,13 @@ semantically and review its complete definition before changing the expected
 string. Never automatically accept the newly formatted output, and never
 weaken or remove the check merely to make an upgrade green.
 
+The four Task 2.9 transform writers also run their respective complete catalog
+checks inside each serializable apply transaction, once before any write and
+again before commit. This turns catalog drift into a refused or rolled-back
+transform rather than something discovered only by the next separate
+`db:check` run. The expected definitions remain the reviewed PostgreSQL 17.11
+strings and are maintained under the same major-upgrade rule above.
+
 It then prints the same four Arabic names sorted two ways, which shows why this
 matters:
 

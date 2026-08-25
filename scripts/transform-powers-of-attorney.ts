@@ -10,6 +10,7 @@ import {
   type PoaTargetPlan,
 } from './lib/poa-transform-plan';
 import { reconcilePowersOfAttorney } from './lib/poa-reconciliation';
+import { poaStructureFailures } from './lib/poa-structure';
 import { task29bProtectedState } from './lib/task29b-protected-state';
 
 type RunOptions = {
@@ -18,6 +19,15 @@ type RunOptions = {
   forceFailure?: boolean;
   expectedCorrectedOccurrences?: readonly number[];
 };
+
+async function assertPoaStructure(db: ClientBase): Promise<void> {
+  const failures = await poaStructureFailures(db);
+  assert.deepEqual(
+    failures,
+    [],
+    `Task 2.9B database safeguards differ from the reviewed definitions:\n${failures.join('\n')}`,
+  );
+}
 
 async function insertTargets(db: ClientBase, rows: readonly PoaTargetPlan[]): Promise<void> {
   await db.query(
@@ -126,6 +136,7 @@ export async function runPoaTransform(options: RunOptions = {}) {
     const protectedBefore = await task29bProtectedState(db);
     await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     try {
+      await assertPoaStructure(db);
       const plan = await buildPoaTransformPlan(db, expectedOccurrences);
       assert.equal(plan.sourceCount, preview.sourceCount);
       await insertTargets(db, plan.targets);
@@ -140,6 +151,7 @@ export async function runPoaTransform(options: RunOptions = {}) {
         protectedBefore,
         'prior protected state changed',
       );
+      await assertPoaStructure(db);
       await db.query('COMMIT');
       return { plan, digest: await poaResultDigest(db) };
     } catch (error) {

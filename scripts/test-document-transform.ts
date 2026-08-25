@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import { buildDocumentTransformPlan } from './lib/document-transform-plan';
 import { reconcileDocuments } from './lib/document-reconciliation';
 import { documentStructureFailures } from './lib/document-structure';
 import { documentResultDigest, runDocumentTransform } from './transform-documents';
@@ -68,13 +69,28 @@ async function main() {
         `INSERT INTO matters(legacy_id,case_number_ar,legacy_source_record_key,legacy_source_extraction_sha256,legacy_source_payload,updated_at)VALUES(9001,'قضية/اختبار',$1,$2,'{}',CURRENT_TIMESTAMP)`,
         [matterKey, FP],
       );
+      const quarantinedMatterKey1 = key(91);
+      const quarantinedMatterKey2 = key(92);
+      await db.query(
+        `INSERT INTO quarantine.matter_transform(
+          src_record_key,extraction_sha256,src_file,src_row_num,legacy_matter_id,
+          reason_codes,reason_details,source_payload
+        ) VALUES
+          ($1,$3,'fixture/matter-a.csv',7,'9101',ARRAY['category_conflict','unreviewed_importance'],
+           '[{"value":"a"},{"value":"b"}]','{"matterAR":"قضية/محجوزة"}'),
+          ($2,$3,'fixture/matter-b.csv',3,'9102',ARRAY['missing_client'],
+           '[{"value":"c"}]','{"matterAR":"قضية/محجوزة"}')`,
+        [quarantinedMatterKey1, quarantinedMatterKey2, FP],
+      );
       const safe = key(1),
-        invalid = key(2);
+        invalid = key(2),
+        quarantinedMatterDocument = key(3);
       await db.query(
         `INSERT INTO staging."المستندات"(src_file,src_row_num,src_record_key,src_extraction_sha256,"مسلسل المستند ID","العميل","رقم الدعوى","بيان المستند","تاريخ المستند","عدد الأوراق","تاريخ الإيداع","المحامي/الموظف المسئول","ملاحظات","بطاقة الحركة","clientID")VALUES
   ('fixture/doc.csv',1,$1,$3,'101','عميل','قضية/اختبار','وصف عربي','2026-08-25 00:00:00',E'21 + CD\r\nنسخة','2026-08-26 00:00:00',$4,E'ملاحظة\r\nثانية','بطاقة',NULL),
-  ('fixture/doc.csv',2,$2,$3,'102',NULL,NULL,'وصف','not-a-date','2',NULL,NULL,NULL,NULL,NULL)`,
-        [safe, invalid, FP, alias],
+  ('fixture/doc.csv',2,$2,$3,'102',NULL,NULL,'وصف','not-a-date','2',NULL,NULL,NULL,NULL,NULL),
+  ('fixture/doc.csv',3,$5,$3,'103','عميل','قضية/محجوزة','مرجع محجوز',NULL,'1',NULL,NULL,NULL,NULL,NULL)`,
+        [safe, invalid, FP, alias, quarantinedMatterDocument],
       );
       const dry = await runDocumentTransform({ databaseUrl: url.toString() });
       assert.deepEqual(
@@ -84,7 +100,7 @@ async function main() {
           dry.plan.quarantine.length,
           dry.plan.evidence.length,
         ],
-        [2, 1, 1, 1],
+        [3, 2, 1, 2],
       );
       assert.equal((await db.query('SELECT count(*)FROM documents')).rows[0]!.count, '0');
       console.log('  ok    dry run partitions source without writes');
@@ -114,6 +130,58 @@ async function main() {
       });
       console.log(
         '  ok    Arabic, CRLF, compound quantity and absent M-Files source survive exactly',
+      );
+      const quarantinedMatterEvidence = (
+        await db.query(
+          `SELECT reason_code,reason_detail
+             FROM quarantine.document_evidence
+            WHERE src_record_key=$1 AND field_kind='matter'`,
+          [quarantinedMatterDocument],
+        )
+      ).rows[0];
+      assert.deepEqual(quarantinedMatterEvidence, {
+        reason_code: 'parent_matter_quarantined',
+        reason_detail: {
+          value: 'قضية/محجوزة',
+          matter_source_keys: [quarantinedMatterKey1, quarantinedMatterKey2],
+          matter_reason_codes: [
+            {
+              source_record_key: quarantinedMatterKey1,
+              reason_codes: ['category_conflict', 'unreviewed_importance'],
+            },
+            {
+              source_record_key: quarantinedMatterKey2,
+              reason_codes: ['missing_client'],
+            },
+          ],
+        },
+      });
+      await db.query('BEGIN');
+      try {
+        await db.query(
+          'ALTER TABLE quarantine.matter_transform DISABLE TRIGGER matter_transform_source_immutable',
+        );
+        await db.query(
+          `UPDATE quarantine.matter_transform
+              SET src_file=CASE src_record_key WHEN $1 THEN 'renamed-z.csv' ELSE 'renamed-a.csv' END,
+                  src_row_num=CASE src_record_key WHEN $1 THEN 99 ELSE 1 END
+            WHERE src_record_key=ANY($2::text[])`,
+          [quarantinedMatterKey1, [quarantinedMatterKey1, quarantinedMatterKey2]],
+        );
+        const reordered = await buildDocumentTransformPlan(db);
+        const evidenceAfterTraceChange = reordered.evidence.find(
+          (row) => row.srcRecordKey === quarantinedMatterDocument && row.fieldKind === 'matter',
+        );
+        assert.deepEqual(
+          evidenceAfterTraceChange?.reasonDetail,
+          quarantinedMatterEvidence.reason_detail,
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      await clean(db);
+      console.log(
+        '  ok    every same-number quarantined matter is retained in durable-key order, independent of trace filenames and rows',
       );
       await fail(
         db,
@@ -193,9 +261,9 @@ async function main() {
         snap,
       );
       console.log('  ok    identical rerun preserves IDs, timestamps and digest');
-      const late = key(3);
+      const late = key(4);
       await db.query(
-        `INSERT INTO staging."المستندات"(src_file,src_row_num,src_record_key,src_extraction_sha256,"مسلسل المستند ID")VALUES('fixture/late.csv',3,$1,$2,'103')`,
+        `INSERT INTO staging."المستندات"(src_file,src_row_num,src_record_key,src_extraction_sha256,"مسلسل المستند ID")VALUES('fixture/late.csv',4,$1,$2,'104')`,
         [late, FP],
       );
       await assert.rejects(

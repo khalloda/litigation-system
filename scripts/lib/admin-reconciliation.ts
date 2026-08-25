@@ -18,8 +18,10 @@ task_source AS (
          CASE WHEN s."matterID" ~ '^[0-9]+$' AND s."matterID"::numeric BETWEEN 1 AND 2147483647
               THEN s."matterID"::integer END matter_id_int,
          CASE WHEN s."تاريخ التنفيذ" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00$'
+                   AND pg_input_is_valid(left(s."تاريخ التنفيذ",10),'date')
               THEN left(s."تاريخ التنفيذ",10)::date END execution_date_value,
          CASE WHEN s."آخر موعد" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00$'
+                   AND pg_input_is_valid(left(s."آخر موعد",10),'date')
               THEN left(s."آخر موعد",10)::date END deadline_value,
          _migration.reviewed_text_key(s."المحكمة") court_key,
          _migration.reviewed_text_key(s."الجهة") destination_key
@@ -32,7 +34,7 @@ task_analysis AS (
          pa.person_id direct_person_id,
          rv.id review_value_id,rv.firm_answer,rv.firm_person,
          reviewed_pa.person_id reviewed_person_id,
-         lc.id direct_court_id,cw.target_field court_rule_field,
+         lc.id direct_court_id,cw.id court_rule_id,cw.target_field court_rule_field,
          cw.target_value court_rule_value,cw.reviewer_note court_rule_note,
          target_court.id rule_court_id,
          CASE WHEN cw.target_field='circuit' THEN cw.target_value
@@ -84,11 +86,7 @@ task_reason_rows AS (
     FROM task_analysis WHERE "القائم بالعمل" IS NOT NULL AND btrim("القائم بالعمل")<>''
       AND direct_person_id IS NULL AND coalesce(firm_answer,'') NOT IN ('not a name','split','person')
   UNION ALL SELECT src_record_key,'unmapped_court',jsonb_build_object('value',"المحكمة")
-    FROM task_analysis WHERE "المحكمة" IS NOT NULL AND direct_court_id IS NULL AND court_rule_field IS NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM migration_crosswalk x
-         WHERE x.source_field='court' AND x.target_field IS NULL
-           AND _migration.reviewed_text_key(x.source_value)=task_analysis.court_key)
+    FROM task_analysis WHERE "المحكمة" IS NOT NULL AND direct_court_id IS NULL AND court_rule_id IS NULL
   UNION ALL SELECT src_record_key,'invalid_court_rule',
          jsonb_build_object('value',"المحكمة",'target_field',court_rule_field,'target_value',court_rule_value)
     FROM task_analysis WHERE court_rule_field IN ('court','SPLIT') AND rule_court_id IS NULL
@@ -122,7 +120,7 @@ safe_tasks AS (
   SELECT a.*,
          coalesce(direct_person_id,reviewed_person_id) expected_person_id,
          CASE WHEN court_rule_field IN ('court','SPLIT') THEN rule_court_id
-              WHEN court_rule_field IS NULL THEN direct_court_id END expected_court_id,
+              WHEN court_rule_id IS NULL THEN direct_court_id END expected_court_id,
          coalesce(source_destination_id,court_destination_id) expected_destination_id,
          coalesce("الدائرة",reviewed_circuit) expected_circuit
     FROM task_analysis a LEFT JOIN expected_task_q q USING(src_record_key)
@@ -134,8 +132,10 @@ action_source AS (
          CASE WHEN s."ID_process" ~ '^[0-9]+$' AND s."ID_process"::numeric BETWEEN 1 AND 2147483647
               THEN s."ID_process"::integer END legacy_id_int,
          CASE WHEN s."تاريخ الإجراء" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00$'
+                   AND pg_input_is_valid(left(s."تاريخ الإجراء",10),'date')
               THEN left(s."تاريخ الإجراء",10)::date END action_date_value,
          CASE WHEN s."الموعد القادم" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00$'
+                   AND pg_input_is_valid(left(s."الموعد القادم",10),'date')
               THEN left(s."الموعد القادم",10)::date END next_appointment_value,
          row_number() OVER (
            PARTITION BY s."ID_Task"
