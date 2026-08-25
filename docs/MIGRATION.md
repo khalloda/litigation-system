@@ -872,8 +872,9 @@ fragment.
 
 ##### Separate procedure for applying Correction B to live migration data
 
-This is future work, immediately before task 2.8, and needs a new owner-
-authorised run. It is not part of the fixture correction.
+**Applied 25 August 2026 in migration 0038 and the separate Correction B
+transaction, immediately before task 2.8.** The fixture-only implementation
+remains the specification; the live audit is its immutable evidence.
 
 1. **Record a read-only before-state:** all staging table counts, the exact
    attendee-cell inventory, the 744-answer association digest, and current
@@ -912,6 +913,15 @@ authorised run. It is not part of the fixture correction.
    `hearing_attendees.legacy_name_raw` keeps the complete original cell on
    each resulting attendee row, while the audit tables retain dates, titles,
    placeholders, notes and ambiguous spans even when they create no attendee.
+
+The live dry run accounted for 12,732 cells as 16,602 ordered spans. It found
+9,113 exact person occurrences across 39 people and retained 10 residual spans
+as `quarantine.attendee_span` evidence rather than guessing. All 663 attendee
+answers still covered their recorded 5,346 source-cell occurrences; the other
+81 answers and both historic answer-association digests were unchanged. The
+serializable transaction and an identical rerun produced stable result digest
+`7e62b9d4f4d1ceb7e3e152095d69b98bce5b7ea0dcc40a055bd368347d5251b4`.
+No hearing or hearing-attendee target row was created in this step.
 
 ### A join that fails for every row is evidence about the join
 

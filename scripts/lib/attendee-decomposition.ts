@@ -5,6 +5,8 @@ export type AttendeeFragmentKind =
 
 export type AttendeeFragmentRule =
   | 'exact_person_alias'
+  | 'reviewed_person_alias'
+  | 'reviewed_not_a_name'
   | 'calendar_date'
   | 'known_title'
   | 'known_role'
@@ -73,6 +75,11 @@ export type AttendeeCellDecomposition = Readonly<{
   source: AttendeeSourceCell;
   fragments: readonly AttendeeFragment[];
   requiresReview: boolean;
+}>;
+
+export type ReviewedAttendeeAnswer = Readonly<{
+  answer: 'person' | 'split' | 'not a name';
+  people: readonly ExactPersonMatch[];
 }>;
 
 type DraftFragment = {
@@ -556,12 +563,10 @@ function validateCoverage(original: string, fragments: readonly DraftFragment[])
   }
 }
 
-export function decomposeAttendeeCell(
+function finaliseDecomposition(
   source: AttendeeSourceCell,
-  rules: AttendeeDecompositionRules,
+  drafts: readonly DraftFragment[],
 ): AttendeeCellDecomposition {
-  validateSource(source);
-  validateRules(rules);
   const sourceCopy = Object.freeze({ ...source });
   const cellId = sha256([
     'attendee-cell-v1',
@@ -570,7 +575,6 @@ export function decomposeAttendeeCell(
     source.sourceColumn,
   ]);
   const originalCellSha256 = sha256(['attendee-cell-content-v1', source.originalCell]);
-  const drafts = draftFragments(source.originalCell, rules);
   validateCoverage(source.originalCell, drafts);
 
   const fragments = drafts.map((draft, index) =>
@@ -600,6 +604,228 @@ export function decomposeAttendeeCell(
     fragments: Object.freeze(fragments),
     requiresReview: fragments.some((fragment) => fragment.reviewRequired),
   });
+}
+
+function reviewedNotNameDrafts(
+  original: string,
+  rules: AttendeeDecompositionRules,
+): DraftFragment[] {
+  const reviewedNotes = new Set(rules.knownNotes);
+  for (const line of original.split(/\r\n|\r|\n/gu)) {
+    const core = OUTER_HORIZONTAL_WHITESPACE.exec(line)?.[2] ?? '';
+    if (
+      core !== '' &&
+      !rules.knownPlaceholders.has(core) &&
+      !rules.knownTitles.includes(core) &&
+      !rules.knownRoles.has(core) &&
+      !isCalendarDate(core)
+    ) {
+      reviewedNotes.add(core);
+    }
+  }
+  const reviewedRules: AttendeeDecompositionRules = Object.freeze({
+    ...rules,
+    knownPeople: new Map(),
+    knownNotes: reviewedNotes,
+  });
+  return draftFragments(original, reviewedRules).map((fragment) =>
+    fragment.kind === 'note' ? { ...fragment, rule: 'reviewed_not_a_name' as const } : fragment,
+  );
+}
+
+type AliasCandidate = Readonly<{
+  start: number;
+  end: number;
+  alias: string;
+  person: ExactPersonMatch;
+}>;
+
+function isWordCharacter(value: string): boolean {
+  return /[\p{L}\p{N}]/u.test(value);
+}
+
+function reviewedAliasCandidates(
+  fragment: DraftFragment,
+  expectedPeople: ReadonlySet<string>,
+  rules: AttendeeDecompositionRules,
+): AliasCandidate[] {
+  const candidates: AliasCandidate[] = [];
+  for (const [alias, person] of rules.knownPeople) {
+    if (!expectedPeople.has(person.personKey)) continue;
+    let cursor = 0;
+    while (cursor <= fragment.raw.length - alias.length) {
+      const localStart = fragment.raw.indexOf(alias, cursor);
+      if (localStart < 0) break;
+      const localEnd = localStart + alias.length;
+      const before = fragment.raw[localStart - 1] ?? '';
+      const after = fragment.raw[localEnd] ?? '';
+      if ((!before || !isWordCharacter(before)) && (!after || !isWordCharacter(after))) {
+        candidates.push({
+          start: fragment.startOffset + localStart,
+          end: fragment.startOffset + localEnd,
+          alias,
+          person,
+        });
+      }
+      cursor = localStart + 1;
+    }
+  }
+  return candidates.sort(
+    (left, right) =>
+      left.start - right.start ||
+      right.end - right.start - (left.end - left.start) ||
+      compareText(left.alias, right.alias),
+  );
+}
+
+function refineReviewedPeople(
+  drafts: readonly DraftFragment[],
+  answer: ReviewedAttendeeAnswer,
+  rules: AttendeeDecompositionRules,
+): DraftFragment[] {
+  const expectedKeys = answer.people.map((person) => person.personKey);
+  if (new Set(expectedKeys).size !== expectedKeys.length) {
+    throw new Error('A reviewed attendee answer repeats a person in its ordered answer list.');
+  }
+  const expectedPeople = new Set(expectedKeys);
+  const result: DraftFragment[] = [];
+
+  for (const fragment of drafts) {
+    if (fragment.kind !== 'ambiguous') {
+      result.push(fragment);
+      continue;
+    }
+    const candidates = reviewedAliasCandidates(fragment, expectedPeople, rules);
+    const selected: AliasCandidate[] = [];
+    for (const candidate of candidates) {
+      const prior = selected[selected.length - 1];
+      if (prior && candidate.start < prior.end) {
+        if (
+          candidate.start === prior.start &&
+          candidate.end === prior.end &&
+          candidate.person.personKey !== prior.person.personKey
+        ) {
+          throw new Error(
+            `Reviewed attendee alias ${JSON.stringify(candidate.alias)} resolves to two people.`,
+          );
+        }
+        continue;
+      }
+      selected.push(candidate);
+    }
+    if (selected.length === 0) {
+      result.push(fragment);
+      continue;
+    }
+
+    let cursor = fragment.startOffset;
+    for (const candidate of selected) {
+      if (candidate.start > cursor) {
+        const raw = fragment.raw.slice(
+          cursor - fragment.startOffset,
+          candidate.start - fragment.startOffset,
+        );
+        result.push(makeDraft(raw, cursor, fragment.line, 'ambiguous', 'unclassified_review'));
+      }
+      result.push(
+        makeDraft(
+          candidate.alias,
+          candidate.start,
+          fragment.line,
+          'person',
+          'reviewed_person_alias',
+          candidate.alias,
+          candidate.person,
+        ),
+      );
+      cursor = candidate.end;
+    }
+    if (cursor < fragment.endOffset) {
+      result.push(
+        makeDraft(
+          fragment.raw.slice(cursor - fragment.startOffset),
+          cursor,
+          fragment.line,
+          'ambiguous',
+          'unclassified_review',
+        ),
+      );
+    }
+  }
+
+  const actualKeys: string[] = [];
+  for (const fragment of result) {
+    if (fragment.kind !== 'person' || fragment.personKey === undefined) continue;
+    if (
+      actualKeys[actualKeys.length - 1] !== fragment.personKey &&
+      !actualKeys.includes(fragment.personKey)
+    ) {
+      actualKeys.push(fragment.personKey);
+    }
+  }
+  if (
+    actualKeys.length !== expectedKeys.length ||
+    actualKeys.some((key, i) => key !== expectedKeys[i])
+  ) {
+    throw new Error(
+      `Reviewed attendee people do not match the source in order: expected ${expectedKeys.join(', ')}, found ${actualKeys.join(', ')}.`,
+    );
+  }
+  return result;
+}
+
+export function decomposeAttendeeCell(
+  source: AttendeeSourceCell,
+  rules: AttendeeDecompositionRules,
+): AttendeeCellDecomposition {
+  validateSource(source);
+  validateRules(rules);
+  const drafts = draftFragments(source.originalCell, rules);
+  return finaliseDecomposition(source, drafts);
+}
+
+/**
+ * Apply one exact firm answer to the fixture-proven decomposition. The answer
+ * can select only people whose exact aliases occur in the source. Repeated
+ * source occurrences remain repeated spans; the answer list is compared to
+ * the ordered first occurrence of each person.
+ */
+export function decomposeReviewedAttendeeCell(
+  source: AttendeeSourceCell,
+  rules: AttendeeDecompositionRules,
+  answer: ReviewedAttendeeAnswer,
+): AttendeeCellDecomposition {
+  validateSource(source);
+  validateRules(rules);
+  if (answer.answer === 'not a name') {
+    if (answer.people.length !== 0) {
+      throw new Error('A not-a-name attendee answer cannot identify a person.');
+    }
+    return finaliseDecomposition(source, reviewedNotNameDrafts(source.originalCell, rules));
+  }
+  if (answer.people.length === 0) {
+    throw new Error('A person or split attendee answer must identify at least one person.');
+  }
+  if (answer.answer === 'person' && answer.people.length !== 1) {
+    throw new Error('A person attendee answer must identify exactly one person.');
+  }
+  if (answer.answer === 'split' && answer.people.length < 2) {
+    throw new Error('A split attendee answer must identify at least two people.');
+  }
+  const expected = new Set(answer.people.map((person) => person.personKey));
+  const reviewedPeople = new Map(
+    [...rules.knownPeople].filter(([, person]) => expected.has(person.personKey)),
+  );
+  const reviewedRules: AttendeeDecompositionRules = Object.freeze({
+    ...rules,
+    knownPeople: reviewedPeople,
+  });
+  const drafts = refineReviewedPeople(
+    draftFragments(source.originalCell, reviewedRules),
+    answer,
+    reviewedRules,
+  );
+  return finaliseDecomposition(source, drafts);
 }
 
 export function decomposeAttendeeCells(

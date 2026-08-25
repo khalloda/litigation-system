@@ -604,11 +604,21 @@ only ever seen good data is not known to work.
       review. Reordering filenames or rows does not change cell or fragment
       ids, and applying the same result twice is a no-op.
 
-      This correction added **no migration, database table or live transform**.
-      Staging, the 744 review answers and `hearing_attendees` were not changed.
-      Applying it is a separate owner-authorised procedure immediately before
-      task 2.8; that procedure and its reconciliation gates are recorded in
-      `docs/MIGRATION.md`.
+      **Applied to the live migration audit on 25 August 2026, migration 0038.**
+      The required dry run reconciled all 663 attendee answers and the other
+      81 answers before the first write. It stored **12,732 immutable source
+      cells and 16,602 ordered spans**: 9,113 exact person occurrences across
+      39 people and 10 deliberately ambiguous residual spans. Those 10 are
+      immutable quarantine evidence and cannot create attendees. The result
+      digest is
+      `7e62b9d4f4d1ceb7e3e152095d69b98bce5b7ea0dcc40a055bd368347d5251b4`.
+      An identical second run preserved every id, timestamp and value.
+
+      Staging, all 744 review answers and the completed client/contact/matter/
+      relationship transforms remained byte-identical. No `hearings` or
+      `hearing_attendees` row was created by Correction B. Task 2.8 must read
+      these proved audit rows; it must not parse the source cells again.
+      `db:check` is now **64 checks**.
 
 - [x] **2.5 Transform: people, lookups, clients, contacts**
       **Clients and contacts done 23 August 2026, migration 0027.**

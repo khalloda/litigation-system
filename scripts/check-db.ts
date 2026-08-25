@@ -27,6 +27,10 @@ import { additions, compare, readBaseline } from './lib/reviewed-links';
 import { reconcileMatterRelationships } from './lib/matter-relationship-reconciliation';
 import { correctedMultiPersonRules } from './lib/matter-relationship-rules';
 import { matterRelationshipStructureFailures } from './lib/matter-relationship-structure';
+import {
+  attendeeAuditStructureFailures,
+  reconcileAttendeeAudit,
+} from './lib/attendee-audit-reconciliation';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
 
@@ -1470,9 +1474,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '5 (finding, exclusion, review_value, matter_transform, matter_relationship_transform)',
+    '6 (finding, exclusion, review_value, matter_transform, matter_relationship_transform, attendee_span)',
     String(quarantine.tables),
-    quarantine.tables === 5n,
+    quarantine.tables === 6n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -2286,6 +2290,29 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : structureFailures.join('; '),
       structureFailures.length === 0,
+    );
+
+    const attendeeAudit = await reconcileAttendeeAudit(relationshipDb);
+    record(
+      'Attendee source cells and spans reconcile',
+      '12,732 cells; every byte, span, answer, person and quarantine item exact',
+      attendeeAudit.defects.length === 0
+        ? `${attendeeAudit.auditCells} cells, ${attendeeAudit.spans} spans, ` +
+            `${attendeeAudit.personSpans} person spans, ` +
+            `${attendeeAudit.ambiguousSpans} quarantined ambiguous spans`
+        : attendeeAudit.defects.join('; '),
+      attendeeAudit.sourceCells === 12_732 &&
+        attendeeAudit.auditCells === 12_732 &&
+        attendeeAudit.defects.length === 0,
+    );
+    const attendeeStructure = await attendeeAuditStructureFailures(relationshipDb);
+    record(
+      'Attendee audit constraints and evidence guards',
+      'complete cell/span/quarantine constraints, indexes, foreign keys, triggers and functions',
+      attendeeStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : attendeeStructure.join('; '),
+      attendeeStructure.length === 0,
     );
   } finally {
     await relationshipDb.end();
