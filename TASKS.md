@@ -274,9 +274,10 @@ be bigger than expected, split it and tell the owner.
       cannot see that.
 
       **Shares on one invoice must sum to 1.** That is a rule across rows, so
-      no CHECK can express it: it lives in `db:check`, vacuously true today
-      and meaningful from the first Phase 2 split. A single share is
-      constrained to 0–1, which catches a percentage typed as 50.
+      no CHECK can express it: it lives in `db:check`. It was vacuous when
+      this empty schema was created; Task 2.10A now proves all 15 migrated
+      invoice groups total exactly one. A single share is constrained to 0–1,
+      which catches a percentage typed as 50.
 
       `attendance` is the **staff leave register**, not meeting attendance —
       D2 drops those entirely. Its person link is a fifth person-name mapping
@@ -1015,7 +1016,9 @@ only ever seen good data is not known to work.
       failure — nobody knows which court that row was heard in, and unknown
       is the honest answer. `legacy_court_raw` keeps the original `26`.
 
-- [ ] **2.10A Transform: billing history** — invoices, payments and collection
+- [x] **2.10A Transform: billing history** — completed 25 August 2026,
+      migration 0045 and one separate serializable transaction. Invoices,
+      payments and collection
       allocations. Historical billing remains read-only in the application for
       every role (D4, D14); this one-time migration is the deliberate write
       that brings the Access history across.
@@ -1044,6 +1047,29 @@ only ever seen good data is not known to work.
       `LawyerShare4Invoices` is reference-only and must remain exactly empty.
       It produces no target row. The only allocation source in this extraction
       is `تقسيم التحصيلات`.
+
+      **Result:** 543 invoices, 597 payments and 47 allocations transformed;
+      zero billing quarantines. All 15 allocation groups total exactly
+      `1.00000`; all nine people resolve by exact English name or the one
+      owner-reviewed legacy-only crosswalk. The 11 `Ahmed Abdullah` rows span
+      exactly nine groups and all point to person 25. Invoice `21819` preserves
+      all seven raw shares and their direct decimal interpretations.
+
+      Invoices `21269` and `21772` retain NULL types, the one payment for
+      `21772` resolves, invoices `21225` and `21226` retain raw receipt currency
+      `0` with interpreted NULL, and invoice `21352` plus its two payments
+      retain raw ` USD` with interpreted `USD`. `Pay-Date` appears in no target,
+      audit payload, durable identity or result digest.
+
+      The writer is idempotent and serializable, sets `updated_at` explicitly,
+      locks the complete source/target domain against concurrent writes and
+      DDL, and checks complete PostgreSQL 17.11 object definitions before the
+      first write and before commit. A separate implementation permanently
+      reconstructs every target and quarantine result directly from staging;
+      it does not import the writing planner or its parsers. The 29-case
+      disposable fixture proves scalar, typed, raw, link, trace, quarantine,
+      idempotency, rollback and weakened-catalog failures. Result digest:
+      `421b935e10b9e45a9bb9718b947825817b09ac60b7529d95491378f6e0737498`.
 
 - [ ] **2.10B Transform: staff attendance** — `Attendance`, the 4,022-row
       leave register. This is separate from billing and from meeting attendance

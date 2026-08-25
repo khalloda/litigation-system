@@ -466,6 +466,7 @@ model Person {
   /// Hearings this person attended.
   hearingAttendees                HearingAttendee[]
   powerOfAttorneyLawyers          PowerOfAttorneyLawyer[]
+  billingMigrationCrosswalks      MigrationBillingPersonCrosswalk[]
   /// Shares of collections allocated to this person.
   invoiceAllocations              InvoiceAllocation[]
   /// Leave register entries.
@@ -509,6 +510,36 @@ model PersonNameAlias {
   /// not know about. db:check caught that; this stops it recurring.
   @@index([aliasArNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("person_name_alias")
+}
+
+/// Owner-reviewed, legacy-only English person names used by the Task 2.10A
+/// billing migration. This is deliberately separate from application aliases:
+/// application-native rows do not inherit a historical correction by accident.
+model MigrationBillingPersonCrosswalk {
+  sourceValue  String   @id @map("source_value")
+  personId     Int      @map("person_id")
+  person       Person   @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "migration_billing_person_crosswalk_person_fkey")
+  legacyOnly   Boolean  @default(true) @map("legacy_only")
+  reviewedBy   String   @map("reviewed_by")
+  reviewedAt   DateTime @map("reviewed_at") @db.Date
+  reviewerNote String   @map("reviewer_note")
+
+  @@map("migration_billing_person_crosswalk")
+}
+
+/// Exact owner-reviewed billing currency interpretations. These are named
+/// source values, never a generic trim or case-fold.
+model MigrationBillingCurrencyRule {
+  fieldKind         String   @map("field_kind")
+  sourceValue       String   @map("source_value")
+  targetValue       String?  @map("target_value")
+  requireZeroAmount Boolean  @default(false) @map("require_zero_amount")
+  reviewedBy        String   @map("reviewed_by")
+  reviewedAt        DateTime @map("reviewed_at") @db.Date
+  reviewerNote      String   @map("reviewer_note")
+
+  @@id([fieldKind, sourceValue], map: "migration_billing_currency_rule_pkey")
+  @@map("migration_billing_currency_rule")
 }
 
 /// Work teams. The label lives on the PERSON, never on the matter (D6): 87%
@@ -1868,12 +1899,13 @@ model Invoice {
   /// Access `Currency`, 100%. Gate 4 reconciles **total invoiced and total
   /// paid, per currency** (docs/MIGRATION.md), so it has to survive. Task
   /// 2.10A adds the raw partner and applies only exact reviewed ` USD` → `USD`.
-  currency  String?
+  currency          String?
+  legacyCurrencyRaw String?  @map("legacy_currency_raw")
   /// Access `Amount`, 100%. Money is NEVER a floating-point number.
-  amount    Decimal? @db.Decimal(14, 2)
+  amount            Decimal? @db.Decimal(14, 2)
   /// Access `USD$`, 4% — a dollar equivalent on a handful of rows. Kept
   /// because nothing is deleted; it is not a substitute for `amount`.
-  amountUsd Decimal? @map("amount_usd") @db.Decimal(14, 2)
+  amountUsd         Decimal? @map("amount_usd") @db.Decimal(14, 2)
 
   /// Access `Inv-Date`, 100%.
   invoiceDate DateTime? @map("invoice_date") @db.Date
@@ -1918,8 +1950,16 @@ model Invoice {
   /// **The `R-` naming suggests "receipt". That is an INFERENCE, not a
   /// fact** — the content only shows an amount and a currency travelling
   /// together.
-  receiptAmount   Decimal? @map("receipt_amount") @db.Decimal(14, 2)
-  receiptCurrency String?  @map("receipt_currency")
+  receiptAmount            Decimal? @map("receipt_amount") @db.Decimal(14, 2)
+  receiptCurrency          String?  @map("receipt_currency")
+  /// Byte-exact `R-$`, including the reviewed text `0` whose usable value is NULL.
+  legacyReceiptCurrencyRaw String?  @map("legacy_receipt_currency_raw")
+
+  /// Task 2.10A source identity derives from the stable invoice number, never
+  /// filename, row order or Pay-Date. The permitted payload excludes Pay-Date.
+  legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload")
 
   /// Access `Pay-Date` is **NOT MIGRATED** (D4) — 23% filled, but it stops in
   /// September 2019 while payments run to December 2021. Migrating it would
@@ -1946,8 +1986,9 @@ model Payment {
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
 
-  /// Nullable: a payment whose invoice cannot be resolved loads with a null
-  /// link and goes to the review queue, never dropped.
+  /// Nullable for future application-native records. A legacy payment whose
+  /// invoice cannot be resolved remains in immutable Task 2.10A quarantine
+  /// and creates no payment row; it is never dropped or guessed.
   invoiceId Int?     @map("invoice_id")
   invoice   Invoice? @relation(fields: [invoiceId], references: [id])
 
@@ -1958,11 +1999,12 @@ model Payment {
 
   /// Access `العملة`, 91%. Task 2.10A adds the raw partner and applies only
   /// exact reviewed ` USD` → `USD`; it never trims arbitrary values.
-  currency String?
+  currency          String?
+  legacyCurrencyRaw String?  @map("legacy_currency_raw")
   /// Access `Credit` 99% and `Debit` 52%. Two columns, not one `amount` —
   /// the placeholder this table briefly carried has been removed.
-  credit   Decimal? @db.Decimal(14, 2)
-  debit    Decimal? @db.Decimal(14, 2)
+  credit            Decimal? @db.Decimal(14, 2)
+  debit             Decimal? @db.Decimal(14, 2)
 
   /// Access `التاريخ`, **67% — a third of payments have no date.** Nullable,
   /// and expected to show up at Gate 3 rather than being a surprise.
@@ -1970,6 +2012,12 @@ model Payment {
 
   /// Access `بيان السداد`, 52%.
   details String?
+
+  /// Stable payment identity comes from Access ID. The payload preserves all
+  /// seven source columns and excludes filename/row trace from identity.
+  legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -1989,8 +2037,8 @@ model Payment {
 ///
 /// **The shares on one invoice must sum to 1.** That is a rule ACROSS rows,
 /// which no CHECK constraint can express, so it lives in npm run db:check —
-/// where it is vacuously true today and becomes meaningful the moment Phase 2
-/// writes the first split. Rule 16: the strongest tool the rule allows.
+/// where Task 2.10A now proves all 15 migrated invoice groups total exactly
+/// one. Rule 16: the strongest tool the rule allows.
 ///
 /// A single share is constrained here to lie between 0 and 1, which a CHECK
 /// constraint CAN express and which catches a percentage typed as 50.
@@ -2050,11 +2098,18 @@ model InvoiceAllocation {
   share            Decimal? @db.Decimal(6, 5)
   legacyPercentRaw String?  @map("legacy_percent_raw")
 
+  /// Stable allocation identity comes from Access ID; application-native rows
+  /// have all migration provenance NULL and remain outside reconciliation.
+  legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   updatedBy Int?     @map("updated_by")
 
+  @@unique([invoiceId, personId, lawyerRoleId], map: "invoice_allocations_invoice_person_role_key")
   @@index([invoiceId])
   @@index([personId])
   @@map("invoice_allocations")

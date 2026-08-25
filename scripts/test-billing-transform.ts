@@ -1,0 +1,581 @@
+import 'dotenv/config';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { Client } from 'pg';
+import { buildBillingPlan } from './lib/billing-transform-plan';
+import { reconcileBillingHistory } from './lib/billing-reconciliation';
+import { billingStructureFailures } from './lib/billing-structure';
+import {
+  billingResultDigest,
+  runBillingTransform,
+  type LIVE_BILLING_COUNTS,
+} from './transform-billing-history';
+
+const FP = 'F'.repeat(64);
+const expected: typeof LIVE_BILLING_COUNTS = {
+  invoiceSource: 2,
+  invoiceTarget: 1,
+  invoiceQuarantine: 1,
+  paymentSource: 3,
+  paymentTarget: 2,
+  paymentQuarantine: 1,
+  allocationSource: 8,
+  allocationTarget: 7,
+  allocationQuarantine: 1,
+  allocationGroups: 1,
+  allocationPeople: 5,
+  referenceOnly: 0,
+};
+
+const fixtureKey = (number: number) => `${number.toString(16).padStart(64, '0')}:000001`;
+
+function identifier(value: string): string {
+  assert.match(value, /^[a-z0-9_]+$/u);
+  return `"${value}"`;
+}
+
+function migrate(databaseUrl: string): void {
+  const result = spawnSync(
+    process.execPath,
+    ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, DATABASE_URL: databaseUrl },
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+}
+
+async function clean(db: Client): Promise<void> {
+  const result = await reconcileBillingHistory(db, false);
+  assert.deepEqual(result.defects, [], result.defects.join('\n'));
+  assert.deepEqual(await billingStructureFailures(db), []);
+}
+
+async function reconciliationFailure(
+  db: Client,
+  label: string,
+  mutation: () => Promise<unknown>,
+  pattern: RegExp,
+): Promise<void> {
+  await db.query('BEGIN');
+  try {
+    await mutation();
+    assert.match((await reconcileBillingHistory(db, false)).defects.join('\n'), pattern);
+  } finally {
+    await db.query('ROLLBACK');
+  }
+  await clean(db);
+  console.log(`  ok    ${label}`);
+}
+
+async function structureFailure(
+  db: Client,
+  label: string,
+  mutation: () => Promise<unknown>,
+  pattern: RegExp,
+): Promise<void> {
+  await db.query('BEGIN');
+  try {
+    await mutation();
+    assert.match((await billingStructureFailures(db)).join('\n'), pattern);
+  } finally {
+    await db.query('ROLLBACK');
+  }
+  assert.deepEqual(await billingStructureFailures(db), []);
+  console.log(`  ok    ${label}`);
+}
+
+async function main(): Promise<void> {
+  const projectUrl = process.env['DATABASE_URL'];
+  assert.ok(projectUrl, 'DATABASE_URL is required');
+  const databaseName = `billing_fixture_${process.pid}_${Date.now()}`;
+  const adminUrl = new URL(projectUrl);
+  adminUrl.pathname = '/postgres';
+  const fixtureUrl = new URL(projectUrl);
+  fixtureUrl.pathname = `/${databaseName}`;
+  const admin = new Client({ connectionString: adminUrl.toString() });
+  let created = false;
+  await admin.connect();
+  try {
+    await admin.query(`CREATE DATABASE ${identifier(databaseName)}`);
+    created = true;
+    migrate(fixtureUrl.toString());
+    const db = new Client({ connectionString: fixtureUrl.toString() });
+    await db.connect();
+    try {
+      const feeSourceKey = fixtureKey(900);
+      await db.query(
+        `INSERT INTO fee_letters(
+           contract_id,legacy_source_record_key,legacy_source_extraction_sha256,
+           legacy_source_payload,updated_at)
+         VALUES(100,$1,$2,'{"contractID":"100"}',CURRENT_TIMESTAMP)`,
+        [feeSourceKey, FP],
+      );
+      await db.query(
+        `INSERT INTO staging."الفواتير"(
+           src_file,src_row_num,src_record_key,src_extraction_sha256,"Inv-No",
+           "contractID","Inv-Date","Amount","USD$","Currency","Inv-Details",
+           "Inv-Status","Inv-Type","VAT?",report,"R-#","R-$","Pay-Date")
+         VALUES
+           ('fixture/invoices-a.csv',77,$1,$3,'21819','100','2026-08-25 00:00:00',
+            '16500','100',' USD','فاتورة عربية','Paid',NULL,'true','false','0','0',
+            '2019-09-01 00:00:00'),
+           ('fixture/invoices-b.csv',88,$2,$3,'1001','100','2026-08-25 00:00:00',
+            '5',NULL,'EGP','يجب الحجر','Unpaid','Service','false','true','1','0',NULL)`,
+        [fixtureKey(1), fixtureKey(2), FP],
+      );
+      await db.query(
+        `INSERT INTO staging."السداد"(
+           src_file,src_row_num,src_record_key,src_extraction_sha256,"رقم الفاتورة",
+           "التاريخ","ID","Credit","Debit","العملة","بيان السداد")
+         VALUES
+           ('fixture/payments.csv',1,$1,$4,'21819','2026-08-25 00:00:00','1',
+            '16500','0',' USD','سداد عربي'),
+           ('fixture/payments.csv',2,$2,$4,'21819',NULL,'2','0','0',NULL,NULL),
+           ('fixture/payments.csv',3,$3,$4,'1001',NULL,'3','5','0','EGP','تابع لمحجور')`,
+        [fixtureKey(10), fixtureKey(11), fixtureKey(12), FP],
+      );
+      const allocationRows = [
+        ['1', 'Ahmed Abdullah', '.060', 'Reviewer'],
+        ['2', 'Nagy Ramadan', '.110', 'Reviewer'],
+        ['3', 'Mahmoud Sha’ban', '.100', 'LawyerB'],
+        ['4', "Mo'men Selim", '.100', 'LawyerB'],
+        ['5', 'Mohamed Abd El-Aziz', '.240', 'LawyerA'],
+        ['6', 'Ahmed Abdullah', '.315', 'LawyerA'],
+        ['7', 'Mohamed Abd El-Aziz', '.075', 'LawyerA+'],
+        ['8', 'Not A Person', '1.000', 'LawyerA'],
+      ];
+      for (const [index, [id, lawyer, percent, role]] of allocationRows.entries())
+        await db.query(
+          `INSERT INTO staging."تقسيم التحصيلات"(
+             src_file,src_row_num,src_record_key,src_extraction_sha256,
+             "ID","InvNo","Lawyer","Percent","LawyerAs")
+           VALUES('fixture/allocations.csv',$1,$2,$3,$4,$5,$6,$7,$8)`,
+          [
+            index + 1,
+            fixtureKey(100 + index),
+            FP,
+            id,
+            id === '8' ? '1001' : '21819',
+            lawyer,
+            percent,
+            role,
+          ],
+        );
+
+      const dry = await runBillingTransform({
+        databaseUrl: fixtureUrl.toString(),
+        expectedCounts: expected,
+      });
+      assert.equal((await db.query('SELECT count(*) FROM invoices')).rows[0]!.count, '0');
+      assert.deepEqual(
+        dry.plan.allocations.map((row) => [
+          row.legacyLawyerRaw,
+          row.legacyPercentRaw,
+          row.share,
+          row.legacyLawyerAsRaw,
+        ]),
+        allocationRows.slice(0, 7).map((row) => [row[1], row[2], `0${row[2]}00`, row[3]]),
+      );
+      assert.equal(dry.plan.invoices[0]!.legacyTypeRaw, null);
+      assert.equal(dry.plan.invoices[0]!.typeId, null);
+      assert.equal(dry.plan.invoices[0]!.legacyCurrencyRaw, ' USD');
+      assert.equal(dry.plan.invoices[0]!.currency, 'USD');
+      assert.equal(dry.plan.invoices[0]!.legacyReceiptCurrencyRaw, '0');
+      assert.equal(dry.plan.invoices[0]!.receiptCurrency, null);
+      assert.equal(dry.plan.invoices[0]!.sourcePayload['Pay-Date'], undefined);
+      console.log(
+        '  ok    dry run copies reviewed fractions, NULL type, exact currency rules and excludes Pay-Date without writes',
+      );
+
+      const applied = await runBillingTransform({
+        databaseUrl: fixtureUrl.toString(),
+        apply: true,
+        expectedCounts: expected,
+      });
+      assert.ok(applied.digest);
+      await clean(db);
+      console.log(
+        '  ok    target-or-quarantine partitions all fixture sources and complete PostgreSQL definitions are exact',
+      );
+
+      const storedShares = (
+        await db.query<{ raw: string; interpreted: string; lawyer: string }>(
+          `SELECT legacy_percent_raw raw,share::text interpreted,legacy_lawyer_raw lawyer
+             FROM invoice_allocations ORDER BY legacy_id`,
+        )
+      ).rows;
+      assert.deepEqual(
+        storedShares,
+        allocationRows.slice(0, 7).map((row) => ({
+          raw: row[2]!,
+          interpreted: `0${row[2]}00`,
+          lawyer: row[1]!,
+        })),
+      );
+      assert.equal(
+        (
+          await db.query<{ total: string }>(
+            'SELECT sum(share)::text total FROM invoice_allocations',
+          )
+        ).rows[0]!.total,
+        '1.00000',
+      );
+      assert.equal(
+        (
+          await db.query<{ count: string }>(
+            `SELECT count(*) FROM invoice_allocations
+              WHERE legacy_lawyer_raw='Ahmed Abdullah' AND person_id=25`,
+          )
+        ).rows[0]!.count,
+        '2',
+      );
+      console.log(
+        '  ok    all seven 21819 shares copy exactly, sum to one and use the reviewed person crosswalk',
+      );
+
+      await reconciliationFailure(
+        db,
+        'changed invoice text is detected independently',
+        () => db.query(`UPDATE invoices SET details='بديل' WHERE legacy_id=21819`),
+        /invoice target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed typed invoice amount is detected independently',
+        () => db.query(`UPDATE invoices SET amount=16501 WHERE legacy_id=21819`),
+        /invoice target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed invoice extraction fingerprint is detected',
+        () =>
+          db.query(`UPDATE invoices SET legacy_source_extraction_sha256=$1 WHERE legacy_id=21819`, [
+            'A'.repeat(64),
+          ]),
+        /invoice target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed payment NULL versus empty distinction is detected',
+        () => db.query(`UPDATE payments SET details='' WHERE legacy_id=2`),
+        /payment target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed payment link is detected',
+        () => db.query(`UPDATE payments SET legacy_invoice_no='changed' WHERE legacy_id=1`),
+        /payment target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed interpreted share is detected',
+        () => db.query(`UPDATE invoice_allocations SET share=.061 WHERE legacy_id=1`),
+        /allocation target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed exact allocation raw text is detected',
+        () =>
+          db.query(`UPDATE invoice_allocations SET legacy_percent_raw='0.060' WHERE legacy_id=1`),
+        /allocation target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'missing target payment is detected',
+        () => db.query(`DELETE FROM payments WHERE legacy_id=1`),
+        /payment target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'incorrect quarantine reason is detected',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.invoice_transform DISABLE TRIGGER invoice_transform_no_change',
+          );
+          await db.query(
+            `UPDATE quarantine.invoice_transform SET reason_codes=ARRAY['unsupported_invoice_currency'],reason_details='[{"value":"EGP"}]' WHERE legacy_invoice_no_raw='1001'`,
+          );
+        },
+        /invoice quarantine\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed quarantine source trace is detected',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.payment_transform DISABLE TRIGGER payment_transform_no_change',
+          );
+          await db.query(
+            `UPDATE quarantine.payment_transform SET src_row_num=999 WHERE legacy_payment_id_raw='3'`,
+          );
+        },
+        /payment quarantine\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'missing allocation quarantine is detected',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.invoice_allocation_transform DISABLE TRIGGER invoice_allocation_transform_no_change',
+          );
+          await db.query(`DELETE FROM quarantine.invoice_allocation_transform`);
+        },
+        /allocation quarantine\/source mismatch/,
+      );
+
+      await db.query('BEGIN');
+      try {
+        await db.query(`UPDATE staging."الفواتير" SET "R-#"='1' WHERE "Inv-No"='21819'`);
+        const unsafe = await buildBillingPlan(db);
+        assert.equal(unsafe.invoices.length, 0);
+        assert.ok(
+          unsafe.invoiceQuarantine.some((row) =>
+            row.reasonCodes.includes('zero_receipt_currency_with_nonzero_amount'),
+          ),
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      console.log('  ok    R-$ text 0 with a nonzero R-# is quarantined, never interpreted');
+
+      await db.query('BEGIN');
+      try {
+        await db.query(`UPDATE staging."الفواتير" SET "Inv-Type"='' WHERE "Inv-No"='21819'`);
+        const emptyType = await buildBillingPlan(db);
+        assert.ok(
+          emptyType.invoiceQuarantine.some((row) =>
+            row.reasonCodes.includes('unsupported_invoice_type'),
+          ),
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      console.log(
+        '  ok    NULL invoice type is accepted but an unreviewed empty string is quarantined',
+      );
+
+      await db.query('BEGIN');
+      try {
+        await db.query(`UPDATE staging."الفواتير" SET "Currency"=' EGP' WHERE "Inv-No"='21819'`);
+        assert.ok(
+          (await buildBillingPlan(db)).invoiceQuarantine.some((row) =>
+            row.reasonCodes.includes('unsupported_invoice_currency'),
+          ),
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      console.log('  ok    no unreviewed whitespace trim or currency fold is applied');
+
+      await db.query('BEGIN');
+      try {
+        await db.query(
+          `UPDATE staging."تقسيم التحصيلات" SET "Lawyer"='أحمد عبد الله' WHERE "ID"='1'`,
+        );
+        assert.ok(
+          (await buildBillingPlan(db)).allocationQuarantine.some((row) =>
+            row.reasonCodes.includes('unresolved_english_person'),
+          ),
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      console.log(
+        '  ok    Arabic and fuzzy names do not inherit the exact legacy English crosswalk',
+      );
+
+      const digestBeforeTrace = await billingResultDigest(db);
+      const keysBefore = (await buildBillingPlan(db)).invoices.map((row) => row.srcRecordKey);
+      await db.query('BEGIN');
+      try {
+        await db.query(
+          `UPDATE staging."الفواتير" SET src_file='renamed.csv',src_row_num=999,"Pay-Date"='2000-01-01 00:00:00' WHERE "Inv-No"='21819'`,
+        );
+        const reordered = await buildBillingPlan(db);
+        assert.deepEqual(
+          reordered.invoices.map((row) => row.srcRecordKey),
+          keysBefore,
+        );
+        assert.equal(await billingResultDigest(db), digestBeforeTrace);
+        assert.equal(reordered.invoices[0]!.sourcePayload['Pay-Date'], undefined);
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      console.log(
+        '  ok    filename, row position and Pay-Date change neither durable identity nor result digest',
+      );
+
+      const snapshot = (
+        await db.query(
+          `SELECT jsonb_agg(to_jsonb(x) ORDER BY kind,id) snapshot FROM (
+             SELECT 'I' kind,id,created_at,updated_at FROM invoices WHERE legacy_source_record_key IS NOT NULL
+             UNION ALL SELECT 'P',id,created_at,updated_at FROM payments WHERE legacy_source_record_key IS NOT NULL
+             UNION ALL SELECT 'A',id,created_at,updated_at FROM invoice_allocations WHERE legacy_source_record_key IS NOT NULL
+           ) x`,
+        )
+      ).rows[0];
+      const second = await runBillingTransform({
+        databaseUrl: fixtureUrl.toString(),
+        apply: true,
+        expectedCounts: expected,
+      });
+      assert.equal(second.digest, applied.digest);
+      assert.deepEqual(
+        (
+          await db.query(
+            `SELECT jsonb_agg(to_jsonb(x) ORDER BY kind,id) snapshot FROM (
+               SELECT 'I' kind,id,created_at,updated_at FROM invoices WHERE legacy_source_record_key IS NOT NULL
+               UNION ALL SELECT 'P',id,created_at,updated_at FROM payments WHERE legacy_source_record_key IS NOT NULL
+               UNION ALL SELECT 'A',id,created_at,updated_at FROM invoice_allocations WHERE legacy_source_record_key IS NOT NULL
+             ) x`,
+          )
+        ).rows[0],
+        snapshot,
+      );
+      console.log('  ok    identical rerun preserves IDs, timestamps, rows and digest');
+
+      await db.query(
+        `INSERT INTO staging."الفواتير"(
+           src_file,src_row_num,src_record_key,src_extraction_sha256,"Inv-No",
+           "contractID","Inv-Date","Amount","Currency","Inv-Details","Inv-Status",
+           "Inv-Type","VAT?",report)
+         VALUES('fixture/late.csv',1,$1,$2,'1002','100','2026-08-25 00:00:00',
+                '10','EGP','late','Paid','Service','false','false')`,
+        [fixtureKey(999), FP],
+      );
+      await assert.rejects(
+        runBillingTransform({
+          databaseUrl: fixtureUrl.toString(),
+          apply: true,
+          forceFailure: true,
+          expectedCounts: { ...expected, invoiceSource: 3, invoiceTarget: 2 },
+        }),
+        /forced late Task 2\.10A failure/,
+      );
+      assert.equal(
+        (await db.query(`SELECT count(*) FROM invoices WHERE legacy_id=1002`)).rows[0]!.count,
+        '0',
+      );
+      await db.query(`DELETE FROM staging."الفواتير" WHERE "Inv-No"='1002'`);
+      await clean(db);
+      console.log('  ok    forced late failure rolls back every newly planned billing row');
+
+      await structureFailure(
+        db,
+        'CHECK with the reviewed text plus OR true is rejected',
+        async () => {
+          await db.query('ALTER TABLE invoices DROP CONSTRAINT invoices_source_identity_shape');
+          await db.query(`ALTER TABLE invoices ADD CONSTRAINT invoices_source_identity_shape
+            CHECK (legacy_source_record_key IS NULL OR legacy_source_record_key IS NOT NULL OR true)`);
+        },
+        /constraint definition: invoices_source_identity_shape/,
+      );
+      await structureFailure(
+        db,
+        'non-unique source identity index with the expected name and column is rejected',
+        async () => {
+          await db.query('DROP INDEX invoices_legacy_source_record_key_key');
+          await db.query(
+            'CREATE INDEX invoices_legacy_source_record_key_key ON invoices(legacy_source_record_key)',
+          );
+        },
+        /index definition: invoices_legacy_source_record_key_key/,
+      );
+      await structureFailure(
+        db,
+        'correctly named trigger pointing to a permissive function is rejected',
+        async () => {
+          await db.query(`CREATE FUNCTION quarantine.permissive_billing_evidence_change()
+            RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN OLD; END$$`);
+          await db.query(
+            'DROP TRIGGER invoice_transform_no_change ON quarantine.invoice_transform',
+          );
+          await db.query(`CREATE TRIGGER invoice_transform_no_change BEFORE UPDATE OR DELETE
+            ON quarantine.invoice_transform FOR EACH ROW
+            EXECUTE FUNCTION quarantine.permissive_billing_evidence_change()`);
+        },
+        /trigger definition: invoice_transform_no_change/,
+      );
+      await structureFailure(
+        db,
+        'permissive function retaining the diagnostic phrase is rejected',
+        () =>
+          db.query(`CREATE OR REPLACE FUNCTION quarantine.refuse_billing_evidence_change()
+            RETURNS trigger LANGUAGE plpgsql AS $$BEGIN
+              -- Task 2.10A billing evidence DELETE/TRUNCATE is refused
+              RETURN OLD;
+            END$$`),
+        /function definition/,
+      );
+      await structureFailure(
+        db,
+        'per-function search_path configuration is rejected',
+        () =>
+          db.query(
+            'ALTER FUNCTION quarantine.refuse_billing_evidence_change() SET search_path=quarantine',
+          ),
+        /function definition/,
+      );
+      await structureFailure(
+        db,
+        'foreign key with the wrong delete action is rejected',
+        async () => {
+          await db.query('ALTER TABLE payments DROP CONSTRAINT payments_invoice_id_fkey');
+          await db.query(`ALTER TABLE payments ADD CONSTRAINT payments_invoice_id_fkey
+            FOREIGN KEY(invoice_id) REFERENCES invoices(id)
+            ON UPDATE CASCADE ON DELETE CASCADE`);
+        },
+        /foreign-key definition: payments_invoice_id_fkey/,
+      );
+
+      await assert.rejects(
+        db.query(`DELETE FROM quarantine.invoice_transform WHERE legacy_invoice_no_raw='1001'`),
+        /DELETE\/TRUNCATE is refused/,
+      );
+      await clean(db);
+      console.log('  ok    immutable quarantine evidence refuses deletion');
+
+      assert.equal(
+        (
+          await db.query<{ count: string }>(`
+            SELECT count(*) FROM information_schema.columns
+             WHERE table_schema IN ('public','quarantine')
+               AND lower(replace(column_name,'_',''))='paydate'`)
+        ).rows[0]!.count,
+        '0',
+      );
+      assert.equal(
+        (
+          await db.query<{ count: string }>(`
+            SELECT count(*) FROM (
+              SELECT legacy_source_payload payload FROM invoices
+              UNION ALL SELECT source_payload FROM quarantine.invoice_transform
+            ) x WHERE payload ? 'Pay-Date'`)
+        ).rows[0]!.count,
+        '0',
+      );
+      console.log('  ok    Pay-Date has no target, audit field or permitted payload');
+    } finally {
+      await db.end();
+    }
+  } finally {
+    if (created) {
+      await admin.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1', [
+        databaseName,
+      ]);
+      await admin.query(`DROP DATABASE ${identifier(databaseName)}`);
+    }
+    await admin.end();
+  }
+  console.log('Task 2.10A billing fixture passed. Disposable database removed.');
+}
+
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.stack : error);
+  process.exitCode = 1;
+});

@@ -40,6 +40,8 @@ import { reconcileDocuments } from './lib/document-reconciliation';
 import { documentStructureFailures } from './lib/document-structure';
 import { reconcileFeeLetters } from './lib/fee-letter-reconciliation';
 import { feeLetterStructureFailures } from './lib/fee-letter-structure';
+import { reconcileBillingHistory } from './lib/billing-reconciliation';
+import { billingStructureFailures } from './lib/billing-structure';
 import { ATTENDEE_AUDIT_BASELINE, REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
@@ -1488,9 +1490,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '16 (the 13 prior tables plus three fee-letter evidence tables)',
+    '19 (the 16 prior tables plus three billing evidence tables)',
     String(quarantine.tables),
-    quarantine.tables === 16n,
+    quarantine.tables === 19n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -2466,6 +2468,39 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : feeStructure.join('; '),
       feeStructure.length === 0,
+    );
+    const billingResult = await reconcileBillingHistory(relationshipDb);
+    record(
+      'Billing history and immutable evidence reconcile',
+      '543 invoices; 597 payments; 47 allocation rows in 15 exact-one groups; no source loss',
+      billingResult.defects.length === 0
+        ? `${billingResult.invoiceSourceCount} = ${billingResult.invoiceTargetCount} invoices + ${billingResult.invoiceQuarantineCount} quarantined; ` +
+            `${billingResult.paymentSourceCount} = ${billingResult.paymentTargetCount} payments + ${billingResult.paymentQuarantineCount} quarantined; ` +
+            `${billingResult.allocationSourceCount} = ${billingResult.allocationTargetCount} allocations + ${billingResult.allocationQuarantineCount} quarantined; ` +
+            `${billingResult.allocationGroupCount} groups, ${billingResult.distinctAllocationPeople} people, ${billingResult.referenceOnlyCount} reference-only rows`
+        : billingResult.defects.join('; '),
+      billingResult.invoiceSourceCount === 543 &&
+        billingResult.invoiceTargetCount === 543 &&
+        billingResult.invoiceQuarantineCount === 0 &&
+        billingResult.paymentSourceCount === 597 &&
+        billingResult.paymentTargetCount === 597 &&
+        billingResult.paymentQuarantineCount === 0 &&
+        billingResult.allocationSourceCount === 47 &&
+        billingResult.allocationTargetCount === 47 &&
+        billingResult.allocationQuarantineCount === 0 &&
+        billingResult.allocationGroupCount === 15 &&
+        billingResult.distinctAllocationPeople === 9 &&
+        billingResult.referenceOnlyCount === 0 &&
+        billingResult.defects.length === 0,
+    );
+    const billingStructure = await billingStructureFailures(relationshipDb);
+    record(
+      'Billing constraints and evidence guards',
+      'complete PostgreSQL 17.11 definitions, including function configuration',
+      billingStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : billingStructure.join('; '),
+      billingStructure.length === 0,
     );
   } finally {
     await relationshipDb.end();

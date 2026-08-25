@@ -2091,6 +2091,51 @@ These transformations are independently rebuilt by `db:check`. They do not
 change staging. D4 remains absolute: `Pay-Date` is excluded from target
 columns, permitted audit payloads, baselines, digests and inference.
 
+### Task 2.10A applied result — 25 August 2026
+
+Migration 0045 added durable provenance, the two exact reviewed crosswalk
+tables, target-or-quarantine evidence and immutable-evidence guards. It wrote
+no historical billing row. The separate writer then ran once inside a
+serializable transaction after its dry run and fixture suite passed:
+
+- 543 of 543 invoices transformed; zero quarantined;
+- 597 of 597 payments transformed; zero quarantined;
+- 47 of 47 allocation rows transformed; zero quarantined;
+- 15 of 15 allocation groups total exactly `1.00000`;
+- `LawyerShare4Invoices` remains exactly empty and created no target row.
+
+The independently reconstructed permanent checks prove every scalar, typed
+value, raw value, lookup, link, source identity, extraction fingerprint and
+complete source payload. They also prove the approved baselines: invoice
+`21819` has the seven exact raw shares `0.060 / 0.110 / 0.100 / 0.100 / 0.240 /
+0.315 / 0.075`; 11 exact `Ahmed Abdullah` rows in nine groups resolve to person
+25; invoices `21269` and `21772` keep NULL types; the latter's payment resolves;
+the two raw receipt currencies `0` remain raw `0` with interpreted NULL; and
+invoice `21352` plus two payments keep raw ` USD` with interpreted `USD`.
+
+The stable result digest is
+`421b935e10b9e45a9bb9718b947825817b09ac60b7529d95491378f6e0737498`.
+It includes the complete semantic migrated result, source payloads, durable
+identities and extraction fingerprints. It excludes generated database IDs,
+timestamps, filenames and row positions. `Pay-Date` is absent by design. A
+second identical run retained the same result digest and the same stronger
+whole-row digest—including IDs and timestamps—proving that it inserted or
+updated nothing.
+
+The 29-case disposable fixture includes a forced late failure and deliberate
+weakening of constraints, indexes, triggers, foreign keys, function body and
+`pg_proc.proconfig`. Every mutation was detected and rolled back. Exact catalog
+strings remain the reviewed PostgreSQL 17.11 baseline; the existing major
+version upgrade warning applies unchanged.
+
+The transaction takes table locks that block concurrent writes and table DDL,
+and the apply procedure separately confirmed that no other migration or active
+database session existed. Do not overread the second catalog check: PostgreSQL
+snapshot visibility cannot promise that it will observe every possible
+external function-definition change made concurrently. The operational rule
+therefore remains **no concurrent migration or schema-changing process**; the
+second check is another guard, not a substitute for that rule.
+
 ## Gate 4 — proving it worked
 
 **Counts** are not enough. A reversed join gives the right number of rows with
