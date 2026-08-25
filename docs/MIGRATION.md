@@ -1944,6 +1944,35 @@ index, trigger and function definitions, including an empty `proconfig`.
 Identical live runs retained IDs, timestamps and result digest
 `ac066ccba3ff5afad0534a4364ce146a9313b731afe5bfce4f58ec3016c0640a`.
 
+## Task 2.9C — paper documents (25 August 2026)
+
+Migration 0041 added every omitted source field, durable source identity and
+immutable field evidence to the document register. The serializable transform
+reconciled **407 source rows = 407 targets + 0 record-level quarantines**.
+Exact source links safely resolved all 407 clients, 4 matter references and
+126 responsible people.
+
+The other populated relationships and compound quantities remain as **372
+field-evidence rows**: 204 unresolved descriptive or differently formatted
+matter references, 87 unreviewed titled/compound responsible-person values, 67
+reviewed `قسم التحكيم` non-person exclusions, and 14 compound page-count cells.
+Examples such as `21 + CD` and multi-line paper/page counts are kept byte for
+byte in `legacy_page_count_raw`; no single quantity or stock transaction was
+invented.
+
+The current `المستندات` staging table has no M-Files column. Consequently both
+`mfiles_id` and `legacy_mfiles_id_raw` are permanently reconciled as null for
+these legacy rows, while the complete source payload remains available. This
+does not add file upload/storage or document check-in/check-out behavior.
+
+The independent SQL oracle reconstructs all direct fields, dates, integer-only
+page counts, exact client/matter/person links, raw values and complete evidence
+from staging. The PostgreSQL 17.11 catalog checker pins the source constraint,
+all relationship foreign keys and indexes, both immutable evidence tables,
+their triggers, and the full function definition including empty `proconfig`.
+Identical live runs retained IDs, timestamps and result digest
+`a863b3e4fa372d58ddd18e2b5c97db1da0a20523b8e6ec2e27cbb17dd700a7af`.
+
 ## Load order
 
 Parents before children.

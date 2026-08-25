@@ -944,6 +944,17 @@ only ever seen good data is not known to work.
       exclusions and 1 missing client link). Result digest:
       `ac066ccba3ff5afad0534a4364ce146a9313b731afe5bfce4f58ec3016c0640a`.
 
+      **C — paper documents completed 25 August 2026 (migration 0041).**
+      All 407 current source rows became document targets; none needed
+      record-level quarantine. Four matter references and 126 responsible
+      people resolve exactly. The transform preserves 372 immutable field
+      outcomes for values that must not be guessed: 204 unresolved matter
+      references, 87 unreviewed responsible-person values, 67 reviewed
+      non-person exclusions, and 14 compound page-count values. The source has
+      no M-Files column, so `mfiles_id` and `legacy_mfiles_id_raw` are both
+      proved null while the full source payload remains intact. Result digest:
+      `a863b3e4fa372d58ddd18e2b5c97db1da0a20523b8e6ec2e27cbb17dd700a7af`.
+
       **`الدعاوى.[خطاب الأتعاب]` CARRIES TWO KEY SPACES — this is a hazard,
       not just an explanation.** Found at 2.4. It resolves against
       `contractID` (1–332) for 289 matters and `mfilesID` (1–59,225) for 123,

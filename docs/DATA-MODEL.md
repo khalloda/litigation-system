@@ -298,12 +298,17 @@ text and does not guess a date out of it.
 Includes `المحامون الصادر لهم التوكيل`, which names several lawyers in one
 field and is the main source of the 71 external people.
 
-### `documents` — 405 rows
-A register of **paper** documents: description, page count, deposit date,
-responsible person, movement card, and where the hard copy is stored.
+### `documents` — 407 rows in the current Stage 2 extraction
+A register of **paper** documents: description, document date, original and
+typed page count, deposit date, notes, responsible person, movement card, and
+where the hard copy is stored. Task 2.9C also preserves the typed client name
+and matter reference beside their resolved IDs.
 
-**Add `mfiles_id`** — an optional reference to the firm's M-Files document
-system. Precedent exists: `خطابات الأتعاب.mfilesID` is filled on 306 of 331 rows.
+`mfiles_id` is an optional reference to the firm's M-Files document system,
+with `legacy_mfiles_id_raw` beside it. The current `المستندات` source table has
+no M-Files column, so both are null for all 407 migrated rows; the fields are
+available for future application-native records. Precedent exists:
+`خطابات الأتعاب.mfilesID` is filled on 306 of 331 rows.
 
 ### `fee_letters` — 331 rows
 `contract_id` **must survive migration unchanged** — future invoicing attaches

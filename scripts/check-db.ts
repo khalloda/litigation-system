@@ -36,6 +36,8 @@ import { reconcileAdminWorks } from './lib/admin-reconciliation';
 import { adminWorkStructureFailures } from './lib/admin-structure';
 import { reconcilePowersOfAttorney } from './lib/poa-reconciliation';
 import { poaStructureFailures } from './lib/poa-structure';
+import { reconcileDocuments } from './lib/document-reconciliation';
+import { documentStructureFailures } from './lib/document-structure';
 import { ATTENDEE_AUDIT_BASELINE, REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
@@ -1481,9 +1483,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '11 (the 9 prior tables plus two POA evidence tables)',
+    '13 (the 11 prior tables plus two document evidence tables)',
     String(quarantine.tables),
-    quarantine.tables === 11n,
+    quarantine.tables === 13n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -2409,6 +2411,24 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : poaStructure.join('; '),
       poaStructure.length === 0,
+    );
+    const documentResult = await reconcileDocuments(relationshipDb);
+    record(
+      'Paper documents reconcile to source and reviewed relationships',
+      '407 source records; every scalar, typed value, raw value, link and evidence row exact',
+      documentResult.defects.length === 0
+        ? `${documentResult.sourceCount} = ${documentResult.targetCount} transformed + ${documentResult.quarantineCount} quarantined; ${documentResult.evidenceCount} field evidence rows`
+        : documentResult.defects.join('; '),
+      documentResult.defects.length === 0,
+    );
+    const documentStructure = await documentStructureFailures(relationshipDb);
+    record(
+      'Document constraints and evidence guards',
+      'complete PostgreSQL 17.11 definitions, including function configuration',
+      documentStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : documentStructure.join('; '),
+      documentStructure.length === 0,
     );
   } finally {
     await relationshipDb.end();

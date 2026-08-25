@@ -706,6 +706,7 @@ model Client {
   logo       ClientLogo?
   matters    Matter[]
   poas       PowerOfAttorney[]
+  documents  Document[]
   feeLetters FeeLetter[]
 
   @@index([nameAr])
@@ -1335,7 +1336,7 @@ model PowerOfAttorneyLawyer {
   @@map("power_of_attorney_lawyers")
 }
 
-/// The paper document register. 405 rows at Stage 2.
+/// The paper document register. 407 rows in the current Stage 2 extraction.
 ///
 /// This records DESCRIPTIONS of paper documents and where the hard copy is
 /// filed. **The system does not store files** (docs/PRD.md).
@@ -1346,9 +1347,16 @@ model Document {
   matterId Int?    @map("matter_id")
   matter   Matter? @relation(fields: [matterId], references: [id])
 
-  description String?
-  pageCount   Int?      @map("page_count")
-  depositDate DateTime? @map("deposit_date") @db.Date
+  clientId            Int?    @map("client_id")
+  client              Client? @relation(fields: [clientId], references: [id])
+  legacyClientNameRaw String? @map("legacy_client_name_raw")
+  legacyMatterRefRaw  String? @map("legacy_matter_ref_raw")
+
+  description        String?
+  documentDate       DateTime? @map("document_date") @db.Date
+  pageCount          Int?      @map("page_count")
+  legacyPageCountRaw String?   @map("legacy_page_count_raw")
+  depositDate        DateTime? @map("deposit_date") @db.Date
 
   /// Who is responsible for the paper. Resolved through person_name_alias.
   responsiblePersonId  Int?    @map("responsible_person_id")
@@ -1357,10 +1365,16 @@ model Document {
 
   movementCard    String? @map("movement_card")
   storageLocation String? @map("storage_location")
+  notes           String?
 
   /// Optional reference into M-Files, the existing document system of the
   /// firm. Precedent: خطابات الأتعاب.mfilesID is filled on 306 of 331 rows.
   mfilesId String? @map("mfiles_id")
+  legacyMfilesIdRaw String? @map("legacy_mfiles_id_raw")
+
+  legacySourceRecordKey        String? @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -1368,7 +1382,9 @@ model Document {
   updatedBy Int?     @map("updated_by")
 
   @@index([matterId])
+  @@index([clientId])
   @@index([responsiblePersonId])
+  @@unique([legacySourceRecordKey], map: "documents_legacy_source_record_key_key")
   @@map("documents")
 }
 
