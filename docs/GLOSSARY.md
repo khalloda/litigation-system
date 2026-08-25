@@ -8,7 +8,7 @@ For anyone reading the data or the schema. Do not guess at these.
 |---|---|---|
 | العملاء | Clients | |
 | الدعاوى | Matters / cases | The central table |
-| الجلسات | Hearings | Largest table, 13,279 rows |
+| الجلسات | Hearings | Largest source table, 13,382 rows in the current extraction |
 | المحامين / lawyers | Lawyers | Two Access tables, merged into one |
 | التوكيلات | Powers of attorney | |
 | المستندات | Documents | Paper register, not file storage |

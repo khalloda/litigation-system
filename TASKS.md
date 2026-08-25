@@ -585,8 +585,9 @@ only ever seen good data is not known to work.
       wrong identities, and a forced late database failure are all refused.
       `db:check` is now **55 checks**.
 
-      **Correction B, 24 August 2026 — compound attendee decomposition is
-      fixture-proven, not applied to live migration data.** Read-only
+      **Correction B, 24 August 2026 — compound attendee decomposition was
+      initially fixture-proven only and not yet applied to live migration
+      data.** Read-only
       inspection found 12,732 non-empty attendee cells: 713 contain line
       breaks, 650 contain digits, 378 use Arabic commas and 9 contain blank
       lines. The current profiler scores each complete cell, which is why a
@@ -604,7 +605,8 @@ only ever seen good data is not known to work.
       review. Reordering filenames or rows does not change cell or fragment
       ids, and applying the same result twice is a no-op.
 
-      **Applied to the live migration audit on 25 August 2026, migration 0038.**
+      **Subsequently applied to the live migration audit on 25 August 2026,
+      migration 0036.**
       The required dry run reconciled all 663 attendee answers and the other
       81 answers before the first write. It stored **12,732 immutable source
       cells and 16,602 ordered spans**: 9,113 exact person occurrences across
@@ -913,6 +915,8 @@ only ever seen good data is not known to work.
       safeguard corruption is detected, and a late failure leaves no partial
       rows. An identical live rerun preserved IDs, timestamps and result digest
       `e9cad0a8b0302d819d38b14046afe4824caa0d1337ee0ca25c9534665afb2cf4`.
+      Task 2.8's application-schema/provenance work is migration 0037; its
+      cross-schema attendee provenance trigger is migration 0038.
 
 - [ ] **2.9 Transform: admin works, POAs, documents, fee letters**
 
@@ -1026,7 +1030,9 @@ allows. Test with real volumes.
       `لم يُكلَّف أحد` for the 834 matters with no lawyer — **absence is stated,
       not blank** — and `يشمل البحث:` for the alias disclosure, which is the
       alias table doing visible work.
-- [ ] **4.3 Hearings** — 13,279 rows; needs paging and fast filters.
+- [ ] **4.3 Hearings** — 13,055 current target rows need paging and fast
+      filters; 327 additional source hearings remain quarantined until their
+      parent or reviewed court issue is resolved.
       Attendees as a multi-select of active staff.
 - [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
 - [ ] **4.5 Powers of attorney**

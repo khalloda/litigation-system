@@ -10,6 +10,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { Client } from 'pg';
 import {
+  type AttendeeAuditReconciliationBaseline,
   attendeeAuditStructureFailures,
   reconcileAttendeeAudit,
 } from './lib/attendee-audit-reconciliation';
@@ -29,6 +30,7 @@ type RunOptions = {
   databaseUrl?: string;
   dryRun?: boolean;
   forceFailure?: boolean;
+  attendeeAuditBaseline?: AttendeeAuditReconciliationBaseline | null;
 };
 
 async function protectedState(db: Client): Promise<string> {
@@ -156,7 +158,7 @@ export async function runHearingTransform(options: RunOptions = {}) {
   const db = new Client({ connectionString });
   await db.connect();
   try {
-    const audit = await reconcileAttendeeAudit(db);
+    const audit = await reconcileAttendeeAudit(db, options.attendeeAuditBaseline);
     assert.deepEqual(audit.defects, [], 'Correction B attendee audit is not reconciled');
     assert.deepEqual(
       await attendeeAuditStructureFailures(db),

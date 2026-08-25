@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import type { Client } from 'pg';
 import {
   decomposeAttendeeCell,
@@ -8,10 +9,15 @@ import {
   type ExactPersonMatch,
   type ReviewedAttendeeAnswer,
 } from './attendee-decomposition';
+import {
+  ATTENDEE_SOURCE_BASELINE,
+  REVIEW_ANSWER_BASELINE,
+  type AttendeeSourceBaseline,
+  type ReviewAnswerBaseline,
+} from './migration-baselines';
 
 export const ATTENDEE_SOURCE_TABLE = 'الجلسات';
-export const ATTENDEE_CELL_DIGEST =
-  '3ec09ab48157e51271156e6cea69afe32d17252e4da00c55733d58c44e03cee2';
+export const ATTENDEE_CELL_DIGEST = ATTENDEE_SOURCE_BASELINE.digest;
 
 type SourceCellRow = {
   src_record_key: string;
@@ -47,6 +53,11 @@ export type ReviewSnapshot = Readonly<{
   answerDigest: string;
 }>;
 
+export type AttendeeSourceSnapshot = Readonly<{
+  cells: number;
+  digest: string;
+}>;
+
 export type PlannedAttendeeCell = Readonly<{
   decomposition: AttendeeCellDecomposition;
   sourceColumnOrdinal: number;
@@ -64,7 +75,85 @@ export type AttendeeAuditPlan = Readonly<{
   distinctPeople: number;
   attendeeReviewValues: number;
   reviewSnapshot: ReviewSnapshot;
+  sourceSnapshot: AttendeeSourceSnapshot;
 }>;
+
+export type AttendeeAuditPlanExpectations = Readonly<{
+  attendeeAnswers: number;
+  review: ReviewAnswerBaseline;
+  source: AttendeeSourceBaseline;
+}>;
+
+export const APPROVED_ATTENDEE_AUDIT_PLAN_EXPECTATIONS: AttendeeAuditPlanExpectations =
+  Object.freeze({
+    attendeeAnswers: 663,
+    review: REVIEW_ANSWER_BASELINE,
+    source: ATTENDEE_SOURCE_BASELINE,
+  });
+
+export function attendeeSourceDigest(
+  rows: readonly Pick<
+    SourceCellRow,
+    'src_row_num' | 'source_column' | 'source_column_ordinal' | 'original_cell'
+  >[],
+): string {
+  const hash = createHash('sha256');
+  const ordered = [...rows].sort(
+    (left, right) =>
+      left.src_row_num - right.src_row_num ||
+      left.source_column_ordinal - right.source_column_ordinal,
+  );
+  for (const row of ordered) {
+    hash.update(
+      `${String(row.src_row_num)}:${String(row.source_column_ordinal)}:` +
+        `${String(Buffer.byteLength(row.original_cell, 'utf8'))}:${row.original_cell};`,
+      'utf8',
+    );
+  }
+  return hash.digest('hex');
+}
+
+export function attendeeSourceSnapshot(rows: readonly SourceCellRow[]): AttendeeSourceSnapshot {
+  return Object.freeze({ cells: rows.length, digest: attendeeSourceDigest(rows) });
+}
+
+export async function readAttendeeSourceSnapshot(db: Client): Promise<AttendeeSourceSnapshot> {
+  const result = await db.query<SourceCellRow>(`
+    SELECT h.src_row_num, v.source_column, v.source_column_ordinal, v.original_cell
+      FROM staging."الجلسات" h
+      CROSS JOIN LATERAL (VALUES
+        ('الحاضر', 1, h."الحاضر"), ('حاضر 1', 2, h."حاضر 1"),
+        ('حاضر 2', 3, h."حاضر 2"), ('حاضر 3', 4, h."حاضر 3"),
+        ('حاضر 4', 5, h."حاضر 4")
+      ) v(source_column, source_column_ordinal, original_cell)
+     WHERE v.original_cell IS NOT NULL AND v.original_cell <> ''
+     ORDER BY h.src_row_num, v.source_column_ordinal`);
+  return attendeeSourceSnapshot(result.rows);
+}
+
+export function assertReviewSnapshot(actual: ReviewSnapshot, expected: ReviewAnswerBaseline): void {
+  assert.equal(actual.valueAnswers, expected.valueAnswers, 'Reviewed value-answer count drifted.');
+  assert.equal(
+    actual.findingAnswers,
+    expected.findingAnswers,
+    'Reviewed finding-answer count drifted.',
+  );
+  assert.equal(
+    actual.valueAnswers + actual.findingAnswers,
+    expected.totalAnswers,
+    'The complete review-answer count drifted.',
+  );
+  assert.equal(actual.mappingDigest, expected.mappingDigest, 'Review mapping digest drifted.');
+  assert.equal(actual.answerDigest, expected.answerDigest, 'Review answer digest drifted.');
+}
+
+export function assertAttendeeSourceSnapshot(
+  actual: AttendeeSourceSnapshot,
+  expected: AttendeeSourceBaseline,
+): void {
+  assert.equal(actual.cells, expected.cells, 'Attendee source-cell count drifted.');
+  assert.equal(actual.digest, expected.digest, 'Attendee source-cell digest drifted.');
+}
 
 function exactPeople(aliases: readonly AliasRow[]) {
   const byAlias = new Map<string, ExactPersonMatch>();
@@ -154,7 +243,7 @@ export async function readReviewSnapshot(db: Client): Promise<ReviewSnapshot> {
 
 export async function buildAttendeeAuditPlan(
   db: Client,
-  expected: { attendeeAnswers?: number; totalAnswers?: number } = {},
+  expected: AttendeeAuditPlanExpectations = APPROVED_ATTENDEE_AUDIT_PLAN_EXPECTATIONS,
 ): Promise<AttendeeAuditPlan> {
   const sourceResult = await db.query<SourceCellRow>(`
       SELECT h.src_record_key,
@@ -190,19 +279,15 @@ export async function buildAttendeeAuditPlan(
        WHERE topic = 'attendee_name'
        ORDER BY id`);
   const reviewSnapshot = await readReviewSnapshot(db);
+  const sourceSnapshot = attendeeSourceSnapshot(sourceResult.rows);
 
-  const expectedAttendeeAnswers = expected.attendeeAnswers ?? 663;
-  const expectedTotalAnswers = expected.totalAnswers ?? 744;
   assert.equal(
     reviewResult.rows.length,
-    expectedAttendeeAnswers,
+    expected.attendeeAnswers,
     'Attendee review-answer count drifted.',
   );
-  assert.equal(
-    reviewSnapshot.valueAnswers + reviewSnapshot.findingAnswers,
-    expectedTotalAnswers,
-    'The complete review-answer association count drifted.',
-  );
+  assertReviewSnapshot(reviewSnapshot, expected.review);
+  assertAttendeeSourceSnapshot(sourceSnapshot, expected.source);
   for (const row of reviewResult.rows) {
     assert.ok(row.firm_answer, `Attendee review value #${row.id} is unanswered.`);
   }
@@ -291,5 +376,6 @@ export async function buildAttendeeAuditPlan(
     distinctPeople: new Set(people.map((fragment) => fragment.personKey)).size,
     attendeeReviewValues: reviewResult.rows.length,
     reviewSnapshot,
+    sourceSnapshot,
   });
 }

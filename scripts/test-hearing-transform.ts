@@ -339,11 +339,12 @@ async function main(): Promise<void> {
         alias.person_id,
         null,
       );
-      assert.deepEqual((await reconcileAttendeeAudit(db)).defects, []);
+      assert.deepEqual((await reconcileAttendeeAudit(db, null)).defects, []);
 
       const dryRun = await runHearingTransform({
         databaseUrl: fixtureUrl.toString(),
         dryRun: true,
+        attendeeAuditBaseline: null,
       });
       assert.deepEqual(
         {
@@ -373,6 +374,7 @@ async function main(): Promise<void> {
         runHearingTransform({
           databaseUrl: fixtureUrl.toString(),
           forceFailure: true,
+          attendeeAuditBaseline: null,
         }),
         /fixture forced late hearing-transform failure/,
       );
@@ -383,7 +385,10 @@ async function main(): Promise<void> {
       assert.equal(rolledBack.rows[0]!.total, '0');
       console.log('  ok    forced late failure leaves zero partial Task 2.8 rows');
 
-      const first = await runHearingTransform({ databaseUrl: fixtureUrl.toString() });
+      const first = await runHearingTransform({
+        databaseUrl: fixtureUrl.toString(),
+        attendeeAuditBaseline: null,
+      });
       assert.deepEqual(first.reconciliation?.defects, []);
       const identityBefore = await db.query<{ snapshot: unknown }>(`
         SELECT jsonb_agg(payload ORDER BY kind, identity) snapshot FROM (
@@ -398,7 +403,10 @@ async function main(): Promise<void> {
             FROM quarantine.hearing_transform
         ) stable`);
       const digestBefore = await hearingResultDigest(db);
-      const second = await runHearingTransform({ databaseUrl: fixtureUrl.toString() });
+      const second = await runHearingTransform({
+        databaseUrl: fixtureUrl.toString(),
+        attendeeAuditBaseline: null,
+      });
       assert.equal(second.digest, digestBefore);
       const identityAfter = await db.query<{ snapshot: unknown }>(`
         SELECT jsonb_agg(payload ORDER BY kind, identity) snapshot FROM (

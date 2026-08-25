@@ -45,7 +45,8 @@ It will not run unless it can show that it is safe. Three checks:
 | Is the database on this machine? | refuses | **No. Never.** |
 | Does the database hold any rows? | refuses, listing each table and its count | Yes — see below |
 
-Refusing on a non-empty database looks like this:
+Refusing on a non-empty database looks like this (using the 19 August 2026
+shape figures only as an illustration):
 
 ```
 REFUSING TO RESET THE DATABASE
@@ -298,7 +299,7 @@ in `.env` before going live.
 |---|---|
 | PostgreSQL 17 | Pinned to the major version. PostgreSQL refuses to open data written by a different major version, so an accidental upgrade must never happen on its own. |
 | ICU collation `ar-EG` | Correct Arabic alphabetical order. See above. |
-| `pg_trgm` | Makes searching 13,279 hearings by a fragment of text fast (task 1.6). |
+| `pg_trgm` | Makes searching 13,000+ hearings by a fragment of text fast (task 1.6). |
 | `btree_gin` | Lets one index serve a text search and a plain filter together. |
 | `unaccent` | Handles Latin accents in mixed names such as `شركة هيوليت باكارد HP`. |
 | A named volume | The data lives in a Docker-managed volume, not a folder on the host. Host folders break PostgreSQL's file permissions on Windows. |

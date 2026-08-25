@@ -1533,9 +1533,10 @@ model HearingAttendee {
   hearingId Int     @map("hearing_id")
   hearing   Hearing @relation(fields: [hearingId], references: [id], onDelete: Cascade)
 
-  /// Nullable: a spelling that resolves to nobody loads with a null person
-  /// and goes to the review queue — roughly 474 names appear only once and
-  /// need a human. It is never dropped, and never invented as a new person.
+  /// Nullable for future application-native attendance that may temporarily
+  /// await a person assignment. Unresolved legacy text never creates this row:
+  /// it remains in the immutable Correction B audit/quarantine, with no legacy
+  /// attendee inserted and no person invented.
   personId Int?    @map("person_id")
   person   Person? @relation(fields: [personId], references: [id])
 

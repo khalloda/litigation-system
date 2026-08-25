@@ -872,7 +872,7 @@ fragment.
 
 ##### Separate procedure for applying Correction B to live migration data
 
-**Applied 25 August 2026 in migration 0038 and the separate Correction B
+**Applied 25 August 2026 in migration 0036 and the separate Correction B
 transaction, immediately before task 2.8.** The fixture-only implementation
 remains the specification; the live audit is its immutable evidence.
 
@@ -922,6 +922,25 @@ answers still covered their recorded 5,346 source-cell occurrences; the other
 serializable transaction and an identical rerun produced stable result digest
 `7e62b9d4f4d1ceb7e3e152095d69b98bce5b7ea0dcc40a055bd368347d5251b4`.
 No hearing or hearing-attendee target row was created in this step.
+
+The source-cell digest is exact and reproducible. For each non-empty attendee
+cell, in numeric source-row and attendee-column order, it appends
+`row-number:column-ordinal:UTF-8-byte-length:exact-value;` with no intervening
+normalisation, then SHA-256 hashes the resulting UTF-8 bytes. The approved
+12,732-cell digest is
+`3ec09ab48157e51271156e6cea69afe32d17252e4da00c55733d58c44e03cee2`.
+This deliberately includes the extraction row position: its purpose is to
+prove that the CSV inventory and the staging inventory have not changed.
+
+The separate audit-result digest proves the durable result rather than its
+temporary trace. It includes cell/span/quarantine identities, durable source
+keys, extraction fingerprints, exact cell/span text, offsets, sequence,
+classification, resolved person, review link and quarantine evidence. It
+excludes only `src_file`, `src_row_num` and `created_at`, so renaming the CSV,
+reordering otherwise identical source records or recording the transaction at
+a different time cannot change the approved result. `db:check` also fixes the
+complete review baseline at 668 value answers, 76 finding answers, both
+association digests, and the exact Correction B counts and result digest.
 
 ### Hearing and attendee transform — completed 25 August 2026
 

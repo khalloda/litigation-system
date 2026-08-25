@@ -32,6 +32,7 @@ import {
   reconcileAttendeeAudit,
 } from './lib/attendee-audit-reconciliation';
 import { hearingStructureFailures, reconcileHearings } from './lib/hearing-reconciliation';
+import { ATTENDEE_AUDIT_BASELINE, REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
 
@@ -1743,24 +1744,30 @@ async function main() {
   ) {
     legacyProblems.push('identity protection function no longer locks recorded mappings');
   }
-  if (legacyIdentity.value_mappings !== 668n || legacyIdentity.finding_mappings !== 76n) {
+  if (
+    legacyIdentity.value_mappings !== BigInt(REVIEW_ANSWER_BASELINE.valueAnswers) ||
+    legacyIdentity.finding_mappings !== BigInt(REVIEW_ANSWER_BASELINE.findingAnswers) ||
+    legacyIdentity.value_mappings + legacyIdentity.finding_mappings !==
+      BigInt(REVIEW_ANSWER_BASELINE.totalAnswers)
+  ) {
     legacyProblems.push(
-      `${legacyIdentity.value_mappings} + ${legacyIdentity.finding_mappings} of 668 + 76 mappings`,
+      `${legacyIdentity.value_mappings} + ${legacyIdentity.finding_mappings} of ` +
+        `${String(REVIEW_ANSWER_BASELINE.valueAnswers)} + ` +
+        `${String(REVIEW_ANSWER_BASELINE.findingAnswers)} mappings`,
     );
   }
   if (legacyIdentity.unanswered_mappings !== 0n) {
     legacyProblems.push(`${legacyIdentity.unanswered_mappings} unanswered rows carry a legacy id`);
   }
-  const expectedLegacyIdentityDigest =
-    'bebf8f20140a63d272f80d454d8363d68e1dc7bf12d82b43a45096281b059f51';
-  if (legacyIdentity.digest !== expectedLegacyIdentityDigest) {
+  if (legacyIdentity.digest !== REVIEW_ANSWER_BASELINE.mappingDigest) {
     legacyProblems.push(`mapping digest is ${legacyIdentity.digest}`);
   }
   record(
     'Historic workbook identities cannot drift',
     '744 exact, immutable and unique answer associations',
     legacyProblems.length === 0
-      ? `668 + 76, digest ${legacyIdentity.digest}`
+      ? `${String(REVIEW_ANSWER_BASELINE.valueAnswers)} + ` +
+          `${String(REVIEW_ANSWER_BASELINE.findingAnswers)}, digest ${legacyIdentity.digest}`
       : legacyProblems.join('; '),
     legacyProblems.length === 0,
   );
@@ -1797,11 +1804,12 @@ async function main() {
       ) answered`,
     'review answer baseline',
   );
-  const expectedAnswerDigest = 'cd19213bcad7ad24912c6067384f25aade84f5a1d479be37f0608755d9f75a35';
   const answerBaselineOk =
-    answerBaseline.value_answers === 668n &&
-    answerBaseline.finding_answers === 76n &&
-    answerBaseline.digest === expectedAnswerDigest;
+    answerBaseline.value_answers === BigInt(REVIEW_ANSWER_BASELINE.valueAnswers) &&
+    answerBaseline.finding_answers === BigInt(REVIEW_ANSWER_BASELINE.findingAnswers) &&
+    answerBaseline.value_answers + answerBaseline.finding_answers ===
+      BigInt(REVIEW_ANSWER_BASELINE.totalAnswers) &&
+    answerBaseline.digest === REVIEW_ANSWER_BASELINE.answerDigest;
   record(
     "The firm's original 744 answers remain attached to the same values",
     '668 value answers + 76 finding answers, exact reviewed payload',
@@ -2302,8 +2310,9 @@ async function main() {
             `${attendeeAudit.personSpans} person spans, ` +
             `${attendeeAudit.ambiguousSpans} quarantined ambiguous spans`
         : attendeeAudit.defects.join('; '),
-      attendeeAudit.sourceCells === 12_732 &&
-        attendeeAudit.auditCells === 12_732 &&
+      attendeeAudit.sourceCells === ATTENDEE_AUDIT_BASELINE.cells &&
+        attendeeAudit.auditCells === ATTENDEE_AUDIT_BASELINE.cells &&
+        attendeeAudit.auditDigest === ATTENDEE_AUDIT_BASELINE.digest &&
         attendeeAudit.defects.length === 0,
     );
     const attendeeStructure = await attendeeAuditStructureFailures(relationshipDb);

@@ -10,20 +10,26 @@ import { Client, type ClientConfig } from 'pg';
 import {
   attendeeAuditResultDigest,
   attendeeAuditStructureFailures,
+  type AttendeeAuditReconciliationBaseline,
   reconcileAttendeeAudit,
 } from './lib/attendee-audit-reconciliation';
 import {
+  assertAttendeeSourceSnapshot,
+  assertReviewSnapshot,
   buildAttendeeAuditPlan,
+  readAttendeeSourceSnapshot,
   readReviewSnapshot,
+  type AttendeeAuditPlanExpectations,
   type AttendeeAuditPlan,
 } from './lib/attendee-audit-plan';
+import { ATTENDEE_SOURCE_BASELINE, REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
 
 type RunOptions = {
   databaseUrl?: string;
   apply?: boolean;
   forceFailure?: boolean;
-  expectedAttendeeAnswers?: number;
-  expectedTotalAnswers?: number;
+  expectations?: AttendeeAuditPlanExpectations;
+  reconciliationBaseline?: AttendeeAuditReconciliationBaseline | null;
 };
 
 async function protectedState(db: Client): Promise<string> {
@@ -168,10 +174,7 @@ export async function runAttendeeAudit(options: RunOptions = {}) {
   const db = new Client(config);
   await db.connect();
   try {
-    const plan = await buildAttendeeAuditPlan(db, {
-      attendeeAnswers: options.expectedAttendeeAnswers,
-      totalAnswers: options.expectedTotalAnswers,
-    });
+    const plan = await buildAttendeeAuditPlan(db, options.expectations);
     if (options.apply !== true) {
       return { plan, reconciliation: null, digest: null };
     }
@@ -180,10 +183,25 @@ export async function runAttendeeAudit(options: RunOptions = {}) {
     await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     try {
       await db.query("SELECT pg_advisory_xact_lock(hashtext('correction-b-attendee-audit'))");
+      const transactionalReviewSnapshot = await readReviewSnapshot(db);
       assert.deepEqual(
-        await readReviewSnapshot(db),
+        transactionalReviewSnapshot,
         plan.reviewSnapshot,
         'Review answers changed after the dry-run plan was built.',
+      );
+      assertReviewSnapshot(
+        transactionalReviewSnapshot,
+        options.expectations?.review ?? REVIEW_ANSWER_BASELINE,
+      );
+      const transactionalSourceSnapshot = await readAttendeeSourceSnapshot(db);
+      assert.deepEqual(
+        transactionalSourceSnapshot,
+        plan.sourceSnapshot,
+        'Attendee source cells changed after the dry-run plan was built.',
+      );
+      assertAttendeeSourceSnapshot(
+        transactionalSourceSnapshot,
+        options.expectations?.source ?? ATTENDEE_SOURCE_BASELINE,
       );
       await insertAuditCells(db, plan);
       await insertAuditSpans(db, plan);
@@ -191,7 +209,7 @@ export async function runAttendeeAudit(options: RunOptions = {}) {
       if (options.forceFailure === true) {
         throw new Error('fixture forced late attendee-audit failure');
       }
-      const reconciliation = await reconcileAttendeeAudit(db);
+      const reconciliation = await reconcileAttendeeAudit(db, options.reconciliationBaseline);
       assert.deepEqual(
         reconciliation.defects,
         [],

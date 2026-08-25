@@ -19,8 +19,10 @@ the rules on how to communicate.
 
 ## What is being replaced
 
-An Access file holding **35,343 rows** of live data — 13,279 hearings, 4,207
-administrative tasks, 1,730 matters, 313 clients — still used every day.
+At the 19 August 2026 planning snapshot, the Access file held **35,343 rows**
+of live data — 13,279 hearings, 4,207 administrative tasks, 1,730 matters and
+313 clients. The file remains in daily use, so current migration counts are in
+`TASKS.md` rather than frozen here.
 
 Of those, **30,553 rows migrate**; the remaining 4,790 are archived tables the
 firm dropped (meetings and old copies). See `docs/MIGRATION.md`.

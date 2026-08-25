@@ -4,10 +4,16 @@ import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
 import { runAttendeeAudit } from './apply-attendee-decomposition';
 import {
+  type AttendeeAuditReconciliationBaseline,
   attendeeAuditResultDigest,
   attendeeAuditStructureFailures,
   reconcileAttendeeAudit,
 } from './lib/attendee-audit-reconciliation';
+import {
+  readAttendeeSourceSnapshot,
+  readReviewSnapshot,
+  type AttendeeAuditPlanExpectations,
+} from './lib/attendee-audit-plan';
 import {
   decomposeAttendeeCell,
   type AttendeeDecompositionRules,
@@ -35,8 +41,11 @@ function migrateFixture(databaseUrl: string): void {
   assert.equal(result.status, 0, `fixture migrations failed:\n${result.stdout}\n${result.stderr}`);
 }
 
-async function assertClean(db: Client): Promise<void> {
-  assert.deepEqual((await reconcileAttendeeAudit(db)).defects, []);
+async function assertClean(
+  db: Client,
+  baseline: AttendeeAuditReconciliationBaseline | null,
+): Promise<void> {
+  assert.deepEqual((await reconcileAttendeeAudit(db, baseline)).defects, []);
 }
 
 async function proveFailure(
@@ -44,15 +53,16 @@ async function proveFailure(
   label: string,
   mutate: () => Promise<unknown>,
   expected: RegExp,
+  baseline: AttendeeAuditReconciliationBaseline,
 ): Promise<void> {
   await db.query('BEGIN');
   try {
     await mutate();
-    assert.match((await reconcileAttendeeAudit(db)).defects.join('\n'), expected, label);
+    assert.match((await reconcileAttendeeAudit(db, baseline)).defects.join('\n'), expected, label);
   } finally {
     await db.query('ROLLBACK');
   }
-  await assertClean(db);
+  await assertClean(db, baseline);
   console.log(`  ok    ${label}`);
 }
 
@@ -109,10 +119,12 @@ async function main(): Promise<void> {
       const first = aliases.rows[0]!;
       const second = aliases.rows[1]!;
       const compound = `${first.alias_ar} و ${second.alias_ar}`;
+      const ambiguousCompound = `${first.alias_ar} عبارة غير مصنفة`;
 
       const sourceRows = [
         { key: `${'1'.repeat(64)}:000001`, first: first.alias_ar, second: compound },
         { key: `${'2'.repeat(64)}:000001`, first: '**', second: second.alias_ar },
+        { key: `${'3'.repeat(64)}:000001`, first: ambiguousCompound, second: null },
       ];
       for (const [index, row] of sourceRows.entries()) {
         await db.query(
@@ -131,23 +143,35 @@ async function main(): Promise<void> {
          ) VALUES
            ('attendee_name',$1,1,'high','person',$2,CURRENT_TIMESTAMP,'fixture',$5,1),
            ('attendee_name',$3,1,'high','split',$4,CURRENT_TIMESTAMP,'fixture',$5,2),
-           ('attendee_name','**',1,'none','not a name',NULL,CURRENT_TIMESTAMP,'fixture',$5,3)`,
+           ('attendee_name','**',1,'none','not a name',NULL,CURRENT_TIMESTAMP,'fixture',$5,3),
+           ('attendee_name',$6,1,'low','person',$2,CURRENT_TIMESTAMP,'fixture',$5,4)`,
         [
           first.alias_ar,
           first.name_ar,
           compound,
           `${first.name_ar} + ${second.name_ar}`,
           FINGERPRINT,
+          ambiguousCompound,
         ],
       );
 
+      const reviewSnapshot = await readReviewSnapshot(db);
+      const fixtureExpectations: AttendeeAuditPlanExpectations = Object.freeze({
+        attendeeAnswers: 4,
+        review: Object.freeze({
+          ...reviewSnapshot,
+          totalAnswers: reviewSnapshot.valueAnswers + reviewSnapshot.findingAnswers,
+        }),
+        source: await readAttendeeSourceSnapshot(db),
+      });
+
       const dryRun = await runAttendeeAudit({
         databaseUrl: fixtureUrl.toString(),
-        expectedAttendeeAnswers: 3,
-        expectedTotalAnswers: 3,
+        expectations: fixtureExpectations,
+        reconciliationBaseline: null,
       });
-      assert.equal(dryRun.plan.sourceCellCount, 4);
-      assert.equal(dryRun.plan.reviewedCellCount, 3);
+      assert.equal(dryRun.plan.sourceCellCount, 5);
+      assert.equal(dryRun.plan.reviewedCellCount, 4);
       assert.equal(dryRun.plan.unreviewedExactAliasCellCount, 1);
       assert.equal(
         (await db.query('SELECT count(*) FROM _migration.attendee_source_cell')).rows[0]!.count,
@@ -155,13 +179,48 @@ async function main(): Promise<void> {
       );
       console.log('  ok    dry run reconciles every fixture answer and writes nothing');
 
+      await db.query(
+        `UPDATE staging."الجلسات" SET "الحاضر"="الحاضر" || '!' WHERE src_record_key=$1`,
+        [sourceRows[0]!.key],
+      );
+      await assert.rejects(
+        runAttendeeAudit({
+          databaseUrl: fixtureUrl.toString(),
+          expectations: fixtureExpectations,
+          reconciliationBaseline: null,
+        }),
+        /Attendee source-cell digest drifted/u,
+      );
+      await db.query(`UPDATE staging."الجلسات" SET "الحاضر"=$1 WHERE src_record_key=$2`, [
+        first.alias_ar,
+        sourceRows[0]!.key,
+      ]);
+      console.log('  ok    a same-count source-value change fails the source digest');
+
+      await db.query(
+        `UPDATE quarantine.review_value SET firm_note='changed without changing the count' WHERE value=$1`,
+        [first.alias_ar],
+      );
+      await assert.rejects(
+        runAttendeeAudit({
+          databaseUrl: fixtureUrl.toString(),
+          expectations: fixtureExpectations,
+          reconciliationBaseline: null,
+        }),
+        /Review answer digest drifted/u,
+      );
+      await db.query(`UPDATE quarantine.review_value SET firm_note=NULL WHERE value=$1`, [
+        first.alias_ar,
+      ]);
+      console.log('  ok    a changed review answer with unchanged counts fails');
+
       await assert.rejects(
         runAttendeeAudit({
           databaseUrl: fixtureUrl.toString(),
           apply: true,
           forceFailure: true,
-          expectedAttendeeAnswers: 3,
-          expectedTotalAnswers: 3,
+          expectations: fixtureExpectations,
+          reconciliationBaseline: null,
         }),
         /fixture forced late attendee-audit failure/u,
       );
@@ -174,19 +233,32 @@ async function main(): Promise<void> {
       const applied = await runAttendeeAudit({
         databaseUrl: fixtureUrl.toString(),
         apply: true,
-        expectedAttendeeAnswers: 3,
-        expectedTotalAnswers: 3,
+        expectations: fixtureExpectations,
+        reconciliationBaseline: null,
       });
       assert.deepEqual(applied.reconciliation?.defects, []);
-      await assertClean(db);
       assert.deepEqual(await attendeeAuditStructureFailures(db), []);
 
       const digest = await attendeeAuditResultDigest(db);
+      const appliedReconciliation = await reconcileAttendeeAudit(db, null);
+      const fixtureBaseline: AttendeeAuditReconciliationBaseline = Object.freeze({
+        source: fixtureExpectations.source,
+        audit: Object.freeze({
+          cells: appliedReconciliation.auditCells,
+          spans: appliedReconciliation.spans,
+          personSpans: appliedReconciliation.personSpans,
+          ambiguousSpans: appliedReconciliation.ambiguousSpans,
+          quarantineRows: appliedReconciliation.quarantineRows,
+          distinctPeople: appliedReconciliation.distinctPeople,
+          digest,
+        }),
+      });
+      await assertClean(db, fixtureBaseline);
       const secondRun = await runAttendeeAudit({
         databaseUrl: fixtureUrl.toString(),
         apply: true,
-        expectedAttendeeAnswers: 3,
-        expectedTotalAnswers: 3,
+        expectations: fixtureExpectations,
+        reconciliationBaseline: fixtureBaseline,
       });
       assert.equal(secondRun.digest, digest);
       console.log('  ok    identical rerun preserves ids, timestamps and all audit evidence');
@@ -243,6 +315,7 @@ async function main(): Promise<void> {
             [sourceRows[0]!.key],
           ),
         /source attendee cells missing, extra or changed/u,
+        fixtureBaseline,
       );
       await proveFailure(
         db,
@@ -258,7 +331,8 @@ async function main(): Promise<void> {
             `UPDATE _migration.attendee_source_span SET start_offset=start_offset+1 WHERE fragment_id=(SELECT fragment_id FROM _migration.attendee_source_span ORDER BY fragment_id LIMIT 1)`,
           );
         },
-        /gap, overlap, changed raw slice|constraint definition missing/u,
+        /gap, overlap, changed raw slice|constraint definition/u,
+        fixtureBaseline,
       );
       await proveFailure(
         db,
@@ -272,6 +346,7 @@ async function main(): Promise<void> {
           );
         },
         /ordered spans do not reconstruct|gap, overlap/u,
+        fixtureBaseline,
       );
       await proveFailure(
         db,
@@ -288,6 +363,7 @@ async function main(): Promise<void> {
                    substring(original_cell from 2 for 1),'ambiguous','unclassified_review',true
               FROM _migration.attendee_source_cell ORDER BY cell_id LIMIT 1`),
         /ordered spans do not reconstruct|gap, overlap|ambiguous spans missing/u,
+        fixtureBaseline,
       );
       await proveFailure(
         db,
@@ -314,6 +390,7 @@ async function main(): Promise<void> {
           );
         },
         /ordered spans do not reconstruct|gap, overlap/u,
+        fixtureBaseline,
       );
       await proveFailure(
         db,
@@ -328,6 +405,41 @@ async function main(): Promise<void> {
           );
         },
         /person spans that do not resolve|ordered people differ/u,
+        fixtureBaseline,
+      );
+      await proveFailure(
+        db,
+        'changing an ambiguous span into a note is detected',
+        async () => {
+          await db.query(
+            'ALTER TABLE _migration.attendee_source_span DISABLE TRIGGER attendee_source_span_immutable',
+          );
+          await db.query(
+            `UPDATE _migration.attendee_source_span
+                SET kind='note', classification_rule='known_note', review_required=false
+              WHERE fragment_id=(SELECT fragment_id FROM _migration.attendee_source_span WHERE kind='ambiguous' ORDER BY fragment_id LIMIT 1)`,
+          );
+        },
+        /ambiguous spans missing|approved attendee audit baseline/u,
+        fixtureBaseline,
+      );
+      await proveFailure(
+        db,
+        'changing one person classification is detected',
+        async () => {
+          await db.query(
+            'ALTER TABLE _migration.attendee_source_span DISABLE TRIGGER attendee_source_span_immutable',
+          );
+          await db.query(
+            `UPDATE _migration.attendee_source_span
+                SET classification_rule=CASE classification_rule
+                  WHEN 'reviewed_person_alias' THEN 'exact_person_alias'
+                  ELSE 'reviewed_person_alias' END
+              WHERE fragment_id=(SELECT fragment_id FROM _migration.attendee_source_span WHERE kind='person' ORDER BY fragment_id LIMIT 1)`,
+          );
+        },
+        /approved attendee audit baseline/u,
+        fixtureBaseline,
       );
       await proveFailure(
         db,
@@ -341,6 +453,7 @@ async function main(): Promise<void> {
           );
         },
         /ambiguous spans missing/u,
+        fixtureBaseline,
       );
       await proveFailure(
         db,
@@ -358,6 +471,7 @@ async function main(): Promise<void> {
               FROM _migration.attendee_source_span s JOIN _migration.attendee_source_cell c USING(cell_id)
              WHERE s.kind='person' ORDER BY s.fragment_id LIMIT 1`),
         /ambiguous spans missing/u,
+        fixtureBaseline,
       );
       await proveFailure(
         db,
@@ -375,6 +489,7 @@ async function main(): Promise<void> {
           );
         },
         /source attendee cells missing, extra or changed|copied source evidence/u,
+        fixtureBaseline,
       );
 
       await proveStructureFailure(
@@ -384,16 +499,80 @@ async function main(): Promise<void> {
           db.query(
             'ALTER TABLE _migration.attendee_source_cell DISABLE TRIGGER attendee_source_cell_immutable',
           ),
-        /trigger disabled/u,
+        /trigger definition/u,
       );
       await proveStructureFailure(
         db,
-        'a weakened protection function is detected',
+        'a CHECK retaining the old searched text plus OR true is detected',
+        async () => {
+          await db.query(
+            'ALTER TABLE _migration.attendee_source_span DROP CONSTRAINT attendee_source_span_classification',
+          );
+          await db.query(`
+            ALTER TABLE _migration.attendee_source_span
+            ADD CONSTRAINT attendee_source_span_classification
+            CHECK (classification_rule='reviewed_person_alias' OR true)`);
+        },
+        /constraint definition: attendee_source_span_classification/u,
+      );
+      await proveStructureFailure(
+        db,
+        'a non-unique replacement with the expected index name and columns is detected',
+        async () => {
+          await db.query(
+            'ALTER TABLE _migration.attendee_source_cell DROP CONSTRAINT attendee_source_cell_durable_key',
+          );
+          await db.query(`
+            CREATE INDEX attendee_source_cell_durable_key
+            ON _migration.attendee_source_cell(source_table,src_record_key,source_column)`);
+        },
+        /constraint definition: attendee_source_cell_durable_key|index definition: attendee_source_cell_durable_key/u,
+      );
+      await proveStructureFailure(
+        db,
+        'a correctly named trigger pointing to a permissive function is detected',
+        async () => {
+          await db.query(`
+            CREATE FUNCTION _migration.permissive_attendee_audit_fixture()
+            RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN RETURN NEW; END $f$`);
+          await db.query(
+            'DROP TRIGGER attendee_source_cell_immutable ON _migration.attendee_source_cell',
+          );
+          await db.query(`
+            CREATE TRIGGER attendee_source_cell_immutable
+            BEFORE UPDATE ON _migration.attendee_source_cell
+            FOR EACH ROW EXECUTE FUNCTION _migration.permissive_attendee_audit_fixture()`);
+        },
+        /trigger definition: attendee_source_cell_immutable/u,
+      );
+      await proveStructureFailure(
+        db,
+        'a permissive function retaining the old diagnostic phrase is detected',
         () =>
           db.query(`
           CREATE OR REPLACE FUNCTION _migration.refuse_attendee_audit_row_change()
-          RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN RETURN NEW; END $f$`),
-        /function definition changed/u,
+          RETURNS trigger LANGUAGE plpgsql AS $f$
+          BEGIN
+            PERFORM TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME;
+            RETURN NEW;
+          END
+          $f$`),
+        /function definition: _migration.refuse_attendee_audit_row_change/u,
+      );
+      await proveStructureFailure(
+        db,
+        'a foreign key with permissive update/delete actions is detected',
+        async () => {
+          await db.query(
+            'ALTER TABLE quarantine.attendee_span DROP CONSTRAINT attendee_span_cell_fk',
+          );
+          await db.query(`
+            ALTER TABLE quarantine.attendee_span
+            ADD CONSTRAINT attendee_span_cell_fk FOREIGN KEY(cell_id)
+            REFERENCES _migration.attendee_source_cell(cell_id)
+            ON UPDATE CASCADE ON DELETE CASCADE`);
+        },
+        /constraint definition: attendee_span_cell_fk/u,
       );
       await assert.rejects(
         db.query('DELETE FROM _migration.attendee_source_cell'),

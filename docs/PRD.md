@@ -24,6 +24,10 @@ its Dashboard — as a web application the whole firm can use.
 
 ### In scope
 
+The volumes below are the 19 August 2026 planning snapshot. The current
+extraction and its transformed/quarantined reconciliation are recorded in
+`TASKS.md`; these figures remain here as the dated basis of the requirements.
+
 | Area | Volume |
 |---|---|
 | Clients and their contacts | 313 clients, 188 contacts |
@@ -114,7 +118,7 @@ Arabic/Latin/number text, and produce disconnected reversed letterforms.
 3. Arabic renders correctly on screen, in Excel and in PDF
 4. The four roles are enforced on the server
 5. Search finds records regardless of hamza, diacritics or numeral system
-6. Usable with 13,279 hearings without noticeable delay
+6. Usable with 13,000+ hearings without noticeable delay
 
 ## 7. Phases
 

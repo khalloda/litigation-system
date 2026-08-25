@@ -1,4 +1,11 @@
 import type { Client } from 'pg';
+import { readAttendeeSourceSnapshot } from './attendee-audit-plan';
+import {
+  ATTENDEE_AUDIT_BASELINE,
+  ATTENDEE_SOURCE_BASELINE,
+  type AttendeeAuditBaseline,
+  type AttendeeSourceBaseline,
+} from './migration-baselines';
 
 export type AttendeeAuditReconciliation = Readonly<{
   sourceCells: number;
@@ -8,8 +15,20 @@ export type AttendeeAuditReconciliation = Readonly<{
   ambiguousSpans: number;
   quarantineRows: number;
   distinctPeople: number;
+  sourceDigest: string;
+  auditDigest: string;
   defects: readonly string[];
 }>;
+
+export type AttendeeAuditReconciliationBaseline = Readonly<{
+  source: AttendeeSourceBaseline;
+  audit: AttendeeAuditBaseline;
+}>;
+
+export const APPROVED_ATTENDEE_AUDIT_RECONCILIATION_BASELINE = Object.freeze({
+  source: ATTENDEE_SOURCE_BASELINE,
+  audit: ATTENDEE_AUDIT_BASELINE,
+});
 
 async function count(db: Client, sql: string): Promise<number> {
   const result = await db.query<{ count: string }>(sql);
@@ -43,7 +62,10 @@ const SOURCE_CELLS = `
       ON r.topic = 'attendee_name' AND r.value = btrim(v.original_cell)
    WHERE v.original_cell IS NOT NULL AND v.original_cell <> ''`;
 
-export async function reconcileAttendeeAudit(db: Client): Promise<AttendeeAuditReconciliation> {
+export async function reconcileAttendeeAudit(
+  db: Client,
+  baseline: AttendeeAuditReconciliationBaseline | null = APPROVED_ATTENDEE_AUDIT_RECONCILIATION_BASELINE,
+): Promise<AttendeeAuditReconciliation> {
   const defects: string[] = [];
   const totals = await db.query<{
     source_cells: string;
@@ -64,6 +86,7 @@ export async function reconcileAttendeeAudit(db: Client): Promise<AttendeeAuditR
       (SELECT count(DISTINCT person_id)::text FROM _migration.attendee_source_span
         WHERE person_id IS NOT NULL) distinct_people`);
   const total = totals.rows[0]!;
+  const sourceSnapshot = await readAttendeeSourceSnapshot(db);
 
   add(
     defects,
@@ -291,6 +314,44 @@ export async function reconcileAttendeeAudit(db: Client): Promise<AttendeeAuditR
     ),
   );
 
+  const auditDigest = await attendeeAuditResultDigest(db);
+  if (baseline !== null) {
+    if (
+      sourceSnapshot.cells !== baseline.source.cells ||
+      sourceSnapshot.digest !== baseline.source.digest
+    ) {
+      defects.push(
+        `approved attendee source baseline: ${String(sourceSnapshot.cells)} cells, digest ${sourceSnapshot.digest}`,
+      );
+    }
+    const actualAudit = {
+      cells: Number(total.audit_cells),
+      spans: Number(total.spans),
+      personSpans: Number(total.person_spans),
+      ambiguousSpans: Number(total.ambiguous_spans),
+      quarantineRows: Number(total.quarantine_rows),
+      distinctPeople: Number(total.distinct_people),
+      digest: auditDigest,
+    };
+    if (
+      actualAudit.cells !== baseline.audit.cells ||
+      actualAudit.spans !== baseline.audit.spans ||
+      actualAudit.personSpans !== baseline.audit.personSpans ||
+      actualAudit.ambiguousSpans !== baseline.audit.ambiguousSpans ||
+      actualAudit.quarantineRows !== baseline.audit.quarantineRows ||
+      actualAudit.distinctPeople !== baseline.audit.distinctPeople ||
+      actualAudit.digest !== baseline.audit.digest
+    ) {
+      defects.push(
+        `approved attendee audit baseline: ${String(actualAudit.cells)} cells, ` +
+          `${String(actualAudit.spans)} spans, ${String(actualAudit.personSpans)} person spans, ` +
+          `${String(actualAudit.ambiguousSpans)} ambiguous spans, ` +
+          `${String(actualAudit.quarantineRows)} quarantine rows, ` +
+          `${String(actualAudit.distinctPeople)} people, digest ${actualAudit.digest}`,
+      );
+    }
+  }
+
   return Object.freeze({
     sourceCells: Number(total.source_cells),
     auditCells: Number(total.audit_cells),
@@ -299,6 +360,8 @@ export async function reconcileAttendeeAudit(db: Client): Promise<AttendeeAuditR
     ambiguousSpans: Number(total.ambiguous_spans),
     quarantineRows: Number(total.quarantine_rows),
     distinctPeople: Number(total.distinct_people),
+    sourceDigest: sourceSnapshot.digest,
+    auditDigest,
     defects: Object.freeze(defects),
   });
 }
@@ -322,156 +385,4 @@ export async function attendeeAuditResultDigest(db: Client): Promise<string> {
   return result.rows[0]?.digest ?? '';
 }
 
-type CatalogRow = { name: string; enabled?: string; definition: string };
-
-export async function attendeeAuditStructureFailures(db: Client): Promise<string[]> {
-  const failures: string[] = [];
-  const expectedConstraints = new Set([
-    'attendee_source_cell_pkey',
-    'attendee_source_cell_durable_key',
-    'attendee_source_cell_identity_shape',
-    'attendee_source_cell_column',
-    'attendee_source_cell_id_matches',
-    'attendee_source_cell_content_matches',
-    'attendee_source_cell_review_value_id_fkey',
-    'attendee_source_span_pkey',
-    'attendee_source_span_sequence',
-    'attendee_source_span_offsets',
-    'attendee_source_span_identity_shape',
-    'attendee_source_span_fragment_id_matches',
-    'attendee_source_span_classification',
-    'attendee_source_span_cell_id_fkey',
-    'attendee_source_span_person_id_fkey',
-    'attendee_span_pkey',
-    'attendee_span_fragment_id_fkey',
-    'attendee_span_cell_fk',
-    'attendee_span_reason',
-  ]);
-  const constraints = await db.query<CatalogRow>(`
-    SELECT conname name, pg_get_constraintdef(oid) definition
-      FROM pg_constraint
-     WHERE conrelid IN (
-       '_migration.attendee_source_cell'::regclass,
-       '_migration.attendee_source_span'::regclass,
-       'quarantine.attendee_span'::regclass
-     ) ORDER BY conname`);
-  const names = new Set(constraints.rows.map((row) => row.name));
-  for (const name of expectedConstraints) {
-    if (!names.has(name)) failures.push(`constraint definition missing: ${name}`);
-  }
-  if (names.size !== expectedConstraints.size)
-    failures.push('attendee audit constraint set changed');
-  const criticalConstraintText = new Map([
-    ['attendee_source_cell_id_matches', '_migration.attendee_cell_id'],
-    ['attendee_source_cell_content_matches', '_migration.attendee_cell_content_sha256'],
-    ['attendee_source_span_fragment_id_matches', '_migration.attendee_fragment_id'],
-    ['attendee_source_span_classification', 'reviewed_person_alias'],
-    ['attendee_span_reason', 'ambiguous_attendee_fragment'],
-  ]);
-  for (const [name, text] of criticalConstraintText) {
-    if (!constraints.rows.find((row) => row.name === name)?.definition.includes(text)) {
-      failures.push(`constraint definition changed: ${name}`);
-    }
-  }
-  const foreignKeyRequirements = new Map([
-    [
-      'attendee_source_cell_review_value_id_fkey',
-      'FOREIGN KEY (review_value_id) REFERENCES quarantine.review_value(id) ON UPDATE RESTRICT ON DELETE RESTRICT',
-    ],
-    [
-      'attendee_source_span_cell_id_fkey',
-      'FOREIGN KEY (cell_id) REFERENCES _migration.attendee_source_cell(cell_id) ON UPDATE RESTRICT ON DELETE RESTRICT',
-    ],
-    [
-      'attendee_source_span_person_id_fkey',
-      'FOREIGN KEY (person_id) REFERENCES people(id) ON UPDATE RESTRICT ON DELETE RESTRICT',
-    ],
-    [
-      'attendee_span_fragment_id_fkey',
-      'FOREIGN KEY (fragment_id) REFERENCES _migration.attendee_source_span(fragment_id) ON UPDATE RESTRICT ON DELETE RESTRICT',
-    ],
-    [
-      'attendee_span_cell_fk',
-      'FOREIGN KEY (cell_id) REFERENCES _migration.attendee_source_cell(cell_id) ON UPDATE RESTRICT ON DELETE RESTRICT',
-    ],
-  ]);
-  for (const [name, definition] of foreignKeyRequirements) {
-    if (constraints.rows.find((row) => row.name === name)?.definition !== definition) {
-      failures.push(`foreign key definition changed: ${name}`);
-    }
-  }
-
-  const indexes = await db.query<CatalogRow>(`
-    SELECT indexrelid::regclass::text name, pg_get_indexdef(indexrelid) definition
-      FROM pg_index
-     WHERE indexrelid IN (
-       '_migration.attendee_source_cell_pkey'::regclass,
-       '_migration.attendee_source_cell_durable_key'::regclass,
-       '_migration.attendee_source_span_pkey'::regclass,
-       '_migration.attendee_source_span_sequence'::regclass,
-       '_migration.attendee_source_span_offsets'::regclass,
-       '_migration.attendee_source_span_person_id'::regclass,
-       'quarantine.attendee_span_pkey'::regclass
-     ) ORDER BY indexrelid::regclass::text`);
-  if (indexes.rows.length !== 7)
-    failures.push(`unique/index definitions: ${indexes.rows.length} of 7`);
-  const indexRequirements = [
-    ['attendee_source_cell_durable_key', '(source_table, src_record_key, source_column)'],
-    ['attendee_source_span_sequence', '(cell_id, sequence)'],
-    ['attendee_source_span_offsets', '(cell_id, start_offset, end_offset)'],
-    ['attendee_source_span_person_id', '(person_id) WHERE (person_id IS NOT NULL)'],
-  ] as const;
-  for (const [name, columns] of indexRequirements) {
-    const row = indexes.rows.find((candidate) => candidate.name.endsWith(name));
-    if (!row?.definition.includes(columns)) failures.push(`index definition changed: ${name}`);
-  }
-
-  const triggers = await db.query<CatalogRow>(`
-    SELECT tgname name, tgenabled::text enabled, pg_get_triggerdef(oid) definition
-      FROM pg_trigger
-     WHERE NOT tgisinternal AND tgname IN (
-       'attendee_source_cell_immutable','attendee_source_cell_no_erasure',
-       'attendee_source_span_immutable','attendee_source_span_no_erasure',
-       'attendee_span_immutable','attendee_span_no_erasure'
-     ) ORDER BY tgname`);
-  if (triggers.rows.length !== 6)
-    failures.push(`audit protection triggers: ${triggers.rows.length} of 6`);
-  for (const row of triggers.rows) {
-    if (row.enabled !== 'O') failures.push(`trigger disabled: ${row.name}`);
-    if (row.name.endsWith('_immutable')) {
-      if (!row.definition.includes('BEFORE UPDATE') || !row.definition.includes('FOR EACH ROW')) {
-        failures.push(`trigger definition changed: ${row.name}`);
-      }
-    } else if (
-      !row.definition.includes('BEFORE DELETE OR TRUNCATE') ||
-      !row.definition.includes('FOR EACH STATEMENT')
-    ) {
-      failures.push(`trigger definition changed: ${row.name}`);
-    }
-  }
-
-  const functions = await db.query<CatalogRow>(`
-    SELECT p.oid::regprocedure::text name, pg_get_functiondef(p.oid) definition
-      FROM pg_proc p
-     WHERE p.oid IN (
-       '_migration.attendee_cell_id(text,text,text)'::regprocedure,
-       '_migration.attendee_cell_content_sha256(text)'::regprocedure,
-       '_migration.attendee_fragment_id(text,integer,integer,text)'::regprocedure,
-       '_migration.refuse_attendee_audit_row_change()'::regprocedure,
-       '_migration.refuse_attendee_audit_erasure()'::regprocedure
-     ) ORDER BY p.oid::regprocedure::text`);
-  if (functions.rows.length !== 5)
-    failures.push(`audit function definitions: ${functions.rows.length} of 5`);
-  const functionRequirements = [
-    ['attendee_cell_id', 'attendee-cell-v1'],
-    ['attendee_cell_content_sha256', 'attendee-cell-content-v1'],
-    ['attendee_fragment_id', 'attendee-fragment-v1'],
-    ['refuse_attendee_audit_row_change', "TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME"],
-    ['refuse_attendee_audit_erasure', 'DELETE/TRUNCATE is refused'],
-  ] as const;
-  for (const [name, text] of functionRequirements) {
-    const row = functions.rows.find((candidate) => candidate.name.includes(name));
-    if (!row?.definition.includes(text)) failures.push(`function definition changed: ${name}`);
-  }
-  return failures;
-}
+export { attendeeAuditStructureFailures } from './attendee-audit-structure';
