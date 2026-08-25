@@ -1771,7 +1771,7 @@ model LookupInvoiceStatus {
   @@map("lookup_invoice_status")
 }
 
-/// Access `Inv-Type`. 2 values: Service 379, Expenses 162.
+/// Access `Inv-Type`. Service 379, Expenses 162, and 2 exact NULLs.
 model LookupInvoiceType {
   id        Int     @id @default(autoincrement()) @db.SmallInt
   code      String  @unique
@@ -1795,9 +1795,10 @@ model LookupInvoiceType {
 ///
 /// **`LawyerA+` is a CO-LEAD** — a second lead lawyer sharing the lead's
 /// allocation, always a different person from `LawyerA`. Confirmed from the
-/// data: every invoice carrying one splits Reviewer 0.250 / LawyerA 0.375 /
-/// LawyerA+ 0.375, against Reviewer 0.250 / LawyerA 0.750 where there is
-/// none. It maps to `matter_lawyers.role` = `co_lead` (D5).
+/// data: the ordinary pattern splits Reviewer 0.250 / LawyerA 0.375 /
+/// LawyerA+ 0.375, while invoice 21819 deliberately gives LawyerA+ 0.075.
+/// Never infer a share from the role. It maps to `matter_lawyers.role` =
+/// `co_lead` (D5).
 model LookupLawyerShareRole {
   id        Int     @id @default(autoincrement()) @db.SmallInt
   code      String  @unique
@@ -1865,8 +1866,8 @@ model Invoice {
   legacyContractId String?    @map("legacy_contract_id")
 
   /// Access `Currency`, 100%. Gate 4 reconciles **total invoiced and total
-  /// paid, per currency** (docs/MIGRATION.md), so it has to survive. A total
-  /// across mixed currencies is a meaningless number.
+  /// paid, per currency** (docs/MIGRATION.md), so it has to survive. Task
+  /// 2.10A adds the raw partner and applies only exact reviewed ` USD` → `USD`.
   currency  String?
   /// Access `Amount`, 100%. Money is NEVER a floating-point number.
   amount    Decimal? @db.Decimal(14, 2)
@@ -1882,7 +1883,7 @@ model Invoice {
   status          LookupInvoiceStatus? @relation(fields: [statusId], references: [id])
   legacyStatusRaw String?              @map("legacy_status_raw")
 
-  /// Access `Inv-Type`, 100%.
+  /// Access `Inv-Type`: 541 populated; invoices 21269 and 21772 remain NULL.
   typeId        Int?               @map("type_id") @db.SmallInt
   type          LookupInvoiceType? @relation(fields: [typeId], references: [id])
   legacyTypeRaw String?            @map("legacy_type_raw")
@@ -1908,7 +1909,8 @@ model Invoice {
   ///   `R-#`  278 blank, 244 zero, and 21 rows holding round figures —
   ///          5000, 10000, 44000. Amounts, not receipt numbers.
   ///   `R-$`  520 blank, 21 rows holding `EGP`, 2 holding `0`. The 21 line up
-  ///          exactly with the 21 populated `R-#` rows.
+  ///          exactly with the 21 populated `R-#` rows. Task 2.10A preserves
+  ///          the raw `0` and interprets it as NULL only while R-# is zero.
   ///
   /// So **21 invoices of 543 — under 4% — carry anything at all.** Migrated
   /// per D10 and **not surfaced**.
@@ -1954,7 +1956,8 @@ model Payment {
   /// resolve to nothing.
   legacyInvoiceNo String? @map("legacy_invoice_no")
 
-  /// Access `العملة`, 91%.
+  /// Access `العملة`, 91%. Task 2.10A adds the raw partner and applies only
+  /// exact reviewed ` USD` → `USD`; it never trims arbitrary values.
   currency String?
   /// Access `Credit` 99% and `Debit` 52%. Two columns, not one `amount` —
   /// the placeholder this table briefly carried has been removed.
@@ -2005,9 +2008,10 @@ model InvoiceAllocation {
   /// Abdullah`, `Nagy Ramadan`, `Mohamed Abd El-Aziz`. Nine distinct people.
   ///
   /// **This is the only person column in the whole database that is Latin.**
-  /// It resolves through `people.name_en`, NOT through person_name_alias —
-  /// which holds Arabic spellings and would match nothing. Where `name_en` is
-  /// null the row **quarantines**; it is never guessed.
+  /// It ordinarily resolves through exact `people.name_en`, NOT through
+  /// person_name_alias. The one owner-reviewed legacy crosswalk is exact
+  /// `Ahmed Abdullah` → person 25 (`Dr. Ahmed Abdullah`), covering 11 rows;
+  /// it does not alter the person or apply to application-native records.
   ///
   /// Nullable for exactly that reason. The `Int` it briefly was would have
   /// rejected every unresolvable row.
@@ -2040,9 +2044,9 @@ model InvoiceAllocation {
   /// A FRACTION, not a percentage: 0.25, never 25. Decimal(6,5) so thirds
   /// round predictably and three shares still add to 1.
   ///
-  /// Access `Percent` (100%) holds a PERCENTAGE. Stage 2 divides by 100 and
-  /// keeps the original in legacy_percent_raw, so the conversion is visible
-  /// and reversible.
+  /// Access `Percent` already holds the FRACTION. All 15 source invoice groups
+  /// sum to exactly 1.000 as stored, so Stage 2 copies the decimal directly
+  /// and keeps the exact original in legacy_percent_raw. Never divide by 100.
   share            Decimal? @db.Decimal(6, 5)
   legacyPercentRaw String?  @map("legacy_percent_raw")
 

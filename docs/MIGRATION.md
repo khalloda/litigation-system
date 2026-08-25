@@ -2064,6 +2064,33 @@ reference-only and is required to contain exactly zero rows, so it creates no
 allocation. **2.10B** is the separate staff-attendance transform and is not
 part of the billing migration.
 
+### Task 2.10A reviewed source interpretations — 25 August 2026
+
+Read-only inspection of the staged source confirmed 543 invoices, 597
+payments, 47 allocation rows and zero `LawyerShare4Invoices` rows, and exposed
+five rules that must be explicit rather than guessed:
+
+- `تقسيم التحصيلات.Percent` is already a fractional share. All 15 invoice
+  groups total exactly `1.000` as stored. Copy the exact decimal and its raw
+  text; **never divide by 100**. Invoice `21819` permanently proves
+  `0.060 / 0.110 / 0.100 / 0.100 / 0.240 / 0.315 / 0.075`, total `1.000`.
+- Exact legacy allocation name `Ahmed Abdullah` maps through an immutable,
+  owner-reviewed billing crosswalk to person 25 (`Dr. Ahmed Abdullah`,
+  `أحمد عبد الله`). It covers 11 rows across nine groups and is not fuzzy,
+  Arabic-derived or available automatically to application-native rows.
+- `Inv-Type` is genuinely NULL on invoices `21269` and `21772`; NULL remains
+  NULL and is not a quarantine reason by itself.
+- Raw receipt-currency `0` on invoices `21225` and `21226` is preserved while
+  the interpreted currency is NULL because both receipt amounts are zero. A
+  non-zero receipt paired with `0` must quarantine or fail safely.
+- Exact source currency ` USD` maps to usable `USD`, with the raw text retained,
+  for invoice `21352` and its two payments. This is an exact reviewed rule,
+  never unrestricted whitespace trimming or case-folding.
+
+These transformations are independently rebuilt by `db:check`. They do not
+change staging. D4 remains absolute: `Pay-Date` is excluded from target
+columns, permitted audit payloads, baselines, digests and inference.
+
 ## Gate 4 — proving it worked
 
 **Counts** are not enough. A reversed join gives the right number of rows with

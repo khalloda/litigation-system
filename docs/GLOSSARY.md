@@ -156,7 +156,7 @@ words to show on screen are **not yet supplied and were not invented**.
 | Access | Values |
 |---|---|
 | `Inv-Status` | Paid 460 · Unpaid 60 · Partially Paid 12 · Later 10 · Canceled 1 |
-| `Inv-Type` | Service 379 · Expenses 162 |
+| `Inv-Type` | Service 379 · Expenses 162 · NULL 2 (`21269`, `21772`) |
 | `LawyerAs` | Reviewer 16 · LawyerA 16 · LawyerB 8 · LawyerA+ 7 — see below |
 
 | Arabic | English | Notes |
@@ -168,9 +168,11 @@ words to show on screen are **not yet supplied and were not invented**.
 
 `تقسيم التحصيلات.Lawyer` holds **English names** — `Ahmed Abdullah`,
 `Nagy Ramadan`. Nine distinct people, and **the only Latin person column in the
-database**. It resolves through `people.name_en`, not through
-`person_name_alias`, which holds Arabic. Where `name_en` is null, quarantine —
-never guess.
+database**. Ordinarily it resolves by exact `people.name_en`, not through the
+Arabic alias table. The one owner-reviewed migration exception is exact source
+`Ahmed Abdullah` → person 25, whose canonical name remains
+`Dr. Ahmed Abdullah`; no fuzzy, transliterated or application-wide alias is
+created. Any other unresolved English name quarantines — never guess.
 
 ### `LawyerAs` and `matter_lawyers.role` are the same idea, named twice
 
@@ -215,6 +217,11 @@ The reviewer always takes 25%, and the remaining 75% goes either wholly to
 0.075. All 15 invoices with splits still sum to exactly 1, so it is deliberate
 rather than an error — there is nothing to quarantine.
 
+`Percent` is already the fractional share despite its name. Values such as
+`0.250` are copied directly, not divided by 100, and their exact source text is
+kept. Invoice 21819 is the named permanent proof:
+`0.060 + 0.110 + 0.100 + 0.100 + 0.240 + 0.315 + 0.075 = 1.000`.
+
 ### The three invoice flags
 
 | Access | Reading | Evidence |
@@ -231,6 +238,13 @@ received against 33,000 invoiced, status *Partially Paid*.
 Migrated as `received_amount` (numeric) and `received_currency` (text).
 **21 invoices of 543 carry anything — a 3.9% fill rate.** Neither is
 surfaced.
+
+The two raw `R-$ = 0` rows (`21225`, `21226`) keep that text but have NULL
+usable receipt currency because their receipt amounts are zero. This is not a
+general `0` rule: a non-zero receipt with that text is unsafe. Separately,
+exact ordinary currency ` USD` is the single reviewed normalization to `USD`
+for invoice `21352` and its two payments; the leading-space source text remains
+in raw provenance and no other value is trimmed automatically.
 
 ### `VAT?` — migrated as-is, replaced in Phase 2
 

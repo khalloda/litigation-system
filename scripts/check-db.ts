@@ -776,8 +776,8 @@ async function main() {
     //  The only Latin person column in the database — English names resolved
     //  through people.name_en, not the alias table.
     ['invoice_allocations', 'legacy_lawyer_raw'],
-    //  Access holds a PERCENTAGE; share holds a fraction. The conversion has
-    //  to stay visible.
+    //  Access calls this Percent, but its decimals are already fractional
+    //  shares. The exact source representation still has to stay visible.
     ['invoice_allocations', 'legacy_percent_raw'],
     ['invoice_allocations', 'legacy_lawyer_as_raw'],
   ]);

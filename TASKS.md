@@ -301,9 +301,12 @@ be bigger than expected, split it and tell the owner.
       database — resolved through `people.name_en`, **not** the alias table.
       Where `name_en` is null the row quarantines.
 
-      `Percent` is a percentage and `share` is a fraction; Stage 2 divides by
-      100 and keeps `legacy_percent_raw`. `AttSituation` keeps a raw partner
-      so a Phase 2 case-fold stays reversible.
+      `Percent` was initially described as a percentage needing division by
+      100. Live staging disproved that: every one of the 15 invoice groups
+      already totals exactly `1.000`. Task 2.10A therefore copies the exact
+      decimal as the fractional `share` and keeps the source text in
+      `legacy_percent_raw`. `AttSituation` keeps a raw partner so a Phase 2
+      case-fold stays reversible.
       **Arabic labels for the three Latin lookups are NOT invented** — they
       are financial terms (rule 5) and are needed before task 4.8, not before
       Stage 2. `db:check` asserts none has been filled in.
@@ -1023,8 +1026,20 @@ only ever seen good data is not known to work.
       `contractID`, never directly to clients. `الفواتير.Pay-Date` is excluded
       completely (D4): it must not appear in a target column, raw payload,
       digest, type or report. Payments keep `Credit` and `Debit` separate.
-      Allocation percentages are divided by 100 and keep their original text;
-      every invoice's resulting shares must reconcile exactly to 1.
+      Allocation `Percent` values are already fractions: copy them exactly,
+      do **not** divide by 100, and keep their original text. Every invoice's
+      shares must reconcile exactly to `1.000`; invoice `21819` permanently
+      proves the non-standard but deliberate `0.075` row and all seven exact
+      shares. The exact legacy-only billing crosswalk maps `Ahmed Abdullah`
+      to person 25 (`Dr. Ahmed Abdullah`) without changing that person's name
+      or using Arabic/fuzzy matching.
+
+      Two invoices (`21269`, `21772`) retain a NULL type. Receipt-currency
+      text `0` becomes an interpreted NULL only for the two reviewed rows whose
+      receipt amount is zero, while the raw `0` survives; a non-zero pairing
+      must fail safely. Exact currency text ` USD` becomes usable `USD` only
+      through the reviewed crosswalk, with the original preserved byte for
+      byte. No generic trimming or case-folding is allowed.
 
       `LawyerShare4Invoices` is reference-only and must remain exactly empty.
       It produces no target row. The only allocation source in this extraction

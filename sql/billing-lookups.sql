@@ -34,11 +34,11 @@ INSERT INTO lookup_invoice_status (code, sort_order) VALUES ('Canceled',       5
 
 
 -- ---------------------------------------------------------------------------
---  2. lookup_invoice_type — Access `الفواتير.Inv-Type`, 100% filled
+--  2. lookup_invoice_type — Access `الفواتير.Inv-Type`, 541 / 543 filled
 -- ---------------------------------------------------------------------------
 INSERT INTO lookup_invoice_type (code, sort_order) VALUES ('Service',  10);  -- 379
 INSERT INTO lookup_invoice_type (code, sort_order) VALUES ('Expenses', 20);  -- 162
--- 379 + 162 = 541, and 543 invoices. Two rows differ; Stage 2 will show which.
+-- 379 + 162 = 541; invoices 21269 and 21772 are reviewed exact NULLs.
 
 
 -- ---------------------------------------------------------------------------

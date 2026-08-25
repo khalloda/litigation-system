@@ -407,3 +407,39 @@ three must be three. Asserting only the fold would not notice the over-merge.
 
 Every lookup list in this system is reviewed value by value for the same
 reason, and `sql/` holds those reviews as the source of truth.
+
+## D23 — Billing source interpretations are explicit and reversible
+
+The firm reviewed the live Task 2.10A staging evidence on 25 August 2026 and
+settled five billing rules. They override the earlier assumption that
+`تقسيم التحصيلات.Percent` needed division by 100.
+
+1. **Allocation values are already fractions.** All 15 complete invoice
+   groups sum exactly to `1.000` as stored. Copy values such as `0.250`
+   directly to `invoice_allocations.share`; never divide them by 100. Keep the
+   exact source text in `legacy_percent_raw`. Invoice `21819` is a permanent
+   named proof: `0.060 + 0.110 + 0.100 + 0.100 + 0.240 + 0.315 + 0.075 =
+   1.000`. Never assume every co-lead receives `0.375`.
+2. **`Ahmed Abdullah` is one exact legacy-only crosswalk.** The exact source
+   text maps to person 25, whose canonical English name remains
+   `Dr. Ahmed Abdullah` and Arabic name remains `أحمد عبد الله`. The crosswalk
+   applies only to the migration's English allocation field. It is not fuzzy,
+   transliterated, inferred from Arabic aliases or inherited automatically by
+   application-native records. It covers 11 rows across nine invoice groups.
+3. **A missing invoice type stays missing.** Invoices `21269` and `21772`
+   carry SQL NULL in `Inv-Type`; both migrate with NULL type. Do not invent a
+   type, turn NULL into an empty string or quarantine an otherwise valid row.
+4. **Receipt-currency `0` is evidence, not a currency.** On invoices `21225`
+   and `21226`, raw `R-$` text `0` is preserved byte for byte and the usable
+   receipt currency is NULL because `R-#` is zero. This reviewed interpretation
+   is allowed only when no non-zero receipt needs a currency. A `0` paired with
+   a non-zero receipt must quarantine or fail safely.
+5. **Only exact leading-space ` USD` normalises to `USD`.** Preserve the raw
+   invoice/payment currency, and use `USD` for reporting for the confirmed
+   invoice `21352` and its two payments. This is an explicit source-value
+   crosswalk, not trimming, case-folding or general cleanup. Any other malformed
+   currency needs separate review or quarantine.
+
+These rules are migration rules, not permission to rewrite source evidence.
+Staging remains unchanged. `الفواتير.Pay-Date` remains absolutely excluded by
+D4: it is neither migrated nor used to infer any billing fact.

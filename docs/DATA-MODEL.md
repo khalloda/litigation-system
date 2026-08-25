@@ -393,15 +393,15 @@ contracts.
 | `fee_letter_id` + `legacy_contract_id` | `contractID` | 100% |
 | `invoice_date` | `Inv-Date` | 100% |
 | `amount` | `Amount` | 100% |
-| `currency` | `Currency` | 100% |
+| `currency` + `legacy_currency_raw` | `Currency` | 100% — exact ` USD` is the one reviewed normalization to usable `USD`; no generic trimming |
 | `details` | `Inv-Details` | 100% |
 | `status_id` | `Inv-Status` | 100% |
-| `type_id` | `Inv-Type` | 100% |
+| `type_id` | `Inv-Type` | 541 / 543 — invoices `21269` and `21772` are exact NULL and remain NULL |
 | `vat` | `VAT?` | 100% — **boolean**, 1 on 289 / 0 on 254 |
 | `report` | `report` | 100% — **boolean**, 535 zeros / 8 ones. Not surfaced |
 | `received_amount` | `R-#` | 49% nominally, but 278 blank + 244 zero — **21 real rows, 3.9%** |
 | `amount_usd` | `USD$` | 4% |
-| `received_currency` | `R-$` | 4% — the same 21 rows, `EGP` |
+| `received_currency` + `legacy_receipt_currency_raw` | `R-$` | 21 `EGP`; two reviewed raw `0` values become usable NULL only because their receipt amounts are zero |
 | — | `Pay-Date` | 23%, **not migrated (D4)** |
 
 **Do not migrate `Pay-Date`** (D4) despite it being 23% filled: it stops in
@@ -429,6 +429,13 @@ invoiced, status *Partially Paid*.
 **21 invoices of 543 carry either — a 3.9% fill rate**, recorded here because
 a column this empty is easy to mistake for one that failed to migrate.
 Migrated, neither surfaced.
+
+Task 2.10A preserves each invoice and payment currency in a raw partner. The
+only reviewed normalization is exact source ` USD` → usable `USD`, covering
+invoice `21352` and its two payments. It is not a general trim or case-fold.
+Likewise, raw receipt-currency `0` on invoices `21225` and `21226` becomes
+usable NULL only while its receipt amount is zero; a non-zero pairing is
+unsafe and must not be silently accepted.
 
 ### `payments` — 597 rows (2013 – Dec 2021)
 
@@ -494,6 +501,14 @@ Task 2.10A transforms the 47 rows in `تقسيم التحصيلات` into this t
 `LawyerShare4Invoices` is a reference-only source table and is asserted to be
 exactly empty; it produces no target row. `invoice_id`, `person_id`, `share` —
 shares per invoice must sum to 1.
+
+The source `Percent` decimals are already fractional shares. Every complete
+invoice group sums to exactly `1.000` before any conversion, so the migration
+copies them directly and preserves the source representation in
+`legacy_percent_raw`; it never divides by 100. Exact source English name
+`Ahmed Abdullah` is the one owner-reviewed legacy crosswalk to person 25
+(`Dr. Ahmed Abdullah`), covering 11 rows across nine invoice groups. It does
+not alter the person or create an application-wide alias.
 
 ---
 
