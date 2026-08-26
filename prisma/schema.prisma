@@ -1857,20 +1857,18 @@ model LookupLawyerShareRole {
 //  INVOICES AND PAYMENTS ARE READ-ONLY FOR EVERY ROLE, INCLUDING THE
 //  ADMINISTRATOR (D4, docs/PERMISSIONS.md). 543 invoices (2010–Dec 2021) and
 //  597 payments (2013–Dec 2021) migrate so that old billing questions can be
-//  answered; nobody can create or edit one in Phase 1. That is enforced on
-//  the server in Stage 3, not by hiding a button.
+//  answered; nobody can create or edit one in Phase 1. Migration 0046 makes
+//  every legacy-derived billing row immutable in PostgreSQL. Stage 3 must
+//  still enforce the Phase 1 rule at the server boundary for application-
+//  native rows; hiding a button is never sufficient.
 //
 //  BILLING IS VISIBLE TO ALL FOUR ROLES, for all clients (D14). Not
 //  restricted to a lawyer's own matters: 834 of 1,730 matters have no lawyer
 //  recorded, so such a rule would hide billing from everybody.
 //
-//  **THE COLUMN LISTS BELOW ARE INCOMPLETE AND KNOWN TO BE.** Only the keys
-//  and the columns the documents actually name are modelled. The Access
-//  column lists for الفواتير, السداد, Attendance and تقسيم التحصيلات have
-//  never been written down, and nothing is invented — the same position task
-//  1.3 took, and for the same reason. They are completed before Stage 2 loads
-//  a row. Staging holds every source column as text, so nothing is at risk in
-//  the meantime.
+//  Task 2.10A completed the invoice, payment and allocation models and migrated
+//  all reviewed Access billing history. The separate staff-attendance model is
+//  already present, but its Task 2.10B transform remains pending.
 // ===========================================================================
 
 /// Invoices. 543 rows at Stage 2, 2010 to December 2021. **Read-only.**

@@ -1066,10 +1066,21 @@ only ever seen good data is not known to work.
       DDL, and checks complete PostgreSQL 17.11 object definitions before the
       first write and before commit. A separate implementation permanently
       reconstructs every target and quarantine result directly from staging;
-      it does not import the writing planner or its parsers. The 29-case
+      it does not import the writing planner or its parsers. The original
       disposable fixture proves scalar, typed, raw, link, trace, quarantine,
       idempotency, rollback and weakened-catalog failures. Result digest:
       `421b935e10b9e45a9bb9718b947825817b09ac60b7529d95491378f6e0737498`.
+
+      **Post-review correction, 26 August 2026 (migration 0046).** Migrated
+      invoices, payments and allocations now refuse direct UPDATE and DELETE,
+      and all three tables refuse TRUNCATE. Application-native rows with NULL
+      migration provenance remain valid, editable and outside legacy
+      reconciliation. The two reviewed billing-rule tables refuse UPDATE,
+      DELETE and TRUNCATE; an unapproved inserted candidate still fails the
+      exact permanent baseline. `db:check` pins all ten new triggers and both
+      complete functions, including empty `pg_proc.proconfig`. The expanded
+      66-case disposable fixture covers every post-review negative case and
+      re-proves clean structure and reconciliation after each rollback.
 
 - [ ] **2.10B Transform: staff attendance** — `Attendance`, the 4,022-row
       leave register. This is separate from billing and from meeting attendance

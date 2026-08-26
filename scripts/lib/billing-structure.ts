@@ -352,15 +352,123 @@ const indexes = [
 ] as const;
 
 const triggers = [
-  ['invoice_transform_no_change', 'invoice_transform', 27],
-  ['invoice_transform_no_truncate', 'invoice_transform', 34],
-  ['payment_transform_no_change', 'payment_transform', 27],
-  ['payment_transform_no_truncate', 'payment_transform', 34],
-  ['invoice_allocation_transform_no_change', 'invoice_allocation_transform', 27],
-  ['invoice_allocation_transform_no_truncate', 'invoice_allocation_transform', 34],
+  [
+    'invoice_transform_no_change',
+    'quarantine',
+    'invoice_transform',
+    27,
+    'quarantine',
+    'refuse_billing_evidence_change',
+  ],
+  [
+    'invoice_transform_no_truncate',
+    'quarantine',
+    'invoice_transform',
+    34,
+    'quarantine',
+    'refuse_billing_evidence_change',
+  ],
+  [
+    'payment_transform_no_change',
+    'quarantine',
+    'payment_transform',
+    27,
+    'quarantine',
+    'refuse_billing_evidence_change',
+  ],
+  [
+    'payment_transform_no_truncate',
+    'quarantine',
+    'payment_transform',
+    34,
+    'quarantine',
+    'refuse_billing_evidence_change',
+  ],
+  [
+    'invoice_allocation_transform_no_change',
+    'quarantine',
+    'invoice_allocation_transform',
+    27,
+    'quarantine',
+    'refuse_billing_evidence_change',
+  ],
+  [
+    'invoice_allocation_transform_no_truncate',
+    'quarantine',
+    'invoice_allocation_transform',
+    34,
+    'quarantine',
+    'refuse_billing_evidence_change',
+  ],
+  ['invoices_legacy_no_change', 'public', 'invoices', 27, 'public', 'refuse_legacy_billing_change'],
+  [
+    'invoices_legacy_no_truncate',
+    'public',
+    'invoices',
+    34,
+    'public',
+    'refuse_legacy_billing_change',
+  ],
+  ['payments_legacy_no_change', 'public', 'payments', 27, 'public', 'refuse_legacy_billing_change'],
+  [
+    'payments_legacy_no_truncate',
+    'public',
+    'payments',
+    34,
+    'public',
+    'refuse_legacy_billing_change',
+  ],
+  [
+    'invoice_allocations_legacy_no_change',
+    'public',
+    'invoice_allocations',
+    27,
+    'public',
+    'refuse_legacy_billing_change',
+  ],
+  [
+    'invoice_allocations_legacy_no_truncate',
+    'public',
+    'invoice_allocations',
+    34,
+    'public',
+    'refuse_legacy_billing_change',
+  ],
+  [
+    'migration_billing_person_crosswalk_no_change',
+    'public',
+    'migration_billing_person_crosswalk',
+    27,
+    'public',
+    'refuse_billing_rule_change',
+  ],
+  [
+    'migration_billing_person_crosswalk_no_truncate',
+    'public',
+    'migration_billing_person_crosswalk',
+    34,
+    'public',
+    'refuse_billing_rule_change',
+  ],
+  [
+    'migration_billing_currency_rule_no_change',
+    'public',
+    'migration_billing_currency_rule',
+    27,
+    'public',
+    'refuse_billing_rule_change',
+  ],
+  [
+    'migration_billing_currency_rule_no_truncate',
+    'public',
+    'migration_billing_currency_rule',
+    34,
+    'public',
+    'refuse_billing_rule_change',
+  ],
 ] as const;
 
-const functionBody = `
+const evidenceFunctionBody = `
 BEGIN
     IF TG_OP='UPDATE' THEN
         RAISE EXCEPTION 'Task 2.10A immutable billing evidence cannot be updated';
@@ -368,6 +476,36 @@ BEGIN
     RAISE EXCEPTION 'Task 2.10A billing evidence DELETE/TRUNCATE is refused';
 END;
 `;
+const legacyBillingFunctionBody = `
+BEGIN
+    IF TG_OP='TRUNCATE' THEN
+        RAISE EXCEPTION 'Task 2.10A billing history TRUNCATE is refused';
+    END IF;
+    IF OLD.legacy_source_record_key IS NOT NULL THEN
+        RAISE EXCEPTION 'Task 2.10A migrated billing history cannot be updated or deleted';
+    END IF;
+    IF TG_OP='UPDATE' AND NEW.legacy_source_record_key IS NOT NULL THEN
+        RAISE EXCEPTION 'Task 2.10A migration provenance cannot be attached by ordinary update';
+    END IF;
+    IF TG_OP='DELETE' THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END;
+`;
+const billingRuleFunctionBody = `
+BEGIN
+    IF TG_OP='UPDATE' THEN
+        RAISE EXCEPTION 'Task 2.10A reviewed billing rules cannot be updated';
+    END IF;
+    RAISE EXCEPTION 'Task 2.10A reviewed billing rules cannot be deleted or truncated';
+END;
+`;
+const functionsExpected = [
+  ['quarantine', 'refuse_billing_evidence_change', evidenceFunctionBody],
+  ['public', 'refuse_legacy_billing_change', legacyBillingFunctionBody],
+  ['public', 'refuse_billing_rule_change', billingRuleFunctionBody],
+] as const;
 const canon = (value: string) => value.replace(/\r\n?/gu, '\n').trim();
 const same = (left: readonly unknown[], right: readonly unknown[]) =>
   JSON.stringify(left) === JSON.stringify(right);
@@ -426,7 +564,9 @@ export async function billingStructureFailures(db: ClientBase): Promise<string[]
     [triggers.map((row) => row[0])],
   );
   const functions = await db.query<FunctionRow>(
-    `SELECT p.oid::regprocedure::text signature,p.proname name,ns.nspname schema_name,
+    `SELECT format('%I.%I(%s)',ns.nspname,p.proname,
+                   pg_get_function_identity_arguments(p.oid)) signature,
+            p.proname name,ns.nspname schema_name,
             pg_get_function_result(p.oid) return_type,
             pg_get_function_arguments(p.oid) arguments,
             pg_get_function_identity_arguments(p.oid) identity_arguments,
@@ -436,7 +576,9 @@ export async function billingStructureFailures(db: ClientBase): Promise<string[]
             p.proparallel::text parallel_safety,p.proconfig configuration,p.prosrc body
        FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
        JOIN pg_language l ON l.oid=p.prolang
-      WHERE p.oid='quarantine.refuse_billing_evidence_change()'::regprocedure`,
+      WHERE ns.nspname||'.'||p.proname=ANY($1::text[])
+      ORDER BY ns.nspname,p.proname`,
+    [functionsExpected.map(([schema, name]) => `${schema}.${name}`)],
   );
 
   const failures: string[] = [];
@@ -520,46 +662,50 @@ export async function billingStructureFailures(db: ClientBase): Promise<string[]
   }
   if (indexRows.rows.length !== indexes.length) failures.push('Task 2.10A index inventory');
 
-  for (const [name, table, triggerType] of triggers) {
+  for (const [name, schema, table, triggerType, functionSchema, functionName] of triggers) {
     const row = triggerRows.rows.find((item) => item.name === name);
     const event = triggerType === 27 ? 'DELETE OR UPDATE' : 'TRUNCATE';
     const scope = triggerType === 27 ? 'ROW' : 'STATEMENT';
-    const definition = `CREATE TRIGGER ${name} BEFORE ${event} ON quarantine.${table} FOR EACH ${scope} EXECUTE FUNCTION quarantine.refuse_billing_evidence_change()`;
+    const relation = schema === 'public' ? table : `${schema}.${table}`;
+    const targetFunction =
+      functionSchema === 'public' ? functionName : `${functionSchema}.${functionName}`;
+    const definition = `CREATE TRIGGER ${name} BEFORE ${event} ON ${relation} FOR EACH ${scope} EXECUTE FUNCTION ${targetFunction}()`;
     if (
       !row ||
-      row.schema_name !== 'quarantine' ||
+      row.schema_name !== schema ||
       row.table_name !== table ||
       row.enabled !== 'O' ||
       row.internal ||
       row.trigger_type !== triggerType ||
-      row.function_schema !== 'quarantine' ||
-      row.function_name !== 'refuse_billing_evidence_change' ||
+      row.function_schema !== functionSchema ||
+      row.function_name !== functionName ||
       canon(row.definition) !== canon(definition)
     )
       failures.push(`trigger definition: ${name}${row ? ` [${row.definition}]` : ''}`);
   }
   if (triggerRows.rows.length !== triggers.length) failures.push('Task 2.10A trigger inventory');
 
-  const fn = functions.rows[0];
-  if (
-    functions.rows.length !== 1 ||
-    !fn ||
-    fn.signature !== 'quarantine.refuse_billing_evidence_change()' ||
-    fn.name !== 'refuse_billing_evidence_change' ||
-    fn.schema_name !== 'quarantine' ||
-    fn.return_type !== 'trigger' ||
-    fn.arguments !== '' ||
-    fn.identity_arguments !== '' ||
-    fn.language_name !== 'plpgsql' ||
-    fn.function_kind !== 'f' ||
-    fn.volatility !== 'v' ||
-    fn.strict ||
-    fn.security_definer ||
-    fn.leakproof ||
-    fn.parallel_safety !== 'u' ||
-    fn.configuration !== null ||
-    canon(fn.body) !== canon(functionBody)
-  )
-    failures.push('function definition: quarantine.refuse_billing_evidence_change()');
+  for (const [schema, name, body] of functionsExpected) {
+    const fn = functions.rows.find((item) => item.schema_name === schema && item.name === name);
+    if (
+      !fn ||
+      fn.signature !== `${schema}.${name}()` ||
+      fn.return_type !== 'trigger' ||
+      fn.arguments !== '' ||
+      fn.identity_arguments !== '' ||
+      fn.language_name !== 'plpgsql' ||
+      fn.function_kind !== 'f' ||
+      fn.volatility !== 'v' ||
+      fn.strict ||
+      fn.security_definer ||
+      fn.leakproof ||
+      fn.parallel_safety !== 'u' ||
+      fn.configuration !== null ||
+      canon(fn.body) !== canon(body)
+    )
+      failures.push(`function definition: ${schema}.${name}()`);
+  }
+  if (functions.rows.length !== functionsExpected.length)
+    failures.push('Task 2.10A function inventory');
   return failures;
 }

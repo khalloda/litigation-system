@@ -965,8 +965,9 @@ async function main() {
     guards.length === 0,
   );
 
-  // 9b. Billing — task 1.5. Empty until Phase 2, and the shape is where the
-  //     money decisions live.
+  // 9b. Billing — task 1.5 built the shape; Task 2.10A migrated the historical
+  //     invoices, payments and allocation rows. Task 2.10B staff attendance
+  //     remains pending.
   //
   //     Money is NEVER a floating-point number. A double cannot hold 0.1
   //     exactly, so summing 597 payments in one gives a total that is close

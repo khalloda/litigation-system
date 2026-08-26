@@ -28,6 +28,13 @@ const expected: typeof LIVE_BILLING_COUNTS = {
 };
 
 const fixtureKey = (number: number) => `${number.toString(16).padStart(64, '0')}:000001`;
+type LegacyBillingTable = 'invoices' | 'payments' | 'invoice_allocations';
+
+const legacyChangeTrigger: Record<LegacyBillingTable, string> = {
+  invoices: 'invoices_legacy_no_change',
+  payments: 'payments_legacy_no_change',
+  invoice_allocations: 'invoice_allocations_legacy_no_change',
+};
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
@@ -60,11 +67,62 @@ async function reconciliationFailure(
   label: string,
   mutation: () => Promise<unknown>,
   pattern: RegExp,
+  guardedTable?: LegacyBillingTable,
+): Promise<void> {
+  await db.query('BEGIN');
+  try {
+    if (guardedTable)
+      await db.query(
+        `ALTER TABLE ${identifier(guardedTable)} DISABLE TRIGGER ${identifier(legacyChangeTrigger[guardedTable])}`,
+      );
+    await mutation();
+    assert.match((await reconcileBillingHistory(db, false)).defects.join('\n'), pattern);
+  } finally {
+    await db.query('ROLLBACK');
+  }
+  await clean(db);
+  console.log(`  ok    ${label}`);
+}
+
+async function planFailure(
+  db: Client,
+  label: string,
+  mutation: () => Promise<unknown>,
+  verify: (plan: Awaited<ReturnType<typeof buildBillingPlan>>) => void | Promise<void>,
 ): Promise<void> {
   await db.query('BEGIN');
   try {
     await mutation();
-    assert.match((await reconcileBillingHistory(db, false)).defects.join('\n'), pattern);
+    await verify(await buildBillingPlan(db));
+  } finally {
+    await db.query('ROLLBACK');
+  }
+  await clean(db);
+  console.log(`  ok    ${label}`);
+}
+
+async function refusal(
+  db: Client,
+  label: string,
+  statement: () => Promise<unknown>,
+  pattern: RegExp,
+): Promise<void> {
+  await assert.rejects(statement, pattern);
+  await clean(db);
+  console.log(`  ok    ${label}`);
+}
+
+async function transactionalRefusal(
+  db: Client,
+  label: string,
+  prepare: () => Promise<unknown>,
+  statement: () => Promise<unknown>,
+  pattern: RegExp,
+): Promise<void> {
+  await db.query('BEGIN');
+  try {
+    await prepare();
+    await assert.rejects(statement, pattern);
   } finally {
     await db.query('ROLLBACK');
   }
@@ -243,12 +301,14 @@ async function main(): Promise<void> {
         'changed invoice text is detected independently',
         () => db.query(`UPDATE invoices SET details='بديل' WHERE legacy_id=21819`),
         /invoice target\/source mismatch/,
+        'invoices',
       );
       await reconciliationFailure(
         db,
         'changed typed invoice amount is detected independently',
         () => db.query(`UPDATE invoices SET amount=16501 WHERE legacy_id=21819`),
         /invoice target\/source mismatch/,
+        'invoices',
       );
       await reconciliationFailure(
         db,
@@ -258,24 +318,28 @@ async function main(): Promise<void> {
             'A'.repeat(64),
           ]),
         /invoice target\/source mismatch/,
+        'invoices',
       );
       await reconciliationFailure(
         db,
         'changed payment NULL versus empty distinction is detected',
         () => db.query(`UPDATE payments SET details='' WHERE legacy_id=2`),
         /payment target\/source mismatch/,
+        'payments',
       );
       await reconciliationFailure(
         db,
         'changed payment link is detected',
         () => db.query(`UPDATE payments SET legacy_invoice_no='changed' WHERE legacy_id=1`),
         /payment target\/source mismatch/,
+        'payments',
       );
       await reconciliationFailure(
         db,
         'changed interpreted share is detected',
         () => db.query(`UPDATE invoice_allocations SET share=.061 WHERE legacy_id=1`),
         /allocation target\/source mismatch/,
+        'invoice_allocations',
       );
       await reconciliationFailure(
         db,
@@ -283,12 +347,14 @@ async function main(): Promise<void> {
         () =>
           db.query(`UPDATE invoice_allocations SET legacy_percent_raw='0.060' WHERE legacy_id=1`),
         /allocation target\/source mismatch/,
+        'invoice_allocations',
       );
       await reconciliationFailure(
         db,
         'missing target payment is detected',
         () => db.query(`DELETE FROM payments WHERE legacy_id=1`),
         /payment target\/source mismatch/,
+        'payments',
       );
       await reconciliationFailure(
         db,
@@ -341,6 +407,7 @@ async function main(): Promise<void> {
       } finally {
         await db.query('ROLLBACK');
       }
+      await clean(db);
       console.log('  ok    R-$ text 0 with a nonzero R-# is quarantined, never interpreted');
 
       await db.query('BEGIN');
@@ -355,6 +422,7 @@ async function main(): Promise<void> {
       } finally {
         await db.query('ROLLBACK');
       }
+      await clean(db);
       console.log(
         '  ok    NULL invoice type is accepted but an unreviewed empty string is quarantined',
       );
@@ -370,6 +438,7 @@ async function main(): Promise<void> {
       } finally {
         await db.query('ROLLBACK');
       }
+      await clean(db);
       console.log('  ok    no unreviewed whitespace trim or currency fold is applied');
 
       await db.query('BEGIN');
@@ -385,8 +454,334 @@ async function main(): Promise<void> {
       } finally {
         await db.query('ROLLBACK');
       }
+      await clean(db);
       console.log(
         '  ok    Arabic and fuzzy names do not inherit the exact legacy English crosswalk',
+      );
+
+      await planFailure(
+        db,
+        'missing fee-letter contract is quarantined',
+        () => db.query(`UPDATE staging."الفواتير" SET "contractID"='999' WHERE "Inv-No"='21819'`),
+        (plan) =>
+          assert.ok(
+            plan.invoiceQuarantine.some((row) => row.reasonCodes.includes('unresolved_fee_letter')),
+          ),
+      );
+      await planFailure(
+        db,
+        'ambiguous fee-letter contract is quarantined',
+        async () => {
+          await db.query('DROP INDEX fee_letters_contract_id_key');
+          await db.query(
+            `INSERT INTO fee_letters(
+               contract_id,legacy_source_record_key,
+               legacy_source_extraction_sha256,legacy_source_payload,updated_at)
+             VALUES(100,$1,$2,'{"contractID":"100"}',CURRENT_TIMESTAMP)`,
+            [fixtureKey(901), FP],
+          );
+        },
+        (plan) =>
+          assert.ok(
+            plan.invoiceQuarantine.some((row) => row.reasonCodes.includes('ambiguous_fee_letter')),
+          ),
+      );
+      await planFailure(
+        db,
+        'duplicate invoice numbers are quarantined',
+        () =>
+          db.query(
+            `INSERT INTO staging."الفواتير"(
+               src_file,src_row_num,src_record_key,src_extraction_sha256,"Inv-No",
+               "contractID","Inv-Date","Amount","Currency","Inv-Details",
+               "Inv-Status","Inv-Type","VAT?",report)
+             VALUES('fixture/duplicate.csv',1,$1,$2,'21819','100',
+                    '2026-08-25 00:00:00','1','EGP','duplicate','Paid',
+                    'Service','false','false')`,
+            [fixtureKey(3), FP],
+          ),
+        (plan) =>
+          assert.equal(
+            plan.invoiceQuarantine.filter((row) =>
+              row.reasonCodes.includes('duplicate_invoice_number'),
+            ).length,
+            2,
+          ),
+      );
+      await planFailure(
+        db,
+        'unsupported invoice status is quarantined',
+        () =>
+          db.query(
+            `UPDATE staging."الفواتير" SET "Inv-Status"='Not reviewed' WHERE "Inv-No"='21819'`,
+          ),
+        (plan) =>
+          assert.ok(
+            plan.invoiceQuarantine.some((row) =>
+              row.reasonCodes.includes('unsupported_invoice_status'),
+            ),
+          ),
+      );
+      await planFailure(
+        db,
+        'impossible invoice date is quarantined',
+        () =>
+          db.query(
+            `UPDATE staging."الفواتير" SET "Inv-Date"='2026-02-30 00:00:00' WHERE "Inv-No"='21819'`,
+          ),
+        (plan) =>
+          assert.ok(
+            plan.invoiceQuarantine.some((row) => row.reasonCodes.includes('invalid_invoice_date')),
+          ),
+      );
+      await planFailure(
+        db,
+        'impossible payment date is quarantined',
+        () =>
+          db.query(`UPDATE staging."السداد" SET "التاريخ"='2026-02-30 00:00:00' WHERE "ID"='1'`),
+        (plan) =>
+          assert.ok(
+            plan.paymentQuarantine.some((row) => row.reasonCodes.includes('invalid_payment_date')),
+          ),
+      );
+      await planFailure(
+        db,
+        'excess-precision invoice amount is quarantined',
+        () => db.query(`UPDATE staging."الفواتير" SET "Amount"='1.234' WHERE "Inv-No"='21819'`),
+        (plan) =>
+          assert.ok(
+            plan.invoiceQuarantine.some((row) =>
+              row.reasonCodes.includes('invalid_invoice_amount'),
+            ),
+          ),
+      );
+      await planFailure(
+        db,
+        'invalid payment Credit and Debit are quarantined independently',
+        () => db.query(`UPDATE staging."السداد" SET "Credit"='bad',"Debit"='1.234' WHERE "ID"='1'`),
+        (plan) => {
+          const row = plan.paymentQuarantine.find((item) =>
+            item.reasonCodes.includes('invalid_payment_credit'),
+          );
+          assert.ok(row?.reasonCodes.includes('invalid_payment_debit'));
+        },
+      );
+      await planFailure(
+        db,
+        'invalid VAT boolean is quarantined',
+        () => db.query(`UPDATE staging."الفواتير" SET "VAT?"='1' WHERE "Inv-No"='21819'`),
+        (plan) =>
+          assert.ok(
+            plan.invoiceQuarantine.some((row) => row.reasonCodes.includes('invalid_vat_boolean')),
+          ),
+      );
+      await planFailure(
+        db,
+        'invalid report boolean is quarantined',
+        () => db.query(`UPDATE staging."الفواتير" SET report='0' WHERE "Inv-No"='21819'`),
+        (plan) =>
+          assert.ok(
+            plan.invoiceQuarantine.some((row) =>
+              row.reasonCodes.includes('invalid_report_boolean'),
+            ),
+          ),
+      );
+      await reconciliationFailure(
+        db,
+        'swapped Credit and Debit columns are detected independently',
+        () => db.query(`UPDATE payments SET credit=0,debit=16500 WHERE legacy_id=1`),
+        /payment target\/source mismatch/,
+        'payments',
+      );
+      await planFailure(
+        db,
+        'unsupported allocation role is quarantined',
+        () => db.query(`UPDATE staging."تقسيم التحصيلات" SET "LawyerAs"='Owner' WHERE "ID"='1'`),
+        (plan) =>
+          assert.ok(
+            plan.allocationQuarantine.some((row) =>
+              row.reasonCodes.includes('unsupported_allocation_role'),
+            ),
+          ),
+      );
+      await planFailure(
+        db,
+        'invalid allocation fraction is quarantined',
+        () => db.query(`UPDATE staging."تقسيم التحصيلات" SET "Percent"='1.00001' WHERE "ID"='1'`),
+        (plan) =>
+          assert.ok(
+            plan.allocationQuarantine.some((row) =>
+              row.reasonCodes.includes('invalid_allocation_share'),
+            ),
+          ),
+      );
+      await planFailure(
+        db,
+        'allocation group not totaling exactly one is quarantined',
+        () => db.query(`UPDATE staging."تقسيم التحصيلات" SET "Percent"='.061' WHERE "ID"='1'`),
+        (plan) =>
+          assert.equal(
+            plan.allocationQuarantine.filter((row) =>
+              row.reasonCodes.includes('invalid_allocation_total'),
+            ).length,
+            7,
+          ),
+      );
+      await planFailure(
+        db,
+        'duplicate invoice/person/role allocation is quarantined',
+        () =>
+          db.query(
+            `INSERT INTO staging."تقسيم التحصيلات"(
+               src_file,src_row_num,src_record_key,src_extraction_sha256,
+               "ID","InvNo","Lawyer","Percent","LawyerAs")
+             VALUES('fixture/allocations-duplicate.csv',1,$1,$2,'9','21819',
+                    'Ahmed Abdullah','0','Reviewer')`,
+            [fixtureKey(109), FP],
+          ),
+        (plan) =>
+          assert.equal(
+            plan.allocationQuarantine.filter((row) =>
+              row.reasonCodes.includes('duplicate_allocation'),
+            ).length,
+            2,
+          ),
+      );
+      await db.query('BEGIN');
+      try {
+        await db.query(
+          `INSERT INTO staging."LawyerShare4Invoices"(
+             src_file,src_row_num,src_record_key,src_extraction_sha256,"ID")
+           VALUES('fixture/reference-only.csv',1,$1,$2,'1')`,
+          [fixtureKey(200), FP],
+        );
+        await assert.rejects(
+          buildBillingPlan(db),
+          /LawyerShare4Invoices must remain exactly empty/,
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      await clean(db);
+      console.log('  ok    non-empty LawyerShare4Invoices is refused');
+
+      await refusal(
+        db,
+        'changed reviewed person crosswalk is refused immediately',
+        () =>
+          db.query(
+            `UPDATE migration_billing_person_crosswalk SET person_id=4 WHERE source_value='Ahmed Abdullah'`,
+          ),
+        /reviewed billing rules cannot be updated/,
+      );
+      await refusal(
+        db,
+        'changed reviewed currency rule is refused immediately',
+        () =>
+          db.query(
+            `UPDATE migration_billing_currency_rule SET target_value='EGP' WHERE field_kind='transaction_currency' AND source_value=' USD'`,
+          ),
+        /reviewed billing rules cannot be updated/,
+      );
+      await db.query('BEGIN');
+      try {
+        await db.query(
+          `INSERT INTO migration_billing_currency_rule(
+             field_kind,source_value,target_value,require_zero_amount,
+             reviewed_by,reviewed_at,reviewer_note)
+           VALUES('transaction_currency',' EUR','EUR',false,
+                  'Fixture reviewer',DATE '2026-08-26','Fixture-only candidate')`,
+        );
+        assert.match(
+          (await reconcileBillingHistory(db, false)).defects.join('\n'),
+          /reviewed billing currency rules changed/,
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      await clean(db);
+      console.log(
+        '  ok    unapproved inserted billing rule is rejected by permanent reconciliation',
+      );
+
+      const legacyDigestBeforeNative = await billingResultDigest(db);
+      await db.query(
+        `INSERT INTO invoices(invoice_no,amount,currency,updated_at)
+         VALUES('fixture-native',10,'EGP',CURRENT_TIMESTAMP) RETURNING id`,
+      );
+      const nativeInvoiceId = Number(
+        (
+          await db.query<{ id: number }>(
+            `SELECT id FROM invoices WHERE invoice_no='fixture-native' AND legacy_source_record_key IS NULL`,
+          )
+        ).rows[0]!.id,
+      );
+      const nativePaymentId = Number(
+        (
+          await db.query<{ id: number }>(
+            `INSERT INTO payments(invoice_id,credit,currency,updated_at)
+             VALUES($1,10,'EGP',CURRENT_TIMESTAMP) RETURNING id`,
+            [nativeInvoiceId],
+          )
+        ).rows[0]!.id,
+      );
+      const nativeRoleId = Number(
+        (
+          await db.query<{ id: number }>(
+            `SELECT id FROM lookup_lawyer_share_role WHERE code='Reviewer'`,
+          )
+        ).rows[0]!.id,
+      );
+      const nativeAllocationId = Number(
+        (
+          await db.query<{ id: number }>(
+            `INSERT INTO invoice_allocations(
+               invoice_id,person_id,lawyer_role_id,share,updated_at)
+             VALUES($1,25,$2,1,CURRENT_TIMESTAMP) RETURNING id`,
+            [nativeInvoiceId, nativeRoleId],
+          )
+        ).rows[0]!.id,
+      );
+      await db.query(`UPDATE invoices SET details='native edited' WHERE id=$1`, [nativeInvoiceId]);
+      await db.query(`UPDATE payments SET details='native edited' WHERE id=$1`, [nativePaymentId]);
+      await db.query(`UPDATE invoice_allocations SET updated_by=25 WHERE id=$1`, [
+        nativeAllocationId,
+      ]);
+      assert.equal(
+        (
+          await db.query(
+            `SELECT count(*) FROM (
+               SELECT id FROM invoices WHERE id=$1 AND
+                 (legacy_id IS NOT NULL OR legacy_contract_id IS NOT NULL OR
+                  legacy_currency_raw IS NOT NULL OR legacy_receipt_currency_raw IS NOT NULL OR
+                  legacy_status_raw IS NOT NULL OR legacy_type_raw IS NOT NULL OR
+                  legacy_source_record_key IS NOT NULL OR
+                  legacy_source_extraction_sha256 IS NOT NULL OR legacy_source_payload IS NOT NULL)
+               UNION ALL
+               SELECT id FROM payments WHERE id=$2 AND
+                 (legacy_id IS NOT NULL OR legacy_invoice_no IS NOT NULL OR
+                  legacy_currency_raw IS NOT NULL OR legacy_source_record_key IS NOT NULL OR
+                  legacy_source_extraction_sha256 IS NOT NULL OR legacy_source_payload IS NOT NULL)
+               UNION ALL
+               SELECT id FROM invoice_allocations WHERE id=$3 AND
+                 (legacy_id IS NOT NULL OR legacy_invoice_no IS NOT NULL OR
+                  legacy_lawyer_raw IS NOT NULL OR legacy_percent_raw IS NOT NULL OR
+                  legacy_lawyer_as_raw IS NOT NULL OR legacy_source_record_key IS NOT NULL OR
+                  legacy_source_extraction_sha256 IS NOT NULL OR legacy_source_payload IS NOT NULL)
+             ) migration_provenance`,
+            [nativeInvoiceId, nativePaymentId, nativeAllocationId],
+          )
+        ).rows[0]!.count,
+        '0',
+      );
+      assert.equal(await billingResultDigest(db), legacyDigestBeforeNative);
+      assert.deepEqual((await reconcileBillingHistory(db, false)).defects, []);
+      await db.query(`DELETE FROM invoice_allocations WHERE id=$1`, [nativeAllocationId]);
+      await db.query(`DELETE FROM payments WHERE id=$1`, [nativePaymentId]);
+      await db.query(`DELETE FROM invoices WHERE id=$1`, [nativeInvoiceId]);
+      await clean(db);
+      console.log(
+        '  ok    application-native invoice, payment and allocation remain valid, editable and outside legacy reconciliation/digest',
       );
 
       const digestBeforeTrace = await billingResultDigest(db);
@@ -406,6 +801,7 @@ async function main(): Promise<void> {
       } finally {
         await db.query('ROLLBACK');
       }
+      await clean(db);
       console.log(
         '  ok    filename, row position and Pay-Date change neither durable identity nor result digest',
       );
@@ -465,6 +861,131 @@ async function main(): Promise<void> {
       await clean(db);
       console.log('  ok    forced late failure rolls back every newly planned billing row');
 
+      await refusal(
+        db,
+        'UPDATE of a migrated invoice is refused immediately',
+        () => db.query(`UPDATE invoices SET details='blocked' WHERE legacy_id=21819`),
+        /migrated billing history cannot be updated or deleted/,
+      );
+      await refusal(
+        db,
+        'UPDATE of a migrated payment is refused immediately',
+        () => db.query(`UPDATE payments SET details='blocked' WHERE legacy_id=1`),
+        /migrated billing history cannot be updated or deleted/,
+      );
+      await refusal(
+        db,
+        'UPDATE of a migrated allocation is refused immediately',
+        () => db.query(`UPDATE invoice_allocations SET share=.5 WHERE legacy_id=1`),
+        /migrated billing history cannot be updated or deleted/,
+      );
+      await refusal(
+        db,
+        'DELETE of a migrated invoice is refused immediately',
+        () => db.query(`DELETE FROM invoices WHERE legacy_id=21819`),
+        /migrated billing history cannot be updated or deleted/,
+      );
+      await refusal(
+        db,
+        'DELETE of a migrated payment is refused immediately',
+        () => db.query(`DELETE FROM payments WHERE legacy_id=1`),
+        /migrated billing history cannot be updated or deleted/,
+      );
+      await refusal(
+        db,
+        'DELETE of a migrated allocation is refused immediately',
+        () => db.query(`DELETE FROM invoice_allocations WHERE legacy_id=1`),
+        /migrated billing history cannot be updated or deleted/,
+      );
+      await transactionalRefusal(
+        db,
+        'TRUNCATE of invoices is refused by its own migration trigger',
+        async () => {
+          await db.query('ALTER TABLE payments DROP CONSTRAINT payments_invoice_id_fkey');
+          await db.query(
+            'ALTER TABLE invoice_allocations DROP CONSTRAINT invoice_allocations_invoice_id_fkey',
+          );
+        },
+        () => db.query('TRUNCATE invoices'),
+        /billing history TRUNCATE is refused/,
+      );
+      await refusal(
+        db,
+        'TRUNCATE of payments is refused immediately',
+        () => db.query('TRUNCATE payments'),
+        /billing history TRUNCATE is refused/,
+      );
+      await refusal(
+        db,
+        'TRUNCATE of allocations is refused immediately',
+        () => db.query('TRUNCATE invoice_allocations'),
+        /billing history TRUNCATE is refused/,
+      );
+      await refusal(
+        db,
+        'DELETE of reviewed person crosswalk is refused immediately',
+        () =>
+          db.query(
+            `DELETE FROM migration_billing_person_crosswalk WHERE source_value='Ahmed Abdullah'`,
+          ),
+        /reviewed billing rules cannot be deleted or truncated/,
+      );
+      await refusal(
+        db,
+        'TRUNCATE of reviewed person crosswalk is refused immediately',
+        () => db.query('TRUNCATE migration_billing_person_crosswalk'),
+        /reviewed billing rules cannot be deleted or truncated/,
+      );
+      await refusal(
+        db,
+        'DELETE of reviewed currency rule is refused immediately',
+        () =>
+          db.query(
+            `DELETE FROM migration_billing_currency_rule WHERE field_kind='transaction_currency' AND source_value=' USD'`,
+          ),
+        /reviewed billing rules cannot be deleted or truncated/,
+      );
+      await refusal(
+        db,
+        'TRUNCATE of reviewed currency rules is refused immediately',
+        () => db.query('TRUNCATE migration_billing_currency_rule'),
+        /reviewed billing rules cannot be deleted or truncated/,
+      );
+
+      await db.query('BEGIN');
+      try {
+        await db.query(`CREATE OR REPLACE FUNCTION public.refuse_legacy_billing_change()
+          RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN COALESCE(NEW,OLD); END$$`);
+        const beforeWrite = (await db.query(`SELECT count(*) FROM invoices`)).rows[0]!.count;
+        assert.match(
+          (await billingStructureFailures(db)).join('\n'),
+          /function definition: public\.refuse_legacy_billing_change/,
+        );
+        await assert.rejects(async () => {
+          const failures = await billingStructureFailures(db);
+          assert.deepEqual(
+            failures,
+            [],
+            `Task 2.10A database safeguards differ from the PostgreSQL 17.11 reviewed definitions:\n${failures.join('\n')}`,
+          );
+          await db.query(
+            `INSERT INTO invoices(invoice_no,updated_at) VALUES('must-not-write',CURRENT_TIMESTAMP)`,
+          );
+        }, /database safeguards differ/);
+        assert.equal((await db.query(`SELECT count(*) FROM invoices`)).rows[0]!.count, beforeWrite);
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      await clean(db);
+      assert.equal(
+        (await db.query(`SELECT count(*) FROM invoices WHERE invoice_no='must-not-write'`)).rows[0]!
+          .count,
+        '0',
+      );
+      console.log(
+        '  ok    weakened migrated-row safeguard aborts before apply writes and its fixture mutation rolls back',
+      );
+
       await structureFailure(
         db,
         'CHECK with the reviewed text plus OR true is rejected',
@@ -520,6 +1041,34 @@ async function main(): Promise<void> {
             'ALTER FUNCTION quarantine.refuse_billing_evidence_change() SET search_path=quarantine',
           ),
         /function definition/,
+      );
+      await structureFailure(
+        db,
+        'migrated-row guard per-function search_path configuration is rejected',
+        () =>
+          db.query('ALTER FUNCTION public.refuse_legacy_billing_change() SET search_path=public'),
+        /function definition: public\.refuse_legacy_billing_change/,
+      );
+      await structureFailure(
+        db,
+        'reviewed-rule guard permissive body is rejected',
+        () =>
+          db.query(`CREATE OR REPLACE FUNCTION public.refuse_billing_rule_change()
+            RETURNS trigger LANGUAGE plpgsql AS $$BEGIN
+              -- Task 2.10A reviewed billing rules cannot be deleted or truncated
+              RETURN COALESCE(NEW,OLD);
+            END$$`),
+        /function definition: public\.refuse_billing_rule_change/,
+      );
+      await structureFailure(
+        db,
+        'migrated-row trigger with incomplete events is rejected',
+        async () => {
+          await db.query('DROP TRIGGER payments_legacy_no_change ON payments');
+          await db.query(`CREATE TRIGGER payments_legacy_no_change BEFORE UPDATE
+            ON payments FOR EACH ROW EXECUTE FUNCTION public.refuse_legacy_billing_change()`);
+        },
+        /trigger definition: payments_legacy_no_change/,
       );
       await structureFailure(
         db,

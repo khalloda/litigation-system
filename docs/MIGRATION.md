@@ -2122,11 +2122,36 @@ second identical run retained the same result digest and the same stronger
 whole-row digest—including IDs and timestamps—proving that it inserted or
 updated nothing.
 
-The 29-case disposable fixture includes a forced late failure and deliberate
-weakening of constraints, indexes, triggers, foreign keys, function body and
-`pg_proc.proconfig`. Every mutation was detected and rolled back. Exact catalog
+The disposable fixture includes a forced late failure and deliberate weakening
+of constraints, indexes, triggers, foreign keys, function bodies and
+`pg_proc.proconfig`. Every mutation is detected and rolled back. Exact catalog
 strings remain the reviewed PostgreSQL 17.11 baseline; the existing major
 version upgrade warning applies unchanged.
+
+**Post-review safeguard correction — 26 August 2026, migration 0046.** The
+migration adds triggers only; it does not update a billing or prior-stage row.
+An invoice, payment or allocation carrying a non-NULL
+`legacy_source_record_key` is migrated history and refuses direct UPDATE and
+DELETE. TRUNCATE is refused on all three tables. An application-native row
+whose migration provenance remains entirely NULL stays valid and editable and
+remains outside the legacy reconciliation and result digest. Ordinary updates
+also cannot attach migration provenance to a native row.
+
+The two owner-reviewed billing rule tables refuse UPDATE, DELETE and TRUNCATE.
+INSERT remains available for a future independently reviewed rule, but the
+current permanent reconciliation rejects every extra row until its exact
+content is reviewed and added to the approved baseline. The strict structure
+checker now pins all ten new triggers and both new functions completely,
+including timing, events, scope, enabled state, exact target function, complete
+body and empty `pg_proc.proconfig`.
+
+The expanded 66-case disposable fixture separately proves missing and ambiguous fee
+letters, duplicate invoice numbers, unsupported lookups, impossible dates,
+invalid and over-precision money, booleans, swapped Credit/Debit, allocation
+role/share/group/duplicate failures, non-empty `LawyerShare4Invoices`, reviewed
+rule drift, application-native edits, every migrated UPDATE/DELETE/TRUNCATE
+refusal and pre-write failure on a weakened safeguard. It re-proves clean
+reconciliation and exact structure after every rolled-back mutation.
 
 The transaction takes table locks that block concurrent writes and table DDL,
 and the apply procedure separately confirmed that no other migration or active
