@@ -2122,6 +2122,27 @@ second identical run retained the same result digest and the same stronger
 whole-row digest—including IDs and timestamps—proving that it inserted or
 updated nothing.
 
+**Canonical whole-row digest clarification — 26 August 2026.** Earlier
+handoff notes reported incompatible whole-row and ID/timestamp digests without
+recording their serializer, timezone or row-tag/order contract. Those values
+cannot be compared safely: the same PostgreSQL timestamp can hash differently
+when a driver renders it in a local timezone or with a different fractional
+precision. The billing rows did not change: migrations 0046–0048 contain no
+business-row rewrite, the semantic digest above remained unchanged, and
+independent source-to-target reconciliation still passed.
+
+The permanent canonical definition now hashes PostgreSQL JSON directly, tags
+each row by `invoice`, `payment` or `allocation`, orders by that tag and
+database ID, and renders both timestamps in UTC as
+`YYYY-MM-DDTHH:mm:ss.ffffffZ`. Its complete-row digest is
+`81f1d4176828d109f5af1bd90a397408c32dc967751254e172312de74c330925`;
+the narrower ID/timestamp digest is
+`a4e35c491255067d824aff6085a095d92d02bcf0946490c72c081632d4b200f2`.
+Task 2.10B checked both before its write and again inside its transaction, and
+`db:check` now enforces them. These are the reproducible baselines; the earlier
+undocumented serializations are historical reporting artefacts, not evidence
+of a row change.
+
 The disposable fixture includes a forced late failure and deliberate weakening
 of constraints, indexes, triggers, foreign keys, function bodies and
 `pg_proc.proconfig`. Every mutation is detected and rolled back. Exact catalog
@@ -2200,6 +2221,69 @@ snapshot visibility cannot promise that it will observe every possible
 external function-definition change made concurrently. The operational rule
 therefore remains **no concurrent migration or schema-changing process**; the
 second check is another guard, not a substitute for that rule.
+
+### Task 2.10B staff attendance — applied 26 August 2026
+
+`Attendance` is the firm's 4,022-row staff leave/location register. It is not
+meeting attendance: the three meeting tables remain archive-only under D2.
+Read-only inspection before implementation established 4,022 unique safe
+integer IDs, ten exact person-name values, 408 distinct date values from
+1 January 2019 through 11 May 2020, and 873 distinct free-text `AttSituation` values. All
+dates are valid Access midnight values; none carries a meaningful time. Every
+person value resolves through exactly one existing `person_name_alias`, with
+no trimming, Arabic normalisation, fuzzy matching or inference.
+
+`AttSituation` stays free text. It contains case variants, Arabic and English,
+embedded line breaks, leading/trailing or repeated whitespace and the literal
+word `Nothing`; none is a reason to invent a status lookup or discard a row.
+The transform copies the complete value to `situation` and
+`legacy_situation_raw`, preserving NULL separately from the empty string.
+
+The approved source digest is
+`7357fd7df5f9076228a0f07e1bed97ca3f184928010a40f6c524bd75ef72de38`.
+It orders by durable `src_record_key` and hashes the key, extraction
+fingerprint and all four exact Access values as JSON. JSON preserves NULL
+versus empty and escapes a line break without changing it. Filename and CSV
+row number are excluded because they are trace rather than identity. The one
+approved extraction fingerprint is
+`40EBF988D4C952A676A4A00A403AE9576D87C18E35D4F7E3BAD0A62DF92D5979`.
+
+Migration 0049 is additive: it added the durable key, fingerprint and complete
+payload to `attendance`, created immutable `quarantine.attendance_transform`,
+and installed the complete provenance CHECK, unique source index, foreign key
+and evidence/legacy-history guards. It inserted no source, target or
+quarantine row. The separate writer then rebuilt the plan, took locks, checked
+the source, canonical billing and all earlier protected state, and inserted
+inside one serializable transaction. Independent reconciliation ran before
+commit. The result is **4,022 transformed and zero quarantined**, covering all
+ten people.
+
+The permanent semantic result digest is
+`f6971cca7139e191d1fc192d290d496436d8bbc0c6153dd27d00c295e6b10ab5`.
+It includes every transformed or quarantined legacy value, person link,
+durable source identity, extraction fingerprint and complete source payload.
+It excludes generated IDs and timestamps so a clean rebuild is stable, and it
+excludes filename and CSV row position for the same identity/trace distinction
+as the source digest. `db:check` reconstructs every expected target and exact
+ordered quarantine reason independently from staging, enforces this digest,
+and pins the complete PostgreSQL 17.11 catalog definitions including empty
+function configuration. The existing major-version upgrade warning applies.
+
+The disposable fixture proves invalid and duplicate IDs; invalid dates and
+meaningful times; missing, empty, unresolved and ambiguous person aliases;
+NULL/empty text, Arabic, line breaks and whitespace; exact target/quarantine
+evidence; same-count source changes; reordered trace; late rollback; native
+CRUD; every partial provenance shape; and weakened constraints, indexes,
+foreign keys, triggers, bodies and function configuration. Each destructive
+case runs only in its own disposable database and returns to clean structure.
+
+The owner-approved identical live rerun created and updated nothing. Target
+IDs remained 1–4,022, quarantine remained empty, the semantic result digest
+remained unchanged and a whole-row digest including IDs, timestamps,
+associations and evidence remained
+`2863afb54d13badd34fd894ec64bebf492f61692cbf8be88359fc140fb451a10`.
+All earlier protected counts and digests, including all 744 review answers and
+the canonical billing baselines above, were unchanged.
 
 ## Gate 4 — proving it worked
 

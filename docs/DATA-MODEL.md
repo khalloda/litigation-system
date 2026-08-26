@@ -493,7 +493,13 @@ quietly destroy. See "The four classes of Arabic name variation" in
 ## Deferred — tables built, screens later
 
 ### `attendance` — 4,022 rows
-Staff leave register. `person_id`, `date`, `status`.
+Staff leave/location register. Task 2.10B transformed all 4,022 source rows and
+quarantined none. `legacy_id`, `person_id`, `legacy_person_raw`,
+`attendance_date`, `situation`, `legacy_situation_raw`, durable source key,
+extraction fingerprint and complete source payload. The ten exact legacy name
+values resolve only through `person_name_alias`. `situation` is the original
+free-text `AttSituation`, not a status lookup; all 873 distinct values and all
+NULL/empty, case, line-break and whitespace distinctions are preserved.
 **Not meeting attendance** — see D2.
 
 ### `invoice_allocations`

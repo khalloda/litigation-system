@@ -1871,8 +1871,8 @@ model LookupLawyerShareRole {
 //  recorded, so such a rule would hide billing from everybody.
 //
 //  Task 2.10A completed the invoice, payment and allocation models and migrated
-//  all reviewed Access billing history. The separate staff-attendance model is
-//  already present, but its Task 2.10B transform remains pending.
+//  all reviewed Access billing history. Task 2.10B separately migrated the
+//  complete staff leave/location register.
 // ===========================================================================
 
 /// Invoices. 543 rows at Stage 2, 2010 to December 2021. **Read-only.**
@@ -2122,7 +2122,8 @@ model InvoiceAllocation {
   @@map("invoice_allocations")
 }
 
-/// The staff leave register. 4,022 rows at Stage 2.
+/// The staff leave/location register. Task 2.10B reconciles all 4,022 source
+/// rows through exact person aliases while preserving every free-text value.
 ///
 /// **THIS IS NOT MEETING ATTENDANCE.** D2 drops meetings and their attendance
 /// entirely — three tables, 3,230 rows, archived and never migrated. This is
@@ -2146,7 +2147,7 @@ model Attendance {
 
   /// Access `AttSituation`, 100%. **FREE TEXT, NOT A STATUS LIST.**
   ///
-  /// 865 distinct values: `At the Office` 749, `Nothing` 498,
+  /// 873 distinct values: `At the Office` 749, `Nothing` 498,
   /// `At the office` 327 — the same value in different case — `Annual
   /// Vacation` 132, then hundreds of one-offs like
   /// `Admin work at Cairo economical court`. It is a daily log somebody typed
@@ -2158,6 +2159,13 @@ model Attendance {
   /// The original text byte for byte, so a Phase 2 cleanup that folds `At the
   /// Office` and `At the office` together stays reversible.
   legacySituationRaw String? @map("legacy_situation_raw")
+
+  /// Durable complete-row identity from staging. Filename and CSV row are
+  /// trace only and do not participate in identity. All four Access columns
+  /// remain in the payload with NULL distinct from the empty string.
+  legacySourceRecordKey        String? @unique(map: "attendance_legacy_source_record_key_key") @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?   @map("legacy_source_payload") @db.JsonB
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")

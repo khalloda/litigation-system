@@ -1105,9 +1105,36 @@ only ever seen good data is not known to work.
       it also proves independent reconciliation catches every shape when the
       named CHECK is disabled inside a rolled-back fixture.
 
-- [ ] **2.10B Transform: staff attendance** — `Attendance`, the 4,022-row
-      leave register. This is separate from billing and from meeting attendance
-      (D2). Do not implement it as part of 2.10A.
+- [x] **2.10B Transform: staff attendance** — completed 26 August 2026,
+      migration 0049 plus the separate serializable writer. All 4,022 rows in
+      the staff leave/location register transformed and zero quarantined. This
+      remains separate from billing and from meeting attendance (D2).
+
+      Every source ID is a unique safe integer; every date is an exact valid
+      midnight Access date; and all ten person values resolve through exactly
+      one existing `person_name_alias`. No name is trimmed, normalised, inferred
+      or fuzzy-matched. `AttSituation` is free text, not a lookup: all 873
+      distinct values, including NULL/empty distinctions, case differences,
+      Arabic, embedded line breaks and irregular whitespace, survive byte for
+      byte in both the usable and raw fields.
+
+      Durable identity is independent of CSV filename and row position. The
+      approved source digest is
+      `7357fd7df5f9076228a0f07e1bed97ca3f184928010a40f6c524bd75ef72de38`;
+      the independently reconstructed semantic result digest is
+      `f6971cca7139e191d1fc192d290d496436d8bbc0c6153dd27d00c295e6b10ab5`.
+      Permanent `db:check` reconciliation rebuilds every target or quarantine
+      outcome from staging and checks the exact PostgreSQL 17.11 constraint,
+      index, foreign key, trigger and function definitions.
+
+      The disposable fixture proves every unsafe ID/date/person case, NULL and
+      empty preservation, Arabic and whitespace preservation, target and
+      quarantine tampering, source reordering, transactional rollback,
+      idempotency, native-row behaviour, complete provenance shape and catalog
+      weakening. The approved identical live rerun changed nothing: IDs stayed
+      1–4,022, quarantine stayed empty, and the complete row/ID/timestamp/
+      association/evidence digest remained
+      `2863afb54d13badd34fd894ec64bebf492f61692cbf8be88359fc140fb451a10`.
 
 - [ ] **2.11 Write the 54 client logos** to the server folder defined in
       **D15** — `/var/lib/litigation/client-logos/{client_id}/{filename}` —
@@ -1299,7 +1326,7 @@ allows. Test with real volumes.
 ## Phase 2 — after go-live
 
 - [ ] Attendance screens
-      **`AttSituation` needs its own review first.** 865 distinct values, and
+      **`AttSituation` needs its own review first.** 873 distinct values, and
       it is a free-text daily log rather than a status list — `At the Office`
       749, `At the office` 327 (the same value, different case), then hundreds
       of one-offs. Do not design a dropdown until the firm has been through

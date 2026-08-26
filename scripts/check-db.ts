@@ -42,6 +42,10 @@ import { reconcileFeeLetters } from './lib/fee-letter-reconciliation';
 import { feeLetterStructureFailures } from './lib/fee-letter-structure';
 import { reconcileBillingHistory } from './lib/billing-reconciliation';
 import { billingStructureFailures } from './lib/billing-structure';
+import { BILLING_CANONICAL_BASELINE, billingCanonicalState } from './lib/billing-baseline';
+import { reconcileAttendance } from './lib/attendance-reconciliation';
+import { attendanceStructureFailures } from './lib/attendance-structure';
+import { ATTENDANCE_RESULT_BASELINE, ATTENDANCE_SOURCE_BASELINE } from './lib/attendance-baseline';
 import { ATTENDEE_AUDIT_BASELINE, REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
@@ -771,7 +775,7 @@ async function main() {
     ['powers_of_attorney', 'poa_capacity_duplicate'],
     //  A fifth person-name mapping, on the leave register.
     ['attendance', 'legacy_person_raw'],
-    //  AttSituation is a free-text daily log, 865 distinct values. The raw
+    //  AttSituation is a free-text daily log, 873 distinct values. The raw
     //  column keeps the original when a Phase 2 review folds `At the Office`
     //  and `At the office` together.
     ['attendance', 'legacy_situation_raw'],
@@ -966,8 +970,8 @@ async function main() {
   );
 
   // 9b. Billing — task 1.5 built the shape; Task 2.10A migrated the historical
-  //     invoices, payments and allocation rows. Task 2.10B staff attendance
-  //     remains pending.
+  //     invoices, payments and allocation rows. Task 2.10B migrated the
+  //     separate staff leave/location register.
   //
   //     Money is NEVER a floating-point number. A double cannot hold 0.1
   //     exactly, so summing 597 payments in one gives a total that is close
@@ -1491,9 +1495,9 @@ async function main() {
 
   record(
     'Quarantine tables exist',
-    '19 (the 16 prior tables plus three billing evidence tables)',
+    '20 (the 16 prior tables, three billing evidence tables and Attendance evidence)',
     String(quarantine.tables),
-    quarantine.tables === 19n,
+    quarantine.tables === 20n,
   );
   //     If original_value ever gains NOT NULL, every finding whose deviation
   //     IS a null value becomes unrecordable — and the natural fix is to
@@ -2471,6 +2475,7 @@ async function main() {
       feeStructure.length === 0,
     );
     const billingResult = await reconcileBillingHistory(relationshipDb);
+    const billingCanonical = await billingCanonicalState(relationshipDb);
     record(
       'Billing history and immutable evidence reconcile',
       '543 invoices; 597 payments; 47 allocation rows in 15 exact-one groups; no source loss',
@@ -2478,7 +2483,8 @@ async function main() {
         ? `${billingResult.invoiceSourceCount} = ${billingResult.invoiceTargetCount} invoices + ${billingResult.invoiceQuarantineCount} quarantined; ` +
             `${billingResult.paymentSourceCount} = ${billingResult.paymentTargetCount} payments + ${billingResult.paymentQuarantineCount} quarantined; ` +
             `${billingResult.allocationSourceCount} = ${billingResult.allocationTargetCount} allocations + ${billingResult.allocationQuarantineCount} quarantined; ` +
-            `${billingResult.allocationGroupCount} groups, ${billingResult.distinctAllocationPeople} people, ${billingResult.referenceOnlyCount} reference-only rows`
+            `${billingResult.allocationGroupCount} groups, ${billingResult.distinctAllocationPeople} people, ${billingResult.referenceOnlyCount} reference-only rows; ` +
+            `canonical rows ${billingCanonical.completeRowDigest}, ids/times ${billingCanonical.identityTimestampDigest}`
         : billingResult.defects.join('; '),
       billingResult.invoiceSourceCount === 543 &&
         billingResult.invoiceTargetCount === 543 &&
@@ -2492,6 +2498,9 @@ async function main() {
         billingResult.allocationGroupCount === 15 &&
         billingResult.distinctAllocationPeople === 9 &&
         billingResult.referenceOnlyCount === 0 &&
+        billingCanonical.completeRowDigest === BILLING_CANONICAL_BASELINE.completeRowDigest &&
+        billingCanonical.identityTimestampDigest ===
+          BILLING_CANONICAL_BASELINE.identityTimestampDigest &&
         billingResult.defects.length === 0,
     );
     const billingStructure = await billingStructureFailures(relationshipDb);
@@ -2502,6 +2511,29 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : billingStructure.join('; '),
       billingStructure.length === 0,
+    );
+    const attendanceResult = await reconcileAttendance(relationshipDb);
+    record(
+      'Staff attendance reconciles to the leave register',
+      '4,022 source rows; every exact value, alias, date and provenance field has one target or quarantine outcome',
+      attendanceResult.defects.length === 0
+        ? `${attendanceResult.sourceCount} = ${attendanceResult.targetCount} transformed + ${attendanceResult.quarantineCount} quarantined; ${attendanceResult.distinctPeople} people; source ${ATTENDANCE_SOURCE_BASELINE.digest}; result ${attendanceResult.resultDigest}`
+        : attendanceResult.defects.join('; '),
+      attendanceResult.sourceCount === ATTENDANCE_SOURCE_BASELINE.rows &&
+        attendanceResult.targetCount === ATTENDANCE_RESULT_BASELINE.targetRows &&
+        attendanceResult.quarantineCount === ATTENDANCE_RESULT_BASELINE.quarantineRows &&
+        attendanceResult.distinctPeople === ATTENDANCE_RESULT_BASELINE.distinctPeople &&
+        attendanceResult.resultDigest === ATTENDANCE_RESULT_BASELINE.digest &&
+        attendanceResult.defects.length === 0,
+    );
+    const attendanceStructure = await attendanceStructureFailures(relationshipDb);
+    record(
+      'Attendance constraints and evidence guards',
+      'complete PostgreSQL 17.11 definitions, including function configuration',
+      attendanceStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : attendanceStructure.join('; '),
+      attendanceStructure.length === 0,
     );
   } finally {
     await relationshipDb.end();
