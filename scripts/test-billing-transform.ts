@@ -29,11 +29,48 @@ const expected: typeof LIVE_BILLING_COUNTS = {
 
 const fixtureKey = (number: number) => `${number.toString(16).padStart(64, '0')}:000001`;
 type LegacyBillingTable = 'invoices' | 'payments' | 'invoice_allocations';
+type ProvenanceFieldFixture = Readonly<{ field: string; value: unknown }>;
 
 const legacyChangeTrigger: Record<LegacyBillingTable, string> = {
   invoices: 'invoices_legacy_no_change',
   payments: 'payments_legacy_no_change',
   invoice_allocations: 'invoice_allocations_legacy_no_change',
+};
+const sourceIdentityConstraint: Record<LegacyBillingTable, string> = {
+  invoices: 'invoices_source_identity_shape',
+  payments: 'payments_source_identity_shape',
+  invoice_allocations: 'invoice_allocations_source_identity_shape',
+};
+const provenanceFields: Record<LegacyBillingTable, readonly ProvenanceFieldFixture[]> = {
+  invoices: [
+    { field: 'legacy_id', value: 999 },
+    { field: 'legacy_contract_id', value: 'legacy-looking' },
+    { field: 'legacy_currency_raw', value: 'legacy-looking' },
+    { field: 'legacy_status_raw', value: 'legacy-looking' },
+    { field: 'legacy_type_raw', value: 'legacy-looking' },
+    { field: 'legacy_receipt_currency_raw', value: 'legacy-looking' },
+    { field: 'legacy_source_record_key', value: fixtureKey(300) },
+    { field: 'legacy_source_extraction_sha256', value: FP },
+    { field: 'legacy_source_payload', value: { fixture: 'partial-invoice' } },
+  ],
+  payments: [
+    { field: 'legacy_id', value: 999 },
+    { field: 'legacy_invoice_no', value: 'legacy-looking' },
+    { field: 'legacy_currency_raw', value: 'legacy-looking' },
+    { field: 'legacy_source_record_key', value: fixtureKey(301) },
+    { field: 'legacy_source_extraction_sha256', value: FP },
+    { field: 'legacy_source_payload', value: { fixture: 'partial-payment' } },
+  ],
+  invoice_allocations: [
+    { field: 'legacy_id', value: 999 },
+    { field: 'legacy_invoice_no', value: 'legacy-looking' },
+    { field: 'legacy_lawyer_raw', value: 'legacy-looking' },
+    { field: 'legacy_percent_raw', value: 'legacy-looking' },
+    { field: 'legacy_lawyer_as_raw', value: 'legacy-looking' },
+    { field: 'legacy_source_record_key', value: fixtureKey(302) },
+    { field: 'legacy_source_extraction_sha256', value: FP },
+    { field: 'legacy_source_payload', value: { fixture: 'partial-allocation' } },
+  ],
 };
 
 function identifier(value: string): string {
@@ -128,6 +165,30 @@ async function transactionalRefusal(
   }
   await clean(db);
   console.log(`  ok    ${label}`);
+}
+
+async function partialProvenanceRefusal(
+  db: Client,
+  table: LegacyBillingTable,
+  nativeId: number,
+  fixture: ProvenanceFieldFixture,
+): Promise<void> {
+  const relation = identifier(table);
+  const column = identifier(fixture.field);
+  await assert.rejects(
+    db.query(`UPDATE ${relation} SET ${column}=$1 WHERE id=$2`, [fixture.value, nativeId]),
+    /migration provenance cannot be attached by ordinary update/,
+  );
+  await assert.rejects(
+    db.query(`INSERT INTO ${relation}(${column},updated_at) VALUES($1,CURRENT_TIMESTAMP)`, [
+      fixture.value,
+    ]),
+    new RegExp(sourceIdentityConstraint[table]),
+  );
+  await clean(db);
+  console.log(
+    `  ok    ${table}.${fixture.field} cannot be attached to a native UPDATE or partial INSERT`,
+  );
 }
 
 async function structureFailure(
@@ -776,12 +837,84 @@ async function main(): Promise<void> {
       );
       assert.equal(await billingResultDigest(db), legacyDigestBeforeNative);
       assert.deepEqual((await reconcileBillingHistory(db, false)).defects, []);
+      for (const fixture of provenanceFields.invoices)
+        await partialProvenanceRefusal(db, 'invoices', nativeInvoiceId, fixture);
+      for (const fixture of provenanceFields.payments)
+        await partialProvenanceRefusal(db, 'payments', nativePaymentId, fixture);
+      for (const fixture of provenanceFields.invoice_allocations)
+        await partialProvenanceRefusal(db, 'invoice_allocations', nativeAllocationId, fixture);
+      assert.equal(await billingResultDigest(db), legacyDigestBeforeNative);
+      assert.deepEqual((await reconcileBillingHistory(db, false)).defects, []);
       await db.query(`DELETE FROM invoice_allocations WHERE id=$1`, [nativeAllocationId]);
       await db.query(`DELETE FROM payments WHERE id=$1`, [nativePaymentId]);
       await db.query(`DELETE FROM invoices WHERE id=$1`, [nativeInvoiceId]);
       await clean(db);
       console.log(
         '  ok    application-native invoice, payment and allocation remain valid, editable and outside legacy reconciliation/digest',
+      );
+
+      await db.query('BEGIN');
+      try {
+        const completeInvoiceId = Number(
+          (
+            await db.query<{ id: number }>(
+              `INSERT INTO invoices(
+                 legacy_id,invoice_no,fee_letter_id,legacy_contract_id,invoice_date,
+                 amount,currency,legacy_currency_raw,status_id,legacy_status_raw,
+                 type_id,legacy_type_raw,legacy_receipt_currency_raw,
+                 legacy_source_record_key,legacy_source_extraction_sha256,
+                 legacy_source_payload,updated_at)
+               SELECT 900001,'fixture-complete',f.id,'100',DATE '2026-08-26',
+                      1,'EGP','EGP',s.id,'Paid',NULL,NULL,NULL,$1,$2,
+                      '{"Inv-No":"fixture-complete"}'::jsonb,CURRENT_TIMESTAMP
+                 FROM fee_letters f CROSS JOIN lookup_invoice_status s
+                WHERE f.contract_id=100 AND s.code='Paid'
+               RETURNING id`,
+              [fixtureKey(400), FP],
+            )
+          ).rows[0]!.id,
+        );
+        const completePaymentId = Number(
+          (
+            await db.query<{ id: number }>(
+              `INSERT INTO payments(
+                 legacy_id,invoice_id,legacy_invoice_no,credit,currency,
+                 legacy_currency_raw,legacy_source_record_key,
+                 legacy_source_extraction_sha256,legacy_source_payload,updated_at)
+               VALUES(900001,$1,'fixture-complete',0,NULL,NULL,$2,$3,
+                      '{"ID":"900001"}'::jsonb,CURRENT_TIMESTAMP)
+               RETURNING id`,
+              [completeInvoiceId, fixtureKey(401), FP],
+            )
+          ).rows[0]!.id,
+        );
+        const completeAllocationId = Number(
+          (
+            await db.query<{ id: number }>(
+              `INSERT INTO invoice_allocations(
+                 legacy_id,invoice_id,legacy_invoice_no,person_id,
+                 legacy_lawyer_raw,share,legacy_percent_raw,lawyer_role_id,
+                 legacy_lawyer_as_raw,legacy_source_record_key,
+                 legacy_source_extraction_sha256,legacy_source_payload,updated_at)
+               SELECT 900001,$1,'fixture-complete',25,'Ahmed Abdullah',1,
+                      '1.000',r.id,'Reviewer',$2,$3,
+                      '{"ID":"900001"}'::jsonb,CURRENT_TIMESTAMP
+                 FROM lookup_lawyer_share_role r WHERE r.code='Reviewer'
+               RETURNING id`,
+              [completeInvoiceId, fixtureKey(402), FP],
+            )
+          ).rows[0]!.id,
+        );
+        assert.ok(completeInvoiceId > 0);
+        assert.ok(completePaymentId > 0);
+        assert.ok(completeAllocationId > 0);
+        assert.deepEqual(await billingStructureFailures(db), []);
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      await clean(db);
+      console.log(
+        '  ok    controlled complete migrated invoice, payment and allocation inserts remain structurally valid, including reviewed NULL raw values',
       );
 
       const digestBeforeTrace = await billingResultDigest(db);
@@ -988,13 +1121,36 @@ async function main(): Promise<void> {
 
       await structureFailure(
         db,
-        'CHECK with the reviewed text plus OR true is rejected',
+        'expanded invoice provenance CHECK weakened with OR true is rejected',
         async () => {
           await db.query('ALTER TABLE invoices DROP CONSTRAINT invoices_source_identity_shape');
           await db.query(`ALTER TABLE invoices ADD CONSTRAINT invoices_source_identity_shape
             CHECK (legacy_source_record_key IS NULL OR legacy_source_record_key IS NOT NULL OR true)`);
         },
         /constraint definition: invoices_source_identity_shape/,
+      );
+      await structureFailure(
+        db,
+        'expanded payment provenance CHECK weakened with OR true is rejected',
+        async () => {
+          await db.query('ALTER TABLE payments DROP CONSTRAINT payments_source_identity_shape');
+          await db.query(`ALTER TABLE payments ADD CONSTRAINT payments_source_identity_shape
+            CHECK (legacy_source_record_key IS NULL OR legacy_source_record_key IS NOT NULL OR true)`);
+        },
+        /constraint definition: payments_source_identity_shape/,
+      );
+      await structureFailure(
+        db,
+        'expanded allocation provenance CHECK weakened with OR true is rejected',
+        async () => {
+          await db.query(
+            'ALTER TABLE invoice_allocations DROP CONSTRAINT invoice_allocations_source_identity_shape',
+          );
+          await db.query(`ALTER TABLE invoice_allocations
+            ADD CONSTRAINT invoice_allocations_source_identity_shape
+            CHECK (legacy_source_record_key IS NULL OR legacy_source_record_key IS NOT NULL OR true)`);
+        },
+        /constraint definition: invoice_allocations_source_identity_shape/,
       );
       await structureFailure(
         db,

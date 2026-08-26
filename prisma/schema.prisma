@@ -1861,6 +1861,9 @@ model LookupLawyerShareRole {
 //  every legacy-derived billing row immutable in PostgreSQL. Stage 3 must
 //  still enforce the Phase 1 rule at the server boundary for application-
 //  native rows; hiding a button is never sufficient.
+//  Migration 0047 defines an application-native billing row as one with every
+//  migration-only field NULL. Partial provenance is rejected structurally;
+//  a normal update cannot attach legacy provenance later.
 //
 //  BILLING IS VISIBLE TO ALL FOUR ROLES, for all clients (D14). Not
 //  restricted to a lawyer's own matters: 834 of 1,730 matters have no lawyer
@@ -1955,6 +1958,8 @@ model Invoice {
 
   /// Task 2.10A source identity derives from the stable invoice number, never
   /// filename, row order or Pay-Date. The permitted payload excludes Pay-Date.
+  /// A native invoice has every legacy/source field NULL; the database rejects
+  /// partial provenance while permitting a controlled complete migrated insert.
   legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload")
@@ -2012,7 +2017,9 @@ model Payment {
   details String?
 
   /// Stable payment identity comes from Access ID. The payload preserves all
-  /// seven source columns and excludes filename/row trace from identity.
+  /// seven source columns and excludes filename/row trace from identity. A
+  /// native payment has every legacy/source field NULL; partial provenance is
+  /// rejected while a controlled complete migrated insert remains possible.
   legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload")
@@ -2098,6 +2105,7 @@ model InvoiceAllocation {
 
   /// Stable allocation identity comes from Access ID; application-native rows
   /// have all migration provenance NULL and remain outside reconciliation.
+  /// The database refuses partial provenance on INSERT or ordinary UPDATE.
   legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload")

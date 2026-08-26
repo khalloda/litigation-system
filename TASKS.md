@@ -1082,6 +1082,17 @@ only ever seen good data is not known to work.
       66-case disposable fixture covers every post-review negative case and
       re-proves clean structure and reconciliation after each rollback.
 
+      **Final provenance correction, 26 August 2026 (migration 0047).** An
+      application-native invoice, payment or allocation now means every
+      migration-only field for that table is NULL. The three exact CHECK
+      constraints refuse partial provenance on INSERT, while the shared
+      UPDATE trigger refuses attaching any one of the 23 migration-only
+      fields to a native row. Normal native business edits and DELETE remain
+      valid, and the controlled writer can still reconstruct complete migrated
+      rows. The 92-case disposable fixture tests every field independently,
+      both as an UPDATE and a partial INSERT, and proves complete migrated
+      inserts plus the reviewed nullable raw values remain valid.
+
 - [ ] **2.10B Transform: staff attendance** — `Attendance`, the 4,022-row
       leave register. This is separate from billing and from meeting attendance
       (D2). Do not implement it as part of 2.10A.

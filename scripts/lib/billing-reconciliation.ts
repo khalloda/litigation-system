@@ -648,14 +648,23 @@ export async function reconcileBillingHistory(
   }>(`
     SELECT
       (SELECT count(*)::int FROM invoices WHERE
-         (legacy_source_record_key IS NULL)<>(legacy_source_extraction_sha256 IS NULL)
-         OR (legacy_source_record_key IS NULL)<>(legacy_source_payload IS NULL))+
+         legacy_source_record_key IS NULL AND
+         (legacy_id IS NOT NULL OR legacy_contract_id IS NOT NULL OR
+          legacy_currency_raw IS NOT NULL OR legacy_status_raw IS NOT NULL OR
+          legacy_type_raw IS NOT NULL OR legacy_receipt_currency_raw IS NOT NULL OR
+          legacy_source_extraction_sha256 IS NOT NULL OR legacy_source_payload IS NOT NULL))+
       (SELECT count(*)::int FROM payments WHERE
-         (legacy_source_record_key IS NULL)<>(legacy_source_extraction_sha256 IS NULL)
-         OR (legacy_source_record_key IS NULL)<>(legacy_source_payload IS NULL))+
+         legacy_source_record_key IS NULL AND
+         (legacy_id IS NOT NULL OR legacy_invoice_no IS NOT NULL OR
+          legacy_currency_raw IS NOT NULL OR legacy_source_extraction_sha256 IS NOT NULL OR
+          legacy_source_payload IS NOT NULL))+
       (SELECT count(*)::int FROM invoice_allocations WHERE
-         (legacy_source_record_key IS NULL)<>(legacy_source_extraction_sha256 IS NULL)
-         OR (legacy_source_record_key IS NULL)<>(legacy_source_payload IS NULL)) partial,
+         legacy_source_record_key IS NULL AND
+         (legacy_id IS NOT NULL OR legacy_invoice_no IS NOT NULL OR
+          legacy_lawyer_raw IS NOT NULL OR legacy_percent_raw IS NOT NULL OR
+          legacy_lawyer_as_raw IS NOT NULL OR
+          legacy_source_extraction_sha256 IS NOT NULL OR
+          legacy_source_payload IS NOT NULL)) partial,
       (SELECT count(*)::int FROM information_schema.columns
         WHERE table_schema IN ('public','quarantine')
           AND lower(replace(column_name,'_',''))='paydate') pay_date_columns,

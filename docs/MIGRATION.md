@@ -2153,6 +2153,25 @@ rule drift, application-native edits, every migrated UPDATE/DELETE/TRUNCATE
 refusal and pre-write failure on a weakened safeguard. It re-proves clean
 reconciliation and exact structure after every rolled-back mutation.
 
+**Final provenance correction — 26 August 2026, migration 0047.** A billing
+row is application-native only when every migration-only field on that table is
+NULL. The three source-identity CHECK constraints reject an INSERT with any
+partial provenance. The shared UPDATE trigger checks the complete table-
+specific inventory and refuses attaching even one legacy id, raw value, source
+key, extraction fingerprint or source payload to a native row. Native business
+fields remain editable and a native row remains deletable.
+
+The controlled historical writer deliberately has no INSERT trigger. It can
+therefore reconstruct a clean database by inserting a complete migrated row,
+which must satisfy the migrated branch of the CHECK. That branch still permits
+the reviewed source NULLs: invoice type on 21269 and 21772, optional receipt-
+currency raw text, and optional payment currency raw text. Migration 0047 first
+checks for an existing partial row and fails rather than rewriting or silently
+reclassifying one. The expanded 92-case disposable fixture covers all 23
+migration-only fields independently on native UPDATE and partial INSERT,
+complete migrated inserts for all three targets, all pre-existing billing
+safeguards, and exact PostgreSQL 17.11 definitions.
+
 The transaction takes table locks that block concurrent writes and table DDL,
 and the apply procedure separately confirmed that no other migration or active
 database session existed. Do not overread the second catalog check: PostgreSQL
