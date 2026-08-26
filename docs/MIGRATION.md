@@ -2284,13 +2284,25 @@ keys, enabled states, trigger events and functions. Each destructive case runs
 only in its own disposable database and returns to clean structure and
 reconciliation.
 
-The owner-approved identical live rerun created and updated nothing. Target
-IDs remained 1–4,022, quarantine remained empty, the semantic result digest
-remained unchanged and a whole-row digest including IDs, timestamps,
-associations and evidence remained
-`2863afb54d13badd34fd894ec64bebf492f61692cbf8be88359fc140fb451a10`.
-All earlier protected counts and digests, including all 744 review answers and
-the canonical billing baselines above, were unchanged.
+The permanent reproducible evidence is 4,022 source rows, 4,022 target rows,
+zero quarantine rows and ten distinct resolved people. The source digest is
+`7357fd7df5f9076228a0f07e1bed97ca3f184928010a40f6c524bd75ef72de38`;
+the semantic result digest is
+`f6971cca7139e191d1fc192d290d496436d8bbc0c6153dd27d00c295e6b10ab5`.
+The owner-approved identical live rerun created and updated nothing, and IDs
+remained 1–4,022. Independent reconciliation and the immutable database
+safeguards remain permanent, and all 79 current `db:check` invariants pass. All
+earlier protected counts and digests, including all 744 review answers and the
+canonical billing baselines above, were unchanged.
+
+That one execution also compared a complete row/ID/timestamp/association/
+evidence digest and observed
+`2863afb54d13badd34fd894ec64bebf492f61692cbf8be88359fc140fb451a10`
+unchanged before and after the approved rerun. This supported that execution,
+but the one-time command did not record its exact serializer, ordering and
+timezone rules. The value cannot now be independently regenerated; it is a
+historical execution artefact, not a permanent baseline and not suitable for
+future comparisons. No replacement complete-row hash has been invented.
 
 ## Gate 4 — proving it worked
 

@@ -1131,16 +1131,34 @@ only ever seen good data is not known to work.
       empty preservation, Arabic and whitespace preservation, every target
       field independently, every quarantine evidence field independently,
       missing/extra/both/neither partition outcomes, source-field tampering,
-      source reordering with a non-vacuous identity assertion, transactional
-      rollback and idempotency. It directly refuses six complete migrated-
-      shaped partial identity combinations and proves independent reconciliation
-      detects each when the CHECK is removed inside a rolled-back fixture. It
-      also covers native-row behaviour and exact catalog weakening, including
-      disabled or incomplete triggers. The approved identical live rerun
-      changed nothing: IDs stayed 1–4,022, quarantine stayed empty, and the
-      complete row/ID/timestamp/
-      association/evidence digest remained
-      `2863afb54d13badd34fd894ec64bebf492f61692cbf8be88359fc140fb451a10`.
+      transactional rollback and idempotency. The parent already compared
+      reordered target and quarantine identities with their pre-change values;
+      the post-review work added a deliberate negative proof that the target
+      comparison is non-vacuous and expanded the verification coverage. It
+      directly refuses six complete migrated-shaped partial identity
+      combinations and proves independent reconciliation detects each when the
+      CHECK is removed inside a rolled-back fixture. It also covers native-row
+      behaviour and exact catalog weakening, including disabled or incomplete
+      triggers.
+
+      The permanent reproducible evidence is 4,022 source rows, 4,022 target
+      rows, zero quarantine rows and ten distinct resolved people. Source digest
+      `7357fd7df5f9076228a0f07e1bed97ca3f184928010a40f6c524bd75ef72de38`
+      and semantic result digest
+      `f6971cca7139e191d1fc192d290d496436d8bbc0c6153dd27d00c295e6b10ab5`
+      are independently reproducible. IDs remained 1–4,022 during the approved
+      identical rerun. Independent reconciliation and the immutable database
+      safeguards remain permanent, and all 79 current `db:check` invariants
+      pass.
+
+      The one-time complete row/ID/timestamp/association/evidence comparison
+      observed
+      `2863afb54d13badd34fd894ec64bebf492f61692cbf8be88359fc140fb451a10`
+      unchanged before and after that approved rerun, supporting that execution.
+      Its command did not record the exact serializer, ordering and timezone
+      rules, so the value cannot now be independently regenerated. It is a
+      historical execution artefact, not a permanent baseline and not suitable
+      for future comparisons.
 
 - [ ] **2.11 Write the 54 client logos** to the server folder defined in
       **D15** — `/var/lib/litigation/client-logos/{client_id}/{filename}` —
