@@ -207,7 +207,10 @@ partner tries to print.
 The database stores the relative path, original filename, content type and byte
 size — never the image itself.
 
-**Scale:** 54 logos today, 771 KB total. All 313 clients would be roughly 5 MB.
+**Measured scale:** 54 logos, exactly **1,541,428 bytes** (about 1.47 MiB).
+The earlier 771 KB figure was a planning estimate. Task 2.11 replaced it on
+26 August 2026 with the independently summed, manifest-backed extraction; all
+54 CSV references, files, byte sizes, content signatures and hashes agree.
 
 ## D16 — Backup policy
 

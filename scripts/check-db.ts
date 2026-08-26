@@ -11,6 +11,8 @@
 
 import 'dotenv/config';
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Client } from 'pg';
 import { db } from '../src/lib/db';
 import {
@@ -47,6 +49,12 @@ import { reconcileAttendance } from './lib/attendance-reconciliation';
 import { attendanceStructureFailures } from './lib/attendance-structure';
 import { ATTENDANCE_RESULT_BASELINE, ATTENDANCE_SOURCE_BASELINE } from './lib/attendance-baseline';
 import { ATTENDEE_AUDIT_BASELINE, REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
+import {
+  CLIENT_LOGO_RESULT_BASELINE,
+  CLIENT_LOGO_SOURCE_BASELINE,
+} from './lib/client-logo-baseline';
+import { reconcileClientLogos } from './lib/client-logo-reconciliation';
+import { clientLogoStructureFailures } from './lib/client-logo-structure';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
 
@@ -2534,6 +2542,36 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : attendanceStructure.join('; '),
       attendanceStructure.length === 0,
+    );
+    const logoRoot = process.env['CLIENT_LOGO_ROOT'];
+    assert.ok(logoRoot, 'CLIENT_LOGO_ROOT is required for Task 2.11 reconciliation');
+    const sourceRoot = resolve('_migration', 'attachments', 'العملاء__logo');
+    const logoResult = await reconcileClientLogos(relationshipDb, {
+      logoRoot,
+      sourceRoot: existsSync(sourceRoot) ? sourceRoot : undefined,
+    });
+    record(
+      'Migrated client logos reconcile to source and files',
+      '54 immutable import rows, 54 clients, exact source/result digests and every referenced file valid',
+      logoResult.defects.length === 0
+        ? `${logoResult.sourceRows} source; ${logoResult.auditRows} import audit; ${logoResult.currentRows} current; ${logoResult.distinctClients} clients; ${logoResult.totalBytes} bytes; source ${logoResult.sourceDigest}; result ${logoResult.resultDigest}`
+        : logoResult.defects.join('; '),
+      logoResult.sourceRows === CLIENT_LOGO_SOURCE_BASELINE.rows &&
+        logoResult.auditRows === CLIENT_LOGO_RESULT_BASELINE.auditRows &&
+        logoResult.distinctClients === CLIENT_LOGO_RESULT_BASELINE.distinctClients &&
+        logoResult.totalBytes === CLIENT_LOGO_RESULT_BASELINE.totalBytes &&
+        logoResult.sourceDigest === CLIENT_LOGO_SOURCE_BASELINE.digest &&
+        logoResult.resultDigest === CLIENT_LOGO_RESULT_BASELINE.digest &&
+        logoResult.defects.length === 0,
+    );
+    const logoStructure = await clientLogoStructureFailures(relationshipDb);
+    record(
+      'Client-logo constraints and import evidence guards',
+      'complete PostgreSQL 17.11 definitions, including function configuration',
+      logoStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : logoStructure.join('; '),
+      logoStructure.length === 0,
     );
   } finally {
     await relationshipDb.end();

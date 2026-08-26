@@ -2040,6 +2040,59 @@ start or rolls back everything it wrote. The PostgreSQL major-version upgrade
 warning in `docs/DATABASE.md` still applies: review any changed catalog output
 semantically and never weaken or automatically accept it.
 
+## Task 2.11 — client-logo files and immutable import evidence (26 August 2026)
+
+Migration 0050 (`20260826170000_migrate_client_logos`) added file-metadata
+constraints and `migration_client_logo_import`. The latter is immutable
+historical evidence; the ordinary `client_logos` row remains mutable so the
+authorised upload/replacement feature at Task 4.1a can later change the current
+logo without rewriting what came from Access.
+
+The authoritative extraction is
+`_migration/attachments/العملاء__logo`. Its complex-column CSV has **54 rows**,
+all 54 paths are unique, every path has one file, no directory file is
+unreferenced, and all 54 parent keys resolve one-to-one through
+`clients.legacy_id` to 54 transformed clients. The files total exactly
+**1,541,428 bytes**: 29 PNG, 23 JPEG and 2 GIF. The old 771 KB planning estimate
+in D15 was replaced by this manifest-backed measurement; it was not evidence of
+a second extraction.
+
+The live serializable apply produced **54 current metadata rows + 54 immutable
+import-audit rows + 54 runtime files**, with no quarantine or discarded file.
+Files were copied through a task-owned sibling directory and the completed tree
+was published atomically. Source hashes were checked before copying and
+destination hashes after it. The approved identical second apply was a true
+no-op: current logo IDs remained 1–54, all database IDs/timestamps/associations
+and all file paths/sizes/modification times/hashes stayed byte-identical.
+
+`CLIENT_LOGO_ROOT` is the only machine-specific setting. It is
+`D:\Projects\litigation-system\storage\client-logos` on the current Windows
+machine and must be `/var/lib/litigation/client-logos` in production. PostgreSQL
+stores only `{client_id}/{filename}` and the evidence fields — never an absolute
+root, image bytes, base64, a data URL or a cloud URL. `storage/` remains ignored
+by Git.
+
+Two reproducible digests exclude CSV row positions, trace-only CSV filenames,
+timestamps, generated IDs and absolute Windows/Linux roots. They do include
+each original logo filename because that is source evidence:
+
+- **Source:** `320d0b7301b5e0cc27ea342fc86c1384dabf7cdb5f5bfe2a38d658bf3268f801`.
+  It orders by numeric parent key and durable source key, and includes every
+  exact CSV field, durable identity, extraction fingerprint, detected MIME,
+  actual byte size and actual file SHA-256.
+- **Result:** `5fa708e0a5ade8bb1b9b81cc16d4a9a3d225d7226e0043e71968ca128c7bdf1f`.
+  It adds the independently resolved client and relative destination to the
+  immutable import evidence. It excludes audit/current generated IDs and
+  timestamps, so a clean rebuild on Linux produces the same value.
+
+`db:check` independently reconstructs the mapping from staging, checks the
+immutable audit, reads and identifies every historical/current runtime image,
+and refuses a missing, extra, changed, duplicated or unaccounted file/row. Its
+second Task 2.11 invariant pins the complete PostgreSQL 17.11 constraint,
+index, foreign-key, trigger and function definitions, including empty
+per-function configuration. The PostgreSQL major-upgrade warning in
+`docs/DATABASE.md` applies unchanged.
+
 ## Load order
 
 Parents before children.

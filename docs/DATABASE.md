@@ -298,6 +298,24 @@ On the laptop the default password is fine, because the database is unreachable
 from outside the machine. **On the Ubuntu server, set a long random password**
 in `.env` before going live.
 
+### Client-logo root
+
+`CLIENT_LOGO_ROOT` is not a secret, but it is machine-specific and therefore
+lives in `.env` too. The current Windows development value is:
+
+```text
+D:\Projects\litigation-system\storage\client-logos
+```
+
+The Ubuntu production value must be:
+
+```text
+/var/lib/litigation/client-logos
+```
+
+The database stores paths relative to this root only. Backups must snapshot
+the database and this entire folder in one operation (D15/D16).
+
 ---
 
 ## What is inside, and why

@@ -1160,11 +1160,33 @@ only ever seen good data is not known to work.
       historical execution artefact, not a permanent baseline and not suitable
       for future comparisons.
 
-- [ ] **2.11 Write the 54 client logos** to the server folder defined in
-      **D15** — `/var/lib/litigation/client-logos/{client_id}/{filename}` —
-      and record `relative_path`, `file_name`, `content_type`, `byte_size`
-      in `client_logos`. **Never the image itself, and never cloud storage.**
-      Verify SHA-256 before and after.
+- [x] **2.11 Write the 54 client logos** — 26 August 2026, migration 0050
+      (`20260826170000_migrate_client_logos`). The authoritative extraction
+      `العملاء__logo` reconciled exactly: 54 CSV rows, 54 unique files, 54
+      unique legacy parent keys and 54 unique transformed clients; no missing,
+      ambiguous or unreferenced item. The exact measured total is **1,541,428
+      bytes** (29 PNG, 23 JPEG, 2 GIF), replacing D15's stale 771 KB estimate.
+
+      The Windows runtime root is
+      `D:\Projects\litigation-system\storage\client-logos`; production must
+      set `CLIENT_LOGO_ROOT=/var/lib/litigation/client-logos`. PostgreSQL stores
+      only `{client_id}/{filename}`, original filename, signature-detected MIME,
+      byte size and SHA-256 — never an absolute path or image bytes.
+
+      A serializable transaction and atomic staged publication created **54
+      `client_logos` rows, 54 immutable `migration_client_logo_import` rows and
+      54 files**. The current row remains application-mutable for Task 4.1a;
+      the separate import audit preserves the original Access evidence. The
+      identical second apply was a true no-op: IDs 1–54, timestamps,
+      associations, paths, bytes and hashes were unchanged.
+
+      Source digest
+      `320d0b7301b5e0cc27ea342fc86c1384dabf7cdb5f5bfe2a38d658bf3268f801`;
+      result digest
+      `5fa708e0a5ade8bb1b9b81cc16d4a9a3d225d7226e0043e71968ca128c7bdf1f`.
+      Both exclude timestamps, generated IDs, row positions and absolute
+      machine roots. Independent permanent file/data reconciliation plus exact
+      PostgreSQL 17.11 catalog verification raised `db:check` **79 → 81**.
 
 - [ ] **2.12 Gate 4 reconciliation**
       Counts, per-lawyer matter totals, status totals, billing totals.

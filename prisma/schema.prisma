@@ -735,6 +735,7 @@ model Client {
 
   contacts   Contact[]         @relation("ClientContacts")
   logo       ClientLogo?
+  logoImports MigrationClientLogoImport[]
   matters    Matter[]
   poas       PowerOfAttorney[]
   documents  Document[]
@@ -776,7 +777,7 @@ model ClientLogo {
   /// before and after writing, Gate 4 compares all 54, and it is what lets
   /// the weekly integrity job required by D15 report a CHANGED file rather
   /// than only a missing one.
-  sha256       String?
+  sha256       String
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -784,6 +785,29 @@ model ClientLogo {
   updatedBy Int?     @map("updated_by")
 
   @@map("client_logos")
+}
+
+/// Immutable historical evidence for the 54 Access logos imported at Task
+/// 2.11. This is deliberately separate from ClientLogo: Task 4.1a may replace
+/// a client's current logo, but that must not rewrite what the migration read,
+/// where it wrote it or which client it resolved.
+model MigrationClientLogoImport {
+  sourceParentKey       Int      @id @map("source_parent_key")
+  clientId              Int      @unique @map("client_id")
+  client                Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  clientLogoId          Int      @unique @map("client_logo_id")
+  sourceRecordKey       String   @unique @map("source_record_key")
+  sourceExtractionSha256 String   @map("source_extraction_sha256")
+  sourceStoredPath      String   @unique @map("source_stored_path")
+  sourceFileName        String   @map("source_file_name")
+  detectedContentType   String   @map("detected_content_type")
+  byteSize              Int      @map("byte_size")
+  sha256                String
+  destinationRelativePath String @unique @map("destination_relative_path")
+  complexCsvSha256      String   @map("complex_csv_sha256")
+  importedAt            DateTime @default(now()) @map("imported_at") @db.Timestamptz(6)
+
+  @@map("migration_client_logo_import")
 }
 
 /// People to contact at a client. 188 rows at Stage 2.

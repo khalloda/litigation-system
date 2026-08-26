@@ -110,8 +110,19 @@ cloud storage. See decision **D15**.
 /var/lib/litigation/client-logos/{client_id}/{filename}
 ```
 
-The table holds `client_id`, `relative_path`, `file_name`, `content_type`,
-`byte_size`. **Never the image itself.**
+The current, application-facing table holds `client_id`, `relative_path`,
+`file_name`, `content_type`, `byte_size` and `sha256`. **Never the image
+itself.** `relative_path` is always `{client_id}/{filename}` and is resolved
+against `CLIENT_LOGO_ROOT` — no absolute machine path enters PostgreSQL.
+
+Task 2.11 also created `migration_client_logo_import` with **54 immutable
+historical rows**. It records the exact source parent, durable source identity,
+extraction fingerprint, original filename/path, detected type, bytes, SHA-256,
+resolved client and original destination. This is deliberately separate from
+`client_logos`: Task 4.1a may later replace a client's current logo without
+rewriting or erasing the Access migration evidence. The original imported file
+remains available for that audit; a native current file is checked through its
+own `client_logos` metadata.
 
 Mandatory safeguards (D15):
 

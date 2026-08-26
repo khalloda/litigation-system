@@ -63,6 +63,8 @@
     "test:fee-letter-transform": "tsx scripts/test-fee-letter-transform.ts",
     "test:billing-transform": "tsx scripts/test-billing-transform.ts",
     "test:attendance-transform": "tsx scripts/test-attendance-transform.ts",
+    "transform:client-logos": "tsx scripts/transform-client-logos.ts",
+    "test:client-logo-transform": "tsx scripts/test-client-logo-transform.ts",
     "generate:lookup-seed": "tsx scripts/generate-lookup-seed.ts",
     "generate:roster-seed": "tsx scripts/generate-roster-seed.ts",
     "baseline:write": "tsx scripts/write-baseline.ts",

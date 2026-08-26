@@ -3,10 +3,8 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Status:** Stage 0 complete — the application skeleton, the database, and
-the Arabic right-to-left layout all run. Stage 1 (the database) is in
-progress: the nine dropdown lists, the 135-person roster and the client-branch
-resolution are done; the main tables are next. Progress is tracked in
+**Status:** Stage 2 migration is complete through Task 2.11, including the
+54 client logos. Gate 4 reconciliation is next. Progress is tracked in
 `TASKS.md`.
 
 ---
@@ -57,6 +55,8 @@ Excel via ExcelJS. PDF via Playwright. Rationale in `docs/DECISIONS.md`.
 
 ```bash
 cp .env.example .env
+# Set CLIENT_LOGO_ROOT to a local folder; production uses
+# /var/lib/litigation/client-logos.
 npm install
 npm run db:up             # PostgreSQL 17 in Docker, on port 5433
 npm run db:migrate        # build the schema inside it
