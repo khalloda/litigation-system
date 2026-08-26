@@ -1128,11 +1128,17 @@ only ever seen good data is not known to work.
       index, foreign key, trigger and function definitions.
 
       The disposable fixture proves every unsafe ID/date/person case, NULL and
-      empty preservation, Arabic and whitespace preservation, target and
-      quarantine tampering, source reordering, transactional rollback,
-      idempotency, native-row behaviour, complete provenance shape and catalog
-      weakening. The approved identical live rerun changed nothing: IDs stayed
-      1–4,022, quarantine stayed empty, and the complete row/ID/timestamp/
+      empty preservation, Arabic and whitespace preservation, every target
+      field independently, every quarantine evidence field independently,
+      missing/extra/both/neither partition outcomes, source-field tampering,
+      source reordering with a non-vacuous identity assertion, transactional
+      rollback and idempotency. It directly refuses six complete migrated-
+      shaped partial identity combinations and proves independent reconciliation
+      detects each when the CHECK is removed inside a rolled-back fixture. It
+      also covers native-row behaviour and exact catalog weakening, including
+      disabled or incomplete triggers. The approved identical live rerun
+      changed nothing: IDs stayed 1–4,022, quarantine stayed empty, and the
+      complete row/ID/timestamp/
       association/evidence digest remained
       `2863afb54d13badd34fd894ec64bebf492f61692cbf8be88359fc140fb451a10`.
 

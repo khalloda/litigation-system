@@ -2271,11 +2271,18 @@ function configuration. The existing major-version upgrade warning applies.
 
 The disposable fixture proves invalid and duplicate IDs; invalid dates and
 meaningful times; missing, empty, unresolved and ambiguous person aliases;
-NULL/empty text, Arabic, line breaks and whitespace; exact target/quarantine
-evidence; same-count source changes; reordered trace; late rollback; native
-CRUD; every partial provenance shape; and weakened constraints, indexes,
-foreign keys, triggers, bodies and function configuration. Each destructive
-case runs only in its own disposable database and returns to clean structure.
+NULL/empty text, Arabic, line breaks and whitespace; every target field and
+every quarantine evidence field independently; missing, additional, both and
+neither target/quarantine outcomes; and each source field independently. The
+filename/row-position test compares both target and quarantine durable keys to
+the pre-change plan and deliberately proves the target comparison fails when a
+key is removed. Six complete migrated-shaped partial identity combinations are
+both refused by the CHECK and detected by independent reconciliation when that
+CHECK is removed inside a rolled-back fixture. The suite also covers late
+rollback, native CRUD, idempotency, and weakened constraints, indexes, foreign
+keys, enabled states, trigger events and functions. Each destructive case runs
+only in its own disposable database and returns to clean structure and
+reconciliation.
 
 The owner-approved identical live rerun created and updated nothing. Target
 IDs remained 1–4,022, quarantine remained empty, the semantic result digest

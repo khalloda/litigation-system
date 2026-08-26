@@ -79,6 +79,57 @@ async function structureFailure(
   console.log(`  ok    ${label}`);
 }
 
+type MigratedIdentity = {
+  sourceKey: string | null;
+  extractionSha256: string | null;
+  sourcePayload: Record<string, unknown> | null;
+};
+
+function migratedPayload(id: number): Record<string, string> {
+  return {
+    ID: String(id),
+    AttDate: '2026-08-26 00:00:00',
+    AttSituation: 'legacy',
+    المحامي: 'إيهاب حمدي',
+  };
+}
+
+async function insertMigratedAttendance(
+  db: Client,
+  legacyId: number,
+  identity: MigratedIdentity,
+): Promise<void> {
+  await db.query(
+    `INSERT INTO attendance(
+       legacy_id,person_id,legacy_person_raw,attendance_date,situation,
+       legacy_situation_raw,legacy_source_record_key,
+       legacy_source_extraction_sha256,legacy_source_payload,updated_at)
+     VALUES($1,4,'إيهاب حمدي','2026-08-26','legacy','legacy',$2,$3,$4,CURRENT_TIMESTAMP)`,
+    [legacyId, identity.sourceKey, identity.extractionSha256, identity.sourcePayload],
+  );
+}
+
+async function insertQuarantineEvidence(
+  db: Client,
+  sourceKey: string,
+  legacyIdRaw = 'fixture-extra',
+): Promise<void> {
+  await db.query(
+    `INSERT INTO quarantine.attendance_transform(
+       src_record_key,extraction_sha256,src_file,src_row_num,
+       legacy_attendance_id_raw,reason_codes,reason_details,source_payload)
+     VALUES($1,$2,'fixture/extra.csv',1,$3,ARRAY['invalid_attendance_id'],
+            '[{"value":"fixture-extra"}]','{"ID":"fixture-extra"}')`,
+    [sourceKey, FP, legacyIdRaw],
+  );
+}
+
+async function disableQuarantineGuard(db: Client): Promise<void> {
+  await db.query(
+    'ALTER TABLE quarantine.attendance_transform DISABLE TRIGGER attendance_transform_no_change',
+  );
+}
+
 async function main(): Promise<void> {
   const projectUrl = process.env['DATABASE_URL'];
   assert.ok(projectUrl, 'DATABASE_URL is required');
@@ -229,12 +280,35 @@ async function main(): Promise<void> {
 
       await reconciliationFailure(
         db,
-        'changed situation is detected independently',
-        () =>
-          db.query(
-            `UPDATE attendance SET situation='changed',legacy_situation_raw='changed'
-              WHERE legacy_id=1`,
-          ),
+        'changed person link is detected independently',
+        () => db.query(`UPDATE attendance SET person_id=6 WHERE legacy_id=1`),
+        /Attendance target\/source mismatch/,
+        true,
+      );
+      await reconciliationFailure(
+        db,
+        'changed raw person spelling is detected independently',
+        () => db.query(`UPDATE attendance SET legacy_person_raw='تغيير' WHERE legacy_id=1`),
+        /Attendance target\/source mismatch/,
+        true,
+      );
+      await reconciliationFailure(
+        db,
+        'changed usable situation alone is detected independently',
+        async () => {
+          await db.query('ALTER TABLE attendance DROP CONSTRAINT attendance_source_identity_shape');
+          await db.query(`UPDATE attendance SET situation='changed' WHERE legacy_id=1`);
+        },
+        /Attendance target\/source mismatch/,
+        true,
+      );
+      await reconciliationFailure(
+        db,
+        'changed raw situation alone is detected independently',
+        async () => {
+          await db.query('ALTER TABLE attendance DROP CONSTRAINT attendance_source_identity_shape');
+          await db.query(`UPDATE attendance SET legacy_situation_raw='changed' WHERE legacy_id=1`);
+        },
         /Attendance target\/source mismatch/,
         true,
       );
@@ -257,72 +331,163 @@ async function main(): Promise<void> {
       );
       await reconciliationFailure(
         db,
-        'changed person classification is detected independently',
-        () => db.query(`UPDATE attendance SET person_id=6 WHERE legacy_id=1`),
+        'changed durable source key is detected independently',
+        () =>
+          db.query(`UPDATE attendance SET legacy_source_record_key=$1 WHERE legacy_id=1`, [
+            key(700),
+          ]),
         /Attendance target\/source mismatch/,
         true,
       );
       await reconciliationFailure(
         db,
-        'missing target row is detected',
-        () => db.query(`DELETE FROM attendance WHERE legacy_id=1`),
+        'changed complete source payload is detected independently',
+        () =>
+          db.query(
+            `UPDATE attendance SET legacy_source_payload='{"ID":"changed"}' WHERE legacy_id=1`,
+          ),
         /Attendance target\/source mismatch/,
         true,
+      );
+      await reconciliationFailure(
+        db,
+        'changed source ID is detected independently',
+        () => db.query(`UPDATE staging."Attendance" SET "ID"='1001' WHERE "ID"='1'`),
+        /Attendance target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed source date is detected independently',
+        () =>
+          db.query(
+            `UPDATE staging."Attendance" SET "AttDate"='2020-01-02 00:00:00' WHERE "ID"='1'`,
+          ),
+        /Attendance target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed source situation is detected independently',
+        () => db.query(`UPDATE staging."Attendance" SET "AttSituation"='Different' WHERE "ID"='1'`),
+        /Attendance target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'changed source lawyer is detected independently',
+        () => db.query(`UPDATE staging."Attendance" SET "المحامي"='أحمد سعيد' WHERE "ID"='1'`),
+        /Attendance target\/source mismatch/,
       );
 
       await reconciliationFailure(
         db,
-        'incorrect quarantine reason is detected',
+        'missing target outcome is detected even when the source is put in quarantine',
         async () => {
-          await db.query(
-            'ALTER TABLE quarantine.attendance_transform DISABLE TRIGGER attendance_transform_no_change',
-          );
-          await db.query(
-            `UPDATE quarantine.attendance_transform
-                SET reason_codes=ARRAY['unresolved_person_alias'],
-                    reason_details='[{"value":"different"}]'
-              WHERE legacy_attendance_id_raw='bad'`,
-          );
+          await db.query(`DELETE FROM attendance WHERE legacy_id=1`);
+          await insertQuarantineEvidence(db, key(1), '1');
         },
+        /Attendance target\/source mismatch/,
+        true,
+      );
+      await reconciliationFailure(
+        db,
+        'additional target outcome with no source is detected',
+        () =>
+          insertMigratedAttendance(db, 9101, {
+            sourceKey: key(701),
+            extractionSha256: FP,
+            sourcePayload: migratedPayload(9101),
+          }),
+        /Attendance target\/source mismatch/,
+      );
+      await reconciliationFailure(
+        db,
+        'one source appearing in both target and quarantine is detected',
+        () => insertQuarantineEvidence(db, key(1), '1'),
         /Attendance quarantine\/source mismatch/,
       );
       await reconciliationFailure(
         db,
-        'changed quarantine trace is detected',
-        async () => {
-          await db.query(
-            'ALTER TABLE quarantine.attendance_transform DISABLE TRIGGER attendance_transform_no_change',
-          );
-          await db.query(
-            `UPDATE quarantine.attendance_transform SET src_row_num=999
-              WHERE legacy_attendance_id_raw='bad'`,
-          );
-        },
-        /Attendance quarantine\/source mismatch/,
+        'one source appearing in neither target nor quarantine is detected',
+        () => db.query(`DELETE FROM attendance WHERE legacy_id=1`),
+        /Attendance target\/source mismatch/,
+        true,
       );
       await reconciliationFailure(
         db,
-        'missing quarantine row is detected',
+        'missing quarantine outcome is detected even when the source is put in target',
         async () => {
-          await db.query(
-            'ALTER TABLE quarantine.attendance_transform DISABLE TRIGGER attendance_transform_no_change',
-          );
+          await disableQuarantineGuard(db);
           await db.query(
             `DELETE FROM quarantine.attendance_transform WHERE legacy_attendance_id_raw='bad'`,
           );
+          await insertMigratedAttendance(db, 9105, {
+            sourceKey: key(5),
+            extractionSha256: FP,
+            sourcePayload: migratedPayload(9105),
+          });
         },
-        /Attendance quarantine\/source mismatch/,
+        /Attendance (target|quarantine)\/source mismatch/,
       );
       await reconciliationFailure(
         db,
-        'same-count source value change is detected',
-        () =>
-          db.query(
-            `UPDATE staging."Attendance" SET "AttSituation"='Different'
-              WHERE "ID"='1'`,
-          ),
-        /Attendance target\/source mismatch/,
+        'additional quarantine outcome with no source is detected',
+        () => insertQuarantineEvidence(db, key(702)),
+        /Attendance quarantine\/source mismatch/,
       );
+
+      const quarantineMutations: Array<[string, string, unknown[]]> = [
+        [
+          'changed quarantine reason code is detected independently',
+          `UPDATE quarantine.attendance_transform SET reason_codes=ARRAY['unresolved_person_alias']
+            WHERE legacy_attendance_id_raw='bad'`,
+          [],
+        ],
+        [
+          'changed quarantine reason detail is detected independently',
+          `UPDATE quarantine.attendance_transform SET reason_details='[{"value":"different"}]'
+            WHERE legacy_attendance_id_raw='bad'`,
+          [],
+        ],
+        [
+          'changed quarantine payload is detected independently',
+          `UPDATE quarantine.attendance_transform SET source_payload='{"ID":"different"}'
+            WHERE legacy_attendance_id_raw='bad'`,
+          [],
+        ],
+        [
+          'changed quarantine fingerprint is detected independently',
+          `UPDATE quarantine.attendance_transform SET extraction_sha256=$1
+            WHERE legacy_attendance_id_raw='bad'`,
+          ['A'.repeat(64)],
+        ],
+        [
+          'changed quarantine durable key is detected independently',
+          `UPDATE quarantine.attendance_transform SET src_record_key=$1
+            WHERE legacy_attendance_id_raw='bad'`,
+          [key(703)],
+        ],
+        [
+          'changed quarantine filename trace is detected independently',
+          `UPDATE quarantine.attendance_transform SET src_file='different.csv'
+            WHERE legacy_attendance_id_raw='bad'`,
+          [],
+        ],
+        [
+          'changed quarantine row trace is detected independently',
+          `UPDATE quarantine.attendance_transform SET src_row_num=999
+            WHERE legacy_attendance_id_raw='bad'`,
+          [],
+        ],
+      ];
+      for (const [label, sql, parameters] of quarantineMutations)
+        await reconciliationFailure(
+          db,
+          label,
+          async () => {
+            await disableQuarantineGuard(db);
+            await db.query(sql, parameters);
+          },
+          /Attendance quarantine\/source mismatch/,
+        );
 
       const planBefore = await buildAttendancePlan(db);
       await db.query('BEGIN');
@@ -331,13 +496,16 @@ async function main(): Promise<void> {
           `UPDATE staging."Attendance" SET src_file='renamed.csv',src_row_num=src_row_num+100`,
         );
         const reordered = await buildAttendancePlan(db);
-        assert.deepEqual(
-          reordered.targets.map((row) => row.srcRecordKey),
-          planBefore.targets.map((row) => row.srcRecordKey),
-        );
+        const originalTargetKeys = planBefore.targets.map((row) => row.srcRecordKey);
+        const reorderedTargetKeys = reordered.targets.map((row) => row.srcRecordKey);
+        assert.deepEqual(reorderedTargetKeys, originalTargetKeys);
         assert.deepEqual(
           reordered.quarantine.map((row) => row.srcRecordKey),
           planBefore.quarantine.map((row) => row.srcRecordKey),
+        );
+        assert.throws(
+          () => assert.deepEqual(reorderedTargetKeys.slice(1), originalTargetKeys),
+          assert.AssertionError,
         );
       } finally {
         await db.query('ROLLBACK');
@@ -420,32 +588,63 @@ async function main(): Promise<void> {
       await db.query('DELETE FROM attendance WHERE id=$1', [nativeForPartial]);
       console.log('  ok    every migration-only field rejects partial native provenance');
 
-      await assert.rejects(
-        db.query(
-          `INSERT INTO attendance(
-             legacy_id,person_id,legacy_person_raw,attendance_date,situation,
-             legacy_situation_raw,updated_at)
-           VALUES(999,4,'إيهاب حمدي','2026-08-26','legacy','legacy',CURRENT_TIMESTAMP)`,
-        ),
-        /attendance_source_identity_shape/,
-      );
+      const partialIdentityShapes: Array<[string, MigratedIdentity]> = [
+        [
+          'all three identity values null',
+          { sourceKey: null, extractionSha256: null, sourcePayload: null },
+        ],
+        [
+          'durable key missing',
+          { sourceKey: null, extractionSha256: FP, sourcePayload: migratedPayload(9202) },
+        ],
+        [
+          'extraction fingerprint missing',
+          { sourceKey: key(712), extractionSha256: null, sourcePayload: migratedPayload(9203) },
+        ],
+        [
+          'complete payload missing',
+          { sourceKey: key(713), extractionSha256: FP, sourcePayload: null },
+        ],
+        [
+          'payload present while key and fingerprint are missing',
+          { sourceKey: null, extractionSha256: null, sourcePayload: migratedPayload(9205) },
+        ],
+        [
+          'durable key present while fingerprint and payload are missing',
+          { sourceKey: key(715), extractionSha256: null, sourcePayload: null },
+        ],
+      ];
+      for (const [index, [label, identity]] of partialIdentityShapes.entries()) {
+        const legacyId = 9201 + index;
+        await assert.rejects(
+          insertMigratedAttendance(db, legacyId, identity),
+          /attendance_source_identity_shape/,
+        );
+        await reconciliationFailure(
+          db,
+          `independent reconciliation catches ${label}`,
+          async () => {
+            await db.query(
+              'ALTER TABLE attendance DROP CONSTRAINT attendance_source_identity_shape',
+            );
+            await insertMigratedAttendance(db, legacyId, identity);
+          },
+          /partial Attendance provenance|Attendance target\/source mismatch/,
+        );
+      }
       await db.query('BEGIN');
       try {
-        await db.query(
-          `INSERT INTO attendance(
-             legacy_id,person_id,legacy_person_raw,attendance_date,situation,
-             legacy_situation_raw,legacy_source_record_key,
-             legacy_source_extraction_sha256,legacy_source_payload,updated_at)
-           VALUES(999,4,'إيهاب حمدي','2026-08-26','legacy','legacy',$1,$2,
-                  '{"ID":"999","AttDate":"2026-08-26 00:00:00","AttSituation":"legacy","المحامي":"إيهاب حمدي"}',CURRENT_TIMESTAMP)`,
-          [key(501), FP],
-        );
+        await insertMigratedAttendance(db, 9299, {
+          sourceKey: key(799),
+          extractionSha256: FP,
+          sourcePayload: migratedPayload(9299),
+        });
       } finally {
         await db.query('ROLLBACK');
       }
       await clean(db);
       console.log(
-        '  ok    all-null identity is refused and a complete migrated reconstruction shape is accepted',
+        '  ok    six complete migrated-shaped partial identities are refused and detected; a complete identity is accepted',
       );
 
       await assert.rejects(
@@ -479,6 +678,37 @@ async function main(): Promise<void> {
         '  ok    migrated history and quarantine evidence refuse update, delete and truncate',
       );
 
+      await structureFailure(
+        db,
+        'disabled target immutability trigger is rejected',
+        () => db.query('ALTER TABLE attendance DISABLE TRIGGER attendance_legacy_no_change'),
+        /trigger definition: attendance_legacy_no_change/,
+      );
+      await structureFailure(
+        db,
+        'disabled quarantine immutability trigger is rejected',
+        () =>
+          db.query(
+            'ALTER TABLE quarantine.attendance_transform DISABLE TRIGGER attendance_transform_no_change',
+          ),
+        /trigger definition: attendance_transform_no_change/,
+      );
+      await structureFailure(
+        db,
+        'target immutability trigger missing DELETE is rejected',
+        async () => {
+          await db.query('DROP TRIGGER attendance_legacy_no_change ON attendance');
+          await db.query(`CREATE TRIGGER attendance_legacy_no_change BEFORE UPDATE
+            ON attendance FOR EACH ROW EXECUTE FUNCTION refuse_legacy_attendance_change()`);
+        },
+        /trigger definition: attendance_legacy_no_change/,
+      );
+      await structureFailure(
+        db,
+        'removed target TRUNCATE refusal trigger is rejected',
+        () => db.query('DROP TRIGGER attendance_no_truncate ON attendance'),
+        /trigger definition: attendance_no_truncate|Task 2\.10B trigger inventory/,
+      );
       await structureFailure(
         db,
         'source CHECK retaining its name but weakened with OR true is rejected',
