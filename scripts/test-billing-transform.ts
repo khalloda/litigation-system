@@ -30,6 +30,12 @@ const expected: typeof LIVE_BILLING_COUNTS = {
 const fixtureKey = (number: number) => `${number.toString(16).padStart(64, '0')}:000001`;
 type LegacyBillingTable = 'invoices' | 'payments' | 'invoice_allocations';
 type ProvenanceFieldFixture = Readonly<{ field: string; value: unknown }>;
+type IdentityShapeFixture = Readonly<{
+  label: string;
+  key: string | null;
+  fingerprint: string | null;
+  payload: Readonly<Record<string, string>> | null;
+}>;
 
 const legacyChangeTrigger: Record<LegacyBillingTable, string> = {
   invoices: 'invoices_legacy_no_change',
@@ -72,6 +78,38 @@ const provenanceFields: Record<LegacyBillingTable, readonly ProvenanceFieldFixtu
     { field: 'legacy_source_payload', value: { fixture: 'partial-allocation' } },
   ],
 };
+const identityShapeFixtures: readonly IdentityShapeFixture[] = [
+  {
+    label: 'all three identity fields NULL',
+    key: null,
+    fingerprint: null,
+    payload: null,
+  },
+  {
+    label: 'only the source key missing',
+    key: null,
+    fingerprint: FP,
+    payload: { fixture: 'missing-key' },
+  },
+  {
+    label: 'only the extraction fingerprint missing',
+    key: fixtureKey(310),
+    fingerprint: null,
+    payload: { fixture: 'missing-fingerprint' },
+  },
+  {
+    label: 'only the source payload missing',
+    key: fixtureKey(311),
+    fingerprint: FP,
+    payload: null,
+  },
+  {
+    label: 'combined partial identity with payload but no key or fingerprint',
+    key: null,
+    fingerprint: null,
+    payload: { fixture: 'combined-partial' },
+  },
+];
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
@@ -189,6 +227,107 @@ async function partialProvenanceRefusal(
   console.log(
     `  ok    ${table}.${fixture.field} cannot be attached to a native UPDATE or partial INSERT`,
   );
+}
+
+async function insertMigratedShape(
+  db: Client,
+  table: LegacyBillingTable,
+  fixture: IdentityShapeFixture,
+  ordinal: number,
+): Promise<void> {
+  const identity = [
+    fixture.key,
+    fixture.fingerprint,
+    fixture.payload === null ? null : JSON.stringify(fixture.payload),
+    ordinal,
+  ];
+  if (table === 'invoices') {
+    await db.query(
+      `INSERT INTO invoices(
+         legacy_id,invoice_no,fee_letter_id,legacy_contract_id,invoice_date,
+         amount,currency,legacy_currency_raw,status_id,legacy_status_raw,
+         legacy_source_record_key,legacy_source_extraction_sha256,
+         legacy_source_payload,updated_at)
+       SELECT 910000+$4,'fixture-null-safe-i-'||$4::text,f.id,'100',DATE '2026-08-26',
+              1,'EGP','EGP',s.id,'Paid',$1,$2,$3::jsonb,CURRENT_TIMESTAMP
+         FROM fee_letters f CROSS JOIN lookup_invoice_status s
+        WHERE f.contract_id=100 AND s.code='Paid'`,
+      identity,
+    );
+    return;
+  }
+  if (table === 'payments') {
+    await db.query(
+      `INSERT INTO payments(
+         legacy_id,invoice_id,legacy_invoice_no,credit,currency,
+         legacy_currency_raw,legacy_source_record_key,
+         legacy_source_extraction_sha256,legacy_source_payload,updated_at)
+       SELECT 920000+$4,i.id,i.invoice_no,1,'EGP','EGP',$1,$2,$3::jsonb,
+              CURRENT_TIMESTAMP
+         FROM invoices i WHERE i.legacy_id=21819`,
+      identity,
+    );
+    return;
+  }
+  await db.query(
+    `INSERT INTO invoice_allocations(
+       legacy_id,invoice_id,legacy_invoice_no,person_id,legacy_lawyer_raw,
+       share,legacy_percent_raw,lawyer_role_id,legacy_lawyer_as_raw,
+       legacy_source_record_key,legacy_source_extraction_sha256,
+       legacy_source_payload,updated_at)
+     SELECT 930000+$4,i.id,i.invoice_no,p.id,'Fixture Person',1,'1.000',r.id,
+            'Reviewer',$1,$2,$3::jsonb,CURRENT_TIMESTAMP
+       FROM invoices i CROSS JOIN lookup_lawyer_share_role r
+       CROSS JOIN LATERAL (
+         SELECT candidate.id FROM people candidate
+          WHERE NOT EXISTS (
+            SELECT 1 FROM invoice_allocations existing
+             WHERE existing.invoice_id=i.id
+               AND existing.person_id=candidate.id
+               AND existing.lawyer_role_id=r.id)
+          ORDER BY candidate.id LIMIT 1
+       ) p
+      WHERE i.legacy_id=21819 AND r.code='Reviewer'`,
+    identity,
+  );
+}
+
+async function migratedIdentityShapeRefusals(db: Client, table: LegacyBillingTable): Promise<void> {
+  for (const [index, fixture] of identityShapeFixtures.entries()) {
+    await assert.rejects(
+      insertMigratedShape(db, table, fixture, index + 1),
+      new RegExp(sourceIdentityConstraint[table]),
+    );
+    await clean(db);
+    console.log(`  ok    ${table}: ${fixture.label} is refused directly by its named CHECK`);
+  }
+}
+
+async function partialProvenanceReconciliationDetection(
+  db: Client,
+  table: LegacyBillingTable,
+): Promise<void> {
+  for (const [index, fixture] of identityShapeFixtures.entries()) {
+    await db.query('BEGIN');
+    try {
+      await db.query(
+        `ALTER TABLE ${identifier(table)}
+           DROP CONSTRAINT ${identifier(sourceIdentityConstraint[table])},
+           ADD CONSTRAINT ${identifier(sourceIdentityConstraint[table])} CHECK (true)`,
+      );
+      await insertMigratedShape(db, table, fixture, index + 90);
+      assert.match(
+        (await reconcileBillingHistory(db, false)).defects.join('\n'),
+        /partial billing provenance: 1/,
+      );
+    } finally {
+      await db.query('ROLLBACK');
+    }
+    await clean(db);
+    console.log(
+      `  ok    ${table}: reconciliation detects ${fixture.label} when its CHECK is disabled`,
+    );
+  }
 }
 
 async function structureFailure(
@@ -321,6 +460,11 @@ async function main(): Promise<void> {
       console.log(
         '  ok    target-or-quarantine partitions all fixture sources and complete PostgreSQL definitions are exact',
       );
+
+      for (const table of ['invoices', 'payments', 'invoice_allocations'] as const)
+        await migratedIdentityShapeRefusals(db, table);
+      for (const table of ['invoices', 'payments', 'invoice_allocations'] as const)
+        await partialProvenanceReconciliationDetection(db, table);
 
       const storedShares = (
         await db.query<{ raw: string; interpreted: string; lawyer: string }>(

@@ -1093,6 +1093,18 @@ only ever seen good data is not known to work.
       both as an UPDATE and a partial INSERT, and proves complete migrated
       inserts plus the reviewed nullable raw values remain valid.
 
+      **Null-safety correction, 26 August 2026 (migration 0048).** PostgreSQL
+      accepts a CHECK result of UNKNOWN, so migration 0047's regex and JSON
+      expressions could admit a combined partial row when identity values were
+      NULL. Each migrated branch now explicitly requires the source key,
+      extraction fingerprint and source payload, and the complete native-or-
+      migrated predicate must be `IS TRUE`. A null-safe precondition refuses
+      any row outside those two exact shapes without rewriting it. The expanded
+      122-case disposable fixture directly refuses all-null, each individually
+      missing identity field and combined partial shapes for all three tables;
+      it also proves independent reconciliation catches every shape when the
+      named CHECK is disabled inside a rolled-back fixture.
+
 - [ ] **2.10B Transform: staff attendance** — `Attendance`, the 4,022-row
       leave register. This is separate from billing and from meeting attendance
       (D2). Do not implement it as part of 2.10A.

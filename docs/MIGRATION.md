@@ -2155,22 +2155,43 @@ reconciliation and exact structure after every rolled-back mutation.
 
 **Final provenance correction — 26 August 2026, migration 0047.** A billing
 row is application-native only when every migration-only field on that table is
-NULL. The three source-identity CHECK constraints reject an INSERT with any
-partial provenance. The shared UPDATE trigger checks the complete table-
-specific inventory and refuses attaching even one legacy id, raw value, source
-key, extraction fingerprint or source payload to a native row. Native business
-fields remain editable and a native row remains deletable.
+NULL. It introduced three source-identity CHECK constraints and the shared
+UPDATE trigger checks the complete table-specific inventory, refusing an
+ordinary update that attaches even one legacy id, raw value, source key,
+extraction fingerprint or source payload to a native row. Native business
+fields remain editable and a native row remains deletable. Migration 0048 below
+closes the remaining combined-NULL INSERT loophole in the original CHECK
+expressions.
 
 The controlled historical writer deliberately has no INSERT trigger. It can
 therefore reconstruct a clean database by inserting a complete migrated row,
 which must satisfy the migrated branch of the CHECK. That branch still permits
 the reviewed source NULLs: invoice type on 21269 and 21772, optional receipt-
-currency raw text, and optional payment currency raw text. Migration 0047 first
-checks for an existing partial row and fails rather than rewriting or silently
-reclassifying one. The expanded 92-case disposable fixture covers all 23
-migration-only fields independently on native UPDATE and partial INSERT,
-complete migrated inserts for all three targets, all pre-existing billing
-safeguards, and exact PostgreSQL 17.11 definitions.
+currency raw text, and optional payment currency raw text. The fixture covers
+all 23 migration-only fields independently on native UPDATE and partial INSERT,
+complete migrated inserts for all three targets and all pre-existing billing
+safeguards.
+
+**Null-safety correction — 26 August 2026, migration 0048.** PostgreSQL rejects
+a CHECK only when its result is FALSE; UNKNOWN passes. In migration 0047, a
+complete-looking legacy row with all three identity fields NULL could make the
+native branch FALSE and the migrated branch UNKNOWN. Migration 0048 performs no
+business-data update. Its precondition uses `NOT ((native OR migrated) IS TRUE)`
+so every existing row must be exactly native or complete and valid migrated
+before the constraints change. It then requires the source key, extraction
+fingerprint and source payload explicitly in each migrated branch and wraps the
+whole native-or-migrated predicate in `IS TRUE`.
+
+The final 122-case disposable fixture proves, separately for invoices,
+payments and allocations, that an otherwise complete migrated shape with all
+three identity fields NULL, each single missing identity field and a combined
+partial identity are refused directly by the named CHECK. It then disables
+each CHECK only inside a rolled-back transaction and proves the independent
+reconciliation detects every one of those shapes. Complete native CRUD,
+complete migrated inserts, approved NULL raw values, legacy immutability,
+TRUNCATE refusal and exact structure weakening remain covered. Exact catalog
+strings remain pinned to PostgreSQL 17.11; the future-major-version review
+warning above remains unchanged.
 
 The transaction takes table locks that block concurrent writes and table DDL,
 and the apply procedure separately confirmed that no other migration or active

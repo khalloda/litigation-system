@@ -1861,9 +1861,10 @@ model LookupLawyerShareRole {
 //  every legacy-derived billing row immutable in PostgreSQL. Stage 3 must
 //  still enforce the Phase 1 rule at the server boundary for application-
 //  native rows; hiding a button is never sufficient.
-//  Migration 0047 defines an application-native billing row as one with every
-//  migration-only field NULL. Partial provenance is rejected structurally;
-//  a normal update cannot attach legacy provenance later.
+//  Migration 0047 introduced the complete native/migrated distinction;
+//  migration 0048 makes its three CHECK predicates null-safe. An application-
+//  native billing row has every migration-only field NULL. Partial provenance
+//  is rejected structurally; a normal update cannot attach it later.
 //
 //  BILLING IS VISIBLE TO ALL FOUR ROLES, for all clients (D14). Not
 //  restricted to a lawyer's own matters: 834 of 1,730 matters have no lawyer

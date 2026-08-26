@@ -114,7 +114,7 @@ const checks = [
     'invoices',
     'c',
     false,
-    "CHECK (legacy_id IS NULL AND legacy_contract_id IS NULL AND legacy_currency_raw IS NULL AND legacy_status_raw IS NULL AND legacy_type_raw IS NULL AND legacy_receipt_currency_raw IS NULL AND legacy_source_record_key IS NULL AND legacy_source_extraction_sha256 IS NULL AND legacy_source_payload IS NULL OR legacy_source_record_key ~ '^[0-9a-f]{64}:[0-9]{6}$'::text AND legacy_source_extraction_sha256 ~ '^[0-9A-F]{64}$'::text AND jsonb_typeof(legacy_source_payload) = 'object'::text AND NOT legacy_source_payload ? 'Pay-Date'::text AND legacy_id IS NOT NULL AND invoice_no IS NOT NULL AND fee_letter_id IS NOT NULL AND legacy_contract_id IS NOT NULL AND legacy_currency_raw IS NOT NULL)",
+    "CHECK ((legacy_id IS NULL AND legacy_contract_id IS NULL AND legacy_currency_raw IS NULL AND legacy_status_raw IS NULL AND legacy_type_raw IS NULL AND legacy_receipt_currency_raw IS NULL AND legacy_source_record_key IS NULL AND legacy_source_extraction_sha256 IS NULL AND legacy_source_payload IS NULL OR legacy_source_record_key IS NOT NULL AND legacy_source_extraction_sha256 IS NOT NULL AND legacy_source_payload IS NOT NULL AND legacy_source_record_key ~ '^[0-9a-f]{64}:[0-9]{6}$'::text AND legacy_source_extraction_sha256 ~ '^[0-9A-F]{64}$'::text AND jsonb_typeof(legacy_source_payload) = 'object'::text AND NOT legacy_source_payload ? 'Pay-Date'::text AND legacy_id IS NOT NULL AND invoice_no IS NOT NULL AND fee_letter_id IS NOT NULL AND legacy_contract_id IS NOT NULL AND legacy_currency_raw IS NOT NULL) IS TRUE)",
   ],
   [
     'payments_source_identity_shape',
@@ -122,7 +122,7 @@ const checks = [
     'payments',
     'c',
     false,
-    "CHECK (legacy_id IS NULL AND legacy_invoice_no IS NULL AND legacy_currency_raw IS NULL AND legacy_source_record_key IS NULL AND legacy_source_extraction_sha256 IS NULL AND legacy_source_payload IS NULL OR legacy_source_record_key ~ '^[0-9a-f]{64}:[0-9]{6}$'::text AND legacy_source_extraction_sha256 ~ '^[0-9A-F]{64}$'::text AND jsonb_typeof(legacy_source_payload) = 'object'::text AND legacy_id IS NOT NULL AND invoice_id IS NOT NULL AND legacy_invoice_no IS NOT NULL)",
+    "CHECK ((legacy_id IS NULL AND legacy_invoice_no IS NULL AND legacy_currency_raw IS NULL AND legacy_source_record_key IS NULL AND legacy_source_extraction_sha256 IS NULL AND legacy_source_payload IS NULL OR legacy_source_record_key IS NOT NULL AND legacy_source_extraction_sha256 IS NOT NULL AND legacy_source_payload IS NOT NULL AND legacy_source_record_key ~ '^[0-9a-f]{64}:[0-9]{6}$'::text AND legacy_source_extraction_sha256 ~ '^[0-9A-F]{64}$'::text AND jsonb_typeof(legacy_source_payload) = 'object'::text AND legacy_id IS NOT NULL AND invoice_id IS NOT NULL AND legacy_invoice_no IS NOT NULL) IS TRUE)",
   ],
   [
     'invoice_allocations_source_identity_shape',
@@ -130,7 +130,7 @@ const checks = [
     'invoice_allocations',
     'c',
     false,
-    "CHECK (legacy_id IS NULL AND legacy_invoice_no IS NULL AND legacy_lawyer_raw IS NULL AND legacy_percent_raw IS NULL AND legacy_lawyer_as_raw IS NULL AND legacy_source_record_key IS NULL AND legacy_source_extraction_sha256 IS NULL AND legacy_source_payload IS NULL OR legacy_source_record_key ~ '^[0-9a-f]{64}:[0-9]{6}$'::text AND legacy_source_extraction_sha256 ~ '^[0-9A-F]{64}$'::text AND jsonb_typeof(legacy_source_payload) = 'object'::text AND legacy_id IS NOT NULL AND invoice_id IS NOT NULL AND person_id IS NOT NULL AND lawyer_role_id IS NOT NULL AND legacy_invoice_no IS NOT NULL AND legacy_lawyer_raw IS NOT NULL AND legacy_percent_raw IS NOT NULL AND legacy_lawyer_as_raw IS NOT NULL)",
+    "CHECK ((legacy_id IS NULL AND legacy_invoice_no IS NULL AND legacy_lawyer_raw IS NULL AND legacy_percent_raw IS NULL AND legacy_lawyer_as_raw IS NULL AND legacy_source_record_key IS NULL AND legacy_source_extraction_sha256 IS NULL AND legacy_source_payload IS NULL OR legacy_source_record_key IS NOT NULL AND legacy_source_extraction_sha256 IS NOT NULL AND legacy_source_payload IS NOT NULL AND legacy_source_record_key ~ '^[0-9a-f]{64}:[0-9]{6}$'::text AND legacy_source_extraction_sha256 ~ '^[0-9A-F]{64}$'::text AND jsonb_typeof(legacy_source_payload) = 'object'::text AND legacy_id IS NOT NULL AND invoice_id IS NOT NULL AND person_id IS NOT NULL AND lawyer_role_id IS NOT NULL AND legacy_invoice_no IS NOT NULL AND legacy_lawyer_raw IS NOT NULL AND legacy_percent_raw IS NOT NULL AND legacy_lawyer_as_raw IS NOT NULL) IS TRUE)",
   ],
   [
     'invoice_transform_pkey',
