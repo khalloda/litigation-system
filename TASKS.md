@@ -1199,9 +1199,36 @@ only ever seen good data is not known to work.
       machine roots. Independent permanent file/data reconciliation plus exact
       PostgreSQL 17.11 catalog verification raised `db:check` **79 → 81**.
 
-- [ ] **2.12 Gate 4 reconciliation**
-      Counts, per-lawyer matter totals, status totals, billing totals.
-      Produce a report the owner can read.
+- [x] **2.12 Gate 4 reconciliation** — 30 August 2026. The owner-readable
+      report is `docs/reconciliations/2026-08-30-gate-4.md`.
+
+      The extraction-time Access identity remains `40EBF988…5979`. The same
+      file was later opened for inspection, changing only its physical identity
+      to `1A1DA8D…B4BC`; an independent full logical-equivalence audit found
+      zero changed table values, relationships, complex values or logo files.
+      PostgreSQL provenance was not rewritten.
+
+      Complete current-source arithmetic is **30,847 migration-source + 38
+      reference-only + 4,753 archive-only = 35,638 Access user-table rows**.
+      The 30,885 extracted parent rows plus 342 complex values equal all
+      **31,227 staged rows**. Table by table, every migrated source is
+      transformed, quarantined or covered by one of two reviewed exclusions
+      (`**` and D6's abandoned duplicate team row).
+
+      Six independently implemented report-category datasets matched row for
+      row: client matters 82, for/against 741, lawyer workload 2, hearings by
+      date 12,553, administrative works 3,694 and financial history 1,140.
+      Matter status, exact-decimal billing totals per currency, hearings per
+      year and all 54 logos also matched. The administrative comparison uses
+      `task_created_date`; `created_at` is explicitly rejected.
+
+      The read-only run used one repeatable-read transaction on
+      `litigation@localhost:5433`. An identical second run reproduced report
+      digest `d10190cb…24b36`. The fixture suite deliberately proved wrong joins,
+      omissions, duplicates, changed values, NULL/empty collapse, wrong money,
+      date/year drift, parameter/order drift, port 5432 and writable
+      transactions all fail. The additive creation-date correction is
+      migration 0051, and permanent verification now has **82** invariants.
 
 ---
 

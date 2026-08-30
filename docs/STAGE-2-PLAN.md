@@ -215,7 +215,8 @@ is marked "unknown person". It is never guessed.**
 **Proves: the new system says the same things as the old one.**
 
 Counting is not enough — the wrong records in the right number would pass a
-count. So this gate also checks:
+count. The following were the 19 August planning shape references; the final
+current values are in the completed report. The gate also checks:
 
 - **Matters per lawyer**, against the figures from Access:
   إيهاب حمدي 476 · ناجي رمضان 200 · هاني الدالي 181 · أحمد سعيد 129 ·
@@ -225,24 +226,38 @@ count. So this gate also checks:
 - **Hearings per year**, 2009 to 2026
 - **All 54 logos**, checked byte for byte against the originals
 
-And then the real test: **six reports are run in Access and in the new system
-and compared row by row** — one client report, one for/against, one lawyer
-workload, one hearings by date, one administrative works, one financial.
+And then the real test: **six independently implemented report-category
+datasets are compared row by row** — one client report, one for/against, one
+lawyer workload, one hearings by date, one administrative works, one
+financial. The Access report/query definitions are inventoried, but the gate
+does not execute parameter prompts or VBA.
 
 That comparison is the only check that catches a mistake where the numbers all
 add up and the content is wrong.
+
+**Result — PASS, 30 August 2026.** The six report-category datasets matched
+row for row, as did matter status, current lawyer relationships, billing by
+currency, hearings by year and all 54 logos. The report is
+`docs/reconciliations/2026-08-30-gate-4.md`. An identical read-only rerun
+produced the same report digest.
 
 ---
 
 ## The number to expect at the end
 
-Your Access file holds **35,343** rows.
+Gate 4 measured the authoritative Access file at **35,638** current rows. The
+older 35,343 figure was the 19 August planning snapshot.
 
 | | |
 |---:|---|
-| **30,553** | moved into the new system |
-| **4,790** | archived, not moved — the meetings tables you dropped, and old copies |
-| **35,343** | total |
+| **30,847** | rows in the 15 migration-source tables |
+| **38** | reference-only rows, extracted but not turned into business records |
+| **4,753** | archive-only rows — meetings and old copies |
+| **35,638** | every row in the 27 Access user tables |
+
+The exact operational difference is **4,791 not moved**: 38 reference-only +
+4,753 archive-only. The extraction also has 342 complex values, so PostgreSQL
+staging holds 30,885 parent rows + 342 complex values = **31,227**.
 
 The final report shows all three figures on one page, so the difference is
 visible and never rediscovered later as missing data.

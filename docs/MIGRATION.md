@@ -1,39 +1,46 @@
 # Data migration
 
-Move **30,553 rows** from Access to PostgreSQL with **provable** zero loss.
+Move the authoritative Access data to PostgreSQL with **provable** zero loss.
 
 **Core rule: never delete, clean or fix anything during extraction or load.**
 Data that cannot be mapped is *quarantined*, not dropped.
 
 ## Which row count is the target?
 
-Two numbers appear in this project and both are correct. They mean different
-things, and confusing them makes the final reconciliation impossible to judge.
+The 19 August planning figures moved before extraction. Gate 4 measured the
+authoritative source directly on 30 August; those current figures are the
+operational baseline below.
 
 | Number | What it is |
 |---:|---|
-| **35,343** | Every row in the Access file, including the tables the firm dropped |
-| **30,553** | The rows that actually migrate — the sum of the **migrated** group below |
-| **4,790** | The difference: everything not migrated. Meetings (3,230 rows, D2) plus `Copy Of العملاء`, `Follow-up`, `عهدة قسم القضايا`, `Paste Errors`, `tblMinMatterHearingDate` and the other archive-only tables the extraction script skips by default — **and the 38 rows of `المحامين`**, which is extracted but not migrated |
+| **35,638** | Every current row in the 27 Access user tables |
+| **30,847** | Rows in the 15 migration-source tables |
+| **38** | Rows in the two extracted reference-only tables |
+| **4,753** | Rows in ten archive-only tables |
+| **4,791** | Everything not moved: 38 reference-only + 4,753 archive-only |
 
 **Not migrated splits three ways, and Gate 4 needs the distinction.** A table
 is *migrated* (becomes records in the new system), *reference-only*
 (extracted, read during the migration, never becomes records), or
 *archive-only* (not extracted at all without `-IncludeArchiveTables`). The
-first two are what Gate 1 expects; all three together are the 35,343.
+The migrated and reference-only classes are what Gate 1 expects; all three
+classes together are the 35,638 measured by Gate 4.
 
-**All three figures are as at 19 August 2026, and all three move.** The file
-grows by about 100 records a day, so by cutover the migrated figure will be
-larger than 30,553 and the total larger than 35,343. That is expected. What must
-hold on any given run is the **arithmetic**, not the constants:
+The older 35,343 / 30,553 / 4,790 figures elsewhere in dated planning history
+are explicitly the 19 August snapshot. The file then grew by about 100 records
+a day. What must hold on any given run is the **arithmetic**, not those
+constants:
 
-> *migrated + archived = every row in the file*
+> *migration-source + reference-only + archive-only = every user-table row*
 
 **Gate 4 proves that identity against the counts from the file actually
 extracted**, and prints all three of that day's figures on one page, so the gap
 is visible and nobody rediscovers it later and reports it as lost data. It does
 **not** compare against 30,553 — see "What Gate 1 actually asserts" below for
 why a constant here would fail every run from now on.
+
+The completed Gate 4 report also records the second staging identity:
+30,885 extracted parent rows + 342 complex values = 31,227 staging rows.
 
 ## The trap that destroys data silently
 
@@ -2402,10 +2409,39 @@ measured ones so a wrong join still stands out.
 - Hearing count per year, 2009 → 2026
 - SHA-256 of each of the 54 logos, before and after
 
-**Then run six real reports** in Access and in the new system and compare row
+**Then compare six independently implemented report-category datasets** row
 for row — one client, one for/against, one lawyer workload, one hearings by
-date, one administrative works, one financial. This is the only check that
-catches a wrong join.
+date, one administrative works, one financial. Gate 4 inventories the real
+Access report/query definitions, but does not execute parameter prompts or VBA.
+This is the check that catches a wrong join.
+
+### Gate 4 result — PASS, 30 August 2026
+
+The complete owner-readable evidence is in
+`docs/reconciliations/2026-08-30-gate-4.md`.
+
+- The extraction was produced from Access physical hash `40EBF988…5979`.
+  Khaled Helmy later opened the same file for inspection without an intentional
+  change; Access changed its modification time and whole-file hash to
+  `1A1DA8D…B4BC`.
+- The owner ruled it the same logical source. Before Gate 4 code was completed,
+  an independent full re-extraction found zero business-value, table, column,
+  relationship, attachment, complex-value or required object-definition
+  differences. The original extraction fingerprint remains unchanged in the
+  manifest, staging and every migrated provenance field.
+- All 27 Access user tables reconciled: 30,847 migration-source + 38
+  reference-only + 4,753 archive-only = 35,638. The extracted 30,885 parent
+  rows + 342 complex values equal all 31,227 staged rows.
+- Current matter status, per-lawyer relationships, exact-decimal invoice and
+  payment totals per currency, hearings per year and all 54 logos reconciled.
+- Six separately implemented report-category datasets matched row for row:
+  82 client-matter rows, 741 for/against rows, 2 lawyer-workload rows, 12,553
+  hearing rows, 3,694 administrative-work rows and 1,140 financial rows.
+- Administrative `تاريخ الإنشاء` compared only with `task_created_date`.
+  Using the PostgreSQL insertion timestamp `created_at` is an explicit failure.
+- The run used one repeatable-read, read-only PostgreSQL transaction. An
+  identical second run reproduced report digest `d10190cb…24b36`; no Access,
+  extracted, database or logo data changed.
 
 ## Cutover
 

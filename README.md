@@ -3,9 +3,9 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Status:** Stage 2 migration is complete through Task 2.11, including the
-54 client logos. Gate 4 reconciliation is next. Progress is tracked in
-`TASKS.md`.
+**Status:** Stage 2 migration and Gate 4 reconciliation are complete. The
+owner-readable result is in `docs/reconciliations/2026-08-30-gate-4.md`.
+Progress is tracked in `TASKS.md`.
 
 ---
 
@@ -22,8 +22,9 @@ of live data — 13,279 hearings, 4,207 administrative tasks, 1,730 matters and
 313 clients. The file remains in daily use, so current migration counts are in
 `TASKS.md` rather than frozen here.
 
-Of those, **30,553 rows migrate**; the remaining 4,790 are archived tables the
-firm dropped (meetings and old copies). See `docs/MIGRATION.md`.
+Those are the dated planning figures. Gate 4 measured the authoritative source
+at **35,638 rows**: 30,847 migration-source rows, 38 reference-only rows and
+4,753 archive-only rows. See `docs/MIGRATION.md` for the distinction.
 
 The application is **Arabic only**, right-to-left, with English data retained
 in the database for a possible future bilingual version.
