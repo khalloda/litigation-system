@@ -1239,11 +1239,19 @@ only ever seen good data is not known to work.
       The read-only run used one repeatable-read transaction on
       `litigation@localhost:5433`. The original report digest
       `d10190cb…24b36` remains the historical pre-hardening artefact. The
-      hardened report is intentionally different because it records the new
-      reproducible extraction and prerequisite-oracle evidence; all six
-      approved business dataset counts and digests remain unchanged. Its
-      identical two-pass digest is
-      `62b88e09fdd9022fafb311774b635e7d71d98956f0ee6dcc066148a1f60f6c47`.
+      first hardened report was intentionally different because it recorded
+      the new reproducible extraction and prerequisite-oracle evidence; its
+      identical two-pass digest was `62b88e09…0f6c47`. Gate 4 subsequently
+      removed a forward-compatibility defect: it no longer requires the total
+      applied-migration count to remain exactly 51. It proves the exact 51
+      Stage 2 apply-time name/checksum identities through migration 0051,
+      separately proves the one approved clean rollback, rejects every
+      missing, replaced, duplicate, rolled-back, failed or unfinished required
+      migration and every unfinished later migration, while permitting later
+      successfully applied migrations. The current 51/51 migration-identity
+      digest is `2abe71da…9bb11da`; the corrected byte-identical two-pass report
+      digest is `15bd21a37ad513c3a232335e502cf3de11b6d0817ba29073d59811e22122e9a6`.
+      All six approved business dataset counts and digests remain unchanged.
       The expanded fixture suite proves same-count quarantine swaps, incorrect
       identities/reasons, reviewed-rule drift, Access value/NULL/whitespace/
       Arabic/multiplicity drift, complex and logo changes, object-definition

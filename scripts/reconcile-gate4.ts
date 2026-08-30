@@ -198,9 +198,19 @@ function assertBaselines(
     fail(`staging is ${database.stagingRows}/${extraction.stagingRows} rows`);
   if (database.stagingFingerprint !== GATE4_EXTRACTION_FINGERPRINT)
     fail(`staging fingerprint is ${database.stagingFingerprint}`);
-  if (database.migrations.applied !== 51 || database.migrations.cleanRollbacks !== 1)
-    fail(`migration history is ${JSON.stringify(database.migrations)}`);
-  if (database.migrations.unfinishedOrFailed !== 0) fail('an unfinished migration exists');
+  if (database.migrations.defects.length > 0)
+    fail(`migration history: ${database.migrations.defects.join('; ')}`);
+  if (database.migrations.requiredStage2Proved !== database.migrations.requiredStage2Expected)
+    fail(
+      `required Stage 2 migrations are ${database.migrations.requiredStage2Proved}/${database.migrations.requiredStage2Expected}`,
+    );
+  if (
+    database.migrations.totalApplied !==
+    database.migrations.requiredStage2Proved + database.migrations.laterApplied
+  )
+    fail('applied migration accounting differs');
+  if (database.migrations.unfinishedOrFailed !== 0)
+    fail(`${database.migrations.unfinishedOrFailed} unfinished/failed migration(s) exist`);
   if (database.review.valueAnswers !== REVIEW_ANSWER_BASELINE.valueAnswers)
     fail(`review value answers are ${database.review.valueAnswers}`);
   if (database.review.findingAnswers !== REVIEW_ANSWER_BASELINE.findingAnswers)
@@ -479,7 +489,11 @@ The administrative-works dataset compares Access \`تاريخ الإنشاء\` o
 
 - staging rows: ${database.stagingRows.toLocaleString('en-US')}; fingerprint \`${database.stagingFingerprint}\`
 - review answers: ${database.review.valueAnswers} value + ${database.review.findingAnswers} finding = ${database.review.valueAnswers + database.review.findingAnswers}; mapping \`${database.review.mappingDigest}\`; answers \`${database.review.answerDigest}\`
-- migrations: ${database.migrations.applied} applied, ${database.migrations.cleanRollbacks} clean rollback, ${database.migrations.unfinishedOrFailed} unfinished/failed
+- required Stage 2 migrations proved: ${database.migrations.requiredStage2Proved}/${database.migrations.requiredStage2Expected}, through <code>${database.migrations.finalStage2Migration}</code>; identity digest <code>${database.migrations.requiredStage2Digest}</code>
+- total successfully applied migrations: ${database.migrations.totalApplied} (${database.migrations.requiredStage2Proved} required Stage 2 + ${database.migrations.laterApplied} later)
+- later successfully applied migrations: ${database.migrations.laterApplied}${database.migrations.laterAppliedNames.length === 0 ? '' : ` — ${database.migrations.laterAppliedNames.map((name) => `<code>${name}</code>`).join(', ')}`}
+- approved clean rollbacks: ${database.migrations.cleanRollbacks} — ${database.migrations.cleanRollbackNames.map((name) => `<code>${name}</code>`).join(', ')}
+- unfinished/failed migrations: ${database.migrations.unfinishedOrFailed}
 - prior-stage protected-state digest: \`${database.protectedDigest}\`
 - independently proven prerequisite oracles: ${database.prerequisites.map((item) => item.name).join(', ')}
 - reviewed billing currency-rule digest: \`${database.currencyRuleDigest}\`

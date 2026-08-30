@@ -38,6 +38,12 @@ import {
   type MatterReconciliationRow,
 } from './lib/matter-reconciliation';
 import { withGate4TaskTempDir } from './lib/gate4-temp';
+import {
+  GATE4_APPROVED_CLEAN_ROLLBACKS,
+  GATE4_REQUIRED_STAGE2_MIGRATIONS,
+  reconcileGate4Migrations,
+  type Gate4MigrationHistoryRow,
+} from './lib/gate4-migrations';
 
 type Test = Readonly<{ name: string; run: () => void | Promise<void> }>;
 
@@ -100,6 +106,36 @@ function mustChangeLogical(
   after: readonly Readonly<{ name: string; rows: readonly (readonly (string | null)[])[] }>[],
 ): void {
   assert.notEqual(gate4LogicalFixtureEvidence(before), gate4LogicalFixtureEvidence(after));
+}
+
+function appliedMigration(name: string, checksum: string): Gate4MigrationHistoryRow {
+  return {
+    migrationName: name,
+    checksum,
+    finishedAt: '2026-08-30 10:00:01+00',
+    rolledBackAt: null,
+    appliedStepsCount: 1,
+  };
+}
+
+function migrationFixtureHistory(): Gate4MigrationHistoryRow[] {
+  return [
+    ...GATE4_REQUIRED_STAGE2_MIGRATIONS.map((row) => appliedMigration(row.name, row.checksum)),
+    ...GATE4_APPROVED_CLEAN_ROLLBACKS.map((row) => ({
+      migrationName: row.name,
+      checksum: row.checksum,
+      finishedAt: null,
+      rolledBackAt: '2026-08-21 08:20:59+00',
+      appliedStepsCount: 0,
+    })),
+  ];
+}
+
+function laterMigration(sequence: number): Gate4MigrationHistoryRow {
+  return appliedMigration(
+    `20260831${String(sequence).padStart(6, '0')}_stage3_fixture_${sequence}`,
+    createHash('sha256').update(`later migration ${sequence}`, 'utf8').digest('hex'),
+  );
 }
 
 const source = [
@@ -322,6 +358,140 @@ const tests: readonly Test[] = [
         () => assertGate4Fingerprint('0'.repeat(64), 'A'.repeat(64)),
         /fingerprint differs/u,
       ),
+  },
+  {
+    name: 'current 51 applied migrations and the approved clean rollback pass',
+    run: () => {
+      const evidence = reconcileGate4Migrations(migrationFixtureHistory());
+      assert.deepEqual(evidence.defects, []);
+      assert.equal(evidence.requiredStage2Proved, 51);
+      assert.equal(evidence.totalApplied, 51);
+      assert.equal(evidence.cleanRollbacks, 1);
+      assert.equal(evidence.unfinishedOrFailed, 0);
+    },
+  },
+  {
+    name: 'one successfully applied migration after Stage 2 passes',
+    run: () => {
+      const evidence = reconcileGate4Migrations([...migrationFixtureHistory(), laterMigration(1)]);
+      assert.deepEqual(evidence.defects, []);
+      assert.equal(evidence.totalApplied, 52);
+      assert.equal(evidence.laterApplied, 1);
+    },
+  },
+  {
+    name: 'several successfully applied migrations after Stage 2 pass',
+    run: () => {
+      const evidence = reconcileGate4Migrations([
+        ...migrationFixtureHistory(),
+        laterMigration(1),
+        laterMigration(2),
+        laterMigration(3),
+      ]);
+      assert.deepEqual(evidence.defects, []);
+      assert.equal(evidence.totalApplied, 54);
+      assert.equal(evidence.laterApplied, 3);
+    },
+  },
+  {
+    name: 'missing required migration fails even when a later migration preserves the count',
+    run: () => {
+      const missing = GATE4_REQUIRED_STAGE2_MIGRATIONS[0]!;
+      const history = migrationFixtureHistory().filter((row) => row.migrationName !== missing.name);
+      const evidence = reconcileGate4Migrations([...history, laterMigration(1)]);
+      assert.equal(evidence.totalApplied, 51);
+      assert.match(evidence.defects.join('\n'), new RegExp(missing.name, 'u'));
+    },
+  },
+  {
+    name: 'required migration marked rolled back fails',
+    run: () => {
+      const required = GATE4_REQUIRED_STAGE2_MIGRATIONS[1]!;
+      const history = migrationFixtureHistory();
+      const index = history.findIndex((row) => row.migrationName === required.name);
+      history[index] = {
+        ...history[index]!,
+        finishedAt: null,
+        rolledBackAt: '2026-08-31 00:00:00+00',
+        appliedStepsCount: 0,
+      };
+      assert.match(reconcileGate4Migrations(history).defects.join('\n'), /clean rollback/u);
+    },
+  },
+  {
+    name: 'required unfinished or failed migration fails',
+    run: () => {
+      const required = GATE4_REQUIRED_STAGE2_MIGRATIONS[2]!;
+      const history = migrationFixtureHistory();
+      const index = history.findIndex((row) => row.migrationName === required.name);
+      history[index] = {
+        ...history[index]!,
+        finishedAt: null,
+        rolledBackAt: null,
+        appliedStepsCount: 0,
+      };
+      const evidence = reconcileGate4Migrations(history);
+      assert.match(evidence.defects.join('\n'), /unfinished\/failed/u);
+      assert.equal(evidence.unfinishedOrFailed, 1);
+    },
+  },
+  {
+    name: 'duplicate, checksum replacement and unexpected substitution all fail',
+    run: () => {
+      const required = GATE4_REQUIRED_STAGE2_MIGRATIONS[3]!;
+      const duplicate = migrationFixtureHistory();
+      duplicate.push(appliedMigration(required.name, required.checksum));
+      assert.match(reconcileGate4Migrations(duplicate).defects.join('\n'), /duplicate/u);
+
+      const replaced = migrationFixtureHistory();
+      const replacedIndex = replaced.findIndex((row) => row.migrationName === required.name);
+      replaced[replacedIndex] = { ...replaced[replacedIndex]!, checksum: 'f'.repeat(64) };
+      assert.match(reconcileGate4Migrations(replaced).defects.join('\n'), /checksum differs/u);
+
+      const substituted = migrationFixtureHistory().filter(
+        (row) => row.migrationName !== required.name,
+      );
+      substituted.push(appliedMigration('20260829120000_unexpected_substitution', 'e'.repeat(64)));
+      assert.match(
+        reconcileGate4Migrations(substituted).defects.join('\n'),
+        /expected exactly one|unexpected migration/u,
+      );
+    },
+  },
+  {
+    name: 'unfinished later migration fails',
+    run: () => {
+      const later = { ...laterMigration(1), finishedAt: null, appliedStepsCount: 0 };
+      const evidence = reconcileGate4Migrations([...migrationFixtureHistory(), later]);
+      assert.match(evidence.defects.join('\n'), /later migration is unfinished\/failed/u);
+      assert.equal(evidence.unfinishedOrFailed, 1);
+    },
+  },
+  {
+    name: 'historical clean rollback is classified explicitly and remains required',
+    run: () => {
+      const evidence = reconcileGate4Migrations(migrationFixtureHistory());
+      assert.deepEqual(
+        evidence.cleanRollbackNames,
+        GATE4_APPROVED_CLEAN_ROLLBACKS.map((row) => row.name),
+      );
+      const withoutRollback = migrationFixtureHistory().filter(
+        (row) => row.migrationName !== GATE4_APPROVED_CLEAN_ROLLBACKS[0]!.name,
+      );
+      assert.match(
+        reconcileGate4Migrations(withoutRollback).defects.join('\n'),
+        /expected one approved clean rollback/u,
+      );
+    },
+  },
+  {
+    name: 'identical migration-history runs remain deterministic',
+    run: () => {
+      const history = [...migrationFixtureHistory(), laterMigration(1), laterMigration(2)];
+      const first = reconcileGate4Migrations(history);
+      const second = reconcileGate4Migrations([...history].reverse());
+      assert.deepEqual(first, second);
+    },
   },
   {
     name: 'source reader cannot import target planner or database implementation',

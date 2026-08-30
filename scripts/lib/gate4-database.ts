@@ -34,6 +34,11 @@ import { reconcileHearings } from './hearing-reconciliation';
 import { ADMIN_TASK_CREATION_DATE_BASELINE, reconcileAdminWorks } from './admin-reconciliation';
 import { reconcileBillingHistory } from './billing-reconciliation';
 import { task211ProtectedState } from './task211-protected-state';
+import {
+  reconcileGate4Migrations,
+  type Gate4MigrationEvidence,
+  type Gate4MigrationHistoryRow,
+} from './gate4-migrations';
 
 type QueryDatasetRow = Readonly<{ identity: string; values: (string | null)[] }>;
 
@@ -42,12 +47,6 @@ export type Gate4DatabaseSettings = Readonly<{
   readOnly: string;
   isolation: string;
   serverPort: number;
-}>;
-
-export type Gate4MigrationState = Readonly<{
-  applied: number;
-  cleanRollbacks: number;
-  unfinishedOrFailed: number;
 }>;
 
 export type Gate4Aggregate = Readonly<{ rows: number; amount: string }>;
@@ -97,7 +96,7 @@ export type Gate4DatabaseSnapshot = Readonly<{
   stagingRows: number;
   stagingFingerprint: string;
   review: ReviewSnapshot;
-  migrations: Gate4MigrationState;
+  migrations: Gate4MigrationEvidence;
   logos: ClientLogoReconciliation;
   protectedDigest: string;
   prerequisites: Gate4PrerequisiteEvidence['results'];
@@ -501,18 +500,25 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
       UNION ALL SELECT count(*) FROM staging."العملاء__logo" UNION ALL SELECT count(*) FROM staging."خطابات الأتعاب__Matter"
     ) totals) rows,_migration.current_staging_fingerprint() fingerprint`);
   const migration = await db.query<{
-    applied: number;
-    clean_rollbacks: number;
-    unfinished_or_failed: number;
+    migration_name: string;
+    checksum: string;
+    finished_at: string | null;
+    rolled_back_at: string | null;
+    applied_steps_count: number;
   }>(`
-    SELECT count(*) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL)::int applied,
-           count(*) FILTER (WHERE rolled_back_at IS NOT NULL AND finished_at IS NULL)::int clean_rollbacks,
-           count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NULL)::int unfinished_or_failed
-      FROM _prisma_migrations`);
-  const migrationRow = migration.rows[0];
+    SELECT migration_name,checksum,finished_at::text,rolled_back_at::text,
+           applied_steps_count
+      FROM _prisma_migrations
+     ORDER BY migration_name,started_at,id`);
+  const migrationHistory: Gate4MigrationHistoryRow[] = migration.rows.map((row) => ({
+    migrationName: row.migration_name,
+    checksum: row.checksum,
+    finishedAt: row.finished_at,
+    rolledBackAt: row.rolled_back_at,
+    appliedStepsCount: row.applied_steps_count,
+  }));
   const stagingRow = staging.rows[0];
-  if (migrationRow === undefined || stagingRow === undefined)
-    throw new Error('PostgreSQL baseline query returned no row');
+  if (stagingRow === undefined) throw new Error('PostgreSQL baseline query returned no row');
 
   const logos = await reconcileClientLogos(db, {
     logoRoot: resolve('storage', 'client-logos'),
@@ -538,11 +544,7 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
     stagingRows: stagingRow.rows,
     stagingFingerprint: stagingRow.fingerprint,
     review: await readReviewSnapshot(db),
-    migrations: {
-      applied: migrationRow.applied,
-      cleanRollbacks: migrationRow.clean_rollbacks,
-      unfinishedOrFailed: migrationRow.unfinished_or_failed,
-    },
+    migrations: reconcileGate4Migrations(migrationHistory),
     logos,
     protectedDigest: await task211ProtectedState(db),
     prerequisites: prerequisites.results,

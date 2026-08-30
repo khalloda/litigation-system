@@ -250,6 +250,13 @@ timestamps, CSV byte layout and source row order. The copy and extraction are
 removed whether the check passes or fails; Access reports and VBA are never
 executed.
 
+The migration-history prerequisite is an exact Stage 2 identity baseline, not
+an exact total count. Gate 4 proves the 51 required apply-time migration names
+and checksums through migration 0051, the one approved historical clean
+rollback and the absence of unfinished/failed migrations. A later successfully
+applied migration is allowed; a missing, replaced, duplicated, rolled-back or
+unfinished required migration, or an unfinished later migration, fails.
+
 That comparison is the only check that catches a mistake where the numbers all
 add up and the content is wrong.
 
@@ -257,12 +264,13 @@ add up and the content is wrong.
 row for row, as did matter status, current lawyer relationships, billing by
 currency, hearings by year and all 54 logos. The report is
 `docs/reconciliations/2026-08-30-gate-4.md`. An identical read-only rerun
-produced hardened report digest
-`62b88e09fdd9022fafb311774b635e7d71d98956f0ee6dcc066148a1f60f6c47`.
-The earlier `d10190cb…24b36` is the historical pre-hardening report artefact;
-the report bytes changed because reproducible re-extraction and prerequisite
-oracle evidence were added, while all six business dataset counts and digests
-stayed exact.
+produced corrected report digest
+`15bd21a37ad513c3a232335e502cf3de11b6d0817ba29073d59811e22122e9a6`.
+The earlier `d10190cb…24b36` is the historical pre-hardening report artefact,
+and `62b88e09…0f6c47` is the first hardened artefact before the
+forward-compatible migration-identity proof. The report bytes changed only as
+new verification evidence was recorded; all six business dataset counts and
+digests stayed exact.
 
 ---
 

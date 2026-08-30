@@ -2458,12 +2458,22 @@ The complete owner-readable evidence is in
   partitions, reasons, details, evidence and reviewed billing-rule content.
   Static dependency checks prevent the source reader, target reader or
   migration writer/planner from becoming the same implementation.
+- Migration proof is identity-based rather than count-based. Gate 4 requires
+  the exact 51 Stage 2 apply-time migration names and checksums through
+  `20260830110000_preserve_admin_task_created_date`, exactly once and
+  successfully applied; separately recognises the one approved historical
+  clean rollback; and rejects missing, substituted, duplicated, rolled-back,
+  failed or unfinished required migrations. Later successfully applied
+  migrations are allowed, while an unfinished later migration still fails the
+  gate. The current 51/51 identity digest is `2abe71da…9bb11da`.
 - Report digest `d10190cb…24b36` is the historical pre-hardening artefact. The
-  hardened report digest changes because the report now records the
+  first hardened report digest `62b88e09…0f6c47` recorded the
   reproducible re-extraction and prerequisite-oracle evidence, not because a
-  business dataset changed. The six approved dataset counts and digests remain
-  pinned exactly. The identical hardened rerun produced report digest
-  `62b88e09fdd9022fafb311774b635e7d71d98956f0ee6dcc066148a1f60f6c47`
+  business dataset changed. The forward-compatible migration-identity proof
+  changed only the report's migration evidence. The six approved dataset
+  counts and digests remain pinned exactly. Its corrected identical two-pass
+  report digest is
+  `15bd21a37ad513c3a232335e502cf3de11b6d0817ba29073d59811e22122e9a6`
   byte for byte; no Access, extracted, database or logo data changed.
 
 ## Cutover
