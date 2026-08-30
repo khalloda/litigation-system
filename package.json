@@ -39,6 +39,7 @@
     "transform:matter-relationships": "tsx scripts/transform-matter-relationships.ts",
     "transform:hearings": "tsx scripts/transform-hearings.ts",
     "transform:admin-works": "tsx scripts/transform-admin-works.ts",
+    "backfill:admin-task-created-date": "tsx scripts/backfill-admin-task-created-date.ts",
     "transform:powers-of-attorney": "tsx scripts/transform-powers-of-attorney.ts",
     "transform:documents": "tsx scripts/transform-documents.ts",
     "transform:fee-letters": "tsx scripts/transform-fee-letters.ts",

@@ -1145,6 +1145,12 @@ model AdminTask {
   /// records which spelling THIS row used.
   legacyAssigneeRaw  String? @map("legacy_assignee_raw")
 
+  /// Access `تاريخ الإنشاء`: the task's business creation date. This is
+  /// separate from `created_at`, which records when PostgreSQL inserted the
+  /// row. Application-native tasks must set this deliberately when task
+  /// creation is implemented; the database supplies no default.
+  taskCreatedDate DateTime? @map("task_created_date") @db.Date
+
   executionDate    DateTime? @map("execution_date") @db.Date
   result           String?
   previousDecision String?   @map("previous_decision")

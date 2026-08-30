@@ -2,6 +2,22 @@ import type { ClientBase } from 'pg';
 
 type ReconciliationRow = Record<string, string | number | bigint>;
 
+export type AdminTaskCreationDateBaseline = {
+  transformedTasks: number;
+  populatedDates: number;
+  nullDates: number;
+  minimumDate: string;
+  maximumDate: string;
+};
+
+export const ADMIN_TASK_CREATION_DATE_BASELINE: AdminTaskCreationDateBaseline = {
+  transformedTasks: 3_694,
+  populatedDates: 1_906,
+  nullDates: 1_788,
+  minimumDate: '2018-02-22',
+  maximumDate: '2026-08-18',
+};
+
 /**
  * Independent SQL oracle for Task 2.9A. It does not import or call the
  * TypeScript writer/planner. Typed values, reviewed mappings, the exact
@@ -17,6 +33,9 @@ task_source AS (
               THEN s."ID_Task"::integer END legacy_id_int,
          CASE WHEN s."matterID" ~ '^[0-9]+$' AND s."matterID"::numeric BETWEEN 1 AND 2147483647
               THEN s."matterID"::integer END matter_id_int,
+         CASE WHEN s."تاريخ الإنشاء" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00$'
+                   AND pg_input_is_valid(left(s."تاريخ الإنشاء",10),'date')
+              THEN left(s."تاريخ الإنشاء",10)::date END task_created_date_value,
          CASE WHEN s."تاريخ التنفيذ" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00$'
                    AND pg_input_is_valid(left(s."تاريخ التنفيذ",10),'date')
               THEN left(s."تاريخ التنفيذ",10)::date END execution_date_value,
@@ -69,6 +88,8 @@ task_reason_rows AS (
   UNION ALL SELECT src_record_key,'invalid_matter_link',jsonb_build_object('matterID',"matterID")
     FROM task_analysis WHERE "matterID" IS NOT NULL AND parent_matter_reason_codes IS NULL
       AND (matter_id_int IS NULL OR resolved_matter_id IS NULL)
+  UNION ALL SELECT src_record_key,'invalid_task_created_date',jsonb_build_object('value',"تاريخ الإنشاء")
+    FROM task_analysis WHERE "تاريخ الإنشاء" IS NOT NULL AND task_created_date_value IS NULL
   UNION ALL SELECT src_record_key,'invalid_execution_date',jsonb_build_object('value',"تاريخ التنفيذ")
     FROM task_analysis WHERE "تاريخ التنفيذ" IS NOT NULL AND execution_date_value IS NULL
   UNION ALL SELECT src_record_key,'invalid_deadline',jsonb_build_object('value',"آخر موعد")
@@ -210,6 +231,7 @@ SELECT
        OR t.required_work IS DISTINCT FROM s."العمل المطلوب"
        OR t.assigned_to_person_id IS DISTINCT FROM s.expected_person_id
        OR t.legacy_assignee_raw IS DISTINCT FROM s."القائم بالعمل"
+       OR t.task_created_date IS DISTINCT FROM s.task_created_date_value
        OR t.execution_date IS DISTINCT FROM s.execution_date_value
        OR t.result IS DISTINCT FROM s."النتيجة"
        OR t.previous_decision IS DISTINCT FROM s."القرار السابق"
@@ -264,10 +286,31 @@ SELECT
       t.legacy_source_extraction_sha256 IS NOT NULL OR t.legacy_source_payload IS NOT NULL)) bad_native_tasks,
   (SELECT count(*) FROM task_actions a
     WHERE a.legacy_source_record_key IS NULL AND (
-      a.legacy_source_extraction_sha256 IS NOT NULL OR a.legacy_source_payload IS NOT NULL OR a.source_ordinal IS NOT NULL)) bad_native_actions
+      a.legacy_source_extraction_sha256 IS NOT NULL OR a.legacy_source_payload IS NOT NULL OR a.source_ordinal IS NOT NULL)) bad_native_actions,
+  (SELECT count(*) FROM safe_tasks) creation_date_legacy_tasks,
+  (SELECT count(*) FROM admin_tasks t
+    JOIN safe_tasks s ON s.src_record_key=t.legacy_source_record_key
+   WHERE t.task_created_date IS NOT NULL) creation_date_populated,
+  (SELECT count(*) FROM admin_tasks t
+    JOIN safe_tasks s ON s.src_record_key=t.legacy_source_record_key
+   WHERE t.task_created_date IS NULL) creation_date_null,
+  (SELECT min(t.task_created_date)::text FROM admin_tasks t
+    JOIN safe_tasks s ON s.src_record_key=t.legacy_source_record_key) creation_date_minimum,
+  (SELECT max(t.task_created_date)::text FROM admin_tasks t
+    JOIN safe_tasks s ON s.src_record_key=t.legacy_source_record_key) creation_date_maximum,
+  (SELECT count(*) FROM admin_tasks t
+    JOIN safe_tasks s ON s.src_record_key=t.legacy_source_record_key
+   WHERE t.task_created_date IS NOT NULL
+     AND t.task_created_date=t.created_at::date
+     AND t.task_created_date IS DISTINCT FROM s.task_created_date_value) creation_date_created_at_substitution,
+  (SELECT count(*) FROM admin_tasks t
+   WHERE t.legacy_source_record_key IS NULL AND t.task_created_date IS NOT NULL) native_tasks_with_creation_date
 `;
 
-export async function reconcileAdminWorks(db: ClientBase): Promise<{
+export async function reconcileAdminWorks(
+  db: ClientBase,
+  options: { creationDateBaseline?: AdminTaskCreationDateBaseline } = {},
+): Promise<{
   row: ReconciliationRow;
   defects: string[];
 }> {
@@ -300,8 +343,27 @@ export async function reconcileAdminWorks(db: ClientBase): Promise<{
     'action_q_mismatch',
     'bad_native_tasks',
     'bad_native_actions',
+    'creation_date_created_at_substitution',
   ]) {
     if (BigInt(row[key] ?? 0) !== 0n) defects.push(`${key}: ${String(row[key])}`);
+  }
+  const baseline = options.creationDateBaseline;
+  if (baseline !== undefined) {
+    for (const [key, expected] of [
+      ['creation_date_legacy_tasks', baseline.transformedTasks],
+      ['creation_date_populated', baseline.populatedDates],
+      ['creation_date_null', baseline.nullDates],
+    ] as const) {
+      if (BigInt(row[key] ?? 0) !== BigInt(expected))
+        defects.push(`${key} is ${String(row[key])}; expected ${expected}`);
+    }
+    for (const [key, expected] of [
+      ['creation_date_minimum', baseline.minimumDate],
+      ['creation_date_maximum', baseline.maximumDate],
+    ] as const) {
+      if (String(row[key] ?? '') !== expected)
+        defects.push(`${key} is ${String(row[key])}; expected ${expected}`);
+    }
   }
   return { row, defects };
 }

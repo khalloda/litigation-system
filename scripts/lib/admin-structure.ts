@@ -1,5 +1,18 @@
 import type { ClientBase } from 'pg';
 
+type ColumnRow = {
+  schema_name: string;
+  table_name: string;
+  column_name: string;
+  data_type: string;
+  nullable: boolean;
+  has_default: boolean;
+  identity_kind: string;
+  generated_kind: string;
+  collation_name: string | null;
+  default_expression: string | null;
+};
+
 type ConstraintRow = {
   name: string;
   schema_name: string;
@@ -277,6 +290,18 @@ function same(actual: readonly string[], expected: readonly string[]): boolean {
 }
 
 export async function adminWorkStructureFailures(db: ClientBase): Promise<string[]> {
+  const columnRows = await db.query<ColumnRow>(`
+    SELECT ns.nspname schema_name,rel.relname table_name,a.attname column_name,
+           format_type(a.atttypid,a.atttypmod) data_type,NOT a.attnotnull nullable,
+           a.atthasdef has_default,a.attidentity::text identity_kind,
+           a.attgenerated::text generated_kind,c.collname collation_name,
+           pg_get_expr(ad.adbin,ad.adrelid,true) default_expression
+      FROM pg_attribute a JOIN pg_class rel ON rel.oid=a.attrelid
+      JOIN pg_namespace ns ON ns.oid=rel.relnamespace
+      LEFT JOIN pg_attrdef ad ON ad.adrelid=a.attrelid AND ad.adnum=a.attnum
+      LEFT JOIN pg_collation c ON c.oid=a.attcollation
+     WHERE ns.nspname='public' AND rel.relname='admin_tasks'
+       AND a.attname='task_created_date' AND a.attnum>0 AND NOT a.attisdropped`);
   const constraintRows = await db.query<ConstraintRow>(
     `
     SELECT con.conname name,ns.nspname schema_name,rel.relname table_name,
@@ -334,6 +359,22 @@ export async function adminWorkStructureFailures(db: ClientBase): Promise<string
      WHERE p.oid='quarantine.refuse_admin_work_evidence_change()'::regprocedure`);
 
   const failures: string[] = [];
+  const taskCreatedDate = columnRows.rows[0];
+  if (
+    columnRows.rows.length !== 1 ||
+    taskCreatedDate === undefined ||
+    taskCreatedDate.schema_name !== 'public' ||
+    taskCreatedDate.table_name !== 'admin_tasks' ||
+    taskCreatedDate.column_name !== 'task_created_date' ||
+    taskCreatedDate.data_type !== 'date' ||
+    !taskCreatedDate.nullable ||
+    taskCreatedDate.has_default ||
+    taskCreatedDate.identity_kind !== '' ||
+    taskCreatedDate.generated_kind !== '' ||
+    taskCreatedDate.collation_name !== null ||
+    taskCreatedDate.default_expression !== null
+  )
+    failures.push('column definition: public.admin_tasks.task_created_date');
   for (const [name, schema, table, type, noInherit, definition] of constraints) {
     const row = constraintRows.rows.find((x) => x.name === name);
     if (

@@ -7,6 +7,7 @@ type SourceTask = {
   src_file: string;
   src_row_num: number;
   legacy_task_id: string | null;
+  task_created_date_raw: string | null;
   execution_date_raw: string | null;
   result: string | null;
   assignee_raw: string | null;
@@ -69,6 +70,7 @@ export type AdminTaskTargetPlan = {
   requiredWork: string | null;
   assignedToPersonId: number | null;
   legacyAssigneeRaw: string | null;
+  taskCreatedDate: string | null;
   executionDate: string | null;
   result: string | null;
   previousDecision: string | null;
@@ -219,7 +221,8 @@ export async function buildAdminTransformPlan(db: ClientBase): Promise<AdminTran
   // misleading concurrent queries against a single connection.
   const taskSource = await db.query<SourceTask>(`
       SELECT t.src_record_key,t.src_extraction_sha256,t.src_file,t.src_row_num,
-             t."ID_Task" legacy_task_id,t."تاريخ التنفيذ" execution_date_raw,
+             t."ID_Task" legacy_task_id,t."تاريخ الإنشاء" task_created_date_raw,
+             t."تاريخ التنفيذ" execution_date_raw,
              t."النتيجة" result,t."القائم بالعمل" assignee_raw,
              t."القرار السابق" previous_decision,t."آخر متابعة" last_followup_raw,
              t."المحكمة" court_raw,_migration.reviewed_text_key(t."المحكمة") court_key,
@@ -314,6 +317,9 @@ export async function buildAdminTransformPlan(db: ClientBase): Promise<AdminTran
       }
     }
 
+    const taskCreatedDate = strictDate(row.task_created_date_raw);
+    if (row.task_created_date_raw !== null && taskCreatedDate === null)
+      addReason(reasons, 'invalid_task_created_date', { value: row.task_created_date_raw });
     const executionDate = strictDate(row.execution_date_raw);
     if (row.execution_date_raw !== null && executionDate === null)
       addReason(reasons, 'invalid_execution_date', { value: row.execution_date_raw });
@@ -432,6 +438,7 @@ export async function buildAdminTransformPlan(db: ClientBase): Promise<AdminTran
       requiredWork: row.required_work,
       assignedToPersonId,
       legacyAssigneeRaw: row.assignee_raw,
+      taskCreatedDate,
       executionDate,
       result: row.result,
       previousDecision: row.previous_decision,

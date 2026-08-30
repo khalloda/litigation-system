@@ -32,13 +32,14 @@ async function insertTasks(db: ClientBase, rows: readonly AdminTaskTargetPlan[])
   await db.query(
     `INSERT INTO admin_tasks (
        legacy_id,matter_id,required_work,assigned_to_person_id,legacy_assignee_raw,
-       execution_date,result,previous_decision,last_followup,deadline,court_id,
+       task_created_date,execution_date,result,previous_decision,last_followup,deadline,court_id,
        legacy_court_raw,circuit,legacy_circuit_raw,destination_id,
        legacy_destination_raw,status,alert,legacy_source_record_key,
        legacy_source_extraction_sha256,legacy_source_payload,updated_at
      )
      SELECT x."legacyId",x."matterId",x."requiredWork",x."assignedToPersonId",
-            x."legacyAssigneeRaw",x."executionDate"::date,x.result,x."previousDecision",
+            x."legacyAssigneeRaw",x."taskCreatedDate"::date,x."executionDate"::date,
+            x.result,x."previousDecision",
             x."lastFollowup",x.deadline::date,x."courtId",x."legacyCourtRaw",
             x.circuit,x."legacyCircuitRaw",x."destinationId",x."legacyDestinationRaw",
             x.status,x.alert,x."srcRecordKey",x."extractionSha256",x."sourcePayload",
@@ -46,7 +47,7 @@ async function insertTasks(db: ClientBase, rows: readonly AdminTaskTargetPlan[])
        FROM jsonb_to_recordset($1::jsonb) AS x(
          "srcRecordKey" text,"extractionSha256" text,"legacyId" integer,
          "matterId" integer,"requiredWork" text,"assignedToPersonId" integer,
-         "legacyAssigneeRaw" text,"executionDate" text,result text,
+         "legacyAssigneeRaw" text,"taskCreatedDate" text,"executionDate" text,result text,
          "previousDecision" text,"lastFollowup" text,deadline text,"courtId" integer,
          "legacyCourtRaw" text,circuit text,"legacyCircuitRaw" text,
          "destinationId" integer,"legacyDestinationRaw" text,status text,alert text,
@@ -123,7 +124,8 @@ export async function adminWorkResultDigest(db: ClientBase): Promise<string> {
   const result = await db.query<{ digest: string }>(`
     SELECT encode(sha256(convert_to(coalesce(string_agg(payload,E'\\n' ORDER BY kind,identity),''),'UTF8')),'hex') digest
       FROM (
-        SELECT 'T' kind,legacy_source_record_key identity,to_jsonb(t)::text payload
+        SELECT 'T' kind,legacy_source_record_key identity,
+               (to_jsonb(t)-'task_created_date')::text payload
           FROM admin_tasks t WHERE legacy_source_record_key IS NOT NULL
         UNION ALL SELECT 'A',legacy_source_record_key,to_jsonb(a)::text
           FROM task_actions a WHERE legacy_source_record_key IS NOT NULL

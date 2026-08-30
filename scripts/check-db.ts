@@ -34,7 +34,7 @@ import {
   reconcileAttendeeAudit,
 } from './lib/attendee-audit-reconciliation';
 import { hearingStructureFailures, reconcileHearings } from './lib/hearing-reconciliation';
-import { reconcileAdminWorks } from './lib/admin-reconciliation';
+import { ADMIN_TASK_CREATION_DATE_BASELINE, reconcileAdminWorks } from './lib/admin-reconciliation';
 import { adminWorkStructureFailures } from './lib/admin-structure';
 import { reconcilePowersOfAttorney } from './lib/poa-reconciliation';
 import { poaStructureFailures } from './lib/poa-structure';
@@ -2378,7 +2378,9 @@ async function main() {
       hearingStructure.length === 0,
     );
 
-    const adminResult = await reconcileAdminWorks(relationshipDb);
+    const adminResult = await reconcileAdminWorks(relationshipDb, {
+      creationDateBaseline: ADMIN_TASK_CREATION_DATE_BASELINE,
+    });
     record(
       'Administrative works and task steps reconcile',
       'every staged task and step is exactly transformed or quarantined',
@@ -2390,6 +2392,16 @@ async function main() {
             `${String(adminResult.row['actual_actions'])} transformed + ` +
             `${String(adminResult.row['actual_action_q'])} quarantined`
         : adminResult.defects.join('; '),
+      adminResult.defects.length === 0,
+    );
+    record(
+      'Administrative task business creation dates',
+      '3,694 migrated tasks: 1,906 source dates, 1,788 genuine nulls, range 2018-02-22 to 2026-08-18; never created_at',
+      `${String(adminResult.row['creation_date_populated'])} dated + ` +
+        `${String(adminResult.row['creation_date_null'])} null; ` +
+        `${String(adminResult.row['creation_date_minimum'])} to ` +
+        `${String(adminResult.row['creation_date_maximum'])}; ` +
+        `${String(adminResult.row['creation_date_created_at_substitution'])} created_at substitutions`,
       adminResult.defects.length === 0,
     );
     const adminStructure = await adminWorkStructureFailures(relationshipDb);

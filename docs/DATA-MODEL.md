@@ -285,9 +285,15 @@ absence of rows, not a person. Same for `لا يوجد حضور` and `متابع
 ## Administrative works
 
 ### `admin_tasks` — 4,238 staged; 3,694 transformed; 544 quarantined
-`matter_id`, `required_work`, `assigned_to_person_id`, `execution_date`,
-`result`, `previous_decision`, `last_followup`, `court`, `circuit`,
-`destination`, `status`, `alert`, `deadline`.
+`matter_id`, `required_work`, `assigned_to_person_id`, `task_created_date`,
+`execution_date`, `result`, `previous_decision`, `last_followup`, `court`,
+`circuit`, `destination`, `status`, `alert`, `deadline`.
+
+`task_created_date` is Access `تاريخ الإنشاء`: the task's business creation
+date. It is nullable and has no database default. Of the 3,694 migrated tasks,
+1,906 carry an exact source date and 1,788 carry a genuine source NULL; the
+migrated range is 22 February 2018 through 18 August 2026. `created_at` remains
+the PostgreSQL insertion/audit timestamp and is never a substitute.
 
 **This is the only area Paralegals can edit.**
 

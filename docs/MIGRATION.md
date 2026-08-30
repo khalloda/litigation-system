@@ -1918,6 +1918,30 @@ tracks whether a court crosswalk row exists separately from its nullable
 destination. A reviewed discard wins even if the same source text also appears
 in `lookup_court`; only the complete absence of a rule permits direct lookup.
 
+**Business creation-date correction, 30 August 2026 (migration 0051).** Access
+`تاريخ الإنشاء` had survived in the complete raw payload but had no typed target;
+`admin_tasks.created_at` records PostgreSQL insertion on 25 August and is not
+that business fact. Migration 0051 therefore adds nullable, no-default
+`admin_tasks.task_created_date DATE`. A separate serializable backfill matched
+all 3,694 transformed tasks through their unique durable source identity and
+wrote exactly **1,906** valid dates; the other **1,788** source values are
+genuine NULL and remain NULL. The exact range is **2018-02-22 through
+2026-08-18**. No quarantined or application-native row was updated, the
+original Access text remains unchanged in the raw payload, and an identical
+rerun changed zero rows.
+
+The dedicated source-key/date semantic digest is
+`a2f61d078479c6b2dd510328438b953cbd2d04b5ed56436179ef034bdf7d2e8a`.
+The earlier Task 2.9A result digest remains the baseline for all fields that
+existed before this additive correction; the date has its own digest so adding
+it does not rewrite that history. The independent permanent oracle compares
+every source date or source NULL to its target, refuses invalid dates, detects
+date swaps and `created_at` substitution, pins the 1,906/1,788 population and
+range only for legacy rows, and verifies that the new column remains nullable
+`date` with no default. Future application-native tasks are outside those fixed
+counts. A later change to a migrated date is detected by `db:check`, consistently
+with the other migrated administrative business fields.
+
 ## Task 2.9B — powers of attorney (25 August 2026)
 
 Migration 0040 renamed the misleading empty target column `inventory` to the

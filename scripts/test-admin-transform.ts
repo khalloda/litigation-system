@@ -2,11 +2,22 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
-import { reconcileAdminWorks } from './lib/admin-reconciliation';
+import {
+  type AdminTaskCreationDateBaseline,
+  reconcileAdminWorks,
+} from './lib/admin-reconciliation';
 import { adminWorkStructureFailures } from './lib/admin-structure';
+import { runAdminTaskCreatedDateBackfill } from './backfill-admin-task-created-date';
 import { adminWorkResultDigest, runAdminWorkTransform } from './transform-admin-works';
 
 const FINGERPRINT = 'A'.repeat(64);
+const FIXTURE_DATE_BASELINE: AdminTaskCreationDateBaseline = {
+  transformedTasks: 3,
+  populatedDates: 2,
+  nullDates: 1,
+  minimumDate: '2018-02-22',
+  maximumDate: '2024-02-29',
+};
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/);
@@ -37,7 +48,7 @@ function migrateFixture(databaseUrl: string): void {
 }
 
 async function clean(db: Client): Promise<void> {
-  const result = await reconcileAdminWorks(db);
+  const result = await reconcileAdminWorks(db, { creationDateBaseline: FIXTURE_DATE_BASELINE });
   assert.deepEqual(result.defects, [], `fixture must reconcile:\n${result.defects.join('\n')}`);
 }
 
@@ -85,6 +96,9 @@ async function main(): Promise<void> {
     const db = new Client({ connectionString: fixtureUrl.toString() });
     await db.connect();
     try {
+      assert.equal((await db.query('SELECT count(*) FROM admin_tasks')).rows[0]?.count, '0');
+      assert.deepEqual(await adminWorkStructureFailures(db), []);
+      console.log('  ok    empty-database migration replay creates the exact nullable date column');
       const alias = (
         await db.query<{ alias_ar: string; person_id: number }>(
           'SELECT alias_ar,person_id FROM person_name_alias ORDER BY id LIMIT 1',
@@ -127,24 +141,30 @@ async function main(): Promise<void> {
         quarantineTaskKey = sourceKey(2),
         invalidExecutionKey = sourceKey(5),
         invalidDeadlineKey = sourceKey(6),
-        discardedCourtKey = sourceKey(7);
+        discardedCourtKey = sourceKey(7),
+        invalidCreatedDateKey = sourceKey(10),
+        boundaryCreatedDateKey = sourceKey(11);
       await db.query(
         `INSERT INTO staging."admin work table" (
-        src_file,src_row_num,src_record_key,src_extraction_sha256,"ID_Task","تاريخ التنفيذ",
+        src_file,src_row_num,src_record_key,src_extraction_sha256,"ID_Task","تاريخ الإنشاء","تاريخ التنفيذ",
         "النتيجة","القائم بالعمل","القرار السابق","آخر متابعة","المحكمة","الدائرة",
         "الجهة","العمل المطلوب","الحالة","تنبيه","آخر موعد","matterID"
       ) VALUES
-        ('fixture/admin.csv',1,$1,$3,'1001','2026-08-25 00:00:00','نتيجة',$4,
+        ('fixture/admin.csv',1,$1,$3,'1001','2018-02-22 00:00:00','2026-08-25 00:00:00','نتيجة',$4,
          'قرار',E'2026/08/25\\r\\nملاحظة','${court}',NULL,'${destination}','عمل','مفتوح','تنبيه',
          '2026-08-26 00:00:00','9001'),
-        ('fixture/admin.csv',2,$2,$3,'1002',NULL,NULL,NULL,NULL,NULL,'${court}',NULL,
+        ('fixture/admin.csv',2,$2,$3,'1002',NULL,NULL,NULL,NULL,NULL,NULL,'${court}',NULL,
          'جهة غير مراجعة','عمل آخر',NULL,NULL,NULL,'9001'),
-        ('fixture/admin.csv',5,$5,$3,'1005','2026-02-30 00:00:00',NULL,NULL,NULL,NULL,
+        ('fixture/admin.csv',5,$5,$3,'1005',NULL,'2026-02-30 00:00:00',NULL,NULL,NULL,NULL,
          '${court}',NULL,'${destination}','تاريخ تنفيذ غير صالح',NULL,NULL,NULL,'9001'),
-        ('fixture/admin.csv',6,$6,$3,'1006',NULL,NULL,NULL,NULL,NULL,'${court}',NULL,
+        ('fixture/admin.csv',6,$6,$3,'1006',NULL,NULL,NULL,NULL,NULL,NULL,'${court}',NULL,
          '${destination}','آخر موعد غير صالح',NULL,NULL,'2026-02-30 00:00:00','9001'),
-        ('fixture/admin.csv',7,$7,$3,'1007',NULL,NULL,NULL,NULL,NULL,$8,NULL,
-         '${destination}','محكمة مستبعدة',NULL,NULL,NULL,'9001')`,
+        ('fixture/admin.csv',7,$7,$3,'1007',NULL,NULL,NULL,NULL,NULL,NULL,$8,NULL,
+         '${destination}','محكمة مستبعدة',NULL,NULL,NULL,'9001'),
+        ('fixture/admin.csv',10,$9,$3,'1010','2026-02-30 00:00:00',NULL,NULL,NULL,NULL,NULL,
+         '${court}',NULL,'${destination}','تاريخ إنشاء غير صالح',NULL,NULL,NULL,'9001'),
+        ('fixture/admin.csv',11,$10,$3,'1011','2024-02-29 00:00:00',NULL,NULL,NULL,NULL,NULL,
+         '${court}',NULL,'${destination}','حد سنة كبيسة',NULL,NULL,NULL,'9001')`,
         [
           safeTaskKey,
           quarantineTaskKey,
@@ -154,6 +174,8 @@ async function main(): Promise<void> {
           invalidDeadlineKey,
           discardedCourtKey,
           discardedCourt,
+          invalidCreatedDateKey,
+          boundaryCreatedDateKey,
         ],
       );
       const safeActionKey = sourceKey(3),
@@ -188,7 +210,7 @@ async function main(): Promise<void> {
           dry.plan.actions.length,
           dry.plan.actionQuarantine.length,
         ],
-        [2, 3, 1, 3],
+        [3, 4, 1, 3],
       );
       assert.equal((await db.query('SELECT count(*) FROM admin_tasks')).rows[0]!.count, '0');
       console.log('  ok    dry run has no writes and partitions both source tables');
@@ -205,7 +227,7 @@ async function main(): Promise<void> {
             `SELECT legacy_task_id,reason_codes,reason_details
                FROM quarantine.admin_task_transform
               WHERE src_record_key=ANY($1::text[]) ORDER BY legacy_task_id`,
-            [[invalidExecutionKey, invalidDeadlineKey]],
+            [[invalidExecutionKey, invalidDeadlineKey, invalidCreatedDateKey]],
           )
         ).rows,
         [
@@ -217,6 +239,11 @@ async function main(): Promise<void> {
           {
             legacy_task_id: '1006',
             reason_codes: ['invalid_deadline'],
+            reason_details: [{ value: '2026-02-30 00:00:00' }],
+          },
+          {
+            legacy_task_id: '1010',
+            reason_codes: ['invalid_task_created_date'],
             reason_details: [{ value: '2026-02-30 00:00:00' }],
           },
         ],
@@ -257,6 +284,7 @@ async function main(): Promise<void> {
       assert.deepEqual(await adminWorkStructureFailures(db), []);
       const proof = await db.query(
         `SELECT t.required_work,t.last_followup,t.legacy_assignee_raw,
+        t.task_created_date::text task_created_date,
         a.source_ordinal,a.legacy_performed_by_raw
         FROM admin_tasks t JOIN task_actions a ON a.task_id=t.id
         WHERE t.legacy_source_record_key=$1`,
@@ -266,10 +294,21 @@ async function main(): Promise<void> {
         required_work: 'عمل',
         last_followup: '2026/08/25\r\nملاحظة',
         legacy_assignee_raw: alias.alias_ar,
+        task_created_date: '2018-02-22',
         source_ordinal: 1,
         legacy_performed_by_raw: alias.alias_ar,
       });
       console.log('  ok    Arabic text, line breaks, exact raw names and action order survive');
+      assert.equal(
+        (
+          await db.query(
+            'SELECT task_created_date::text task_created_date FROM admin_tasks WHERE legacy_source_record_key=$1',
+            [boundaryCreatedDateKey],
+          )
+        ).rows[0]?.task_created_date,
+        '2024-02-29',
+      );
+      console.log('  ok    valid leap-day boundary is parsed exactly');
 
       const before = await db.query(`SELECT jsonb_agg(to_jsonb(x) ORDER BY kind,id) snapshot FROM (
         SELECT 'T' kind,id,created_at,updated_at FROM admin_tasks WHERE legacy_source_record_key IS NOT NULL
@@ -289,6 +328,82 @@ async function main(): Promise<void> {
         before.rows[0],
       );
       console.log('  ok    identical rerun preserves IDs, timestamps and result digest');
+
+      const noOpBackfill = await runAdminTaskCreatedDateBackfill({
+        databaseUrl: fixtureUrl.toString(),
+        fixtureOnly: true,
+        expectedBaseline: FIXTURE_DATE_BASELINE,
+        apply: true,
+      });
+      assert.equal(noOpBackfill.changedRows, 0);
+      console.log('  ok    identical creation-date backfill is a true no-op');
+
+      await proveFailure(
+        db,
+        'missing business creation date is detected',
+        () =>
+          db.query(
+            'UPDATE admin_tasks SET task_created_date=NULL WHERE legacy_source_record_key=$1',
+            [safeTaskKey],
+          ),
+        /task_target_mismatch|creation_date_populated/,
+      );
+      await proveFailure(
+        db,
+        'wrong business creation date is detected',
+        () =>
+          db.query(
+            "UPDATE admin_tasks SET task_created_date='2020-01-01' WHERE legacy_source_record_key=$1",
+            [safeTaskKey],
+          ),
+        /task_target_mismatch/,
+      );
+      await proveFailure(
+        db,
+        'a source null populated in the target is detected',
+        () =>
+          db.query(
+            "UPDATE admin_tasks SET task_created_date='2020-01-01' WHERE legacy_source_record_key=$1",
+            [discardedCourtKey],
+          ),
+        /task_target_mismatch|creation_date_null/,
+      );
+      await proveFailure(
+        db,
+        'created_at cannot stand in for the business creation date',
+        () =>
+          db.query(
+            'UPDATE admin_tasks SET task_created_date=created_at::date WHERE legacy_source_record_key=$1',
+            [safeTaskKey],
+          ),
+        /task_target_mismatch|creation_date_created_at_substitution/,
+      );
+      await proveFailure(
+        db,
+        'dates swapped between two durable identities are detected',
+        () =>
+          db.query(
+            `UPDATE admin_tasks SET task_created_date=CASE legacy_source_record_key
+               WHEN $1 THEN '2024-02-29'::date WHEN $2 THEN '2018-02-22'::date END
+             WHERE legacy_source_record_key=ANY($3::text[])`,
+            [safeTaskKey, boundaryCreatedDateKey, [safeTaskKey, boundaryCreatedDateKey]],
+          ),
+        /task_target_mismatch/,
+      );
+      await proveFailure(
+        db,
+        'ambiguous source-to-target identity is detected',
+        async () => {
+          await db.query('DROP INDEX admin_tasks_legacy_source_record_key_key');
+          await db.query(
+            `INSERT INTO admin_tasks (legacy_id,legacy_source_record_key,
+               legacy_source_extraction_sha256,legacy_source_payload,updated_at)
+             VALUES (9998,$1,$2,'{}',CURRENT_TIMESTAMP)`,
+            [safeTaskKey, FINGERPRINT],
+          );
+        },
+        /actual_tasks|task_target_mismatch/,
+      );
 
       await proveFailure(
         db,
@@ -379,7 +494,8 @@ async function main(): Promise<void> {
       );
 
       const native = await db.query<{ id: number }>(
-        `INSERT INTO admin_tasks (required_work,updated_at) VALUES ('native',CURRENT_TIMESTAMP) RETURNING id`,
+        `INSERT INTO admin_tasks (required_work,task_created_date,updated_at)
+         VALUES ('native','2026-08-30',CURRENT_TIMESTAMP) RETURNING id`,
       );
       await db.query(
         `INSERT INTO task_actions (task_id,result,updated_at) VALUES ($1,'native',CURRENT_TIMESTAMP)`,
@@ -387,9 +503,40 @@ async function main(): Promise<void> {
       );
       await clean(db);
       assert.equal(await adminWorkResultDigest(db), digest);
-      console.log(
-        '  ok    application-native rows remain outside legacy reconciliation and digest',
+      console.log('  ok    application-native dates remain outside fixed legacy counts and digest');
+
+      await db.query(
+        'UPDATE admin_tasks SET task_created_date=NULL WHERE legacy_source_record_key=$1',
+        [safeTaskKey],
       );
+      await assert.rejects(
+        runAdminTaskCreatedDateBackfill({
+          databaseUrl: fixtureUrl.toString(),
+          fixtureOnly: true,
+          expectedBaseline: FIXTURE_DATE_BASELINE,
+          apply: true,
+          forceFailure: true,
+        }),
+        /forced late administrative creation-date backfill failure/,
+      );
+      assert.equal(
+        (
+          await db.query(
+            'SELECT task_created_date FROM admin_tasks WHERE legacy_source_record_key=$1',
+            [safeTaskKey],
+          )
+        ).rows[0]?.task_created_date,
+        null,
+      );
+      const repaired = await runAdminTaskCreatedDateBackfill({
+        databaseUrl: fixtureUrl.toString(),
+        fixtureOnly: true,
+        expectedBaseline: FIXTURE_DATE_BASELINE,
+        apply: true,
+      });
+      assert.equal(repaired.changedRows, 1);
+      await clean(db);
+      console.log('  ok    forced late date backfill rolls back completely, then repairs once');
 
       const lateFailureKey = sourceKey(20);
       await db.query(
@@ -463,6 +610,18 @@ async function main(): Promise<void> {
       }
       assert.deepEqual(await adminWorkStructureFailures(db), []);
       console.log('  ok    per-function configuration drift is detected and rolled back');
+
+      await db.query('BEGIN');
+      try {
+        await db.query(
+          'ALTER TABLE admin_tasks ALTER COLUMN task_created_date SET DEFAULT CURRENT_DATE',
+        );
+        assert.match((await adminWorkStructureFailures(db)).join('\n'), /column definition/);
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      assert.deepEqual(await adminWorkStructureFailures(db), []);
+      console.log('  ok    a default added to the nullable business-date column is detected');
 
       await assert.rejects(
         db.query(

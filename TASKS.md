@@ -1008,6 +1008,17 @@ only ever seen good data is not known to work.
       again before commit. A weakened safeguard therefore aborts and rolls
       back the transform.
 
+      **Business creation-date correction, 30 August 2026 (migration 0051).**
+      `admin_tasks.task_created_date DATE NULL` now preserves Access
+      `تاريخ الإنشاء` as a business date; `created_at` remains only the system
+      insertion timestamp. The durable-key backfill wrote exactly 1,906 source
+      dates and left 1,788 genuine source NULLs unchanged across the 3,694
+      transformed tasks, range 2018-02-22 through 2026-08-18. An identical
+      rerun changed zero rows. Permanent reconciliation independently checks
+      every value, the fixed migrated-only counts and range, the absence of a
+      default, and misuse of `created_at`. Dedicated source-key/date digest:
+      `a2f61d078479c6b2dd510328438b953cbd2d04b5ed56436179ef034bdf7d2e8a`.
+
       **The `26` row is here.** It is an `admin work table` row, and the
       crosswalk rule for it (migration 0023) writes **circuit = `26` and
       leaves the court NULL**. Assert both halves on the loaded row, not just
