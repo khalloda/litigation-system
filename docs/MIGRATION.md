@@ -2424,11 +2424,19 @@ The complete owner-readable evidence is in
   Khaled Helmy later opened the same file for inspection without an intentional
   change; Access changed its modification time and whole-file hash to
   `1A1DA8D…B4BC`.
-- The owner ruled it the same logical source. Before Gate 4 code was completed,
-  an independent full re-extraction found zero business-value, table, column,
-  relationship, attachment, complex-value or required object-definition
-  differences. The original extraction fingerprint remains unchanged in the
-  manifest, staging and every migrated provenance field.
+- The owner ruled it the same logical source. Gate 4 now proves that ruling on
+  every run: it copies the current approved Access file into a task-owned
+  temporary directory, marks the copy read-only, performs a complete
+  extraction, compares canonical logical evidence with the authoritative
+  extraction and removes the temporary output on both success and failure.
+  The comparison covers all 17 base/reference tables and 30,885 rows, 194
+  column definitions, 17 relationships, all three complex exports and 342
+  values, plus all 54 logos and 1,541,428 bytes. Absolute/temp paths,
+  extraction timestamps, physical CSV layout and source row order are excluded
+  from logical digests; exact values, NULL versus empty text, whitespace,
+  Arabic, duplicate multiplicity, relationship attributes, stable logo paths
+  and image bytes are included. The original extraction fingerprint remains
+  unchanged in the manifest, staging and every migrated provenance field.
 - All 27 Access user tables reconciled: 30,847 migration-source + 38
   reference-only + 4,753 archive-only = 35,638. The extracted 30,885 parent
   rows + 342 complex values equal all 31,227 staged rows.
@@ -2438,10 +2446,25 @@ The complete owner-readable evidence is in
   82 client-matter rows, 741 for/against rows, 2 lawyer-workload rows, 12,553
   hearing rows, 3,694 administrative-work rows and 1,140 financial rows.
 - Administrative `تاريخ الإنشاء` compared only with `task_created_date`.
-  Using the PostgreSQL insertion timestamp `created_at` is an explicit failure.
-- The run used one repeatable-read, read-only PostgreSQL transaction. An
-  identical second run reproduced report digest `d10190cb…24b36`; no Access,
-  extracted, database or logo data changed.
+  The explicit substitution metric counts only a business date equal to
+  `created_at::date` and different from a safely parsed source creation date;
+  malformed dates cannot make the verification cast fail. Coincidental equal
+  source and insertion dates are not falsely reported, while any wrong target
+  date still fails the independent row comparison.
+- The run uses one repeatable-read, read-only PostgreSQL transaction. Before
+  any quarantine identity or billing rule reaches a Gate 4 source comparison,
+  the permanent matter, relationship, hearing, administrative and billing
+  oracles independently rebuild and validate the exact transformed/quarantine
+  partitions, reasons, details, evidence and reviewed billing-rule content.
+  Static dependency checks prevent the source reader, target reader or
+  migration writer/planner from becoming the same implementation.
+- Report digest `d10190cb…24b36` is the historical pre-hardening artefact. The
+  hardened report digest changes because the report now records the
+  reproducible re-extraction and prerequisite-oracle evidence, not because a
+  business dataset changed. The six approved dataset counts and digests remain
+  pinned exactly. The identical hardened rerun produced report digest
+  `62b88e09fdd9022fafb311774b635e7d71d98956f0ee6dcc066148a1f60f6c47`
+  byte for byte; no Access, extracted, database or logo data changed.
 
 ## Cutover
 

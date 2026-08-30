@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { auditGate4Access, type Gate4AccessAudit } from './lib/gate4-access';
 import {
-  assertIndependentImplementations,
+  auditGate4Access,
+  GATE4_ACCESS_DEFINITION_BASELINE,
+  gate4AccessDefinitionFailures,
+  type Gate4AccessAudit,
+} from './lib/gate4-access';
+import { gate4RepositoryArchitectureFailures } from './lib/gate4-architecture';
+import {
   compareGate4Datasets,
   gate4AccountingFailures,
   gate4CodePoint,
@@ -26,7 +31,12 @@ import {
   loadGate4Extraction,
   type Gate4Extraction,
 } from './lib/gate4-extraction';
+import {
+  GATE4_LOGICAL_BASELINE,
+  gate4LogicalEvidenceFailures,
+} from './lib/gate4-logical-equivalence';
 import { REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
+import { GATE4_REPORT_CONTRACTS } from './lib/gate4-report-contract';
 import { buildGate4SourceReports, type Gate4SourceReports } from './lib/gate4-source-reports';
 
 const REPORT_PATH = resolve('docs', 'reconciliations', '2026-08-30-gate-4.md');
@@ -41,44 +51,32 @@ const HISTORICAL_LAWYER_COUNTS = new Map<string, number>([
   ['محمود شعبان', 41],
 ]);
 
-const REPORT_CONTRACTS = [
+const GATE4_DATASET_BASELINE = new Map<string, { rows: number; digest: string }>([
   [
     'client matters',
-    'rptClientMatters1 — direct clients/matters/hearings record source',
-    'client legacy ID 3; transformed matter population',
-    'one row per durable matter identity',
+    { rows: 82, digest: '14d40eeca6a853f1b8ea9446c084fbc5dbcc3a4fc38d8192de9f1b90ca3d3d8c' },
   ],
   [
     'judgments for/against',
-    'rptJudgmentsForAgainst — direct matter/hearing outcome record source',
-    '2009-01-01 through 2026-12-31; non-NULL outcome',
-    'durable hearing identity',
+    { rows: 741, digest: '8734b82fcd98e87a4a4e82ca6c078b252b9a80f533f376b193e77c9ba2c9e4a3' },
   ],
   [
     'lawyer workload',
-    'إحصائية أعداد الدعاوى لكل محامي أ — saved lawyerA LIKE query',
-    'مؤمن سليم; active; lawyerA only',
-    'one row per durable matter identity',
+    { rows: 2, digest: '5f9ee15ef87e8c16862ab6f2f7ec814b8089dedf3d541a0d7d355624d4a3bc3d' },
   ],
   [
     'hearings by date',
-    'rptHearingsBetween2Dates — direct matter/hearing record source',
-    '2009-01-01 through 2026-12-31',
-    'durable hearing identity',
+    { rows: 12_553, digest: '71329775f188e79cde0acd94af8596b9cae5975388a0ce2a9bae77c89b4c55f1' },
   ],
   [
     'administrative works',
-    'أعمال إدارية جميع الجهات -جديد — direct clients/matters/tasks/actions/hearings source',
-    'all transformed legacy administrative tasks',
-    'durable task identity; task_created_date, never created_at',
+    { rows: 3694, digest: '3ba5dfa734d76e43a5ca1b01d526d9a1f7c674c123d7d9d1433fb751fd9a4c79' },
   ],
   [
     'financial history',
-    'الفواتير المحصلة -بدون تقسيم / الفواتير المحصلة حسب التاريخ',
-    'all transformed legacy invoices and payments; reviewed D3 contractID link',
-    'kind then durable billing identity',
+    { rows: 1140, digest: 'c3e6aa12cabc9c96bfaa4ef556798220208535fe44a518af144f35819685ec56' },
   ],
-] as const;
+] as const);
 
 type Gate4Result = Readonly<{
   report: string;
@@ -169,14 +167,23 @@ function assertBaselines(
   accounting: readonly Gate4TableAccounting[],
   complex: readonly Gate4TableAccounting[],
 ): void {
-  assertIndependentImplementations(
-    'Access extraction strict RFC-4180 source reader',
-    'PostgreSQL typed read-only SQL reader',
-  );
   const defects = comparisons.flatMap((comparison) =>
     comparison.defects.map((defect) => `${comparison.name}: ${defect}`),
   );
   if (defects.length > 0) fail(defects.join('; '));
+  for (const comparison of comparisons) {
+    const baseline = GATE4_DATASET_BASELINE.get(comparison.name);
+    if (baseline === undefined) fail(`${comparison.name}: no approved dataset baseline`);
+    if (
+      comparison.sourceCount !== baseline.rows ||
+      comparison.targetCount !== baseline.rows ||
+      comparison.sourceDigest !== baseline.digest ||
+      comparison.targetDigest !== baseline.digest
+    )
+      fail(`${comparison.name}: approved count or digest changed`);
+  }
+  if (comparisons.length !== GATE4_DATASET_BASELINE.size)
+    fail(`report dataset count is ${comparisons.length}/${GATE4_DATASET_BASELINE.size}`);
   const accountingDefects = [
     ...gate4AccountingFailures(accounting),
     ...gate4AccountingFailures(complex),
@@ -212,7 +219,22 @@ function assertBaselines(
   if (database.adminCreatedAtSubstitutions !== 0)
     fail(`${database.adminCreatedAtSubstitutions} administrative dates use created_at`);
   if (database.protectedDigest.length !== 64) fail('protected-state digest is malformed');
-  if (!access.sourceUnchanged || !access.copyUnchanged) fail('Access source/copy was changed');
+  const definitionFailures = gate4AccessDefinitionFailures(
+    GATE4_ACCESS_DEFINITION_BASELINE,
+    access.definitionEvidence,
+  );
+  if (definitionFailures.length > 0)
+    fail(`Access definition evidence changed: ${definitionFailures.join(', ')}`);
+  for (const [label, logical] of [
+    ['authoritative extraction', access.authoritativeLogicalEvidence],
+    ['current Access re-extraction', access.currentLogicalEvidence],
+  ] as const) {
+    const logicalFailures = gate4LogicalEvidenceFailures(GATE4_LOGICAL_BASELINE, logical);
+    if (logicalFailures.length > 0)
+      fail(`${label} logical evidence changed: ${logicalFailures.join(', ')}`);
+  }
+  if (!access.sourceUnchanged || !access.copyUnchanged || !access.temporaryRemoved)
+    fail('Access source/copy changed or disposable extraction was not removed');
 }
 
 function markdownTable(headers: readonly string[], rows: readonly (readonly string[])[]): string {
@@ -331,6 +353,7 @@ function renderReport(
   ]);
   const selectedObjectRows = access.selectedReports.map((report) => [
     report.name,
+    report.created ?? 'unknown',
     report.modified ?? 'unknown',
   ]);
   const selectedQueryRows = access.selectedQueries.map((query) => [
@@ -351,8 +374,9 @@ Every one of the six report-category datasets matched row for row. All parent ro
 - Extraction-time physical identity: \`${extraction.fingerprint}\`, ${extraction.sourceBytes.toLocaleString('en-US')} bytes, modified \`${extraction.sourceModified}\`.
 - Current owner-approved Access-file identity: \`${access.physicalSha256}\`, ${access.physicalBytes.toLocaleString('en-US')} bytes, modified \`${access.physicalModified}\`.
 - Khaled Helmy opened the same Access file after extraction for inspection and made no intentional business-data or design change. Access rewrote physical file metadata, so the two whole-file hashes are honestly different.
-- Before Gate 4 code was completed, an independent task-owned re-extraction compared all 17 extracted base/reference tables and all 30,885 parent records field by field. Headers, NULL versus empty text, Arabic/English text, whitespace, line breaks, dates, booleans, numeric text and duplicate multiplicity were identical.
-- The same audit compared all 17 relationships, all 194 extracted columns, 54 attachment relationships/files (1,541,428 bytes), 288 multi-value entries across 195 parents and the three complex-column exports. It found zero missing, additional or changed business values, relationships, files or complex values.
+- Every Gate 4 run now makes a read-only disposable copy of the current approved Access file, re-extracts it with the project's extractor, and compares canonical logical multisets with the authoritative extraction. All 17 base/reference tables and all 30,885 parent records match field by field. Headers, NULL versus empty text, Arabic/English text, whitespace, line breaks, dates, booleans, numeric text and duplicate multiplicity are exact.
+- The reproducible comparison also covers all 17 relationships, all 194 extracted column definitions, all three complex exports and their 342 values: 54 client logos and 288 multi-value entries across 195 parents. The 54 logos match parent, filename, declared type and size, detected MIME, actual byte size and SHA-256; their total is 1,541,428 bytes.
+- Canonical table and complex digests include table/object names, ordered headers, exact field values and duplicate multiplicity while deliberately ignoring source row order. The combined logical digest also includes exact column definitions, relationship attributes and logo evidence. It excludes absolute source paths, task-temporary paths, extraction timestamps and CSV byte layout; those are trace or physical evidence rather than business content. Logo filenames and stable relative paths remain included because they are part of the attachment evidence.
 - This run rechecked the unchanged current physical hash, 27-table inventory, every extracted table count/header, all 17 relationship definitions, 138 saved queries and 138 report-container documents. The application has 131 active reports; seven abandoned container documents remain as Access design artefacts.
 - The extraction manifest, staging rows and every migrated source association retain the extraction fingerprint \`${GATE4_EXTRACTION_FINGERPRINT}\`; the later physical hash did not replace provenance.
 
@@ -362,10 +386,20 @@ Object-definition digests from the current read-only Access copy:
 - relationships: \`${access.relationshipDigest}\`
 - saved queries: \`${access.queryDigest}\`
 - report-container names: \`${access.reportContainerDigest}\`
+- selected definitions and report contracts: \`${access.definitionEvidence.combinedDigest}\`
+
+Reproducible logical-equivalence digests:
+
+- all 17 base/reference tables: \`${access.authoritativeLogicalEvidence.combinedTablesDigest}\`
+- 194 column definitions: \`${access.authoritativeLogicalEvidence.columns.digest}\`
+- 17 relationships: \`${access.authoritativeLogicalEvidence.relationships.digest}\`
+- all three complex exports: \`${access.authoritativeLogicalEvidence.combinedComplexDigest}\`
+- client-logo files and metadata: \`${access.authoritativeLogicalEvidence.logos.digest}\`
+- combined logical equivalence: \`${access.authoritativeLogicalEvidence.combinedDigest}\`
 
 Selected report objects (inventory only; opening a parameterised Access report would execute prompts/VBA, so Gate 4 compares their independently recorded dataset contracts instead):
 
-${markdownTable(['Report', 'Access modified metadata'], selectedObjectRows)}
+${markdownTable(['Report', 'Access created metadata', 'Access modified metadata'], selectedObjectRows)}
 
 Selected saved-query evidence:
 
@@ -376,7 +410,7 @@ explicitly. They are report-category datasets rather than rendered Access
 pages: executing the report objects themselves would run prompts/VBA and is
 not a safe verification mechanism.
 
-${markdownTable(['Dataset', 'Recorded Access source', 'Parameters/scope', 'Grouping/order'], REPORT_CONTRACTS)}
+${markdownTable(['Dataset', 'Recorded Access source', 'Parameters/scope', 'Grouping/order'], GATE4_REPORT_CONTRACTS)}
 
 The financial Access saved query contains the known stale \`Cont-No\` relationship. The PostgreSQL financial dataset applies D3's reviewed \`contractID\` relationship; Gate 4 does not resurrect the two previously rejected joins.
 
@@ -435,7 +469,7 @@ All ${database.logos.sourceRows} source relationships, ${database.logos.auditRow
 
 ## Six row-for-row report-category datasets
 
-The Access side is built from the independently parsed authoritative extraction after excluding only rows permanently recorded in the corresponding quarantine. The PostgreSQL side is a separate typed SQL implementation. Comparing a shared query to itself is prohibited by the Gate 4 contract.
+Before the report builder receives a quarantine identity or billing rule, the permanent matter, matter-relationship, hearing, administrative-work and billing oracles independently rebuild every target/quarantine partition, exact reason/detail/evidence row and reviewed billing rule inside the same repeatable-read, read-only transaction. A failed or missing prerequisite aborts Gate 4 before report construction. The Access side then uses the independently parsed authoritative extraction; the PostgreSQL side uses separate typed SQL. Static dependency checks prohibit either side from importing the other's implementation or a transform writer/planner.
 
 ${markdownTable(['Dataset', 'Access rows', 'PostgreSQL rows', 'Exact rows', 'Access digest', 'PostgreSQL digest', 'Result'], comparisonRows)}
 
@@ -447,8 +481,10 @@ The administrative-works dataset compares Access \`تاريخ الإنشاء\` o
 - review answers: ${database.review.valueAnswers} value + ${database.review.findingAnswers} finding = ${database.review.valueAnswers + database.review.findingAnswers}; mapping \`${database.review.mappingDigest}\`; answers \`${database.review.answerDigest}\`
 - migrations: ${database.migrations.applied} applied, ${database.migrations.cleanRollbacks} clean rollback, ${database.migrations.unfinishedOrFailed} unfinished/failed
 - prior-stage protected-state digest: \`${database.protectedDigest}\`
+- independently proven prerequisite oracles: ${database.prerequisites.map((item) => item.name).join(', ')}
+- reviewed billing currency-rule digest: \`${database.currencyRuleDigest}\`
 - database transaction: \`${database.settings.readOnly}\` read-only; \`${database.settings.isolation}\`; server-side PostgreSQL port ${database.settings.serverPort} behind host port 5433
-- Access source unchanged after the audit: ${access.sourceUnchanged ? 'yes' : 'no'}; disposable read-only copy unchanged and removed: ${access.copyUnchanged ? 'yes' : 'no'}
+- Access source unchanged after the audit: ${access.sourceUnchanged ? 'yes' : 'no'}; disposable read-only copy unchanged: ${access.copyUnchanged ? 'yes' : 'no'}; task-owned extraction removed: ${access.temporaryRemoved ? 'yes' : 'no'}
 
 No Access source, extraction, staging row, review answer, migrated row, logo, schema or migration was written by Gate 4. The report is deterministic: source identity, row values and reviewed outcomes are included; temporary paths and timestamps are not.
 `;
@@ -456,6 +492,9 @@ No Access source, extraction, staging row, review answer, migrated row, logo, sc
 }
 
 async function executeGate4(): Promise<Gate4Result> {
+  const architectureFailures = await gate4RepositoryArchitectureFailures();
+  if (architectureFailures.length > 0)
+    fail(`independent implementation architecture: ${architectureFailures.join('; ')}`);
   const extraction = await loadGate4Extraction();
   const access = await auditGate4Access(extraction);
   const database = await withGate4ReadOnlyDatabase((db) => loadGate4DatabaseSnapshot(db));

@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { Client, type ClientBase } from 'pg';
 import {
@@ -19,9 +20,19 @@ import {
   GATE4_TO_DATE,
   type Gate4CurrencyRule,
   type Gate4QuarantineKeys,
-} from './gate4-source-reports';
+} from './gate4-report-contract';
 import { reconcileClientLogos, type ClientLogoReconciliation } from './client-logo-reconciliation';
 import { readReviewSnapshot, type ReviewSnapshot } from './attendee-audit-plan';
+import {
+  asBigInt,
+  MATTER_RECONCILIATION_SQL,
+  matterReconciliationFailures,
+  type MatterReconciliationRow,
+} from './matter-reconciliation';
+import { reconcileMatterRelationships } from './matter-relationship-reconciliation';
+import { reconcileHearings } from './hearing-reconciliation';
+import { ADMIN_TASK_CREATION_DATE_BASELINE, reconcileAdminWorks } from './admin-reconciliation';
+import { reconcileBillingHistory } from './billing-reconciliation';
 import { task211ProtectedState } from './task211-protected-state';
 
 type QueryDatasetRow = Readonly<{ identity: string; values: (string | null)[] }>;
@@ -40,6 +51,35 @@ export type Gate4MigrationState = Readonly<{
 }>;
 
 export type Gate4Aggregate = Readonly<{ rows: number; amount: string }>;
+
+export const GATE4_PREREQUISITE_NAMES = [
+  'matter',
+  'matter relationships',
+  'hearings',
+  'administrative works',
+  'billing',
+] as const;
+
+export const GATE4_BILLING_CURRENCY_RULE_DIGEST =
+  '522db79859bd6240df60ee7a78f5a3e389c102970e5f6f231c4aef39f14618e8';
+
+export function gate4BillingCurrencyRuleDigest(rows: readonly Record<string, unknown>[]): string {
+  return createHash('sha256').update(JSON.stringify(rows), 'utf8').digest('hex');
+}
+
+export type Gate4PrerequisiteResult = Readonly<{
+  name: (typeof GATE4_PREREQUISITE_NAMES)[number];
+  implementation: 'independent permanent oracle';
+  defects: readonly string[];
+}>;
+
+export type Gate4PrerequisiteEvidence = Readonly<{
+  results: readonly Gate4PrerequisiteResult[];
+  quarantine: Gate4QuarantineKeys;
+  currencyRules: readonly Gate4CurrencyRule[];
+  currencyRuleDigest: string;
+  adminCreatedAtSubstitutions: number;
+}>;
 
 export type Gate4DatabaseSnapshot = Readonly<{
   settings: Gate4DatabaseSettings;
@@ -60,7 +100,117 @@ export type Gate4DatabaseSnapshot = Readonly<{
   migrations: Gate4MigrationState;
   logos: ClientLogoReconciliation;
   protectedDigest: string;
+  prerequisites: Gate4PrerequisiteEvidence['results'];
+  currencyRuleDigest: string;
 }>;
+
+export function gate4PrerequisiteFailures(results: readonly Gate4PrerequisiteResult[]): string[] {
+  const failures: string[] = [];
+  for (const name of GATE4_PREREQUISITE_NAMES) {
+    const matches = results.filter((result) => result.name === name);
+    if (matches.length !== 1) {
+      failures.push(`${name}: ${matches.length} prerequisite results`);
+      continue;
+    }
+    const result = matches[0]!;
+    if (result.implementation !== 'independent permanent oracle')
+      failures.push(`${name}: prerequisite implementation is not independent`);
+    failures.push(...result.defects.map((defect) => `${name}: ${defect}`));
+  }
+  if (results.length !== GATE4_PREREQUISITE_NAMES.length)
+    failures.push(`unexpected prerequisite result count: ${results.length}`);
+  return failures;
+}
+
+async function proveGate4Prerequisites(db: ClientBase): Promise<Gate4PrerequisiteEvidence> {
+  const matterQuery = await db.query<MatterReconciliationRow>(MATTER_RECONCILIATION_SQL);
+  if (matterQuery.rows.length !== 1)
+    throw new Error(`matter prerequisite returned ${matterQuery.rows.length} rows`);
+  const matter = matterQuery.rows[0]!;
+  const matterDefects = matterReconciliationFailures(matter);
+  if (
+    asBigInt(matter.source_rows) !== 1744n ||
+    asBigInt(matter.target_rows) !== 1689n ||
+    asBigInt(matter.quarantine_rows) !== 55n
+  )
+    matterDefects.push(
+      `approved partition changed: ${String(matter.source_rows)} = ${String(matter.target_rows)} + ${String(matter.quarantine_rows)}`,
+    );
+
+  const relationships = await reconcileMatterRelationships(db);
+  const hearings = await reconcileHearings(db);
+  const administrative = await reconcileAdminWorks(db, {
+    creationDateBaseline: ADMIN_TASK_CREATION_DATE_BASELINE,
+  });
+  const billing = await reconcileBillingHistory(db, true);
+  const results: Gate4PrerequisiteResult[] = [
+    {
+      name: 'matter',
+      implementation: 'independent permanent oracle',
+      defects: matterDefects,
+    },
+    {
+      name: 'matter relationships',
+      implementation: 'independent permanent oracle',
+      defects: relationships.defects,
+    },
+    {
+      name: 'hearings',
+      implementation: 'independent permanent oracle',
+      defects: hearings.defects,
+    },
+    {
+      name: 'administrative works',
+      implementation: 'independent permanent oracle',
+      defects: administrative.defects,
+    },
+    {
+      name: 'billing',
+      implementation: 'independent permanent oracle',
+      defects: billing.defects,
+    },
+  ];
+  const failures = gate4PrerequisiteFailures(results);
+  if (failures.length > 0)
+    throw new Error(`Gate 4 permanent prerequisite failed: ${failures.join('; ')}`);
+
+  const quarantine: Gate4QuarantineKeys = {
+    matter: await keys(db, 'quarantine.matter_transform'),
+    hearing: await keys(db, 'quarantine.hearing_transform'),
+    adminTask: await keys(db, 'quarantine.admin_task_transform'),
+    invoice: await keys(db, 'quarantine.invoice_transform'),
+    payment: await keys(db, 'quarantine.payment_transform'),
+  };
+  const currency = await db.query<{
+    field_kind: string;
+    source_value: string;
+    target_value: string | null;
+    require_zero_amount: boolean;
+    reviewed_by: string;
+    reviewed_at: string;
+    reviewer_note: string;
+  }>(`SELECT field_kind,source_value,target_value,require_zero_amount,reviewed_by,
+             reviewed_at::text,reviewer_note
+        FROM migration_billing_currency_rule ORDER BY field_kind,source_value`);
+  const currencyRules = currency.rows.map((row) => ({
+    fieldKind: row.field_kind,
+    sourceValue: row.source_value,
+    targetValue: row.target_value,
+    requireZeroAmount: row.require_zero_amount,
+  }));
+  const currencyRuleDigest = gate4BillingCurrencyRuleDigest(currency.rows);
+  if (currencyRuleDigest !== GATE4_BILLING_CURRENCY_RULE_DIGEST)
+    throw new Error(`reviewed billing currency-rule digest changed: ${currencyRuleDigest}`);
+  return {
+    results,
+    quarantine,
+    currencyRules,
+    currencyRuleDigest,
+    adminCreatedAtSubstitutions: Number(
+      administrative.row['creation_date_created_at_substitution'] ?? -1,
+    ),
+  };
+}
 
 function dataset(
   name: string,
@@ -315,27 +465,8 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
   };
   assertReadOnlySnapshot(settings);
 
+  const prerequisites = await proveGate4Prerequisites(db);
   await assertLawyerSourceResolution(db);
-  const quarantine: Gate4QuarantineKeys = {
-    matter: await keys(db, 'quarantine.matter_transform'),
-    hearing: await keys(db, 'quarantine.hearing_transform'),
-    adminTask: await keys(db, 'quarantine.admin_task_transform'),
-    invoice: await keys(db, 'quarantine.invoice_transform'),
-    payment: await keys(db, 'quarantine.payment_transform'),
-  };
-  const currency = await db.query<{
-    field_kind: string;
-    source_value: string;
-    target_value: string | null;
-    require_zero_amount: boolean;
-  }>(`SELECT field_kind,source_value,target_value,require_zero_amount
-        FROM migration_billing_currency_rule ORDER BY field_kind,source_value`);
-  const currencyRules = currency.rows.map((row) => ({
-    fieldKind: row.field_kind,
-    sourceValue: row.source_value,
-    targetValue: row.target_value,
-    requireZeroAmount: row.require_zero_amount,
-  }));
 
   const status = await db.query<{ key: string; rows: number }>(`
     SELECT coalesce(status,'<NULL>') key,count(*)::int rows
@@ -356,11 +487,6 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
     SELECT p.name_ar name,count(*)::int matters,count(*) FILTER (WHERE m.status='سارية')::int active
       FROM matter_lawyers ml JOIN matters m ON m.id=ml.matter_id JOIN people p ON p.id=ml.person_id
      WHERE m.legacy_source_record_key IS NOT NULL GROUP BY p.name_ar ORDER BY p.name_ar`);
-  const createdAt = await db.query<{ substitutions: number }>(`
-    SELECT count(*)::int substitutions
-      FROM admin_tasks a JOIN staging."admin work table" s ON s.src_record_key=a.legacy_source_record_key
-     WHERE s."تاريخ الإنشاء" IS NOT NULL
-       AND a.created_at::date=left(s."تاريخ الإنشاء",10)::date`);
   const staging = await db.query<{ rows: number; fingerprint: string }>(`
     SELECT (SELECT sum(c)::int FROM (
       SELECT count(*) c FROM staging."admin work table" UNION ALL SELECT count(*) FROM staging."Attendance"
@@ -385,8 +511,7 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
       FROM _prisma_migrations`);
   const migrationRow = migration.rows[0];
   const stagingRow = staging.rows[0];
-  const createdAtRow = createdAt.rows[0];
-  if (migrationRow === undefined || stagingRow === undefined || createdAtRow === undefined)
+  if (migrationRow === undefined || stagingRow === undefined)
     throw new Error('PostgreSQL baseline query returned no row');
 
   const logos = await reconcileClientLogos(db, {
@@ -399,8 +524,8 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
 
   return {
     settings,
-    quarantine,
-    currencyRules,
+    quarantine: prerequisites.quarantine,
+    currencyRules: prerequisites.currencyRules,
     datasets: await loadReports(db),
     accountingByName: await loadAccounting(db),
     complexAccountingByName: await loadComplexAccounting(db),
@@ -409,7 +534,7 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
     invoiceTotals: mapAmounts(invoices.rows),
     paymentTotals: mapAmounts(payments.rows),
     lawyerTotals: lawyers.rows,
-    adminCreatedAtSubstitutions: createdAtRow.substitutions,
+    adminCreatedAtSubstitutions: prerequisites.adminCreatedAtSubstitutions,
     stagingRows: stagingRow.rows,
     stagingFingerprint: stagingRow.fingerprint,
     review: await readReviewSnapshot(db),
@@ -420,6 +545,8 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
     },
     logos,
     protectedDigest: await task211ProtectedState(db),
+    prerequisites: prerequisites.results,
+    currencyRuleDigest: prerequisites.currencyRuleDigest,
   };
 }
 

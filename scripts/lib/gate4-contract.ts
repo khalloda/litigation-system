@@ -230,13 +230,6 @@ export function assertGate4Fingerprint(actual: string, expected: string): void {
     throw new Error(`source extraction fingerprint differs: ${actual}/${expected}`);
 }
 
-export function assertIndependentImplementations(sourceMarker: string, targetMarker: string): void {
-  if (sourceMarker.trim() === '' || targetMarker.trim() === '')
-    throw new Error('source and target implementation markers are required');
-  if (sourceMarker === targetMarker)
-    throw new Error('source and target accidentally use the same implementation');
-}
-
 export function gate4FileEvidenceFailures(
   expected: Readonly<{ path: string; bytes: number; sha256: string; mime: string }>,
   actual: Readonly<{ path: string; bytes: number; sha256: string; mime: string }> | null,

@@ -8,90 +8,17 @@ import {
   type Gate4Scalar,
 } from './gate4-contract';
 import { extractionTable, type Gate4ExtractedRow, type Gate4Extraction } from './gate4-extraction';
+import {
+  GATE4_CLIENT_LEGACY_ID,
+  GATE4_FROM_DATE,
+  GATE4_LAWYER_PARAMETER,
+  GATE4_REPORT_FIELDS,
+  GATE4_TO_DATE,
+  type Gate4CurrencyRule,
+  type Gate4QuarantineKeys,
+} from './gate4-report-contract';
 
-export const GATE4_CLIENT_LEGACY_ID = '3';
-export const GATE4_LAWYER_PARAMETER = 'مؤمن سليم';
-export const GATE4_FROM_DATE = '2009-01-01';
-export const GATE4_TO_DATE = '2026-12-31';
-
-export const GATE4_REPORT_FIELDS = Object.freeze({
-  clientMatters: [
-    'legacy_id',
-    'case_number_ar',
-    'subject',
-    'status',
-    'client_legacy_id',
-    'branch_raw',
-    'category_raw',
-    'court_raw',
-  ],
-  forAgainst: ['legacy_id', 'hearing_date', 'matter_legacy_id', 'outcome', 'decision'],
-  lawyerWorkload: ['matter_legacy_id', 'case_number_ar', 'status', 'lawyer_a_raw'],
-  hearingsByDate: [
-    'legacy_id',
-    'hearing_date',
-    'next_hearing_date',
-    'matter_legacy_id',
-    'decision',
-    'previous_decision',
-    'outcome',
-    'action_raw',
-    'court_raw',
-    'circuit_raw',
-    'destination_raw',
-    'notes_raw',
-    'client_notified',
-  ],
-  adminWorks: [
-    'legacy_id',
-    'matter_legacy_id',
-    'required_work',
-    'assignee_raw',
-    'task_created_date',
-    'execution_date',
-    'result',
-    'previous_decision',
-    'last_followup',
-    'deadline',
-    'court_raw',
-    'circuit_raw',
-    'destination_raw',
-    'status',
-    'alert',
-  ],
-  financial: [
-    'kind',
-    'legacy_id',
-    'reference',
-    'date',
-    'amount_1',
-    'amount_2',
-    'currency',
-    'currency_raw',
-    'details',
-    'status',
-    'type',
-    'flag_1',
-    'flag_2',
-    'extra_1',
-    'extra_2_raw',
-  ],
-} as const);
-
-export type Gate4QuarantineKeys = Readonly<{
-  matter: ReadonlySet<string>;
-  hearing: ReadonlySet<string>;
-  adminTask: ReadonlySet<string>;
-  invoice: ReadonlySet<string>;
-  payment: ReadonlySet<string>;
-}>;
-
-export type Gate4CurrencyRule = Readonly<{
-  fieldKind: string;
-  sourceValue: string;
-  targetValue: string | null;
-  requireZeroAmount: boolean;
-}>;
+export type { Gate4CurrencyRule, Gate4QuarantineKeys } from './gate4-report-contract';
 
 export type Gate4SourceReports = Readonly<{
   datasets: readonly Gate4Dataset[];

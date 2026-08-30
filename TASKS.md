@@ -1204,9 +1204,15 @@ only ever seen good data is not known to work.
 
       The extraction-time Access identity remains `40EBF988…5979`. The same
       file was later opened for inspection, changing only its physical identity
-      to `1A1DA8D…B4BC`; an independent full logical-equivalence audit found
-      zero changed table values, relationships, complex values or logo files.
-      PostgreSQL provenance was not rewritten.
+      to `1A1DA8D…B4BC`. Gate 4 now re-extracts that owner-approved file on
+      every run from a read-only task-owned copy, then compares reproducible
+      logical digests with the authoritative extraction. All 17 base/reference
+      tables (30,885 rows), 194 columns, 17 relationships, three complex
+      exports (342 values) and 54 logo files (1,541,428 bytes) are exact.
+      Absolute paths, temporary paths, timestamps and source row order are
+      excluded; exact values, NULL/empty distinctions, whitespace, Arabic,
+      duplicate multiplicity, relationship attributes and logo bytes are
+      included. PostgreSQL provenance was not rewritten.
 
       Complete current-source arithmetic is **30,847 migration-source + 38
       reference-only + 4,753 archive-only = 35,638 Access user-table rows**.
@@ -1222,13 +1228,28 @@ only ever seen good data is not known to work.
       year and all 54 logos also matched. The administrative comparison uses
       `task_created_date`; `created_at` is explicitly rejected.
 
+      Before Gate 4 can use a quarantine identity or reviewed billing rule,
+      the permanent matter, relationship, hearing, administrative and billing
+      oracles must pass inside the same repeatable-read, read-only snapshot.
+      They rebuild the exact target/quarantine partition, reasons, details,
+      evidence and reviewed billing rules. Static dependency checks also keep
+      the Access reader, PostgreSQL reader and migration writers/planners
+      architecturally separate.
+
       The read-only run used one repeatable-read transaction on
-      `litigation@localhost:5433`. An identical second run reproduced report
-      digest `d10190cb…24b36`. The fixture suite deliberately proved wrong joins,
-      omissions, duplicates, changed values, NULL/empty collapse, wrong money,
-      date/year drift, parameter/order drift, port 5432 and writable
-      transactions all fail. The additive creation-date correction is
-      migration 0051, and permanent verification now has **82** invariants.
+      `litigation@localhost:5433`. The original report digest
+      `d10190cb…24b36` remains the historical pre-hardening artefact. The
+      hardened report is intentionally different because it records the new
+      reproducible extraction and prerequisite-oracle evidence; all six
+      approved business dataset counts and digests remain unchanged. Its
+      identical two-pass digest is
+      `62b88e09fdd9022fafb311774b635e7d71d98956f0ee6dcc066148a1f60f6c47`.
+      The expanded fixture suite proves same-count quarantine swaps, incorrect
+      identities/reasons, reviewed-rule drift, Access value/NULL/whitespace/
+      Arabic/multiplicity drift, complex and logo changes, object-definition
+      drift, unsafe dates and temporary-output failures are rejected. The
+      additive creation-date correction is migration 0051, and permanent
+      verification remains **82** invariants.
 
 ---
 

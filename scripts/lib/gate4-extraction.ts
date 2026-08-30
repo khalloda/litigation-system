@@ -83,8 +83,21 @@ export type Gate4Extraction = Readonly<{
   complexRows: number;
   stagingRows: number;
   columnsByTable: ReadonlyMap<string, readonly string[]>;
+  columns: readonly Gate4ManifestRow[];
   relationships: readonly Gate4ManifestRow[];
 }>;
+
+export type Gate4ExtractionIdentity = Readonly<{
+  fingerprint: string;
+  sourceBytes: number;
+  sourceModified?: string;
+}>;
+
+const AUTHORITATIVE_EXTRACTION_IDENTITY: Gate4ExtractionIdentity = {
+  fingerprint: GATE4_EXTRACTION_FINGERPRINT,
+  sourceBytes: GATE4_ACCESS_BYTES,
+  sourceModified: GATE4_EXTRACTION_MODIFIED,
+};
 
 function required(row: Gate4ManifestRow, field: string, where: string): string {
   const value = row[field];
@@ -104,20 +117,25 @@ function expectedSet<T extends readonly string[]>(values: T): Set<string> {
   return new Set(values);
 }
 
-export async function loadGate4Extraction(root = resolve('_migration')): Promise<Gate4Extraction> {
+export async function loadGate4Extraction(
+  root = resolve('_migration'),
+  identity: Gate4ExtractionIdentity = AUTHORITATIVE_EXTRACTION_IDENTITY,
+): Promise<Gate4Extraction> {
   const manifestPath = resolve(root, 'meta', 'manifest.csv');
   const manifest = await readGate4Manifest(manifestPath);
   const sourceRows = manifest.filter((row) => row['object_type'] === 'source');
   if (sourceRows.length !== 1) throw new Error(`manifest has ${sourceRows.length} source rows`);
   const source = sourceRows[0]!;
   const fingerprint = required(source, 'sha256', 'manifest source').toUpperCase();
-  assertGate4Fingerprint(fingerprint, GATE4_EXTRACTION_FINGERPRINT);
+  assertGate4Fingerprint(fingerprint, identity.fingerprint);
   const sourceBytes = count(required(source, 'bytes', 'manifest source'), 'manifest source bytes');
-  if (sourceBytes !== GATE4_ACCESS_BYTES)
-    throw new Error(`manifest source bytes are ${sourceBytes}/${GATE4_ACCESS_BYTES}`);
+  if (sourceBytes !== identity.sourceBytes)
+    throw new Error(`manifest source bytes are ${sourceBytes}/${identity.sourceBytes}`);
   const sourceModified = required(source, 'source_modified_utc', 'manifest source');
-  if (sourceModified !== GATE4_EXTRACTION_MODIFIED)
-    throw new Error(`manifest source modified time is ${sourceModified}`);
+  if (identity.sourceModified !== undefined && sourceModified !== identity.sourceModified)
+    throw new Error(
+      `manifest source modified time is ${sourceModified}/${identity.sourceModified}`,
+    );
 
   const tableManifest = manifest.filter((row) => row['object_type'] === 'table');
   const complexManifest = manifest.filter((row) => row['object_type'] === 'complex');
@@ -228,6 +246,7 @@ export async function loadGate4Extraction(root = resolve('_migration')): Promise
     complexRows,
     stagingRows: parentRows + complexRows,
     columnsByTable: allColumns,
+    columns,
     relationships,
   };
 }
