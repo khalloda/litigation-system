@@ -1316,7 +1316,38 @@ only ever seen good data is not known to work.
       account eligibility. The owner initializes passwords locally with
       `npm run auth:set-password -- Username`; no password or hash is in Git.
 
-- [ ] **3.2 The four roles**, enforced **server-side** on every route.
+- [x] **3.2 The four roles**, enforced **server-side** on every route.
+
+      **Completed 31 August 2026.** One exhaustive policy covers 4 roles × 14
+      areas × 6 supported actions — 336 explicit decisions. Unknown roles,
+      areas and actions deny by default. Operational `full` means view/create/
+      update only: no deletion permission was invented. Billing remains
+      view-only for all four roles; all four can run and export reports;
+      Paralegals can create/update only administrative works; and staff,
+      user/role and dropdown management stay Administrator-only.
+
+      The pure matrix is `src/lib/auth/permissions.ts`; the server-only Auth.js
+      guard is `src/lib/auth/authorization.ts`. The guard accepts only a typed
+      area/action and derives the role from the validated session. Task 3.1's
+      JWT validation re-reads PostgreSQL, so a database role change overrides
+      stale token role data, while disabled accounts, inactive people,
+      expired sessions and forced-password-change sessions remain blocked.
+      `proxy.ts` is an early authentication redirect only, never the sole
+      authorization layer.
+
+      Every current page, handler and server action is classified in
+      `src/lib/auth/route-inventory.ts`. Its lightweight structural test is
+      part of `npm run check`; `npm run test:permissions` adds the full
+      negative suite. They fail on an unclassified entry point, a missing
+      authoritative guard or proxy-only protection. The independent matrix
+      oracle checks all 336 outcomes and deliberately proves weakened/missing
+      rules, client-supplied roles, direct handler/action access, 401/403
+      behavior, database role refresh and account/person ineligibility are
+      refused. Next.js 16.3.1's experimental auth interrupts remain disabled;
+      stable redirects and ordinary 401/403 responses are used instead.
+
+      Task 3.3 audit population and Task 3.4 user management remain
+      outstanding.
 
 - [ ] **3.3 Audit columns** populated everywhere.
 

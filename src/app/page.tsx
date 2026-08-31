@@ -1,13 +1,11 @@
-import { redirect } from 'next/navigation';
-import { auth, signOut } from '@/auth';
+import { signOut } from '@/auth';
 import { AuthShell } from '@/app/_components/auth-shell';
+import { requireAuthenticatedPage } from '@/lib/auth/authorization';
 import { t } from '@/strings';
 import styles from './auth.module.css';
 
 export default async function HomePage() {
-  const session = await auth();
-  if (!session) redirect('/login');
-  if (session.user.mustChangePassword) redirect('/change-password');
+  const session = await requireAuthenticatedPage();
 
   async function logoutAction() {
     'use server';

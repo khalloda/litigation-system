@@ -4,7 +4,8 @@ A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
 **Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
-login work has begun with Task 3.1. The owner-readable migration result is in
+authentication and server-side role permissions are complete through Task 3.2.
+The owner-readable migration result is in
 `docs/reconciliations/2026-08-30-gate-4.md`; current progress is in `TASKS.md`.
 
 ---
@@ -71,6 +72,14 @@ The application accepts usernames, not email addresses. The four initial
 accounts have no password in Git or in their migration; the owner initializes
 each one locally with `auth:set-password`, which hides input and forces a
 change at first login. See `docs/DATABASE.md` for the complete procedure.
+
+Server authorization is defined once in `src/lib/auth/permissions.ts` and
+enforced through the Auth.js-backed guards in
+`src/lib/auth/authorization.ts`. Every App Router page, route handler and
+server action is listed in `src/lib/auth/route-inventory.ts`; the permission
+test fails if a future entry point is not classified or relies only on
+`proxy.ts`. The lightweight inventory check is also part of `npm run check`;
+run the full `npm run test:permissions` after adding any route or action.
 
 `npm run db:verify` confirms the database is set up correctly — every line
 must read PASS. Full details, including what to do when something is wrong,
