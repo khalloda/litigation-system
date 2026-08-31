@@ -36,6 +36,11 @@ import {
   gate4LogicalEvidenceFailures,
 } from './lib/gate4-logical-equivalence';
 import { REVIEW_ANSWER_BASELINE } from './lib/migration-baselines';
+import {
+  GATE4_STAGE2_DATABASE_PROFILES,
+  GATE4_WHITESPACE_CANONICAL_CHECKSUM,
+  GATE4_WHITESPACE_HISTORICAL_CHECKSUM,
+} from './lib/gate4-migrations';
 import { GATE4_REPORT_CONTRACTS } from './lib/gate4-report-contract';
 import { buildGate4SourceReports, type Gate4SourceReports } from './lib/gate4-source-reports';
 
@@ -211,6 +216,17 @@ function assertBaselines(
     fail('applied migration accounting differs');
   if (database.migrations.unfinishedOrFailed !== 0)
     fail(`${database.migrations.unfinishedOrFailed} unfinished/failed migration(s) exist`);
+  if (database.migrations.unapprovedRollbacks !== 0)
+    fail(`${database.migrations.unapprovedRollbacks} unapproved rollback(s) exist`);
+  if (
+    database.migrations.unaccountedDatabaseRows !== 0 ||
+    database.migrations.unaccountedRepositoryFiles !== 0
+  )
+    fail('migration repository/database accounting differs');
+  if (database.migrations.pendingRepositoryMigrations.length !== 0)
+    fail(
+      `${database.migrations.pendingRepositoryMigrations.length} repository migration(s) are pending`,
+    );
   if (database.review.valueAnswers !== REVIEW_ANSWER_BASELINE.valueAnswers)
     fail(`review value answers are ${database.review.valueAnswers}`);
   if (database.review.findingAnswers !== REVIEW_ANSWER_BASELINE.findingAnswers)
@@ -489,11 +505,18 @@ The administrative-works dataset compares Access \`تاريخ الإنشاء\` o
 
 - staging rows: ${database.stagingRows.toLocaleString('en-US')}; fingerprint \`${database.stagingFingerprint}\`
 - review answers: ${database.review.valueAnswers} value + ${database.review.findingAnswers} finding = ${database.review.valueAnswers + database.review.findingAnswers}; mapping \`${database.review.mappingDigest}\`; answers \`${database.review.answerDigest}\`
-- required Stage 2 migrations proved: ${database.migrations.requiredStage2Proved}/${database.migrations.requiredStage2Expected}, through <code>${database.migrations.finalStage2Migration}</code>; identity digest <code>${database.migrations.requiredStage2Digest}</code>
+- accepted database-history profile: <code>${database.migrations.acceptedDatabaseProfile}</code>; profile digest <code>${database.migrations.acceptedDatabaseProfileDigest}</code>
+- approved complete Stage 2 profiles: ${GATE4_STAGE2_DATABASE_PROFILES.map((profile) => `<code>${profile.id}</code> (<code>${profile.digest}</code>)`).join('; ')}
+- canonical repository migration inventory: ${database.migrations.repositoryMigrations} files; digest <code>${database.migrations.canonicalRepositoryDigest}</code>
+- required Stage 2 migrations proved: ${database.migrations.requiredStage2Proved}/${database.migrations.requiredStage2Expected}, through <code>${database.migrations.finalStage2Migration}</code>
+- migration 0033 canonical repository checksum: <code>${GATE4_WHITESPACE_CANONICAL_CHECKSUM}</code>; historical live apply-time checksum: <code>${GATE4_WHITESPACE_HISTORICAL_CHECKSUM}</code> (the canonical byte stream plus one additional terminal LF)
 - total successfully applied migrations: ${database.migrations.totalApplied} (${database.migrations.requiredStage2Proved} required Stage 2 + ${database.migrations.laterApplied} later)
-- later successfully applied migrations: ${database.migrations.laterApplied}${database.migrations.laterAppliedNames.length === 0 ? '' : ` — ${database.migrations.laterAppliedNames.map((name) => `<code>${name}</code>`).join(', ')}`}
+- later successfully applied migrations: ${database.migrations.laterApplied}${database.migrations.laterAppliedMigrations.length === 0 ? '' : ` — ${database.migrations.laterAppliedMigrations.map((migration) => `<code>${migration.name}</code> (<code>${migration.checksum}</code>)`).join(', ')}`}
+- pending repository migrations: ${database.migrations.pendingRepositoryMigrations.length}${database.migrations.pendingRepositoryMigrations.length === 0 ? '' : ` — ${database.migrations.pendingRepositoryMigrations.map((name) => `<code>${name}</code>`).join(', ')}`}
 - approved clean rollbacks: ${database.migrations.cleanRollbacks} — ${database.migrations.cleanRollbackNames.map((name) => `<code>${name}</code>`).join(', ')}
 - unfinished/failed migrations: ${database.migrations.unfinishedOrFailed}
+- unapproved rollbacks: ${database.migrations.unapprovedRollbacks}
+- unaccounted database history rows / repository migration files: ${database.migrations.unaccountedDatabaseRows} / ${database.migrations.unaccountedRepositoryFiles}
 - prior-stage protected-state digest: \`${database.protectedDigest}\`
 - independently proven prerequisite oracles: ${database.prerequisites.map((item) => item.name).join(', ')}
 - reviewed billing currency-rule digest: \`${database.currencyRuleDigest}\`

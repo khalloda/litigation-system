@@ -2458,22 +2458,52 @@ The complete owner-readable evidence is in
   partitions, reasons, details, evidence and reviewed billing-rule content.
   Static dependency checks prevent the source reader, target reader or
   migration writer/planner from becoming the same implementation.
-- Migration proof is identity-based rather than count-based. Gate 4 requires
-  the exact 51 Stage 2 apply-time migration names and checksums through
-  `20260830110000_preserve_admin_task_created_date`, exactly once and
-  successfully applied; separately recognises the one approved historical
-  clean rollback; and rejects missing, substituted, duplicated, rolled-back,
-  failed or unfinished required migrations. Later successfully applied
-  migrations are allowed, while an unfinished later migration still fails the
-  gate. The current 51/51 identity digest is `2abe71da…9bb11da`.
+- Migration proof is identity-based rather than count-based and independently
+  inventories the repository. Every migration directory must have a safe name
+  and exactly one regular `migration.sql`; the exact bytes are SHA-256 hashed.
+  The 51 canonical Stage 2 files have inventory digest `d396eb61…f2cf`.
+  Required database history must match one complete profile, never a
+  migration-by-migration mixture: the live `historical-live` profile digest is
+  `86eb32a9…8447f`, while a complete empty canonical replay produces profile
+  digest `892b382f…5899`.
+- Migration 0033 records the only difference between those profiles. The
+  committed 2,381-byte `migration.sql` ends with one LF and hashes to
+  `e2879b44…df25`. The historical live apply-time stream was those exact bytes
+  plus one additional terminal LF and hashes to `dce31bd5…bd37`. Appending
+  that one byte reproduces the live checksum exactly. The SQL meaning is
+  unchanged; deterministic 7,143-line schema dumps from live and a canonical
+  clean replay were identical (`97b482ed…9443`). The Git blob
+  `35876e52…38c` has not changed since `bae15d39`.
+- The historical profile also requires the one approved clean rollback. Its
+  abandoned migration directory is not present in the canonical repository;
+  the gate instead proves its exact database name, checksum and clean rollback
+  state as part of the historical profile. Every later applied database
+  migration must have one matching safe repository file
+  with the same exact checksum. A database-only migration, a pending
+  repository file, a checksum mismatch, or a failed, rolled-back or unfinished
+  later migration fails. The current run has zero later, pending or unaccounted
+  database/repository migrations.
+- This deliberately exceeds the locked Prisma 7.9.1 CLI's production check.
+  Prisma's official documentation and the installed CLI agree that
+  `migrate status` compares local migration history with
+  `_prisma_migrations`, while `migrate dev` replays history in a shadow
+  database to detect an edited or deleted migration. `migrate deploy` applies
+  pending migrations but does not detect schema drift and does not even warn
+  when an applied migration is missing locally. The clean replay directly
+  proved that Prisma 7.9.1 stores SHA-256 of the exact `migration.sql` bytes;
+  whitespace therefore changes history identity even when SQL meaning does
+  not. Gate 4 performs the exact repository/database comparison that
+  `migrate deploy` intentionally does not.
 - Report digest `d10190cb…24b36` is the historical pre-hardening artefact. The
   first hardened report digest `62b88e09…0f6c47` recorded the
   reproducible re-extraction and prerequisite-oracle evidence, not because a
   business dataset changed. The forward-compatible migration-identity proof
-  changed only the report's migration evidence. The six approved dataset
-  counts and digests remain pinned exactly. Its corrected identical two-pass
-  report digest is
-  `15bd21a37ad513c3a232335e502cf3de11b6d0817ba29073d59811e22122e9a6`
+  changed only the report's migration evidence and produced historical report
+  digest `15bd21a3…9a6`. The subsequent exact repository/profile correction
+  likewise changed only that evidence. The six
+  approved dataset counts and digests remain pinned exactly. Its current
+  identical two-pass report digest is
+  `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`
   byte for byte; no Access, extracted, database or logo data changed.
 
 ## Cutover

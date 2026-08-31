@@ -250,12 +250,23 @@ timestamps, CSV byte layout and source row order. The copy and extraction are
 removed whether the check passes or fails; Access reports and VBA are never
 executed.
 
-The migration-history prerequisite is an exact Stage 2 identity baseline, not
-an exact total count. Gate 4 proves the 51 required apply-time migration names
-and checksums through migration 0051, the one approved historical clean
-rollback and the absence of unfinished/failed migrations. A later successfully
-applied migration is allowed; a missing, replaced, duplicated, rolled-back or
-unfinished required migration, or an unfinished later migration, fails.
+The migration-history prerequisite is exact file and database identity, not a
+count. Gate 4 hashes every migration file in the repository and requires the
+51 Stage 2 files through migration 0051 unchanged. It then requires the whole
+database history to match one of two approved profiles: the historical live
+application, or a clean replay of the committed files. It never chooses an
+acceptable checksum one migration at a time.
+
+There is one explained byte difference. The committed migration 0033 ends in
+one line break; the historical live copy had one additional final line break.
+That changes its SHA-256 checksum but not its SQL meaning. Both checksums were
+reproduced exactly, and a complete clean replay produced the same 7,143-line
+database schema as live. The two byte identities remain distinct in the proof.
+
+The historical profile also proves the one approved clean rollback. A later
+successfully applied migration is allowed only when its repository file exists
+and has exactly the checksum PostgreSQL recorded. Missing, pending, replaced,
+duplicated, rolled-back, failed or unfinished migrations all stop the gate.
 
 That comparison is the only check that catches a mistake where the numbers all
 add up and the content is wrong.
@@ -265,12 +276,13 @@ row for row, as did matter status, current lawyer relationships, billing by
 currency, hearings by year and all 54 logos. The report is
 `docs/reconciliations/2026-08-30-gate-4.md`. An identical read-only rerun
 produced corrected report digest
-`15bd21a37ad513c3a232335e502cf3de11b6d0817ba29073d59811e22122e9a6`.
+`dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`.
 The earlier `d10190cb…24b36` is the historical pre-hardening report artefact,
 and `62b88e09…0f6c47` is the first hardened artefact before the
-forward-compatible migration-identity proof. The report bytes changed only as
-new verification evidence was recorded; all six business dataset counts and
-digests stayed exact.
+forward-compatible migration-identity proof. `15bd21a3…9a6` is the next
+historical artefact before repository bytes and the dual profiles were added.
+The report bytes changed only as new verification evidence was recorded; all
+six business dataset counts and digests stayed exact.
 
 ---
 

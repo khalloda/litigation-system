@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { lstat, readdir, readFile, realpath } from 'node:fs/promises';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 
 export type Gate4MigrationHistoryRow = Readonly<{
   migrationName: string;
@@ -11,24 +13,50 @@ export type Gate4MigrationHistoryRow = Readonly<{
 export type Gate4MigrationEvidence = Readonly<{
   requiredStage2Expected: number;
   requiredStage2Proved: number;
-  requiredStage2Digest: string;
+  acceptedDatabaseProfile: string | null;
+  acceptedDatabaseProfileDigest: string;
+  canonicalRepositoryDigest: string;
   finalStage2Migration: string;
+  repositoryMigrations: number;
   totalApplied: number;
   laterApplied: number;
-  laterAppliedNames: readonly string[];
+  laterAppliedMigrations: readonly MigrationIdentity[];
+  pendingRepositoryMigrations: readonly string[];
   cleanRollbacks: number;
   cleanRollbackNames: readonly string[];
   unfinishedOrFailed: number;
+  unapprovedRollbacks: number;
+  unaccountedDatabaseRows: number;
+  unaccountedRepositoryFiles: number;
   defects: readonly string[];
 }>;
 
-type MigrationIdentity = Readonly<{ name: string; checksum: string }>;
+export type MigrationIdentity = Readonly<{ name: string; checksum: string }>;
+
+export type Gate4RepositoryMigration = MigrationIdentity &
+  Readonly<{
+    byteLength: number;
+  }>;
+
+export type Gate4RepositoryMigrationInventory = Readonly<{
+  migrations: readonly Gate4RepositoryMigration[];
+  digest: string;
+  defects: readonly string[];
+}>;
+
+export type Gate4MigrationProfile = Readonly<{
+  id: 'historical-live' | 'canonical-clean-replay';
+  description: string;
+  requiredMigrations: readonly MigrationIdentity[];
+  cleanRollbacks: readonly MigrationIdentity[];
+  digest: string;
+}>;
 
 /**
- * Exact identities recorded when Stage 2 closed. Checksums are the immutable
- * apply-time values held by Prisma's migration history, not a migration count.
+ * Canonical repository identities recorded when Stage 2 closed. Each checksum
+ * is SHA-256 over the exact current migration.sql bytes.
  */
-export const GATE4_REQUIRED_STAGE2_MIGRATIONS: readonly MigrationIdentity[] = (
+export const GATE4_CANONICAL_STAGE2_MIGRATIONS: readonly MigrationIdentity[] = (
   [
     [
       '20260820121223_extensions_and_arabic_collation',
@@ -160,7 +188,7 @@ export const GATE4_REQUIRED_STAGE2_MIGRATIONS: readonly MigrationIdentity[] = (
     ],
     [
       '20260824154500_reviewed_text_edge_whitespace',
-      'dce31bd5e1578a64f2bda516583207408e5911e384555f3db0d913ba9253bd37',
+      'e2879b4449cdb45411857faf3a84cf12a9772bc763645e98139deeec8debdf25',
     ],
     [
       '20260824210000_transform_matter_relationships',
@@ -239,6 +267,11 @@ export const GATE4_REQUIRED_STAGE2_MIGRATIONS: readonly MigrationIdentity[] = (
 
 export const GATE4_STAGE2_REQUIRED_COUNT = 51;
 export const GATE4_FINAL_STAGE2_MIGRATION = '20260830110000_preserve_admin_task_created_date';
+export const GATE4_WHITESPACE_MIGRATION = '20260824154500_reviewed_text_edge_whitespace';
+export const GATE4_WHITESPACE_CANONICAL_CHECKSUM =
+  'e2879b4449cdb45411857faf3a84cf12a9772bc763645e98139deeec8debdf25';
+export const GATE4_WHITESPACE_HISTORICAL_CHECKSUM =
+  'dce31bd5e1578a64f2bda516583207408e5911e384555f3db0d913ba9253bd37';
 
 export const GATE4_APPROVED_CLEAN_ROLLBACKS: readonly MigrationIdentity[] = [
   {
@@ -247,8 +280,149 @@ export const GATE4_APPROVED_CLEAN_ROLLBACKS: readonly MigrationIdentity[] = [
   },
 ];
 
-function identityDigest(rows: readonly MigrationIdentity[]): string {
-  return createHash('sha256').update(JSON.stringify(rows), 'utf8').digest('hex');
+export function gate4MigrationIdentityDigest(rows: readonly MigrationIdentity[]): string {
+  return createHash('sha256')
+    .update(JSON.stringify(rows.map(({ name, checksum }) => ({ name, checksum }))), 'utf8')
+    .digest('hex');
+}
+
+export function gate4MigrationProfileDigest(
+  requiredMigrations: readonly MigrationIdentity[],
+  cleanRollbacks: readonly MigrationIdentity[],
+): string {
+  return createHash('sha256')
+    .update(JSON.stringify({ requiredMigrations, cleanRollbacks }), 'utf8')
+    .digest('hex');
+}
+
+export const GATE4_HISTORICAL_STAGE2_MIGRATIONS: readonly MigrationIdentity[] =
+  GATE4_CANONICAL_STAGE2_MIGRATIONS.map((migration) =>
+    migration.name === GATE4_WHITESPACE_MIGRATION
+      ? { name: migration.name, checksum: GATE4_WHITESPACE_HISTORICAL_CHECKSUM }
+      : migration,
+  );
+
+export const GATE4_STAGE2_DATABASE_PROFILES: readonly Gate4MigrationProfile[] = [
+  {
+    id: 'historical-live',
+    description: 'Historical live apply-time bytes; migration 0033 had one additional terminal LF.',
+    requiredMigrations: GATE4_HISTORICAL_STAGE2_MIGRATIONS,
+    cleanRollbacks: GATE4_APPROVED_CLEAN_ROLLBACKS,
+    digest: gate4MigrationProfileDigest(
+      GATE4_HISTORICAL_STAGE2_MIGRATIONS,
+      GATE4_APPROVED_CLEAN_ROLLBACKS,
+    ),
+  },
+  {
+    id: 'canonical-clean-replay',
+    description: 'Clean replay from the canonical committed migration files.',
+    requiredMigrations: GATE4_CANONICAL_STAGE2_MIGRATIONS,
+    cleanRollbacks: [],
+    digest: gate4MigrationProfileDigest(GATE4_CANONICAL_STAGE2_MIGRATIONS, []),
+  },
+];
+
+const MIGRATION_NAME = /^\d{14}_[a-z0-9_]+$/u;
+const SHA256 = /^[0-9a-f]{64}$/u;
+
+function byMigrationName(left: MigrationIdentity, right: MigrationIdentity): number {
+  return left.name < right.name ? -1 : left.name > right.name ? 1 : 0;
+}
+
+function safeChild(root: string, child: string): boolean {
+  const path = relative(root, child);
+  return path !== '' && path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path);
+}
+
+export async function readGate4RepositoryMigrationInventory(
+  migrationsRoot = resolve('prisma', 'migrations'),
+): Promise<Gate4RepositoryMigrationInventory> {
+  const defects: string[] = [];
+  const migrations: Gate4RepositoryMigration[] = [];
+  let root: string;
+  try {
+    const requestedRoot = resolve(migrationsRoot);
+    const requestedRootStat = await lstat(requestedRoot);
+    if (!requestedRootStat.isDirectory() || requestedRootStat.isSymbolicLink()) {
+      return {
+        migrations,
+        digest: gate4MigrationIdentityDigest(migrations),
+        defects: ['repository migration root is not a safe regular directory'],
+      };
+    }
+    root = await realpath(migrationsRoot);
+  } catch (error) {
+    return {
+      migrations,
+      digest: gate4MigrationIdentityDigest(migrations),
+      defects: [
+        `repository migration root cannot be resolved: ${error instanceof Error ? error.message : String(error)}`,
+      ],
+    };
+  }
+
+  const entries = await readdir(root, { withFileTypes: true });
+  const seen = new Set<string>();
+  for (const entry of entries.sort((left, right) =>
+    left.name < right.name ? -1 : left.name > right.name ? 1 : 0,
+  )) {
+    const entryPath = resolve(root, entry.name);
+    const entryStat = await lstat(entryPath);
+    if (entry.name === 'migration_lock.toml') {
+      if (!entryStat.isFile() || entryStat.isSymbolicLink())
+        defects.push('migration_lock.toml is not a safe regular file');
+      continue;
+    }
+    if (!entryStat.isDirectory() || entryStat.isSymbolicLink()) {
+      defects.push(`${entry.name}: unexpected repository migration artifact`);
+      continue;
+    }
+    if (!MIGRATION_NAME.test(entry.name)) {
+      defects.push(`${entry.name}: unsafe or malformed migration directory name`);
+      continue;
+    }
+    const comparisonName = entry.name.toLowerCase();
+    if (seen.has(comparisonName)) {
+      defects.push(`${entry.name}: duplicate repository migration directory`);
+      continue;
+    }
+    seen.add(comparisonName);
+
+    const directory = await realpath(entryPath);
+    if (!safeChild(root, directory)) {
+      defects.push(`${entry.name}: migration directory resolves outside the repository root`);
+      continue;
+    }
+    const contents = await readdir(directory, { withFileTypes: true });
+    if (contents.length !== 1 || contents[0]?.name !== 'migration.sql') {
+      defects.push(`${entry.name}: expected exactly one migration.sql file`);
+      continue;
+    }
+    const sqlPath = resolve(directory, 'migration.sql');
+    const sqlStat = await lstat(sqlPath);
+    if (!sqlStat.isFile() || sqlStat.isSymbolicLink()) {
+      defects.push(`${entry.name}: migration.sql is not a safe regular file`);
+      continue;
+    }
+    const canonicalSqlPath = await realpath(sqlPath);
+    if (!safeChild(directory, canonicalSqlPath)) {
+      defects.push(`${entry.name}: migration.sql resolves outside its migration directory`);
+      continue;
+    }
+    const bytes = await readFile(canonicalSqlPath);
+    migrations.push({
+      name: entry.name,
+      checksum: createHash('sha256').update(bytes).digest('hex'),
+      byteLength: bytes.length,
+    });
+  }
+
+  migrations.sort(byMigrationName);
+  return {
+    migrations,
+    digest: gate4MigrationIdentityDigest(migrations),
+    defects,
+  };
 }
 
 function state(row: Gate4MigrationHistoryRow): 'applied' | 'clean rollback' | 'unfinished/failed' {
@@ -261,21 +435,57 @@ function state(row: Gate4MigrationHistoryRow): 'applied' | 'clean rollback' | 'u
 
 export function reconcileGate4Migrations(
   rows: readonly Gate4MigrationHistoryRow[],
+  repository: Gate4RepositoryMigrationInventory,
 ): Gate4MigrationEvidence {
-  const defects: string[] = [];
-  if (GATE4_REQUIRED_STAGE2_MIGRATIONS.length !== GATE4_STAGE2_REQUIRED_COUNT)
+  const defects: string[] = [...repository.defects];
+  const canonicalRepositoryDigest = gate4MigrationIdentityDigest(
+    [...repository.migrations].sort(byMigrationName),
+  );
+  if (repository.digest !== canonicalRepositoryDigest)
+    defects.push('repository migration inventory digest does not match its files');
+  if (GATE4_CANONICAL_STAGE2_MIGRATIONS.length !== GATE4_STAGE2_REQUIRED_COUNT)
     defects.push(
-      `required Stage 2 baseline contains ${GATE4_REQUIRED_STAGE2_MIGRATIONS.length}/${GATE4_STAGE2_REQUIRED_COUNT} identities`,
+      `canonical Stage 2 baseline contains ${GATE4_CANONICAL_STAGE2_MIGRATIONS.length}/${GATE4_STAGE2_REQUIRED_COUNT} identities`,
     );
-  if (GATE4_REQUIRED_STAGE2_MIGRATIONS.at(-1)?.name !== GATE4_FINAL_STAGE2_MIGRATION)
-    defects.push('required Stage 2 baseline does not end at the approved boundary');
-  const requiredNames = new Set(GATE4_REQUIRED_STAGE2_MIGRATIONS.map((row) => row.name));
-  const rollbackNames = new Set(GATE4_APPROVED_CLEAN_ROLLBACKS.map((row) => row.name));
-  const actualRequired: MigrationIdentity[] = [];
-  let requiredStage2Proved = 0;
+  if (GATE4_CANONICAL_STAGE2_MIGRATIONS.at(-1)?.name !== GATE4_FINAL_STAGE2_MIGRATION)
+    defects.push('canonical Stage 2 baseline does not end at the approved boundary');
 
-  for (const expected of GATE4_REQUIRED_STAGE2_MIGRATIONS) {
-    const matches = rows.filter((row) => row.migrationName === expected.name);
+  const canonicalByName = new Map(
+    GATE4_CANONICAL_STAGE2_MIGRATIONS.map((migration) => [migration.name, migration]),
+  );
+  const requiredNames = new Set(canonicalByName.keys());
+  const repositoryByName = new Map<string, Gate4RepositoryMigration[]>();
+  for (const migration of repository.migrations) {
+    const matches = repositoryByName.get(migration.name) ?? [];
+    matches.push(migration);
+    repositoryByName.set(migration.name, matches);
+  }
+  let unaccountedRepositoryFiles = 0;
+  for (const expected of GATE4_CANONICAL_STAGE2_MIGRATIONS) {
+    const matches = repositoryByName.get(expected.name) ?? [];
+    if (matches.length !== 1) {
+      defects.push(
+        `${expected.name}: expected one canonical repository file, found ${matches.length}`,
+      );
+      continue;
+    }
+    if (matches[0]!.checksum !== expected.checksum)
+      defects.push(`${expected.name}: canonical repository checksum differs`);
+  }
+
+  const historyByName = new Map<string, Gate4MigrationHistoryRow[]>();
+  for (const row of rows) {
+    const matches = historyByName.get(row.migrationName) ?? [];
+    matches.push(row);
+    historyByName.set(row.migrationName, matches);
+  }
+  for (const [name, matches] of historyByName)
+    if (matches.length > 1)
+      defects.push(`${name}: duplicate migration history (${matches.length} rows)`);
+
+  const actualRequired: MigrationIdentity[] = [];
+  for (const expected of GATE4_CANONICAL_STAGE2_MIGRATIONS) {
+    const matches = historyByName.get(expected.name) ?? [];
     if (matches.length !== 1) {
       defects.push(`${expected.name}: expected exactly one history row, found ${matches.length}`);
       continue;
@@ -284,16 +494,32 @@ export function reconcileGate4Migrations(
     actualRequired.push({ name: actual.migrationName, checksum: actual.checksum });
     if (state(actual) !== 'applied')
       defects.push(`${expected.name}: required migration is ${state(actual)}`);
-    else if (actual.checksum !== expected.checksum)
-      defects.push(`${expected.name}: apply-time checksum differs`);
-    else requiredStage2Proved += 1;
   }
 
-  for (const expected of GATE4_APPROVED_CLEAN_ROLLBACKS) {
-    const matches = rows.filter((row) => row.migrationName === expected.name);
+  const structurallyComplete =
+    actualRequired.length === GATE4_STAGE2_REQUIRED_COUNT &&
+    actualRequired.every((migration) =>
+      (historyByName.get(migration.name) ?? []).every((row) => state(row) === 'applied'),
+    );
+  const matchingProfiles = structurallyComplete
+    ? GATE4_STAGE2_DATABASE_PROFILES.filter(
+        (profile) =>
+          gate4MigrationIdentityDigest(profile.requiredMigrations) ===
+          gate4MigrationIdentityDigest(actualRequired),
+      )
+    : [];
+  const selectedProfile = matchingProfiles.length === 1 ? matchingProfiles[0]! : null;
+  if (matchingProfiles.length !== 1)
+    defects.push(
+      `required Stage 2 database history matches ${matchingProfiles.length} complete approved profiles`,
+    );
+
+  const expectedRollbacks = selectedProfile?.cleanRollbacks ?? [];
+  for (const expected of expectedRollbacks) {
+    const matches = historyByName.get(expected.name) ?? [];
     if (matches.length !== 1) {
       defects.push(
-        `${expected.name}: expected one approved clean rollback, found ${matches.length}`,
+        `${expected.name}: expected one profile clean rollback, found ${matches.length}`,
       );
       continue;
     }
@@ -304,49 +530,92 @@ export function reconcileGate4Migrations(
       defects.push(`${expected.name}: approved rollback checksum differs`);
   }
 
-  const laterAppliedNames: string[] = [];
-  const knownNames = new Set([...requiredNames, ...rollbackNames]);
-  for (const row of rows.filter((candidate) => !knownNames.has(candidate.migrationName))) {
-    if (!/^\d{14}_[a-z0-9_]+$/u.test(row.migrationName)) {
+  const selectedRollbackNames = new Set(expectedRollbacks.map((migration) => migration.name));
+  const laterAppliedMigrations: MigrationIdentity[] = [];
+  let unaccountedDatabaseRows = 0;
+  let unapprovedRollbacks = 0;
+  for (const row of rows.filter(
+    (candidate) =>
+      !requiredNames.has(candidate.migrationName) &&
+      !selectedRollbackNames.has(candidate.migrationName),
+  )) {
+    if (state(row) === 'clean rollback') unapprovedRollbacks += 1;
+    if (!MIGRATION_NAME.test(row.migrationName)) {
       defects.push(`${row.migrationName}: migration name is malformed`);
+      unaccountedDatabaseRows += 1;
       continue;
     }
     if (row.migrationName <= GATE4_FINAL_STAGE2_MIGRATION) {
       defects.push(`${row.migrationName}: unexpected migration at or before the Stage 2 boundary`);
+      unaccountedDatabaseRows += 1;
       continue;
     }
     if (state(row) !== 'applied') {
       defects.push(`${row.migrationName}: later migration is ${state(row)}`);
       continue;
     }
-    if (!/^[0-9a-f]{64}$/u.test(row.checksum)) {
+    if (!SHA256.test(row.checksum)) {
       defects.push(`${row.migrationName}: later migration checksum is malformed`);
       continue;
     }
-    laterAppliedNames.push(row.migrationName);
+    const repositoryMatches = repositoryByName.get(row.migrationName) ?? [];
+    if (repositoryMatches.length !== 1) {
+      defects.push(
+        `${row.migrationName}: later applied migration has ${repositoryMatches.length} repository files`,
+      );
+      unaccountedDatabaseRows += 1;
+      continue;
+    }
+    if (repositoryMatches[0]!.checksum !== row.checksum) {
+      defects.push(`${row.migrationName}: later database/repository checksum differs`);
+      continue;
+    }
+    laterAppliedMigrations.push({ name: row.migrationName, checksum: row.checksum });
   }
 
-  const nameCounts = new Map<string, number>();
-  for (const row of rows)
-    nameCounts.set(row.migrationName, (nameCounts.get(row.migrationName) ?? 0) + 1);
-  for (const [name, count] of nameCounts)
-    if (count > 1) defects.push(`${name}: duplicate migration history (${count} rows)`);
+  const pendingRepositoryMigrations: string[] = [];
+  for (const migration of repository.migrations) {
+    if (requiredNames.has(migration.name)) continue;
+    if (migration.name <= GATE4_FINAL_STAGE2_MIGRATION) {
+      defects.push(
+        `${migration.name}: unexpected repository migration at or before Stage 2 boundary`,
+      );
+      unaccountedRepositoryFiles += 1;
+      continue;
+    }
+    const matches = historyByName.get(migration.name) ?? [];
+    if (matches.length !== 1 || state(matches[0]!) !== 'applied') {
+      pendingRepositoryMigrations.push(migration.name);
+      defects.push(
+        `${migration.name}: repository migration is pending or not successfully applied`,
+      );
+    }
+  }
 
-  laterAppliedNames.sort();
+  laterAppliedMigrations.sort(byMigrationName);
+  pendingRepositoryMigrations.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
   const applied = rows.filter((row) => state(row) === 'applied');
   const cleanRollbacks = rows.filter((row) => state(row) === 'clean rollback');
   const unfinishedOrFailed = rows.filter((row) => state(row) === 'unfinished/failed');
   return {
     requiredStage2Expected: GATE4_STAGE2_REQUIRED_COUNT,
-    requiredStage2Proved,
-    requiredStage2Digest: identityDigest(actualRequired),
+    requiredStage2Proved: selectedProfile === null ? 0 : GATE4_STAGE2_REQUIRED_COUNT,
+    acceptedDatabaseProfile: selectedProfile?.id ?? null,
+    acceptedDatabaseProfileDigest:
+      selectedProfile?.digest ?? gate4MigrationProfileDigest(actualRequired, []),
+    canonicalRepositoryDigest,
     finalStage2Migration: GATE4_FINAL_STAGE2_MIGRATION,
+    repositoryMigrations: repository.migrations.length,
     totalApplied: applied.length,
-    laterApplied: laterAppliedNames.length,
-    laterAppliedNames,
+    laterApplied: laterAppliedMigrations.length,
+    laterAppliedMigrations,
+    pendingRepositoryMigrations,
     cleanRollbacks: cleanRollbacks.length,
     cleanRollbackNames: cleanRollbacks.map((row) => row.migrationName).sort(),
     unfinishedOrFailed: unfinishedOrFailed.length,
+    unapprovedRollbacks,
+    unaccountedDatabaseRows,
+    unaccountedRepositoryFiles,
     defects,
   };
 }

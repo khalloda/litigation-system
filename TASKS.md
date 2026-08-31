@@ -1242,17 +1242,35 @@ only ever seen good data is not known to work.
       first hardened report was intentionally different because it recorded
       the new reproducible extraction and prerequisite-oracle evidence; its
       identical two-pass digest was `62b88e09…0f6c47`. Gate 4 subsequently
-      removed a forward-compatibility defect: it no longer requires the total
-      applied-migration count to remain exactly 51. It proves the exact 51
-      Stage 2 apply-time name/checksum identities through migration 0051,
-      separately proves the one approved clean rollback, rejects every
-      missing, replaced, duplicate, rolled-back, failed or unfinished required
-      migration and every unfinished later migration, while permitting later
-      successfully applied migrations. The current 51/51 migration-identity
-      digest is `2abe71da…9bb11da`; the corrected byte-identical two-pass report
-      digest is `15bd21a37ad513c3a232335e502cf3de11b6d0817ba29073d59811e22122e9a6`.
+      removed two migration-provenance defects. It no longer fixes the total
+      applied count at 51, and it now hashes every safe repository
+      `migration.sql` rather than trusting any well-formed database checksum.
+      The live database selects the indivisible `historical-live` profile
+      (`86eb32a9…8447f`); a complete empty replay selects the indivisible
+      `canonical-clean-replay` profile (`892b382f…5899`). The repository's 51
+      canonical files have inventory digest `d396eb61…f2cf`.
+
+      Migration 0033 is the one deliberate byte distinction. The committed
+      2,381-byte file ends in one LF and hashes to `e2879b44…df25`; the live
+      apply-time bytes were that exact stream plus one additional terminal LF
+      and hash to `dce31bd5…bd37`. The SQL meaning and resulting database
+      objects are unchanged, but the two byte identities are never treated as
+      interchangeable. The Git blob `35876e52…38c` has been unchanged since
+      `bae15d39`.
+
+      Required migrations must match one whole approved profile. Every later
+      applied migration must have a safe repository file with the same exact
+      checksum; database-only, pending repository-only, mismatched, failed,
+      rolled-back and unfinished later migrations all fail. The one approved
+      historical clean rollback is profile evidence. The current corrected
+      byte-identical two-pass report digest is `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`.
+      `15bd21a3…9a6` remains the immediately preceding report artefact before
+      repository-byte and dual-profile evidence was added.
       All six approved business dataset counts and digests remain unchanged.
-      The expanded fixture suite proves same-count quarantine swaps, incorrect
+      The 60-case fixture suite also proves both complete profiles, the exact
+      extra-LF reconstruction, canonical repository drift, invented/mixed
+      history, later migration pairing and unsafe migration contents, while
+      retaining proofs that same-count quarantine swaps, incorrect
       identities/reasons, reviewed-rule drift, Access value/NULL/whitespace/
       Arabic/multiplicity drift, complex and logo changes, object-definition
       drift, unsafe dates and temporary-output failures are rejected. The

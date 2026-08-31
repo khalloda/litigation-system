@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { access, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -40,9 +40,18 @@ import {
 import { withGate4TaskTempDir } from './lib/gate4-temp';
 import {
   GATE4_APPROVED_CLEAN_ROLLBACKS,
-  GATE4_REQUIRED_STAGE2_MIGRATIONS,
+  GATE4_CANONICAL_STAGE2_MIGRATIONS,
+  GATE4_HISTORICAL_STAGE2_MIGRATIONS,
+  GATE4_STAGE2_DATABASE_PROFILES,
+  GATE4_WHITESPACE_CANONICAL_CHECKSUM,
+  GATE4_WHITESPACE_HISTORICAL_CHECKSUM,
+  GATE4_WHITESPACE_MIGRATION,
+  gate4MigrationIdentityDigest,
+  readGate4RepositoryMigrationInventory,
   reconcileGate4Migrations,
   type Gate4MigrationHistoryRow,
+  type Gate4RepositoryMigration,
+  type Gate4RepositoryMigrationInventory,
 } from './lib/gate4-migrations';
 
 type Test = Readonly<{ name: string; run: () => void | Promise<void> }>;
@@ -118,16 +127,24 @@ function appliedMigration(name: string, checksum: string): Gate4MigrationHistory
   };
 }
 
-function migrationFixtureHistory(): Gate4MigrationHistoryRow[] {
+function migrationFixtureHistory(
+  profile: 'historical-live' | 'canonical-clean-replay' = 'historical-live',
+): Gate4MigrationHistoryRow[] {
+  const required =
+    profile === 'historical-live'
+      ? GATE4_HISTORICAL_STAGE2_MIGRATIONS
+      : GATE4_CANONICAL_STAGE2_MIGRATIONS;
   return [
-    ...GATE4_REQUIRED_STAGE2_MIGRATIONS.map((row) => appliedMigration(row.name, row.checksum)),
-    ...GATE4_APPROVED_CLEAN_ROLLBACKS.map((row) => ({
-      migrationName: row.name,
-      checksum: row.checksum,
-      finishedAt: null,
-      rolledBackAt: '2026-08-21 08:20:59+00',
-      appliedStepsCount: 0,
-    })),
+    ...required.map((row) => appliedMigration(row.name, row.checksum)),
+    ...(profile === 'historical-live'
+      ? GATE4_APPROVED_CLEAN_ROLLBACKS.map((row) => ({
+          migrationName: row.name,
+          checksum: row.checksum,
+          finishedAt: null,
+          rolledBackAt: '2026-08-21 08:20:59+00',
+          appliedStepsCount: 0,
+        }))
+      : []),
   ];
 }
 
@@ -136,6 +153,33 @@ function laterMigration(sequence: number): Gate4MigrationHistoryRow {
     `20260831${String(sequence).padStart(6, '0')}_stage3_fixture_${sequence}`,
     createHash('sha256').update(`later migration ${sequence}`, 'utf8').digest('hex'),
   );
+}
+
+function repositoryFixture(
+  later: readonly Gate4RepositoryMigration[] = [],
+  defects: readonly string[] = [],
+): Gate4RepositoryMigrationInventory {
+  const migrations = [
+    ...GATE4_CANONICAL_STAGE2_MIGRATIONS.map((migration) => ({
+      ...migration,
+      byteLength: 1,
+    })),
+    ...later,
+  ].sort((left, right) => left.name.localeCompare(right.name, 'en'));
+  return {
+    migrations,
+    digest: gate4MigrationIdentityDigest(migrations),
+    defects,
+  };
+}
+
+function laterRepositoryMigration(sequence: number): Gate4RepositoryMigration {
+  const migration = laterMigration(sequence);
+  return {
+    name: migration.migrationName,
+    checksum: migration.checksum,
+    byteLength: 24,
+  };
 }
 
 const source = [
@@ -360,10 +404,14 @@ const tests: readonly Test[] = [
       ),
   },
   {
-    name: 'current 51 applied migrations and the approved clean rollback pass',
+    name: 'historical live migration profile passes as one indivisible profile',
     run: () => {
-      const evidence = reconcileGate4Migrations(migrationFixtureHistory());
+      const evidence = reconcileGate4Migrations(
+        migrationFixtureHistory('historical-live'),
+        repositoryFixture(),
+      );
       assert.deepEqual(evidence.defects, []);
+      assert.equal(evidence.acceptedDatabaseProfile, 'historical-live');
       assert.equal(evidence.requiredStage2Proved, 51);
       assert.equal(evidence.totalApplied, 51);
       assert.equal(evidence.cleanRollbacks, 1);
@@ -371,126 +419,299 @@ const tests: readonly Test[] = [
     },
   },
   {
-    name: 'one successfully applied migration after Stage 2 passes',
+    name: 'canonical clean-replay migration profile passes as one indivisible profile',
     run: () => {
-      const evidence = reconcileGate4Migrations([...migrationFixtureHistory(), laterMigration(1)]);
+      const evidence = reconcileGate4Migrations(
+        migrationFixtureHistory('canonical-clean-replay'),
+        repositoryFixture(),
+      );
       assert.deepEqual(evidence.defects, []);
-      assert.equal(evidence.totalApplied, 52);
-      assert.equal(evidence.laterApplied, 1);
+      assert.equal(evidence.acceptedDatabaseProfile, 'canonical-clean-replay');
+      assert.equal(evidence.cleanRollbacks, 0);
     },
   },
   {
-    name: 'several successfully applied migrations after Stage 2 pass',
-    run: () => {
-      const evidence = reconcileGate4Migrations([
-        ...migrationFixtureHistory(),
-        laterMigration(1),
-        laterMigration(2),
-        laterMigration(3),
-      ]);
-      assert.deepEqual(evidence.defects, []);
-      assert.equal(evidence.totalApplied, 54);
-      assert.equal(evidence.laterApplied, 3);
+    name: 'actual canonical migration 0033 and its historical extra-LF bytes are exact',
+    run: async () => {
+      const inventory = await readGate4RepositoryMigrationInventory();
+      assert.deepEqual(inventory.defects, []);
+      assert.equal(inventory.migrations.length, 51);
+      const canonical = inventory.migrations.find(
+        (migration) => migration.name === GATE4_WHITESPACE_MIGRATION,
+      );
+      assert.equal(canonical?.checksum, GATE4_WHITESPACE_CANONICAL_CHECKSUM);
+      assert.equal(canonical?.byteLength, 2381);
+      const bytes = await readFile(
+        join('prisma', 'migrations', GATE4_WHITESPACE_MIGRATION, 'migration.sql'),
+      );
+      assert.equal(bytes.at(-1), 0x0a);
+      assert.equal(
+        createHash('sha256')
+          .update(Buffer.concat([bytes, Buffer.from([0x0a])]))
+          .digest('hex'),
+        GATE4_WHITESPACE_HISTORICAL_CHECKSUM,
+      );
+      const historical = GATE4_HISTORICAL_STAGE2_MIGRATIONS.find(
+        (migration) => migration.name === GATE4_WHITESPACE_MIGRATION,
+      );
+      assert.equal(historical?.checksum, GATE4_WHITESPACE_HISTORICAL_CHECKSUM);
     },
   },
   {
-    name: 'missing required migration fails even when a later migration preserves the count',
+    name: 'historical extra-LF bytes can never replace canonical repository migration 0033',
     run: () => {
-      const missing = GATE4_REQUIRED_STAGE2_MIGRATIONS[0]!;
-      const history = migrationFixtureHistory().filter((row) => row.migrationName !== missing.name);
-      const evidence = reconcileGate4Migrations([...history, laterMigration(1)]);
-      assert.equal(evidence.totalApplied, 51);
-      assert.match(evidence.defects.join('\n'), new RegExp(missing.name, 'u'));
-    },
-  },
-  {
-    name: 'required migration marked rolled back fails',
-    run: () => {
-      const required = GATE4_REQUIRED_STAGE2_MIGRATIONS[1]!;
-      const history = migrationFixtureHistory();
-      const index = history.findIndex((row) => row.migrationName === required.name);
-      history[index] = {
-        ...history[index]!,
-        finishedAt: null,
-        rolledBackAt: '2026-08-31 00:00:00+00',
-        appliedStepsCount: 0,
+      const repository = repositoryFixture();
+      const migrations = repository.migrations.map((migration) =>
+        migration.name === GATE4_WHITESPACE_MIGRATION
+          ? { ...migration, checksum: GATE4_WHITESPACE_HISTORICAL_CHECKSUM }
+          : migration,
+      );
+      const changed = {
+        migrations,
+        digest: gate4MigrationIdentityDigest(migrations),
+        defects: [],
       };
-      assert.match(reconcileGate4Migrations(history).defects.join('\n'), /clean rollback/u);
+      assert.match(
+        reconcileGate4Migrations(migrationFixtureHistory(), changed).defects.join('\n'),
+        /canonical repository checksum differs/u,
+      );
     },
   },
   {
-    name: 'required unfinished or failed migration fails',
+    name: 'any other canonical repository byte change fails',
     run: () => {
-      const required = GATE4_REQUIRED_STAGE2_MIGRATIONS[2]!;
+      const repository = repositoryFixture();
+      const migrations = repository.migrations.map((migration, index) =>
+        index === 0 ? { ...migration, checksum: 'a'.repeat(64) } : migration,
+      );
+      assert.match(
+        reconcileGate4Migrations(migrationFixtureHistory(), {
+          migrations,
+          digest: gate4MigrationIdentityDigest(migrations),
+          defects: [],
+        }).defects.join('\n'),
+        /canonical repository checksum differs/u,
+      );
+    },
+  },
+  {
+    name: 'required checksum substitution and an invented profile fail',
+    run: () => {
       const history = migrationFixtureHistory();
-      const index = history.findIndex((row) => row.migrationName === required.name);
-      history[index] = {
-        ...history[index]!,
-        finishedAt: null,
-        rolledBackAt: null,
-        appliedStepsCount: 0,
-      };
-      const evidence = reconcileGate4Migrations(history);
-      assert.match(evidence.defects.join('\n'), /unfinished\/failed/u);
-      assert.equal(evidence.unfinishedOrFailed, 1);
+      history[3] = { ...history[3]!, checksum: 'f'.repeat(64) };
+      const evidence = reconcileGate4Migrations(history, repositoryFixture());
+      assert.equal(evidence.acceptedDatabaseProfile, null);
+      assert.match(evidence.defects.join('\n'), /matches 0 complete approved profiles/u);
     },
   },
   {
-    name: 'duplicate, checksum replacement and unexpected substitution all fail',
+    name: 'missing and duplicated required migrations fail',
     run: () => {
-      const required = GATE4_REQUIRED_STAGE2_MIGRATIONS[3]!;
+      const required = GATE4_CANONICAL_STAGE2_MIGRATIONS[0]!;
+      const missing = migrationFixtureHistory().filter(
+        (migration) => migration.migrationName !== required.name,
+      );
+      assert.match(
+        reconcileGate4Migrations(missing, repositoryFixture()).defects.join('\n'),
+        /expected exactly one history row/u,
+      );
       const duplicate = migrationFixtureHistory();
       duplicate.push(appliedMigration(required.name, required.checksum));
-      assert.match(reconcileGate4Migrations(duplicate).defects.join('\n'), /duplicate/u);
-
-      const replaced = migrationFixtureHistory();
-      const replacedIndex = replaced.findIndex((row) => row.migrationName === required.name);
-      replaced[replacedIndex] = { ...replaced[replacedIndex]!, checksum: 'f'.repeat(64) };
-      assert.match(reconcileGate4Migrations(replaced).defects.join('\n'), /checksum differs/u);
-
-      const substituted = migrationFixtureHistory().filter(
-        (row) => row.migrationName !== required.name,
-      );
-      substituted.push(appliedMigration('20260829120000_unexpected_substitution', 'e'.repeat(64)));
       assert.match(
-        reconcileGate4Migrations(substituted).defects.join('\n'),
-        /expected exactly one|unexpected migration/u,
+        reconcileGate4Migrations(duplicate, repositoryFixture()).defects.join('\n'),
+        /duplicate migration history/u,
       );
     },
   },
   {
-    name: 'unfinished later migration fails',
+    name: 'missing and duplicated required repository migrations fail',
     run: () => {
-      const later = { ...laterMigration(1), finishedAt: null, appliedStepsCount: 0 };
-      const evidence = reconcileGate4Migrations([...migrationFixtureHistory(), later]);
-      assert.match(evidence.defects.join('\n'), /later migration is unfinished\/failed/u);
-      assert.equal(evidence.unfinishedOrFailed, 1);
+      const repository = repositoryFixture();
+      const required = GATE4_CANONICAL_STAGE2_MIGRATIONS[0]!;
+      const missing = repository.migrations.filter((migration) => migration.name !== required.name);
+      assert.match(
+        reconcileGate4Migrations(migrationFixtureHistory(), {
+          migrations: missing,
+          digest: gate4MigrationIdentityDigest(missing),
+          defects: [],
+        }).defects.join('\n'),
+        /expected one canonical repository file, found 0/u,
+      );
+      const duplicate = [
+        ...repository.migrations,
+        { ...repository.migrations.find((migration) => migration.name === required.name)! },
+      ];
+      assert.match(
+        reconcileGate4Migrations(migrationFixtureHistory(), {
+          migrations: duplicate,
+          digest: gate4MigrationIdentityDigest(duplicate),
+          defects: [],
+        }).defects.join('\n'),
+        /expected one canonical repository file, found 2/u,
+      );
     },
   },
   {
-    name: 'historical clean rollback is classified explicitly and remains required',
+    name: 'required rolled-back, failed or unfinished migration fails',
     run: () => {
-      const evidence = reconcileGate4Migrations(migrationFixtureHistory());
+      for (const changed of [
+        { finishedAt: null, rolledBackAt: '2026-08-31 00:00:00+00', appliedStepsCount: 0 },
+        { finishedAt: null, rolledBackAt: null, appliedStepsCount: 0 },
+        { finishedAt: '2026-08-31 00:00:00+00', rolledBackAt: null, appliedStepsCount: 0 },
+      ]) {
+        const history = migrationFixtureHistory();
+        history[2] = { ...history[2]!, ...changed };
+        assert.notEqual(reconcileGate4Migrations(history, repositoryFixture()).defects.length, 0);
+      }
+    },
+  },
+  {
+    name: 'later applied migration passes only with the matching repository bytes',
+    run: () => {
+      const later = laterMigration(1);
+      const repositoryLater = laterRepositoryMigration(1);
+      const evidence = reconcileGate4Migrations(
+        [...migrationFixtureHistory(), later],
+        repositoryFixture([repositoryLater]),
+      );
+      assert.deepEqual(evidence.defects, []);
+      assert.deepEqual(evidence.laterAppliedMigrations, [
+        { name: later.migrationName, checksum: later.checksum },
+      ]);
+    },
+  },
+  {
+    name: 'later database-only and repository-only migrations fail',
+    run: () => {
+      const later = laterMigration(1);
+      assert.match(
+        reconcileGate4Migrations(
+          [...migrationFixtureHistory(), later],
+          repositoryFixture(),
+        ).defects.join('\n'),
+        /has 0 repository files/u,
+      );
+      assert.match(
+        reconcileGate4Migrations(
+          migrationFixtureHistory(),
+          repositoryFixture([laterRepositoryMigration(1)]),
+        ).defects.join('\n'),
+        /pending or not successfully applied/u,
+      );
+    },
+  },
+  {
+    name: 'later database/repository checksum mismatch fails',
+    run: () => {
+      const later = laterMigration(1);
+      const repositoryLater = { ...laterRepositoryMigration(1), checksum: 'b'.repeat(64) };
+      assert.match(
+        reconcileGate4Migrations(
+          [...migrationFixtureHistory(), later],
+          repositoryFixture([repositoryLater]),
+        ).defects.join('\n'),
+        /database\/repository checksum differs/u,
+      );
+    },
+  },
+  {
+    name: 'later failed, rolled-back and unfinished migrations all fail',
+    run: () => {
+      for (const changed of [
+        { finishedAt: null, rolledBackAt: null, appliedStepsCount: 0 },
+        { finishedAt: null, rolledBackAt: '2026-08-31 00:00:00+00', appliedStepsCount: 0 },
+        { finishedAt: '2026-08-31 00:00:00+00', rolledBackAt: null, appliedStepsCount: 0 },
+      ]) {
+        const later = { ...laterMigration(1), ...changed };
+        assert.match(
+          reconcileGate4Migrations(
+            [...migrationFixtureHistory(), later],
+            repositoryFixture([laterRepositoryMigration(1)]),
+          ).defects.join('\n'),
+          /later migration is/u,
+        );
+      }
+    },
+  },
+  {
+    name: 'unsafe migration directory and unexpected directory content fail inventory',
+    run: async () => {
+      const root = await mkdtemp(join(tmpdir(), 'litigation-gate4-migrations-'));
+      try {
+        const unsafe = join(root, '20260831120000_BAD');
+        await mkdir(unsafe);
+        await writeFile(join(unsafe, 'migration.sql'), 'SELECT 1;\n', 'utf8');
+        const unexpected = join(root, '20260831130000_unexpected_content');
+        await mkdir(unexpected);
+        await writeFile(join(unexpected, 'migration.sql'), 'SELECT 1;\n', 'utf8');
+        await writeFile(join(unexpected, 'notes.txt'), 'not allowed\n', 'utf8');
+        const inventory = await readGate4RepositoryMigrationInventory(root);
+        assert.match(inventory.defects.join('\n'), /unsafe or malformed/u);
+        assert.match(inventory.defects.join('\n'), /exactly one migration.sql/u);
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+  },
+  {
+    name: 'historical rollback is profile evidence and canonical replay has none',
+    run: () => {
+      const historical = reconcileGate4Migrations(migrationFixtureHistory(), repositoryFixture());
       assert.deepEqual(
-        evidence.cleanRollbackNames,
-        GATE4_APPROVED_CLEAN_ROLLBACKS.map((row) => row.name),
+        historical.cleanRollbackNames,
+        GATE4_APPROVED_CLEAN_ROLLBACKS.map((migration) => migration.name),
       );
       const withoutRollback = migrationFixtureHistory().filter(
-        (row) => row.migrationName !== GATE4_APPROVED_CLEAN_ROLLBACKS[0]!.name,
+        (migration) => migration.migrationName !== GATE4_APPROVED_CLEAN_ROLLBACKS[0]!.name,
       );
       assert.match(
-        reconcileGate4Migrations(withoutRollback).defects.join('\n'),
-        /expected one approved clean rollback/u,
+        reconcileGate4Migrations(withoutRollback, repositoryFixture()).defects.join('\n'),
+        /expected one profile clean rollback/u,
+      );
+      const canonical = reconcileGate4Migrations(
+        migrationFixtureHistory('canonical-clean-replay'),
+        repositoryFixture(),
+      );
+      assert.deepEqual(canonical.cleanRollbackNames, []);
+
+      const mixed = reconcileGate4Migrations(
+        [
+          ...migrationFixtureHistory('canonical-clean-replay'),
+          ...GATE4_APPROVED_CLEAN_ROLLBACKS.map((migration) => ({
+            migrationName: migration.name,
+            checksum: migration.checksum,
+            finishedAt: null,
+            rolledBackAt: '2026-08-21 08:20:59+00',
+            appliedStepsCount: 0,
+          })),
+        ],
+        repositoryFixture(),
+      );
+      assert.match(
+        mixed.defects.join('\n'),
+        /unexpected migration at or before the Stage 2 boundary/u,
       );
     },
   },
   {
-    name: 'identical migration-history runs remain deterministic',
+    name: 'migration evidence and both profile digests remain deterministic',
     run: () => {
+      const repository = repositoryFixture([
+        laterRepositoryMigration(1),
+        laterRepositoryMigration(2),
+      ]);
       const history = [...migrationFixtureHistory(), laterMigration(1), laterMigration(2)];
-      const first = reconcileGate4Migrations(history);
-      const second = reconcileGate4Migrations([...history].reverse());
+      const first = reconcileGate4Migrations(history, repository);
+      const second = reconcileGate4Migrations([...history].reverse(), {
+        ...repository,
+        migrations: [...repository.migrations].reverse(),
+      });
       assert.deepEqual(first, second);
+      assert.equal(GATE4_STAGE2_DATABASE_PROFILES.length, 2);
+      assert.notEqual(
+        GATE4_STAGE2_DATABASE_PROFILES[0]!.digest,
+        GATE4_STAGE2_DATABASE_PROFILES[1]!.digest,
+      );
     },
   },
   {

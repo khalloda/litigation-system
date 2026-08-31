@@ -35,6 +35,7 @@ import { ADMIN_TASK_CREATION_DATE_BASELINE, reconcileAdminWorks } from './admin-
 import { reconcileBillingHistory } from './billing-reconciliation';
 import { task211ProtectedState } from './task211-protected-state';
 import {
+  readGate4RepositoryMigrationInventory,
   reconcileGate4Migrations,
   type Gate4MigrationEvidence,
   type Gate4MigrationHistoryRow,
@@ -544,7 +545,10 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
     stagingRows: stagingRow.rows,
     stagingFingerprint: stagingRow.fingerprint,
     review: await readReviewSnapshot(db),
-    migrations: reconcileGate4Migrations(migrationHistory),
+    migrations: reconcileGate4Migrations(
+      migrationHistory,
+      await readGate4RepositoryMigrationInventory(),
+    ),
     logos,
     protectedDigest: await task211ProtectedState(db),
     prerequisites: prerequisites.results,
