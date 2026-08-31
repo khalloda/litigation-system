@@ -24,14 +24,17 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-function createClient(): PrismaClient {
+export function createDatabaseClient(url = connectionString): PrismaClient {
+  if (!url) {
+    throw new Error('DATABASE_URL is not set. Copy .env.example to .env — see docs/DATABASE.md.');
+  }
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
+    adapter: new PrismaPg({ connectionString: url }),
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
 }
 
-export const db = globalForPrisma.prisma ?? createClient();
+export const db = globalForPrisma.prisma ?? createDatabaseClient();
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = db;

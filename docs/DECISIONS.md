@@ -446,3 +446,27 @@ settled five billing rules. They override the earlier assumption that
 These rules are migration rules, not permission to rewrite source evidence.
 Staging remains unchanged. `الفواتير.Pay-Date` remains absolutely excluded by
 D4: it is neither migrated nor used to infer any billing fact.
+
+## D24 — Login is username-only, with short absolute sessions
+
+The Phase 1 application uses Auth.js v5 Credentials with one account linked to
+one person. Login accepts the approved username and password only: email is
+stored as contact information and is never accepted as a login identifier.
+There is no registration, OAuth, magic link, email reset or user-management
+screen in Task 3.1.
+
+The four role codes are fixed checked text — Administrator, Litigation
+Assistant, Lawyer and Paralegal — rather than a PostgreSQL enum, consistently
+with D8. Task 3.1 stores the role in the account and session. Task 3.2 remains
+responsible for enforcing the complete permission matrix on the server.
+
+Passwords use Argon2id v19 with 19,456 KiB memory, two iterations,
+parallelism one and a 32-byte result. A fifth consecutive failed attempt locks
+the account for 15 minutes. Initial and administratively reset passwords must
+be changed on first login; changing a password invalidates every older session.
+
+A normal session expires absolutely eight hours after authentication. The
+optional, unchecked “Remember me” choice expires absolutely after seven days.
+These are server-enforced non-sliding limits carried inside the encrypted JWT;
+the account's database session version independently invalidates older tokens
+after password or enablement changes.

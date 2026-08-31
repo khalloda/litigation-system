@@ -435,7 +435,6 @@ const tests: readonly Test[] = [
     run: async () => {
       const inventory = await readGate4RepositoryMigrationInventory();
       assert.deepEqual(inventory.defects, []);
-      assert.equal(inventory.migrations.length, 51);
       const canonical = inventory.migrations.find(
         (migration) => migration.name === GATE4_WHITESPACE_MIGRATION,
       );

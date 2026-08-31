@@ -406,8 +406,9 @@ model MigrationExcludedName {
 //  person_name_alias exists, and why every match goes through it.
 // ===========================================================================
 
-/// Every human the system knows about. 135 rows:
-/// 64 firm staff (21 current, 43 former) + 71 external.
+/// Every human the system knows about. Task 3.1 has 137 rows:
+/// the protected 135-person migration roster (64 firm staff — 21 current and
+/// 43 former — plus 71 external) and two application-native people.
 ///
 /// Was 140, then 138, then 135 — two hamza duplicates merged out at task 1.2,
 /// three generator artefacts at 1.2b. Every figure here is asserted by
@@ -438,6 +439,12 @@ model Person {
   /// Former staff never log in. Set per account at Milestone 4.
   canLogin  Boolean @default(false) @map("can_login")
 
+  /// Distinguishes people created by the application after the protected
+  /// Stage 2 roster closed. The 135 canonical migrated people remain false;
+  /// Task 3.1 adds two named native people as true. This is deliberately not
+  /// inferred from ids or timestamps.
+  isApplicationNative Boolean @default(false) @map("is_application_native")
+
   /// Which work team. NULL is valid and common — 16 of the 21 current staff
   /// have none. Team-grouped reports must show those under an "unassigned"
   /// heading, never drop them. Deliberately NOT on the matter (D6).
@@ -448,6 +455,7 @@ model Person {
   reviews LookupTeam[] @relation("TeamReviewer")
 
   aliases PersonNameAlias[]
+  account UserAccount?
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy Int?     @map("created_by")
@@ -481,7 +489,8 @@ model Person {
   @@map("people")
 }
 
-/// Every spelling ever typed, mapped to one person. 347 rows.
+/// Every spelling ever typed, mapped to one person. Task 3.1 has 350 rows:
+/// 348 protected migration aliases and two application-native self-aliases.
 ///
 /// This is what makes the migration safe and historical search work: any raw
 /// Access string is looked up here to find the right person, and searching
@@ -510,6 +519,38 @@ model PersonNameAlias {
   /// not know about. db:check caught that; this stops it recurring.
   @@index([aliasArNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("person_name_alias")
+}
+
+/// A username/password login linked one-to-one to a person. Auth.js uses the
+/// Credentials provider and encrypted JWT sessions; passwords, lockout state
+/// and the session invalidation version remain server-side here.
+///
+/// `role_code` is a checked string rather than a PostgreSQL enum (D8). The
+/// complete permission matrix is Task 3.2; Task 3.1 stores only the approved
+/// role assignment needed in the session.
+model UserAccount {
+  id                 Int       @id @default(autoincrement())
+  personId           Int       @unique @map("person_id")
+  person             Person    @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "user_accounts_person_id_fkey")
+  /// Approved display spelling. Login uses username_normalized instead.
+  username           String
+  usernameNormalized String    @unique @map("username_normalized")
+  passwordHash       String?   @map("password_hash")
+  roleCode           String    @map("role_code")
+  isEnabled          Boolean   @default(true) @map("is_enabled")
+  mustChangePassword Boolean   @default(true) @map("must_change_password")
+  failedLoginAttempts Int      @default(0) @map("failed_login_attempts")
+  lockedUntil        DateTime? @map("locked_until") @db.Timestamptz(6)
+  sessionVersion     Int       @default(0) @map("session_version")
+  passwordChangedAt  DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy Int?     @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy Int?     @map("updated_by")
+
+  @@map("user_accounts")
 }
 
 /// Owner-reviewed, legacy-only English person names used by the Task 2.10A

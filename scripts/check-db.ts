@@ -55,6 +55,7 @@ import {
 } from './lib/client-logo-baseline';
 import { reconcileClientLogos } from './lib/client-logo-reconciliation';
 import { clientLogoStructureFailures } from './lib/client-logo-structure';
+import { authDataFailures, authStructureFailures } from './lib/auth-structure';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
 
@@ -505,31 +506,49 @@ async function main() {
   //    once already: merging two duplicate people changed five numbers at
   //    once, one was corrected and four were left stale, and the assertion
   //    written at the time would have failed on correct data.
+  const protectedRosterNames = [...new Set(baseline.aliases.map((link) => link.person))];
+  const protectedRoster = { nameAr: { in: protectedRosterNames } };
   const roster: Array<[string, number, number]> = [
-    ['people', await db.person.count(), 135],
-    ['aliases', await db.personNameAlias.count(), 348],
-    ['staff', await db.person.count({ where: { isStaff: true } }), 64],
-    ['current', await db.person.count({ where: { isStaff: true, isActive: true } }), 21],
-    ['former', await db.person.count({ where: { isStaff: true, isActive: false } }), 43],
-    ['external', await db.person.count({ where: { isStaff: false } }), 71],
+    ['people', await db.person.count({ where: protectedRoster }), 135],
+    [
+      'reviewed aliases',
+      baseline.counts.aliases - drift.filter((d) => d.kind === 'alias').length,
+      348,
+    ],
+    ['staff', await db.person.count({ where: { ...protectedRoster, isStaff: true } }), 64],
+    [
+      'current',
+      await db.person.count({ where: { ...protectedRoster, isStaff: true, isActive: true } }),
+      21,
+    ],
+    [
+      'former',
+      await db.person.count({ where: { ...protectedRoster, isStaff: true, isActive: false } }),
+      43,
+    ],
+    ['external', await db.person.count({ where: { ...protectedRoster, isStaff: false } }), 71],
     ['teams', await db.lookupTeam.count(), 2],
     [
       'current with a team',
-      await db.person.count({ where: { isStaff: true, isActive: true, teamId: { not: null } } }),
+      await db.person.count({
+        where: { ...protectedRoster, isStaff: true, isActive: true, teamId: { not: null } },
+      }),
       5,
     ],
     [
       'current without a team',
-      await db.person.count({ where: { isStaff: true, isActive: true, teamId: null } }),
+      await db.person.count({
+        where: { ...protectedRoster, isStaff: true, isActive: true, teamId: null },
+      }),
       16,
     ],
   ];
   const rosterWrong = roster.filter(([, actual, expected]) => actual !== expected);
   record(
-    'Roster figures (9)',
+    'Protected Stage 2 roster figures (9)',
     '135/348/64/21/43/71/2/5/16',
     rosterWrong.length === 0
-      ? roster.map(([, actual]) => actual).join('/')
+      ? `${roster.map(([, actual]) => actual).join('/')}; native additions excluded`
       : rosterWrong.map(([n, a2, e]) => `${n} ${a2}/${e}`).join(', '),
     rosterWrong.length === 0,
   );
@@ -623,7 +642,7 @@ async function main() {
     'One primary alias per person',
     'every person exactly 1, and it is their own name',
     primaryCounts.length === 0 && notOwnName.length === 0
-      ? 'all 135 correct'
+      ? `all ${await db.person.count()} correct`
       : `${primaryCounts.length} with the wrong number, ` +
           `${notOwnName.length} not the person's own name`,
     primaryCounts.length === 0 && notOwnName.length === 0,
@@ -2584,6 +2603,22 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : logoStructure.join('; '),
       logoStructure.length === 0,
+    );
+    const authData = await authDataFailures(relationshipDb);
+    record(
+      'Task 3.1 initial identities and authentication state',
+      'four exact account/person/alias mappings; 135 protected canonical people plus two named native additions; valid eligibility and password states',
+      authData.length === 0 ? 'all identity and state invariants exact' : authData.join('; '),
+      authData.length === 0,
+    );
+    const authStructure = await authStructureFailures(relationshipDb);
+    record(
+      'Authentication constraints and security guards',
+      'complete PostgreSQL 17.11 definitions, including function configuration',
+      authStructure.length === 0
+        ? 'all complete catalog definitions exact'
+        : authStructure.join('; '),
+      authStructure.length === 0,
     );
   } finally {
     await relationshipDb.end();

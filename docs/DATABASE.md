@@ -316,6 +316,41 @@ The Ubuntu production value must be:
 The database stores paths relative to this root only. Backups must snapshot
 the database and this entire folder in one operation (D15/D16).
 
+### Authentication secret and initial passwords
+
+Set `AUTH_SECRET` in `.env` to at least 32 random bytes before starting the web
+application. Use a password manager or an operating-system cryptographic
+generator. The real value must never enter Git, a command argument, project
+documentation, chat or a log. `AUTH_URL` is `http://localhost:3000` on the
+development laptop and the application's HTTPS origin in production.
+
+Task 3.1 creates four approved accounts with no password hash. Initialize them
+one at a time from an interactive terminal:
+
+```bash
+npm run auth:set-password -- KHelmy
+npm run auth:set-password -- MHussien
+npm run auth:set-password -- IHamdy
+npm run auth:set-password -- SKhattab
+```
+
+The password is prompted twice with no echo. It is never a command argument or
+environment variable. Redirected input is refused. The command accepts only
+these four initial usernames, updates exactly one account in a transaction,
+clears any lockout, increments the session version and requires the person to
+change that temporary password at first successful login. Do not use email as
+the username.
+
+Passwords require at least 12 Unicode characters and may include spaces. There
+are no arbitrary uppercase, number or punctuation rules. They are hashed with
+Argon2id v19 using 19,456 KiB memory, two iterations, parallelism one and a
+32-byte result.
+
+Five consecutive failures lock an account for 15 minutes. A normal login has
+an absolute eight-hour lifetime; selecting “Remember me” gives an absolute
+seven-day lifetime. Neither duration slides forward. Password changes and
+account disabling invalidate existing sessions.
+
 ---
 
 ## What is inside, and why

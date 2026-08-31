@@ -14,10 +14,12 @@ Every table carries: `id`, `created_at`, `created_by`, `updated_at`,
 
 ## People and organisation
 
-### `people` — 135 rows
-The single roster. Replaces both Access lawyer tables.
+### `people` — 137 rows after Task 3.1
+The single roster. Replaces both Access lawyer tables and also holds people
+created natively by the application.
 
-**64 firm staff (21 current, 43 former) + 71 external.**
+**Protected Stage 2 roster: 135 canonical people — 64 firm staff (21 current,
+43 former) + 71 external. Task 3.1 adds two current native staff separately.**
 
 Was 140, then 138, now 135. Two hamza duplicates went first —
 `احمد إسماعيل`/`أحمد إسماعيل` and `احمد سعيد`/`أحمد سعيد`, differing only at
@@ -34,18 +36,41 @@ instead of through the alias table. Every old spelling survives as an alias.
 | `is_active` | boolean | false = has left the firm (43 of 135) |
 | `is_trainee` | boolean | |
 | `can_login` | boolean | Former staff never log in |
+| `is_application_native` | boolean | false for all 135 protected Stage 2 people; true for application-created people |
 
-### `person_name_alias` — 347 rows
+### `person_name_alias` — 350 rows after Task 3.1
 Every spelling ever typed, mapped to one person. Makes historical search work.
 
-339 originals + 6 people whose own name was missing from the table + 2 spacing
-variants the firm confirmed (task 1.2a). **Zero people are now unfindable by
-their own name**, which rule 15 depends on: matching through the alias table
-only works if every name is in it.
+The reviewed Stage 2 baseline contains 348 aliases. Task 3.1 adds the exact
+self-aliases for the two native people. **Zero people are unfindable by their
+own name**, which rule 15 depends on: matching through the alias table only
+works if every name is in it. Samy Khattab's exact self-alias was already
+present from task 1.2a and is asserted rather than duplicated.
 
-### `users`
-Login accounts. Linked to `people`. Role is one of the four in
-`docs/PERMISSIONS.md`.
+### `user_accounts`
+One username/password account per person. Usernames keep their approved display
+case but are matched through a separately stored lowercase value with a unique
+constraint. Email is not a login identifier.
+
+| Column | Type | Notes |
+|---|---|---|
+| `person_id` | integer, unique FK | Exactly one account per person |
+| `username` | text | Approved display spelling |
+| `username_normalized` | text, unique | Lowercase login key |
+| `password_hash` | text, null | NULL until initialized locally; Argon2id only afterward |
+| `role_code` | checked text | Exactly the four fixed roles; not a PostgreSQL enum (D8) |
+| `is_enabled` | boolean | Disabled accounts cannot authenticate |
+| `must_change_password` | boolean | true after initialization or administrative reset |
+| `failed_login_attempts` | integer | 0–5; the fifth failure creates a 15-minute lock |
+| `locked_until` | timestamptz, null | Required exactly when the counter is 5 |
+| `session_version` | integer | Incrementing it invalidates every older JWT session |
+| `password_changed_at` | timestamptz, null | NULL only before initial password setup |
+| `last_login_at` | timestamptz, null | Successful credential verification time |
+
+Passwords use Argon2id v19 with 19,456 KiB memory, two iterations, parallelism
+one and a 32-byte result. Auth.js JWTs contain only account/person ids,
+username, Arabic display name, role, password-change state, session version
+and absolute timestamps; no password hash or email is placed in the session.
 
 ---
 

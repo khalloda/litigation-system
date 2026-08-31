@@ -1281,7 +1281,14 @@ only ever seen good data is not known to work.
 
 ## Stage 3 — Login and permissions
 
-- [ ] **3.1 Auth.js login**, Arabic screen, firm logo.
+- [x] **3.1 Auth.js login**, Arabic screen, firm logo. Completed 31 August
+      2026 in migration 0052. Username-only Auth.js v5 Credentials; Argon2id
+      v19 (`m=19456`, `t=2`, `p=1`, 32-byte result); five failures lock for 15
+      minutes; absolute 8-hour normal and 7-day remembered sessions; forced
+      first password change; password/account changes invalidate JWT sessions.
+      The Arabic RTL login and change-password screens use the bundled font,
+      firm logo, central strings and logical CSS. Task 3.2 server-side role
+      enforcement remains outstanding.
       **Four test users supplied by the firm** (do not build until this task):
       | Name | Username | Email | Role |
       |---|---|---|---|
@@ -1295,15 +1302,19 @@ only ever seen good data is not known to work.
         Ihab Hamdy  → `إيهاب حمدي` (person 4, 2,792 mentions, current, team أ)
         Samy Khattab → `سامي إبراهيم خطاب` (2,211 mentions, current)
       **Match through `person_name_alias`, never by typing the Arabic** —
-      rule 15. Note `سامي إبراهيم خطاب` is one of the six people whose own
-      name is not yet an alias (task 1.2a); that must be fixed first or the
-      match returns nothing.
+      rule 15. Samy's exact self-alias was already added by task 1.2a and
+      resolves to person 5; migration 0052 asserts it and does not create a
+      duplicate.
 
       Khaled Helmy and Mohamed Hussien are **new people** — confirmed absent
       from the roster.
 
-      `people.email` already exists (task 1.2). `can_login` is false for all
-      138 and is set per account here.
+      `people.email` already existed (task 1.2). The 135 canonical Stage 2
+      people remain a separately checked protected set; Khaled and Mohamed are
+      the first two rows marked `is_application_native`. Four passwordless
+      account records are created and `can_login` follows active/enabled
+      account eligibility. The owner initializes passwords locally with
+      `npm run auth:set-password -- Username`; no password or hash is in Git.
 
 - [ ] **3.2 The four roles**, enforced **server-side** on every route.
 

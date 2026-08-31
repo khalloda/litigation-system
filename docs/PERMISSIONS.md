@@ -23,6 +23,11 @@ About 10 users. Four roles. Users can be added and removed by the Administrator.
 
 ## Notes
 
+Task 3.1 stores these four role codes on the initial accounts and implements
+authentication only. **The route-by-route server permission matrix below is
+Task 3.2 and is not yet complete.** A stored role is not by itself an enforced
+permission.
+
 **Invoices are view-only for everyone, including the Administrator.** New
 invoicing lives in Excel until Phase 2, so there is nothing to create here yet.
 

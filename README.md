@@ -3,9 +3,9 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Status:** Stage 2 migration and Gate 4 reconciliation are complete. The
-owner-readable result is in `docs/reconciliations/2026-08-30-gate-4.md`.
-Progress is tracked in `TASKS.md`.
+**Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
+login work has begun with Task 3.1. The owner-readable migration result is in
+`docs/reconciliations/2026-08-30-gate-4.md`; current progress is in `TASKS.md`.
 
 ---
 
@@ -56,14 +56,21 @@ Excel via ExcelJS. PDF via Playwright. Rationale in `docs/DECISIONS.md`.
 
 ```bash
 cp .env.example .env
+# Set a private AUTH_SECRET of at least 32 random bytes.
 # Set CLIENT_LOGO_ROOT to a local folder; production uses
 # /var/lib/litigation/client-logos.
 npm install
 npm run db:up             # PostgreSQL 17 in Docker, on port 5433
 npm run db:migrate        # build the schema inside it
 npm run db:check          # confirm the application can reach it
+npm run auth:set-password -- KHelmy  # interactive; repeat for each approved username
 npm run dev               # http://localhost:3000
 ```
+
+The application accepts usernames, not email addresses. The four initial
+accounts have no password in Git or in their migration; the owner initializes
+each one locally with `auth:set-password`, which hides input and forces a
+change at first login. See `docs/DATABASE.md` for the complete procedure.
 
 `npm run db:verify` confirms the database is set up correctly — every line
 must read PASS. Full details, including what to do when something is wrong,
