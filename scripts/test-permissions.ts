@@ -13,6 +13,8 @@ import {
   decideAuthorization,
   requireAuthorizedDecision,
   routeDenialResponse,
+  runAuthorizedAction,
+  runAuthorizedRoute,
 } from '../src/lib/auth/authorization-core';
 import {
   changeOwnPassword,
@@ -32,8 +34,9 @@ import {
   type PermissionArea,
 } from '../src/lib/auth/permissions';
 import { createSessionClaims, validateSessionClaims } from '../src/lib/auth/session';
-import { ROUTE_INVENTORY } from '../src/lib/auth/route-inventory';
+import type { RouteInventoryEntry } from '../src/lib/auth/route-inventory';
 import {
+  authorizationSourceExclusionFailures,
   discoverAuthorizationEntrypoints,
   proxyExemptionFailures,
   routeInventoryFailures,
@@ -52,6 +55,11 @@ const OPERATIONAL_AREAS = [
   'clientLogoUpload',
 ] as const satisfies readonly PermissionArea[];
 
+const ARCHIVABLE_AREAS = [
+  ...OPERATIONAL_AREAS,
+  'administrativeWorks',
+] as const satisfies readonly PermissionArea[];
+
 function permissionKey(area: PermissionArea, action: PermissionAction): string {
   return `${area}/${action}`;
 }
@@ -61,6 +69,10 @@ function expectedAllowed(): Record<AuthRole, ReadonlySet<string>> {
     permissionKey(area, 'view'),
     permissionKey(area, 'create'),
     permissionKey(area, 'update'),
+  ]);
+  const operationalArchive = ARCHIVABLE_AREAS.flatMap((area) => [
+    permissionKey(area, 'archive'),
+    permissionKey(area, 'restore'),
   ]);
   const operationalView = OPERATIONAL_AREAS.map((area) => permissionKey(area, 'view'));
   const universal = [
@@ -77,6 +89,7 @@ function expectedAllowed(): Record<AuthRole, ReadonlySet<string>> {
     Administrator: new Set([
       ...operationalEdit,
       ...adminWorkEdit,
+      ...operationalArchive,
       ...universal,
       permissionKey('staff', 'manage'),
       permissionKey('usersAndRoles', 'view'),
@@ -139,6 +152,50 @@ function directServerAction(
   return requireAuthorizedDecision(
     decideAuthorization(validatedSession, 'administrativeWorks', 'update'),
   );
+}
+
+function permissionEntry(
+  kind: RouteInventoryEntry['kind'],
+  source: string,
+  area: PermissionArea,
+  action: PermissionAction,
+  exportName?: string,
+): RouteInventoryEntry {
+  return {
+    kind,
+    source,
+    exportName,
+    classification: { access: 'permission', area, action },
+  };
+}
+
+function staticFixture(
+  files: Readonly<Record<string, string>>,
+  inventory: readonly RouteInventoryEntry[],
+): { failures: string[]; discoveredKeys: string[] } {
+  const root = mkdtempSync(path.join(tmpdir(), 'litigation-authorization-fixture-'));
+  try {
+    for (const [relativePath, contents] of Object.entries(files)) {
+      const absolute = path.join(root, relativePath);
+      mkdirSync(path.dirname(absolute), { recursive: true });
+      writeFileSync(absolute, contents, 'utf8');
+    }
+    const discovered = discoverAuthorizationEntrypoints(root);
+    return {
+      failures: routeInventoryFailures(discovered, inventory),
+      discoveredKeys: discovered.map((entry) => entry.key),
+    };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function assertStaticFailure(
+  files: Readonly<Record<string, string>>,
+  inventory: readonly RouteInventoryEntry[],
+  pattern: RegExp,
+): void {
+  assert.match(staticFixture(files, inventory).failures.join('; '), pattern);
 }
 
 function identifier(value: string): string {
@@ -307,15 +364,33 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
 async function main(): Promise<void> {
   assert.deepEqual(permissionPolicyStructureFailures(PERMISSION_POLICY), []);
   assert.deepEqual(expectationFailures(PERMISSION_POLICY), []);
-  assert.equal(AUTH_ROLES.length * PERMISSION_AREAS.length * PERMISSION_ACTIONS.length, 336);
+  assert.equal(AUTH_ROLES.length * PERMISSION_AREAS.length * PERMISSION_ACTIONS.length, 448);
 
   for (const role of AUTH_ROLES) {
     assert.equal(hasPermission(role, 'billing', 'view'), true);
-    for (const action of ['create', 'update', 'manage', 'run', 'export'] as const) {
+    for (const action of [
+      'create',
+      'update',
+      'archive',
+      'restore',
+      'manage',
+      'run',
+      'export',
+    ] as const) {
       assert.equal(hasPermission(role, 'billing', action), false);
     }
     assert.equal(hasPermission(role, 'reports', 'run'), true);
     assert.equal(hasPermission(role, 'reports', 'export'), true);
+    for (const area of PERMISSION_AREAS) {
+      assert.equal(hasPermission(role, area, 'delete'), false);
+      if (role === 'Administrator' && ARCHIVABLE_AREAS.some((candidate) => candidate === area)) {
+        assert.equal(hasPermission(role, area, 'archive'), true);
+        assert.equal(hasPermission(role, area, 'restore'), true);
+      } else {
+        assert.equal(hasPermission(role, area, 'archive'), false);
+        assert.equal(hasPermission(role, area, 'restore'), false);
+      }
+    }
   }
   assert.equal(hasPermission('Paralegal', 'administrativeWorks', 'create'), true);
   assert.equal(hasPermission('Paralegal', 'administrativeWorks', 'update'), true);
@@ -335,6 +410,24 @@ async function main(): Promise<void> {
   const weakened = structuredClone(PERMISSION_POLICY) as MutablePolicy;
   weakened['Lawyer']!['billing']!['update'] = true;
   assert.match(expectationFailures(weakened).join('; '), /Lawyer\/billing\/update/u);
+  const missingArchive = structuredClone(PERMISSION_POLICY) as MutablePolicy;
+  missingArchive['Administrator']!['clients']!['archive'] = false;
+  assert.match(expectationFailures(missingArchive).join('; '), /Administrator\/clients\/archive/u);
+  const missingRestore = structuredClone(PERMISSION_POLICY) as MutablePolicy;
+  missingRestore['Administrator']!['clients']!['restore'] = false;
+  assert.match(expectationFailures(missingRestore).join('; '), /Administrator\/clients\/restore/u);
+  const overGrantedArchive = structuredClone(PERMISSION_POLICY) as MutablePolicy;
+  overGrantedArchive['Litigation Assistant']!['matters']!['archive'] = true;
+  assert.match(
+    expectationFailures(overGrantedArchive).join('; '),
+    /Litigation Assistant\/matters\/archive/u,
+  );
+  const malformedRestore = structuredClone(PERMISSION_POLICY) as MutablePolicy;
+  delete malformedRestore['Administrator']!['clients']!['restore'];
+  assert.match(
+    permissionPolicyStructureFailures(malformedRestore).join('; '),
+    /Administrator\/clients\/restore/u,
+  );
   const missing = structuredClone(PERMISSION_POLICY) as MutablePolicy;
   delete missing['Administrator']!['clients'];
   assert.match(permissionPolicyStructureFailures(missing).join('; '), /Administrator\/clients/u);
@@ -368,8 +461,56 @@ async function main(): Promise<void> {
     (error: unknown) => error instanceof AuthorizationError && error.status === 401,
   );
 
+  const routeOrder: string[] = [];
+  const allowedRoute = await runAuthorizedRoute(
+    async () => {
+      routeOrder.push('authorize');
+      return session('Administrator');
+    },
+    async () => {
+      routeOrder.push('handler');
+      return new Response(null, { status: 204 });
+    },
+    [],
+  );
+  assert.equal(allowedRoute.status, 204);
+  assert.deepEqual(routeOrder, ['authorize', 'handler']);
+
+  let deniedHandlerCalled = false;
+  const deniedRoute = await runAuthorizedRoute(
+    async () => new Response(null, { status: 403 }),
+    async () => {
+      deniedHandlerCalled = true;
+      return new Response(null, { status: 204 });
+    },
+    [],
+  );
+  assert.equal(deniedRoute.status, 403);
+  assert.equal(deniedHandlerCalled, false);
+
+  const actionOrder: string[] = [];
+  const actionResult = await runAuthorizedAction(
+    async () => {
+      actionOrder.push('authorize');
+      return session('Administrator');
+    },
+    async () => {
+      actionOrder.push('handler');
+      return 'completed';
+    },
+    [],
+  );
+  assert.equal(actionResult, 'completed');
+  assert.deepEqual(actionOrder, ['authorize', 'handler']);
+
   const discovered = discoverAuthorizationEntrypoints(process.cwd());
   assert.deepEqual(routeInventoryFailures(discovered), []);
+  assert.deepEqual(authorizationSourceExclusionFailures(), []);
+  assert.match(authorizationSourceExclusionFailures([]).join('; '), /<none>/u);
+  assert.match(
+    authorizationSourceExclusionFailures(['src/generated/']).join('; '),
+    /must be exactly src\/generated\/prisma\//u,
+  );
   assert.deepEqual(proxyExemptionFailures(process.cwd()), []);
   const authorizationSource = readFileSync('src/lib/auth/authorization.ts', 'utf8');
   assert.match(authorizationSource, /^import 'server-only';/u);
@@ -379,65 +520,264 @@ async function main(): Promise<void> {
   assert.match(denialSource, /const session = await auth\(\)/u);
   assert.doesNotMatch(denialSource, /[\u0600-\u06ff]/u);
 
-  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'litigation-route-inventory-'));
-  try {
-    const fixtureRoute = path.join(fixtureRoot, 'src', 'app', 'unclassified', 'page.tsx');
-    mkdirSync(path.dirname(fixtureRoute), { recursive: true });
-    writeFileSync(fixtureRoute, 'export default function Page() { return null; }\n', 'utf8');
-    assert.match(
-      routeInventoryFailures(discoverAuthorizationEntrypoints(fixtureRoot), []).join('; '),
-      /unclassified entrypoint/u,
-    );
-
-    const fixtureHandler = path.join(fixtureRoot, 'src', 'app', 'partial', 'route.ts');
-    mkdirSync(path.dirname(fixtureHandler), { recursive: true });
-    writeFileSync(
-      fixtureHandler,
-      `export async function GET() {
-  return authorizeRoutePermission({ area: 'clients', action: 'view' });
+  const validPage = `import { requirePagePermission } from '@/lib/auth/authorization';
+export default async function Page() {
+  const session = await requirePagePermission({ area: 'clients', action: 'view' });
+  return session.user.name;
 }
+`;
+  const validRoute = `import { withRoutePermission } from '@/lib/auth/authorization';
+export const GET = withRoutePermission(
+  { area: 'clients', action: 'view' },
+  async (session) => new Response(session.user.name),
+);
+`;
+  const validAction = `'use server';
+import { withActionPermission } from '@/lib/auth/authorization';
+export const updateClient = withActionPermission(
+  { area: 'clients', action: 'update' },
+  async (session, formData: FormData) => {
+    void formData;
+    return session.user.id;
+  },
+);
+`;
+  const validFiles = {
+    'src/app/clients/page.tsx': validPage,
+    'src/app/api/clients/route.ts': validRoute,
+    'src/features/clients/actions.ts': validAction,
+  };
+  const validInventory = [
+    permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view'),
+    permissionEntry('route', 'src/app/api/clients/route.ts', 'clients', 'view', 'GET'),
+    permissionEntry(
+      'server-action',
+      'src/features/clients/actions.ts',
+      'clients',
+      'update',
+      'updateClient',
+    ),
+  ];
+  assert.deepEqual(staticFixture(validFiles, validInventory).failures, []);
+
+  assertStaticFailure(
+    { 'src/features/clients/actions.ts': validAction },
+    [],
+    /unclassified entrypoint: server-action:src\/features\/clients\/actions\.ts#updateClient/u,
+  );
+  assertStaticFailure(
+    {
+      'src/features/clients/actions.ts': "'use server';\nexport * from './implementation';\n",
+    },
+    [],
+    /unclassified entrypoint: server-action:src\/features\/clients\/actions\.ts#<unsupported-re-export/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': `import { requirePagePermission } from '@/lib/auth/authorization';
+export default async function Page(requirePagePermission: (permission: unknown) => Promise<unknown>) {
+  const session = await requirePagePermission({ area: 'clients', action: 'view' });
+  return session;
+}
+`,
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /locally shadowed/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': validPage.replace(
+        '@/lib/auth/authorization',
+        '@/lib/auth/lookalike',
+      ),
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /expected one unaliased import/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': validPage.replace(
+        'import { requirePagePermission }',
+        'import type { requirePagePermission }',
+      ),
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /expected one unaliased import/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': `import { requirePagePermission } from '@/lib/auth/authorization';
+export default async function Page() {
+  requirePagePermission({ area: 'clients', action: 'view' });
+  return null;
+}
+`,
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /must begin by capturing awaited/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': `import { requirePagePermission } from '@/lib/auth/authorization';
+export default async function Page() {
+  if (false) await requirePagePermission({ area: 'clients', action: 'view' });
+  return null;
+}
+`,
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /must begin by capturing awaited/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': `import { requirePagePermission } from '@/lib/auth/authorization';
+export default async function Page() {
+  const protectedData = await loadProtectedData();
+  const session = await requirePagePermission({ area: 'clients', action: 'view' });
+  return { protectedData, session };
+}
+`,
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /must begin by capturing awaited/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': validPage.replace("area: 'clients'", "area: 'matters'"),
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /permission area differs/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': validPage.replace("action: 'view'", "action: 'update'"),
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /permission action differs/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': `import { requirePagePermission } from '@/lib/auth/authorization';
+const area = 'clients';
+export default async function Page() {
+  const session = await requirePagePermission({ area, action: 'view' });
+  return session.user.name;
+}
+`,
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /permission object cannot use spreads, methods or shorthand/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': `import { requirePagePermission } from '@/lib/auth/authorization';
+const action = 'view';
+export default async function Page() {
+  const session = await requirePagePermission({ area: 'clients', action });
+  return session.user.name;
+}
+`,
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /permission object cannot use spreads, methods or shorthand/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/api/clients/route.ts': `${validRoute}
 export async function POST() {
   return new Response(null, { status: 204 });
 }
 `,
-      'utf8',
-    );
-    const partialInventory = [
-      {
-        kind: 'route',
-        source: 'src/app/partial/route.ts',
-        exportName: 'GET',
-        enforcementCall: 'authorizeRoutePermission',
-        classification: { access: 'permission', area: 'clients', action: 'view' },
-      },
-      {
-        kind: 'route',
-        source: 'src/app/partial/route.ts',
-        exportName: 'POST',
-        enforcementCall: 'authorizeRoutePermission',
-        classification: { access: 'permission', area: 'clients', action: 'create' },
-      },
-    ] as const;
-    assert.match(
-      routeInventoryFailures(discoverAuthorizationEntrypoints(fixtureRoot), partialInventory).join(
-        '; ',
-      ),
-      /missing server enforcement authorizeRoutePermission: route:src\/app\/partial\/route\.ts#POST/u,
-    );
-  } finally {
-    rmSync(fixtureRoot, { recursive: true, force: true });
-  }
-
-  const proxyOnly = ROUTE_INVENTORY.map((entry) =>
-    entry.source === 'src/app/page.tsx' && entry.kind === 'page'
-      ? {
-          ...entry,
-          enforcementCall: 'proxy',
-          classification: { access: 'permission', area: 'clients', action: 'view' } as const,
-        }
-      : entry,
+    },
+    [
+      permissionEntry('route', 'src/app/api/clients/route.ts', 'clients', 'view', 'GET'),
+      permissionEntry('route', 'src/app/api/clients/route.ts', 'clients', 'create', 'POST'),
+    ],
+    /route permission entry must be exported through withRoutePermission.*#POST/u,
   );
-  assert.match(routeInventoryFailures(discovered, proxyOnly).join('; '), /authoritative guard/u);
+  assertStaticFailure(
+    {
+      'src/app/clients/page.tsx': `import { proxy } from '@/proxy';
+export default async function Page() {
+  const session = await proxy();
+  return session;
+}
+`,
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /expected one unaliased import/u,
+  );
+  assertStaticFailure(
+    {
+      'src/features/clients/actions.ts': `'use server';
+import { withActionPermission } from '@/lib/auth/authorization';
+const enabled = false;
+async function handler() { return null; }
+export const updateClient = enabled
+  ? withActionPermission({ area: 'clients', action: 'update' }, handler)
+  : handler;
+`,
+    },
+    [
+      permissionEntry(
+        'server-action',
+        'src/features/clients/actions.ts',
+        'clients',
+        'update',
+        'updateClient',
+      ),
+    ],
+    /server-action permission wrapper must be the direct export initializer/u,
+  );
+  assertStaticFailure(
+    {
+      'src/features/clients/actions.ts': `'use server';
+import { requireActionPermission } from '@/lib/auth/authorization';
+export async function updateClient() {
+  requireActionPermission({ area: 'clients', action: 'update' });
+  return null;
+}
+`,
+    },
+    [
+      permissionEntry(
+        'server-action',
+        'src/features/clients/actions.ts',
+        'clients',
+        'update',
+        'updateClient',
+      ),
+    ],
+    /server-action permission entry must be exported through withActionPermission/u,
+  );
+
+  const unclassified = staticFixture(
+    {
+      'src/app/open/page.tsx': 'export default function Page() { return null; }\n',
+      'src/app/api/open/route.ts':
+        'export async function GET() { return new Response(null, { status: 204 }); }\n',
+      'src/features/open/actions.ts':
+        "'use server';\nexport async function openAction() { return null; }\n",
+    },
+    [],
+  ).failures.join('; ');
+  assert.match(unclassified, /page:src\/app\/open\/page\.tsx/u);
+  assert.match(unclassified, /route:src\/app\/api\/open\/route\.ts#GET/u);
+  assert.match(unclassified, /server-action:src\/features\/open\/actions\.ts#openAction/u);
+
+  const exclusionFixture = staticFixture(
+    {
+      'src/generated/prisma/actions.ts':
+        "'use server';\nexport async function generatedAction() { return null; }\n",
+      'src/generated/prisma-adjacent/actions.ts':
+        "'use server';\nexport async function visibleAction() { return null; }\n",
+    },
+    [],
+  );
+  assert.deepEqual(exclusionFixture.discoveredKeys, [
+    'server-action:src/generated/prisma-adjacent/actions.ts#visibleAction',
+  ]);
+  assert.match(exclusionFixture.failures.join('; '), /visibleAction/u);
 
   const tasks = readFileSync('TASKS.md', 'utf8');
   assert.match(tasks, /- \[ \] \*\*3\.3 Audit columns\*\*/u);
@@ -445,12 +785,20 @@ export async function POST() {
 
   await proveDatabaseSessionAuthorization();
 
-  console.log('PASS exhaustive permission matrix: 4 roles × 14 areas × 6 actions = 336 decisions');
+  console.log('PASS exhaustive permission matrix: 4 roles × 14 areas × 8 actions = 448 decisions');
+  console.log('PASS recoverable archive/restore is Administrator-only on the 9 approved areas');
+  console.log('PASS physical delete remains absent and lifecycle mutation proofs fail closed');
   console.log('PASS fail-closed unknowns, billing/report rules, and independent mutation proofs');
   console.log('PASS direct route/action 401 and 403 denials ignore client-supplied roles');
+  console.log('PASS permission wrappers authorize before any protected route/action work');
   console.log('PASS database role refresh, forced-password, disabled and inactive denials');
-  console.log('PASS every current page, HTTP handler and server action is explicitly inventoried');
-  console.log('PASS unclassified, partially guarded handler and proxy-only fixture protections');
+  console.log(
+    'PASS every current page, each HTTP handler and every server action under src is inventoried',
+  );
+  console.log(
+    'PASS static fixtures reject outside-app actions, shadowed/wrong guards, unawaited/late/conditional guards, dynamic or mismatched literals, partial methods and proxy-only enforcement',
+  );
+  console.log('PASS only the exact reviewed generated Prisma subtree is excluded from discovery');
   console.log('PASS Task 3.3 auditing and Task 3.4 user management remain outstanding');
 }
 

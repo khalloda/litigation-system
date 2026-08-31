@@ -1,34 +1,56 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import {
+  AUTHORIZATION_SOURCE_EXCLUSIONS,
   PROXY_INFRASTRUCTURE_EXEMPTIONS,
   ROUTE_INVENTORY,
   type RouteInventoryEntry,
 } from '../../src/lib/auth/route-inventory';
 
+const AUTHORIZATION_MODULE = '@/lib/auth/authorization';
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
+
+type EntrypointForm =
+  | 'page-function'
+  | 'route-function'
+  | 'route-variable'
+  | 'route-binding'
+  | 'module-server-function'
+  | 'module-server-variable'
+  | 'inline-server-function';
 
 export type DiscoveredEntrypoint = {
   key: string;
   kind: RouteInventoryEntry['kind'];
   source: string;
   exportName?: string;
-  calls: ReadonlySet<string>;
+  form: EntrypointForm;
+  sourceFile: ts.SourceFile;
+  node: ts.Node;
 };
 
 function normalized(relativePath: string): string {
   return relativePath.replaceAll(path.sep, '/');
 }
 
+function isExcludedSource(source: string): boolean {
+  return AUTHORIZATION_SOURCE_EXCLUSIONS.some((prefix) => source.startsWith(prefix));
+}
+
 function sourceFiles(root: string): string[] {
-  const start = path.join(root, 'src', 'app');
+  const start = path.join(root, 'src');
+  if (!existsSync(start)) return [];
   const files: string[] = [];
   const visit = (directory: string) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const absolute = path.join(directory, entry.name);
-      if (entry.isDirectory()) visit(absolute);
-      else if (/\.(?:ts|tsx)$/u.test(entry.name)) files.push(absolute);
+      const source = normalized(path.relative(root, absolute));
+      if (entry.isDirectory()) {
+        if (!isExcludedSource(`${source}/`)) visit(absolute);
+      } else if (/\.(?:ts|tsx)$/u.test(entry.name) && !isExcludedSource(source)) {
+        files.push(absolute);
+      }
     }
   };
   visit(start);
@@ -51,21 +73,14 @@ function hasUseServerDirective(body: ts.Block | undefined): boolean {
   );
 }
 
-function callNames(sourceFile: ts.Node): ReadonlySet<string> {
-  const calls = new Set<string>();
-  const visit = (node: ts.Node) => {
-    if (ts.isCallExpression(node)) {
-      if (ts.isIdentifier(node.expression)) calls.add(node.expression.text);
-      else if (ts.isPropertyAccessExpression(node.expression)) calls.add(node.expression.name.text);
+function moduleHasUseServerDirective(sourceFile: ts.SourceFile): boolean {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isExpressionStatement(statement) || !ts.isStringLiteral(statement.expression)) {
+      return false;
     }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return calls;
-}
-
-function isHttpMethod(value: string): boolean {
-  return HTTP_METHODS.has(value);
+    if (statement.expression.text === 'use server') return true;
+  }
+  return false;
 }
 
 function topLevelDeclarations(sourceFile: ts.SourceFile): ReadonlyMap<string, ts.Node> {
@@ -82,24 +97,211 @@ function topLevelDeclarations(sourceFile: ts.SourceFile): ReadonlyMap<string, ts
   return declarations;
 }
 
-function resolvedCallNames(
-  node: ts.Node,
-  declarations: ReadonlyMap<string, ts.Node>,
-): ReadonlySet<string> {
-  const calls = new Set(callNames(node));
-  if (ts.isVariableDeclaration(node) && node.initializer && ts.isIdentifier(node.initializer)) {
-    const target = declarations.get(node.initializer.text);
-    if (target) for (const call of callNames(target)) calls.add(call);
-  }
-  return calls;
-}
-
 function entrypointKey(
   kind: RouteInventoryEntry['kind'],
   source: string,
   exportName?: string,
 ): string {
   return `${kind}:${source}${exportName ? `#${exportName}` : ''}`;
+}
+
+function pageNode(sourceFile: ts.SourceFile): ts.Node {
+  for (const statement of sourceFile.statements) {
+    if (
+      ts.isFunctionDeclaration(statement) &&
+      hasModifier(statement, ts.SyntaxKind.ExportKeyword) &&
+      hasModifier(statement, ts.SyntaxKind.DefaultKeyword)
+    ) {
+      return statement;
+    }
+  }
+  const declarations = topLevelDeclarations(sourceFile);
+  for (const statement of sourceFile.statements) {
+    if (ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression)) {
+      return declarations.get(statement.expression.text) ?? statement;
+    }
+  }
+  return sourceFile;
+}
+
+function routeHandlers(source: string, sourceFile: ts.SourceFile): DiscoveredEntrypoint[] {
+  const entries: DiscoveredEntrypoint[] = [];
+  const declarations = topLevelDeclarations(sourceFile);
+  const add = (exportName: string, node: ts.Node, form: EntrypointForm) => {
+    if (!HTTP_METHODS.has(exportName)) return;
+    entries.push({
+      key: entrypointKey('route', source, exportName),
+      kind: 'route',
+      source,
+      exportName,
+      form,
+      sourceFile,
+      node,
+    });
+  };
+
+  for (const statement of sourceFile.statements) {
+    if (
+      ts.isFunctionDeclaration(statement) &&
+      statement.name &&
+      hasModifier(statement, ts.SyntaxKind.ExportKeyword)
+    ) {
+      add(statement.name.text, statement, 'route-function');
+    } else if (
+      ts.isVariableStatement(statement) &&
+      hasModifier(statement, ts.SyntaxKind.ExportKeyword)
+    ) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name)) {
+          add(declaration.name.text, declaration, 'route-variable');
+        } else if (ts.isObjectBindingPattern(declaration.name)) {
+          for (const element of declaration.name.elements) {
+            if (ts.isIdentifier(element.name)) {
+              add(element.name.text, declaration, 'route-binding');
+            }
+          }
+        }
+      }
+    } else if (
+      ts.isExportDeclaration(statement) &&
+      statement.exportClause &&
+      ts.isNamedExports(statement.exportClause)
+    ) {
+      for (const element of statement.exportClause.elements) {
+        const exportName = element.name.text;
+        const localName = element.propertyName?.text ?? exportName;
+        add(exportName, declarations.get(localName) ?? element, 'route-variable');
+      }
+    }
+  }
+
+  if (entries.length === 0) {
+    entries.push({
+      key: entrypointKey('route', source),
+      kind: 'route',
+      source,
+      form: 'route-function',
+      sourceFile,
+      node: sourceFile,
+    });
+  }
+  return entries;
+}
+
+function moduleServerActions(source: string, sourceFile: ts.SourceFile): DiscoveredEntrypoint[] {
+  const entries: DiscoveredEntrypoint[] = [];
+  const declarations = topLevelDeclarations(sourceFile);
+  const add = (exportName: string, node: ts.Node, form: EntrypointForm) => {
+    entries.push({
+      key: entrypointKey('server-action', source, exportName),
+      kind: 'server-action',
+      source,
+      exportName,
+      form,
+      sourceFile,
+      node,
+    });
+  };
+
+  for (const statement of sourceFile.statements) {
+    if (
+      ts.isFunctionDeclaration(statement) &&
+      hasModifier(statement, ts.SyntaxKind.ExportKeyword)
+    ) {
+      const exportName = hasModifier(statement, ts.SyntaxKind.DefaultKeyword)
+        ? 'default'
+        : statement.name?.text;
+      if (exportName) add(exportName, statement, 'module-server-function');
+    } else if (
+      ts.isVariableStatement(statement) &&
+      hasModifier(statement, ts.SyntaxKind.ExportKeyword)
+    ) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name)) {
+          add(declaration.name.text, declaration, 'module-server-variable');
+        } else {
+          const position = sourceFile.getLineAndCharacterOfPosition(
+            declaration.getStart(sourceFile),
+          );
+          add(
+            `<unsupported-binding@${position.line + 1}:${position.character + 1}>`,
+            declaration,
+            'module-server-variable',
+          );
+        }
+      }
+    } else if (
+      ts.isExportDeclaration(statement) &&
+      !statement.isTypeOnly &&
+      statement.exportClause &&
+      ts.isNamedExports(statement.exportClause)
+    ) {
+      for (const element of statement.exportClause.elements) {
+        if (element.isTypeOnly) continue;
+        const exportName = element.name.text;
+        const localName = element.propertyName?.text ?? exportName;
+        const declaration = declarations.get(localName);
+        add(
+          exportName,
+          declaration ?? element,
+          declaration && ts.isFunctionDeclaration(declaration)
+            ? 'module-server-function'
+            : 'module-server-variable',
+        );
+      }
+    } else if (ts.isExportDeclaration(statement) && !statement.isTypeOnly) {
+      const position = sourceFile.getLineAndCharacterOfPosition(statement.getStart(sourceFile));
+      add(
+        `<unsupported-re-export@${position.line + 1}:${position.character + 1}>`,
+        statement,
+        'module-server-variable',
+      );
+    } else if (ts.isExportAssignment(statement)) {
+      const node = ts.isIdentifier(statement.expression)
+        ? (declarations.get(statement.expression.text) ?? statement)
+        : statement;
+      add('default', node, 'module-server-variable');
+    }
+  }
+  return entries;
+}
+
+function inlineServerActions(source: string, sourceFile: ts.SourceFile): DiscoveredEntrypoint[] {
+  const entries: DiscoveredEntrypoint[] = [];
+  const add = (exportName: string, node: ts.Node) => {
+    entries.push({
+      key: entrypointKey('server-action', source, exportName),
+      kind: 'server-action',
+      source,
+      exportName,
+      form: 'inline-server-function',
+      sourceFile,
+      node,
+    });
+  };
+  const visit = (node: ts.Node) => {
+    if (ts.isFunctionDeclaration(node) && hasUseServerDirective(node.body)) {
+      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+      add(node.name?.text ?? `<anonymous@${position.line + 1}:${position.character + 1}>`, node);
+      return;
+    }
+    if (
+      (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) &&
+      ts.isBlock(node.body) &&
+      hasUseServerDirective(node.body)
+    ) {
+      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+      const parentName =
+        ts.isVariableDeclaration(node.parent) && ts.isIdentifier(node.parent.name)
+          ? node.parent.name.text
+          : `<anonymous@${position.line + 1}:${position.character + 1}>`;
+      add(parentName, node);
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return entries;
 }
 
 export function discoverAuthorizationEntrypoints(root: string): DiscoveredEntrypoint[] {
@@ -115,149 +317,337 @@ export function discoverAuthorizationEntrypoints(root: string): DiscoveredEntryp
       absolute.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
     );
     const base = path.basename(absolute);
-    if (base === 'page.tsx' || base === 'page.ts') {
+    if (source.startsWith('src/app/') && (base === 'page.tsx' || base === 'page.ts')) {
       discovered.push({
         key: entrypointKey('page', source),
         kind: 'page',
         source,
-        calls: callNames(sourceFile),
+        form: 'page-function',
+        sourceFile,
+        node: pageNode(sourceFile),
       });
     }
-    if (base === 'route.tsx' || base === 'route.ts') {
-      const declarations = topLevelDeclarations(sourceFile);
-      let handlers = 0;
-      const addHandler = (exportName: string, node: ts.Node) => {
-        if (!isHttpMethod(exportName)) return;
-        handlers += 1;
-        discovered.push({
-          key: entrypointKey('route', source, exportName),
-          kind: 'route',
-          source,
-          exportName,
-          calls: resolvedCallNames(node, declarations),
-        });
-      };
-      for (const statement of sourceFile.statements) {
-        if (
-          ts.isFunctionDeclaration(statement) &&
-          statement.name &&
-          hasModifier(statement, ts.SyntaxKind.ExportKeyword)
-        ) {
-          addHandler(statement.name.text, statement);
-        } else if (
-          ts.isVariableStatement(statement) &&
-          hasModifier(statement, ts.SyntaxKind.ExportKeyword)
-        ) {
-          for (const declaration of statement.declarationList.declarations) {
-            if (ts.isIdentifier(declaration.name)) {
-              addHandler(declaration.name.text, declaration);
-            } else if (ts.isObjectBindingPattern(declaration.name)) {
-              for (const element of declaration.name.elements) {
-                if (ts.isIdentifier(element.name)) addHandler(element.name.text, declaration);
-              }
-            }
-          }
-        } else if (
-          ts.isExportDeclaration(statement) &&
-          statement.exportClause &&
-          ts.isNamedExports(statement.exportClause)
-        ) {
-          for (const element of statement.exportClause.elements) {
-            const exportName = element.name.text;
-            const localName = element.propertyName?.text ?? exportName;
-            addHandler(exportName, declarations.get(localName) ?? element);
-          }
-        }
-      }
-      if (handlers === 0) {
-        discovered.push({
-          key: entrypointKey('route', source),
-          kind: 'route',
-          source,
-          calls: callNames(sourceFile),
-        });
-      }
+    if (source.startsWith('src/app/') && (base === 'route.tsx' || base === 'route.ts')) {
+      discovered.push(...routeHandlers(source, sourceFile));
     }
-
-    const moduleIsServer = sourceFile.statements.some(
-      (statement, index) =>
-        index === 0 &&
-        ts.isExpressionStatement(statement) &&
-        ts.isStringLiteral(statement.expression) &&
-        statement.expression.text === 'use server',
-    );
-    if (moduleIsServer) {
-      for (const statement of sourceFile.statements) {
-        if (
-          ts.isFunctionDeclaration(statement) &&
-          statement.name &&
-          hasModifier(statement, ts.SyntaxKind.ExportKeyword)
-        ) {
-          const exportName = statement.name.text;
-          discovered.push({
-            key: entrypointKey('server-action', source, exportName),
-            kind: 'server-action',
-            source,
-            exportName,
-            calls: callNames(statement),
-          });
-        } else if (
-          ts.isVariableStatement(statement) &&
-          hasModifier(statement, ts.SyntaxKind.ExportKeyword)
-        ) {
-          for (const declaration of statement.declarationList.declarations) {
-            if (
-              ts.isIdentifier(declaration.name) &&
-              declaration.initializer &&
-              (ts.isArrowFunction(declaration.initializer) ||
-                ts.isFunctionExpression(declaration.initializer))
-            ) {
-              const exportName = declaration.name.text;
-              discovered.push({
-                key: entrypointKey('server-action', source, exportName),
-                kind: 'server-action',
-                source,
-                exportName,
-                calls: callNames(declaration.initializer),
-              });
-            }
-          }
-        }
-      }
+    if (moduleHasUseServerDirective(sourceFile)) {
+      discovered.push(...moduleServerActions(source, sourceFile));
+    } else {
+      discovered.push(...inlineServerActions(source, sourceFile));
     }
-
-    const visitInlineActions = (node: ts.Node) => {
-      if (ts.isFunctionDeclaration(node) && node.name && hasUseServerDirective(node.body)) {
-        const exportName = node.name.text;
-        discovered.push({
-          key: entrypointKey('server-action', source, exportName),
-          kind: 'server-action',
-          source,
-          exportName,
-          calls: callNames(node),
-        });
-      } else if (
-        ts.isVariableDeclaration(node) &&
-        ts.isIdentifier(node.name) &&
-        node.initializer &&
-        (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer)) &&
-        ts.isBlock(node.initializer.body) &&
-        hasUseServerDirective(node.initializer.body)
-      ) {
-        const exportName = node.name.text;
-        discovered.push({
-          key: entrypointKey('server-action', source, exportName),
-          kind: 'server-action',
-          source,
-          exportName,
-          calls: callNames(node.initializer),
-        });
-      }
-      ts.forEachChild(node, visitInlineActions);
-    };
-    visitInlineActions(sourceFile);
   }
   return discovered.sort((left, right) => left.key.localeCompare(right.key));
+}
+
+function bindingContainsName(
+  name: ts.BindingName | ts.DeclarationName | undefined,
+  value: string,
+): boolean {
+  if (!name) return false;
+  if (ts.isIdentifier(name)) return name.text === value;
+  if (ts.isObjectBindingPattern(name) || ts.isArrayBindingPattern(name)) {
+    return name.elements.some((element) =>
+      ts.isBindingElement(element) ? bindingContainsName(element.name, value) : false,
+    );
+  }
+  return false;
+}
+
+function containsBinding(node: ts.Node, name: string): boolean {
+  let found = false;
+  const visit = (current: ts.Node) => {
+    if (found) return;
+    if (
+      (ts.isVariableDeclaration(current) || ts.isParameter(current)) &&
+      bindingContainsName(current.name, name)
+    ) {
+      found = true;
+      return;
+    }
+    if (
+      (ts.isFunctionDeclaration(current) ||
+        ts.isFunctionExpression(current) ||
+        ts.isClassDeclaration(current)) &&
+      current !== node &&
+      current.name?.text === name
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(current, visit);
+  };
+  visit(node);
+  return found;
+}
+
+function importFailures(
+  entry: DiscoveredEntrypoint,
+  moduleName: string,
+  importedName: string,
+): string[] {
+  let exactImports = 0;
+  for (const statement of entry.sourceFile.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      statement.moduleSpecifier.text !== moduleName ||
+      statement.importClause?.isTypeOnly ||
+      !statement.importClause?.namedBindings ||
+      !ts.isNamedImports(statement.importClause.namedBindings)
+    ) {
+      continue;
+    }
+    for (const element of statement.importClause.namedBindings.elements) {
+      if (
+        !element.isTypeOnly &&
+        element.name.text === importedName &&
+        (element.propertyName?.text ?? importedName) === importedName
+      ) {
+        exactImports += 1;
+      }
+    }
+  }
+  const failures: string[] = [];
+  if (exactImports !== 1) {
+    failures.push(
+      `expected one unaliased import of ${importedName} from ${moduleName}: ${entry.key}`,
+    );
+  }
+  if (containsBinding(entry.node, importedName)) {
+    failures.push(`authoritative binding ${importedName} is locally shadowed: ${entry.key}`);
+  }
+  return failures;
+}
+
+function functionBody(node: ts.Node): ts.Block | null {
+  if (
+    (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) &&
+    node.body &&
+    ts.isBlock(node.body)
+  ) {
+    return node.body;
+  }
+  return null;
+}
+
+function firstExecutableStatement(body: ts.Block): ts.Statement | undefined {
+  return body.statements.find(
+    (statement) =>
+      !(
+        ts.isExpressionStatement(statement) &&
+        ts.isStringLiteral(statement.expression) &&
+        statement.expression.text === 'use server'
+      ),
+  );
+}
+
+function awaitedCallFromAssignment(statement: ts.Statement | undefined): ts.CallExpression | null {
+  if (
+    !statement ||
+    !ts.isVariableStatement(statement) ||
+    (statement.declarationList.flags & ts.NodeFlags.Const) === 0 ||
+    statement.declarationList.declarations.length !== 1
+  ) {
+    return null;
+  }
+  const declaration = statement.declarationList.declarations[0];
+  if (
+    !declaration ||
+    !ts.isIdentifier(declaration.name) ||
+    !declaration.initializer ||
+    !ts.isAwaitExpression(declaration.initializer) ||
+    !ts.isCallExpression(declaration.initializer.expression)
+  ) {
+    return null;
+  }
+  return declaration.initializer.expression;
+}
+
+function awaitedCallFromExpression(statement: ts.Statement | undefined): ts.CallExpression | null {
+  if (
+    !statement ||
+    !ts.isExpressionStatement(statement) ||
+    !ts.isAwaitExpression(statement.expression) ||
+    !ts.isCallExpression(statement.expression.expression)
+  ) {
+    return null;
+  }
+  return statement.expression.expression;
+}
+
+function isDirectIdentifierCall(call: ts.CallExpression | null, name: string): boolean {
+  return Boolean(call && ts.isIdentifier(call.expression) && call.expression.text === name);
+}
+
+function containsAwaitedCall(node: ts.Node, name: string): boolean {
+  let found = false;
+  const visit = (current: ts.Node) => {
+    if (
+      ts.isAwaitExpression(current) &&
+      ts.isCallExpression(current.expression) &&
+      ts.isIdentifier(current.expression.expression) &&
+      current.expression.expression.text === name
+    ) {
+      found = true;
+      return;
+    }
+    if (!found) ts.forEachChild(current, visit);
+  };
+  visit(node);
+  return found;
+}
+
+function propertyName(node: ts.PropertyName): string | null {
+  if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text;
+  return null;
+}
+
+function permissionArgumentFailures(
+  node: ts.Expression | undefined,
+  expected: Extract<RouteInventoryEntry['classification'], { access: 'permission' }>,
+  key: string,
+): string[] {
+  if (!node || !ts.isObjectLiteralExpression(node)) {
+    return [`permission must be one static object literal: ${key}`];
+  }
+  if (node.properties.length !== 2) {
+    return [`permission object must contain exactly area and action: ${key}`];
+  }
+  const values = new Map<string, string>();
+  for (const property of node.properties) {
+    if (!ts.isPropertyAssignment(property)) {
+      return [`permission object cannot use spreads, methods or shorthand: ${key}`];
+    }
+    const name = propertyName(property.name);
+    if (
+      !name ||
+      !['area', 'action'].includes(name) ||
+      !ts.isStringLiteral(property.initializer) ||
+      values.has(name)
+    ) {
+      return [`permission area and action must be unique string literals: ${key}`];
+    }
+    values.set(name, property.initializer.text);
+  }
+  const failures: string[] = [];
+  if (values.get('area') !== expected.area) {
+    failures.push(`permission area differs from inventory (${values.get('area')}): ${key}`);
+  }
+  if (values.get('action') !== expected.action) {
+    failures.push(`permission action differs from inventory (${values.get('action')}): ${key}`);
+  }
+  return failures;
+}
+
+function isAsyncFunctionExpression(node: ts.Expression | undefined): boolean {
+  return Boolean(
+    node &&
+    (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) &&
+    hasModifier(node, ts.SyntaxKind.AsyncKeyword),
+  );
+}
+
+function permissionPageFailures(
+  entry: DiscoveredEntrypoint,
+  expected: Extract<RouteInventoryEntry['classification'], { access: 'permission' }>,
+): string[] {
+  const guard = 'requirePagePermission';
+  const failures = importFailures(entry, AUTHORIZATION_MODULE, guard);
+  const body = functionBody(entry.node);
+  if (!body) return [...failures, `permission page must export an async function: ${entry.key}`];
+  const call = awaitedCallFromAssignment(firstExecutableStatement(body));
+  if (!isDirectIdentifierCall(call, guard)) {
+    failures.push(`permission page must begin by capturing awaited ${guard}: ${entry.key}`);
+    return failures;
+  }
+  if (call!.arguments.length !== 1) {
+    failures.push(`permission page guard must receive one argument: ${entry.key}`);
+    return failures;
+  }
+  failures.push(...permissionArgumentFailures(call!.arguments[0], expected, entry.key));
+  return failures;
+}
+
+function permissionWrapperFailures(
+  entry: DiscoveredEntrypoint,
+  expected: Extract<RouteInventoryEntry['classification'], { access: 'permission' }>,
+): string[] {
+  const wrapper = entry.kind === 'route' ? 'withRoutePermission' : 'withActionPermission';
+  const requiredForm: EntrypointForm =
+    entry.kind === 'route' ? 'route-variable' : 'module-server-variable';
+  const failures = importFailures(entry, AUTHORIZATION_MODULE, wrapper);
+  if (entry.form !== requiredForm || !ts.isVariableDeclaration(entry.node)) {
+    failures.push(
+      `${entry.kind} permission entry must be exported through ${wrapper}: ${entry.key}`,
+    );
+    return failures;
+  }
+  const initializer = entry.node.initializer;
+  if (
+    !initializer ||
+    !ts.isCallExpression(initializer) ||
+    !ts.isIdentifier(initializer.expression) ||
+    initializer.expression.text !== wrapper
+  ) {
+    failures.push(
+      `${entry.kind} permission wrapper must be the direct export initializer: ${entry.key}`,
+    );
+    return failures;
+  }
+  if (initializer.arguments.length !== 2) {
+    failures.push(`${wrapper} must receive permission and one inline async handler: ${entry.key}`);
+    return failures;
+  }
+  failures.push(...permissionArgumentFailures(initializer.arguments[0], expected, entry.key));
+  if (!isAsyncFunctionExpression(initializer.arguments[1])) {
+    failures.push(`${wrapper} handler must be an inline async function: ${entry.key}`);
+  }
+  return failures;
+}
+
+function exemptionFailures(
+  entry: DiscoveredEntrypoint,
+  expected: Exclude<RouteInventoryEntry['classification'], { access: 'permission' }>,
+): string[] {
+  const { enforcement } = expected;
+  const failures = importFailures(entry, enforcement.module, enforcement.imported);
+  if (enforcement.pattern === 'framework-handlers') {
+    if (
+      entry.form !== 'route-binding' ||
+      !ts.isVariableDeclaration(entry.node) ||
+      !ts.isObjectBindingPattern(entry.node.name) ||
+      !entry.node.name.elements.some(
+        (element) => ts.isIdentifier(element.name) && element.name.text === entry.exportName,
+      ) ||
+      !entry.node.initializer ||
+      !ts.isIdentifier(entry.node.initializer) ||
+      entry.node.initializer.text !== enforcement.imported
+    ) {
+      failures.push(
+        `framework handler must be exported directly from Auth.js handlers: ${entry.key}`,
+      );
+    }
+    return failures;
+  }
+  const body = functionBody(entry.node);
+  if (!body) return [...failures, `exempt entrypoint must be a function: ${entry.key}`];
+  if (enforcement.pattern === 'awaited-call') {
+    if (!containsAwaitedCall(entry.node, enforcement.imported)) {
+      failures.push(`missing awaited ${enforcement.imported} call: ${entry.key}`);
+    }
+    return failures;
+  }
+  const statement = firstExecutableStatement(body);
+  const call =
+    enforcement.pattern === 'first-awaited-assignment'
+      ? awaitedCallFromAssignment(statement)
+      : awaitedCallFromExpression(statement);
+  if (!isDirectIdentifierCall(call, enforcement.imported)) {
+    failures.push(
+      `${enforcement.imported} must be the first awaited enforcement statement: ${entry.key}`,
+    );
+  }
+  return failures;
 }
 
 export function routeInventoryFailures(
@@ -267,27 +657,16 @@ export function routeInventoryFailures(
   const failures: string[] = [];
   const discoveredByKey = new Map<string, DiscoveredEntrypoint>();
   for (const entry of discovered) {
-    if (discoveredByKey.has(entry.key))
+    if (discoveredByKey.has(entry.key)) {
       failures.push(`duplicate discovered entrypoint: ${entry.key}`);
+    }
     discoveredByKey.set(entry.key, entry);
   }
   const inventoryByKey = new Map<string, RouteInventoryEntry>();
-
   for (const entry of inventory) {
     const key = entrypointKey(entry.kind, entry.source, entry.exportName);
     if (inventoryByKey.has(key)) failures.push(`duplicate inventory entry: ${key}`);
     inventoryByKey.set(key, entry);
-    if (entry.classification.access === 'permission') {
-      const required =
-        entry.kind === 'page'
-          ? 'requirePagePermission'
-          : entry.kind === 'route'
-            ? 'authorizeRoutePermission'
-            : 'requireActionPermission';
-      if (entry.enforcementCall !== required) {
-        failures.push(`permission entry lacks authoritative guard ${required}: ${key}`);
-      }
-    }
   }
 
   for (const entry of discovered) {
@@ -299,11 +678,27 @@ export function routeInventoryFailures(
       failures.push(`inventoried entrypoint missing: ${key}`);
       continue;
     }
-    if (expected.enforcementCall && !actual.calls.has(expected.enforcementCall)) {
-      failures.push(`missing server enforcement ${expected.enforcementCall}: ${key}`);
+    if (expected.classification.access === 'permission') {
+      failures.push(
+        ...(actual.kind === 'page'
+          ? permissionPageFailures(actual, expected.classification)
+          : permissionWrapperFailures(actual, expected.classification)),
+      );
+    } else {
+      failures.push(...exemptionFailures(actual, expected.classification));
     }
   }
   return failures;
+}
+
+export function authorizationSourceExclusionFailures(
+  exclusions: readonly string[] = AUTHORIZATION_SOURCE_EXCLUSIONS,
+): string[] {
+  return exclusions.length === 1 && exclusions[0] === 'src/generated/prisma/'
+    ? []
+    : [
+        `authorization source exclusions must be exactly src/generated/prisma/: ${exclusions.join(', ') || '<none>'}`,
+      ];
 }
 
 export function proxyExemptionFailures(root: string): string[] {

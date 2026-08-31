@@ -470,3 +470,26 @@ optional, unchecked “Remember me” choice expires absolutely after seven days
 These are server-enforced non-sliding limits carried inside the encrypted JWT;
 the account's database session version independently invalidates older tokens
 after password or enablement changes.
+
+## D25 — Phase 1 uses recoverable archive and restore, never physical deletion
+
+The Administrator may archive and restore operational records: clients,
+contacts, matters, hearings, administrative works, powers of attorney,
+documents, fee letters and client logos. Archive means recoverable removal
+from ordinary use. It is not physical deletion from PostgreSQL. Permanent
+deletion of Phase 1 business records through the application is prohibited,
+and every other role is denied archive and restore everywhere.
+
+Billing remains view-only for all roles. Staff and user removal means
+disable/deactivate while retaining the row; dropdown removal likewise means
+deactivate while retaining the value, even when unused. Client-logo removal
+must be recoverable and retain both the file and its evidence. The interface
+must call these operations archive and restore rather than misleadingly
+describing archival as permanent deletion.
+
+This decision establishes authorization and lifecycle policy, not its storage
+or interface design. Task 3.2 adds the archive and restore permission decisions
+only. It does not add archive columns, migrations, handlers, controls or
+strings. The visibility of archived records and the filters and reporting
+behavior around them must be designed with each relevant Stage 4 screen using
+the real workflow; those rules are deliberately not invented here.

@@ -1,6 +1,7 @@
 import { permissionPolicyStructureFailures, PERMISSION_POLICY } from '../src/lib/auth/permissions';
 import { ROUTE_INVENTORY } from '../src/lib/auth/route-inventory';
 import {
+  authorizationSourceExclusionFailures,
   discoverAuthorizationEntrypoints,
   proxyExemptionFailures,
   routeInventoryFailures,
@@ -10,6 +11,7 @@ const root = process.cwd();
 const discovered = discoverAuthorizationEntrypoints(root);
 const failures = [
   ...permissionPolicyStructureFailures(PERMISSION_POLICY),
+  ...authorizationSourceExclusionFailures(),
   ...routeInventoryFailures(discovered),
   ...proxyExemptionFailures(root),
 ];

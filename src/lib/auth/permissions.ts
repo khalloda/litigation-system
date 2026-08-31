@@ -17,7 +17,16 @@ export const PERMISSION_AREAS = [
   'dropdownLists',
 ] as const;
 
-export const PERMISSION_ACTIONS = ['view', 'create', 'update', 'manage', 'run', 'export'] as const;
+export const PERMISSION_ACTIONS = [
+  'view',
+  'create',
+  'update',
+  'archive',
+  'restore',
+  'manage',
+  'run',
+  'export',
+] as const;
 
 export type PermissionArea = (typeof PERMISSION_AREAS)[number];
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
@@ -34,6 +43,7 @@ function permissions(...allowed: readonly PermissionAction[]): PermissionSet {
 }
 
 const edit = permissions('view', 'create', 'update');
+const full = permissions('view', 'create', 'update', 'archive', 'restore');
 const view = permissions('view');
 const report = permissions('run', 'export');
 const administer = permissions('view', 'manage');
@@ -43,21 +53,22 @@ const none = permissions();
  * The complete Task 3.2 policy. Every role, area and supported action is
  * present. An omitted or unknown value is denied by hasPermission().
  *
- * "Full" in the firm's matrix means view/create/update for operational
- * records. It does not create a deletion permission. Manage exists only for
- * the three areas where the firm used that word explicitly.
+ * "Full" in the firm's matrix means view/create/update/archive/restore for
+ * operational records. Archive is recoverable and never means physical
+ * deletion. Manage exists only for the three lifecycle areas where the firm
+ * used that word explicitly.
  */
 export const PERMISSION_POLICY = {
   Administrator: {
-    clients: edit,
-    contacts: edit,
-    matters: edit,
-    hearings: edit,
-    administrativeWorks: edit,
-    powersOfAttorney: edit,
-    documents: edit,
-    feeLetters: edit,
-    clientLogoUpload: edit,
+    clients: full,
+    contacts: full,
+    matters: full,
+    hearings: full,
+    administrativeWorks: full,
+    powersOfAttorney: full,
+    documents: full,
+    feeLetters: full,
+    clientLogoUpload: full,
     billing: view,
     reports: report,
     staff: administer,

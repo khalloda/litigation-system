@@ -74,11 +74,14 @@ each one locally with `auth:set-password`, which hides input and forces a
 change at first login. See `docs/DATABASE.md` for the complete procedure.
 
 Server authorization is defined once in `src/lib/auth/permissions.ts` and
-enforced through the Auth.js-backed guards in
-`src/lib/auth/authorization.ts`. Every App Router page, route handler and
-server action is listed in `src/lib/auth/route-inventory.ts`; the permission
-test fails if a future entry point is not classified or relies only on
-`proxy.ts`. The lightweight inventory check is also part of `npm run check`;
+enforced through the Auth.js-backed guards and wrappers in
+`src/lib/auth/authorization.ts`. Every App Router page and Route Handler, and
+every project-owned Server Action anywhere under `src`, is listed in
+`src/lib/auth/route-inventory.ts`. The permission test fails if a future entry
+point is unclassified, uses the wrong import or permission, authorizes after
+protected work, or relies only on `proxy.ts`; each exported HTTP method is
+checked separately. Generated Prisma output is the only narrow source-tree
+exclusion. The lightweight inventory check is also part of `npm run check`;
 run the full `npm run test:permissions` after adding any route or action.
 
 `npm run db:verify` confirms the database is set up correctly — every line

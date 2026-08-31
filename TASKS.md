@@ -1318,13 +1318,18 @@ only ever seen good data is not known to work.
 
 - [x] **3.2 The four roles**, enforced **server-side** on every route.
 
-      **Completed 31 August 2026.** One exhaustive policy covers 4 roles × 14
-      areas × 6 supported actions — 336 explicit decisions. Unknown roles,
-      areas and actions deny by default. Operational `full` means view/create/
-      update only: no deletion permission was invented. Billing remains
-      view-only for all four roles; all four can run and export reports;
-      Paralegals can create/update only administrative works; and staff,
-      user/role and dropdown management stay Administrator-only.
+      **Completed 31 August 2026; post-review lifecycle and inventory
+      correction completed the same day.** One exhaustive policy covers 4
+      roles × 14 areas × 8 supported actions — 448 explicit decisions.
+      Unknown roles, areas and actions deny by default. Operational `full`
+      means view/create/update/archive/restore: archive is recoverable removal,
+      never physical database deletion. Only the Administrator receives
+      archive/restore on the nine operational areas; every other role is denied
+      both everywhere. `delete` remains unsupported and denied. Billing
+      remains view-only for all four roles; all four can run and export
+      reports; Paralegals can create/update only administrative works; and
+      staff, user/role and dropdown management stay Administrator-only. D25
+      records the complete owner-approved lifecycle policy.
 
       The pure matrix is `src/lib/auth/permissions.ts`; the server-only Auth.js
       guard is `src/lib/auth/authorization.ts`. The guard accepts only a typed
@@ -1335,30 +1340,44 @@ only ever seen good data is not known to work.
       `proxy.ts` is an early authentication redirect only, never the sole
       authorization layer.
 
-      Every current page, handler and server action is classified in
-      `src/lib/auth/route-inventory.ts`. Its lightweight structural test is
-      part of `npm run check`; `npm run test:permissions` adds the full
-      negative suite. They fail on an unclassified entry point, a missing
-      authoritative guard or proxy-only protection. The independent matrix
-      oracle checks all 336 outcomes and deliberately proves weakened/missing
-      rules, client-supplied roles, direct handler/action access, 401/403
-      behavior, database role refresh and account/person ineligibility are
-      refused. Next.js 16.3.1's experimental auth interrupts remain disabled;
-      stable redirects and ordinary 401/403 responses are used instead.
+      Every current App Router page and Route Handler and every project-owned
+      Server Action anywhere under `src` is classified in
+      `src/lib/auth/route-inventory.ts`. Its structural test is part of
+      `npm run check`; `npm run test:permissions` adds the full negative suite.
+      Static enforcement requires the exact authoritative import, literal
+      area/action agreement and authorization before protected work; it checks
+      each exported HTTP method separately. Generated Prisma output is the one
+      exact source-tree exclusion. The fixtures reject unclassified
+      out-of-`src/app` actions, locally shadowed or wrong imports,
+      ignored/late/conditional guards, dynamic or mismatched permissions,
+      partially guarded handlers and proxy-only protection. Correct pages,
+      handlers, actions and the narrow authentication exemptions still pass.
+      The independent matrix oracle checks all 448 outcomes and deliberately
+      proves weakened/missing lifecycle rules, client-supplied roles, direct
+      handler/action access, 401/403 behavior, database role refresh and
+      account/person ineligibility are refused. Next.js 16.3.1's experimental
+      auth interrupts remain disabled; stable redirects and ordinary 401/403
+      responses are used instead.
 
       Task 3.3 audit population and Task 3.4 user management remain
       outstanding.
 
 - [ ] **3.3 Audit columns** populated everywhere.
 
-- [ ] **3.4 User management** — Administrator only.
+- [ ] **3.4 User management** — Administrator only. Removing access means
+      disable/deactivate while retaining the user and staff rows (D25); do not
+      add physical deletion.
 
 ---
 
 ## Stage 4 — Core screens
 
 Each screen: list with Arabic search, detail view, create/edit where the role
-allows. Test with real volumes.
+allows. Implement Administrator-only recoverable archive/restore for the nine
+operational areas in D25 when their screens are built; do not implement
+physical deletion. The interface must say archive/restore. Design archived-row
+visibility, filters and reporting behavior with each relevant screen rather
+than assuming one rule for every workflow. Test with real volumes.
 
 - [ ] **4.0 Revisit the right-to-left checker**
       Do this **before** the first real screen. `npm run check:rtl` works one
@@ -1379,6 +1398,8 @@ allows. Test with real volumes.
       Assistant). PNG / JPG / GIF, max 2 MB, resized to a sensible print width.
       Stored in the folder per **D15**. Preview before saving.
       A missing file must fall back to the client's name in text.
+      Removal must be recoverable and retain the file and its evidence (D25);
+      design that behavior here rather than in the Task 3.2 policy correction.
 - [ ] **4.2 Matters** — the biggest screen. Classification, parties, lawyers.
       **Case number field must display multiple lines (D9).**
       `docs/VISUAL-DIRECTION.md` makes the stacked case number the hero of this

@@ -53,3 +53,22 @@ export type PermissionRequest = {
   area: PermissionArea;
   action: PermissionAction;
 };
+
+export async function runAuthorizedRoute<TArguments extends unknown[]>(
+  authorize: () => Promise<Session | Response>,
+  handler: (session: Session, ...arguments_: TArguments) => Promise<Response>,
+  arguments_: TArguments,
+): Promise<Response> {
+  const authorization = await authorize();
+  if (authorization instanceof Response) return authorization;
+  return handler(authorization, ...arguments_);
+}
+
+export async function runAuthorizedAction<TArguments extends unknown[], TResult>(
+  authorize: () => Promise<Session>,
+  action: (session: Session, ...arguments_: TArguments) => Promise<TResult>,
+  arguments_: TArguments,
+): Promise<TResult> {
+  const session = await authorize();
+  return action(session, ...arguments_);
+}

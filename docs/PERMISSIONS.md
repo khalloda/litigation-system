@@ -30,12 +30,16 @@ Auth.js session is `src/lib/auth/authorization.ts`. It never accepts a role
 from a request, query string, header or client component.
 
 `proxy.ts` continues to perform early authentication redirects, but it is not
-authorization. Every page, route handler and server action is independently
-classified in `src/lib/auth/route-inventory.ts`. The lightweight structural
-check is part of `npm run check`, and `npm run test:permissions` provides the
-full negative suite. Both fail if a future entry point is unclassified, if a
-permission-classified entry point does not call the correct server guard, or
-if the proxy is offered as its only protection.
+authorization. Every page and Route Handler, and every project-owned Server
+Action anywhere under `src`, is independently classified in
+`src/lib/auth/route-inventory.ts`. The lightweight structural check is part of
+`npm run check`, and `npm run test:permissions` provides the full negative
+suite. They require the exact authoritative import, static area/action
+literals that agree with the inventory, and an enforcement pattern that runs
+before protected work. They fail if a future entry point is unclassified, if
+a same-named local or unrelated function is substituted, if enforcement is
+ignored, late or conditional, or if the proxy is offered as the only
+protection. Generated Prisma code is the only narrow source-tree exclusion.
 
 **Invoices are view-only for everyone, including the Administrator.** New
 invoicing lives in Excel until Phase 2, so there is nothing to create here yet.
@@ -50,9 +54,18 @@ Excel or PDF.
 **Only the Administrator manages the dropdown lists** (courts, categories,
 degrees, venues, party roles).
 
-**No deletion permission exists.** In this matrix, `full` means view, create
-and update for the operational areas. It does not imply deletion. Adding any
-record-deletion operation requires a separate decision from the firm.
+**No physical-deletion permission exists.** In this matrix, `full` means view,
+create, update, archive and restore for the nine operational areas. Archive is
+recoverable removal, not database deletion. Only the Administrator can archive
+or restore; every other role is denied both everywhere. Permanent deletion of
+Phase 1 business records through the application is prohibited. See D25.
+
+Staff and user removal is disable/deactivate, and dropdown removal is
+deactivate; their rows and values are retained. Client-logo removal must
+eventually be recoverable and retain the file and its evidence. These
+lifecycle operations are policy only in Task 3.2: the screens, handlers,
+database representation, archived-record visibility, filters and reporting
+behavior will be designed with the relevant later tasks.
 
 ## Server denial behavior
 
@@ -83,8 +96,10 @@ pages and ordinary 401/403 responses for handlers instead.
    `can_login` is false and they do not appear in dropdowns for new entries.
 4. **Roles are fixed in Phase 1.** No custom role builder. Four roles, hardcoded.
 5. **Classify every new entry point.** A new `page.tsx`, `route.ts` or server
-   action must be added to the route inventory and guarded at the server
-   boundary before it can pass the permission suite.
+   action anywhere under project-owned `src` must be added to the route
+   inventory and use the statically enforced server-boundary pattern before it
+   can pass the permission suite. Each exported HTTP method is checked
+   separately.
 6. **Auditing is still Task 3.3.** Task 3.2 decides whether an operation is
    allowed; it does not claim to populate `created_by` or `updated_by`.
 7. **User management is still Task 3.4.** Administrator permission exists in
