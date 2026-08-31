@@ -16,7 +16,7 @@
 
 export const t = {
   app: {
-    name: 'ساري الدين وشركاه',
+    name: 'سري الدين وشركاه',
     system: 'نظام إدارة الدعاوى',
   },
 
@@ -119,7 +119,7 @@ export const t = {
     signedInAs: 'المستخدم',
     role: 'الدور',
     logout: 'تسجيل الخروج',
-    logoAlt: 'ساري الدين وشركاه — مستشارون قانونيون',
+    logoAlt: 'سري الدين وشركاه — مستشارون قانونيون',
     passwordAdmin: {
       usage: 'الاستخدام: npm run auth:set-password -- Username',
       ttyRequired: 'يجب تشغيل هذا الأمر مباشرة من طرفية تفاعلية.',
