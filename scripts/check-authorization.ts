@@ -2,6 +2,7 @@ import { permissionPolicyStructureFailures, PERMISSION_POLICY } from '../src/lib
 import { ROUTE_INVENTORY } from '../src/lib/auth/route-inventory';
 import {
   authorizationSourceExclusionFailures,
+  authorizationSourcePolicyFailures,
   discoverAuthorizationEntrypoints,
   proxyExemptionFailures,
   routeInventoryFailures,
@@ -12,6 +13,7 @@ const discovered = discoverAuthorizationEntrypoints(root);
 const failures = [
   ...permissionPolicyStructureFailures(PERMISSION_POLICY),
   ...authorizationSourceExclusionFailures(),
+  ...authorizationSourcePolicyFailures(root),
   ...routeInventoryFailures(discovered),
   ...proxyExemptionFailures(root),
 ];

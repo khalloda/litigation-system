@@ -31,15 +31,28 @@ from a request, query string, header or client component.
 
 `proxy.ts` continues to perform early authentication redirects, but it is not
 authorization. Every page and Route Handler, and every project-owned Server
-Action anywhere under `src`, is independently classified in
+Action anywhere in the repository, is independently classified in
 `src/lib/auth/route-inventory.ts`. The lightweight structural check is part of
 `npm run check`, and `npm run test:permissions` provides the full negative
 suite. They require the exact authoritative import, static area/action
 literals that agree with the inventory, and an enforcement pattern that runs
-before protected work. They fail if a future entry point is unclassified, if
-a same-named local or unrelated function is substituted, if enforcement is
-ignored, late or conditional, or if the proxy is offered as the only
-protection. Generated Prisma code is the only narrow source-tree exclusion.
+before protected work. Permission-protected Route Handlers and module-level
+Server Actions must be direct immutable `export const` wrappers. They fail if
+a future entry point is unclassified, if a same-named local or unrelated
+function is substituted, if a protected export is mutable, aliased or
+reassigned, if enforcement is ignored, late or conditional, or if the proxy is
+offered as the only protection. Generated Prisma code is the only narrow
+source-tree exclusion.
+
+`src/app` is the only permitted routing root. Root `app`, root `pages` and
+`src/pages` directories fail the check because this project is App Router-only
+and a root router directory can cause Next.js to ignore `src/app`. The checker
+parses project-owned `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.mts`, `.cjs` and
+`.cts` files. App Router `page.*` and `route.*` discovery follows a statically
+proved `next.config.ts` `pageExtensions` policy; Next.js 16.3.1 currently uses
+its default `tsx`, `ts`, `jsx`, `js` list. Unsupported or dynamically
+unprovable extensions and configuration fail closed rather than being
+silently skipped.
 
 **Invoices are view-only for everyone, including the Administrator.** New
 invoicing lives in Excel until Phase 2, so there is nothing to create here yet.
@@ -95,11 +108,10 @@ pages and ordinary 401/403 responses for handlers instead.
    remain in the roster so historical records still show who did the work, but
    `can_login` is false and they do not appear in dropdowns for new entries.
 4. **Roles are fixed in Phase 1.** No custom role builder. Four roles, hardcoded.
-5. **Classify every new entry point.** A new `page.tsx`, `route.ts` or server
-   action anywhere under project-owned `src` must be added to the route
-   inventory and use the statically enforced server-boundary pattern before it
-   can pass the permission suite. Each exported HTTP method is checked
-   separately.
+5. **Classify every new entry point.** A new supported `page.*`, `route.*` or
+   project-owned server action must be added to the route inventory and use the
+   statically enforced server-boundary pattern before it can pass the
+   permission suite. Each exported HTTP method is checked separately.
 6. **Auditing is still Task 3.3.** Task 3.2 decides whether an operation is
    allowed; it does not claim to populate `created_by` or `updated_by`.
 7. **User management is still Task 3.4.** Administrator permission exists in

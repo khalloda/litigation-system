@@ -1,8 +1,10 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import {
+  AUTHORIZATION_SOURCE_EXTENSIONS,
   AUTHORIZATION_SOURCE_EXCLUSIONS,
+  NEXT_DEFAULT_PAGE_EXTENSIONS,
   PROXY_INFRASTRUCTURE_EXEMPTIONS,
   ROUTE_INVENTORY,
   type RouteInventoryEntry,
@@ -10,14 +12,19 @@ import {
 
 const AUTHORIZATION_MODULE = '@/lib/auth/authorization';
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
+const NON_PROJECT_SOURCE_DIRECTORIES = new Set(['.git', '.next', 'node_modules']);
+const INSPECTED_SOURCE_EXTENSIONS = new Set<string>(AUTHORIZATION_SOURCE_EXTENSIONS);
+const NEXT_CONFIG_FILES = ['next.config.js', 'next.config.mjs', 'next.config.ts'] as const;
 
 type EntrypointForm =
   | 'page-function'
   | 'route-function'
   | 'route-variable'
   | 'route-binding'
+  | 'route-export-alias'
   | 'module-server-function'
   | 'module-server-variable'
+  | 'module-server-export-alias'
   | 'inline-server-function';
 
 export type DiscoveredEntrypoint = {
@@ -39,22 +46,44 @@ function isExcludedSource(source: string): boolean {
 }
 
 function sourceFiles(root: string): string[] {
-  const start = path.join(root, 'src');
-  if (!existsSync(start)) return [];
   const files: string[] = [];
   const visit = (directory: string) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const absolute = path.join(directory, entry.name);
       const source = normalized(path.relative(root, absolute));
       if (entry.isDirectory()) {
-        if (!isExcludedSource(`${source}/`)) visit(absolute);
-      } else if (/\.(?:ts|tsx)$/u.test(entry.name) && !isExcludedSource(source)) {
+        if (!NON_PROJECT_SOURCE_DIRECTORIES.has(entry.name) && !isExcludedSource(`${source}/`)) {
+          visit(absolute);
+        }
+      } else if (
+        INSPECTED_SOURCE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()) &&
+        !isExcludedSource(source)
+      ) {
         files.push(absolute);
       }
     }
   };
-  visit(start);
+  visit(root);
   return files.sort();
+}
+
+function scriptKind(fileName: string): ts.ScriptKind {
+  switch (path.extname(fileName).toLowerCase()) {
+    case '.js':
+    case '.mjs':
+    case '.cjs':
+      return ts.ScriptKind.JS;
+    case '.jsx':
+      return ts.ScriptKind.JSX;
+    case '.tsx':
+      return ts.ScriptKind.TSX;
+    case '.ts':
+    case '.mts':
+    case '.cts':
+      return ts.ScriptKind.TS;
+    default:
+      return ts.ScriptKind.Unknown;
+  }
 }
 
 function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
@@ -170,7 +199,7 @@ function routeHandlers(source: string, sourceFile: ts.SourceFile): DiscoveredEnt
       for (const element of statement.exportClause.elements) {
         const exportName = element.name.text;
         const localName = element.propertyName?.text ?? exportName;
-        add(exportName, declarations.get(localName) ?? element, 'route-variable');
+        add(exportName, declarations.get(localName) ?? element, 'route-export-alias');
       }
     }
   }
@@ -241,13 +270,7 @@ function moduleServerActions(source: string, sourceFile: ts.SourceFile): Discove
         const exportName = element.name.text;
         const localName = element.propertyName?.text ?? exportName;
         const declaration = declarations.get(localName);
-        add(
-          exportName,
-          declaration ?? element,
-          declaration && ts.isFunctionDeclaration(declaration)
-            ? 'module-server-function'
-            : 'module-server-variable',
-        );
+        add(exportName, declaration ?? element, 'module-server-export-alias');
       }
     } else if (ts.isExportDeclaration(statement) && !statement.isTypeOnly) {
       const position = sourceFile.getLineAndCharacterOfPosition(statement.getStart(sourceFile));
@@ -304,8 +327,143 @@ function inlineServerActions(source: string, sourceFile: ts.SourceFile): Discove
   return entries;
 }
 
+type PageExtensionPolicy = {
+  extensions: readonly string[];
+  failures: readonly string[];
+};
+
+function resolvedConfigObject(sourceFile: ts.SourceFile): ts.ObjectLiteralExpression | null {
+  const declarations = topLevelDeclarations(sourceFile);
+  for (const statement of sourceFile.statements) {
+    if (!ts.isExportAssignment(statement) || statement.isExportEquals) continue;
+    const expression = ts.isIdentifier(statement.expression)
+      ? declarations.get(statement.expression.text)
+      : statement.expression;
+    if (expression && ts.isVariableDeclaration(expression)) {
+      return expression.initializer && ts.isObjectLiteralExpression(expression.initializer)
+        ? expression.initializer
+        : null;
+    }
+    return expression && ts.isObjectLiteralExpression(expression) ? expression : null;
+  }
+  return null;
+}
+
+function nextPageExtensionPolicy(root: string): PageExtensionPolicy {
+  const configFiles = NEXT_CONFIG_FILES.filter((fileName) => existsSync(path.join(root, fileName)));
+  if (configFiles.length === 0) {
+    return { extensions: NEXT_DEFAULT_PAGE_EXTENSIONS, failures: [] };
+  }
+  if (configFiles.length !== 1) {
+    return {
+      extensions: NEXT_DEFAULT_PAGE_EXTENSIONS,
+      failures: [
+        `authorization discovery requires exactly one Next.js config: ${configFiles.join(', ')}`,
+      ],
+    };
+  }
+  const configFile = configFiles[0]!;
+  const configPath = path.join(root, configFile);
+  const sourceFile = ts.createSourceFile(
+    configPath,
+    readFileSync(configPath, 'utf8'),
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKind(configPath),
+  );
+  const config = resolvedConfigObject(sourceFile);
+  if (!config) {
+    return {
+      extensions: NEXT_DEFAULT_PAGE_EXTENSIONS,
+      failures: [
+        `${configFile} must default-export one statically analyzable object so authorization page extensions can be proved`,
+      ],
+    };
+  }
+  if (config.properties.some((property) => ts.isSpreadAssignment(property))) {
+    return {
+      extensions: NEXT_DEFAULT_PAGE_EXTENSIONS,
+      failures: [
+        `${configFile} cannot spread configuration into the default object because pageExtensions would be unprovable`,
+      ],
+    };
+  }
+  const extensionProperties = config.properties.filter(
+    (property) => property.name && propertyName(property.name) === 'pageExtensions',
+  );
+  if (extensionProperties.length === 0) {
+    return { extensions: NEXT_DEFAULT_PAGE_EXTENSIONS, failures: [] };
+  }
+  if (extensionProperties.length !== 1) {
+    return {
+      extensions: NEXT_DEFAULT_PAGE_EXTENSIONS,
+      failures: [`${configFile} must declare pageExtensions at most once`],
+    };
+  }
+  const extensionProperty = extensionProperties[0]!;
+  if (!ts.isPropertyAssignment(extensionProperty)) {
+    return {
+      extensions: NEXT_DEFAULT_PAGE_EXTENSIONS,
+      failures: [`${configFile} pageExtensions must be a static property assignment`],
+    };
+  }
+  const initializer = extensionProperty.initializer;
+  if (
+    !ts.isArrayLiteralExpression(initializer) ||
+    initializer.elements.length === 0 ||
+    initializer.elements.some((element) => !ts.isStringLiteral(element))
+  ) {
+    return {
+      extensions: NEXT_DEFAULT_PAGE_EXTENSIONS,
+      failures: [
+        `${configFile} pageExtensions must be one non-empty array of string literals for authorization discovery`,
+      ],
+    };
+  }
+  const extensions = initializer.elements.map((element) => (element as ts.StringLiteral).text);
+  const failures: string[] = [];
+  if (new Set(extensions).size !== extensions.length) {
+    failures.push(`${configFile} pageExtensions must not contain duplicates`);
+  }
+  for (const extension of extensions) {
+    if (!INSPECTED_SOURCE_EXTENSIONS.has(`.${extension}`)) {
+      failures.push(
+        `${configFile} page extension is not supported by the authorization checker: ${extension}`,
+      );
+    }
+  }
+  return { extensions, failures };
+}
+
+function existingDirectory(root: string, relativePath: string): boolean {
+  const absolute = path.join(root, relativePath);
+  return existsSync(absolute) && statSync(absolute).isDirectory();
+}
+
+export function authorizationSourcePolicyFailures(root: string): string[] {
+  const failures: string[] = [];
+  if (existingDirectory(root, 'app')) {
+    failures.push(
+      'root app/ is forbidden: this App Router-only project uses src/app, and Next.js ignores src/app when root app exists',
+    );
+  }
+  if (existingDirectory(root, 'pages')) {
+    failures.push(
+      'root pages/ is forbidden: this App Router-only project permits routing only under src/app',
+    );
+  }
+  if (existingDirectory(root, 'src/pages')) {
+    failures.push(
+      'src/pages/ is forbidden: this App Router-only project permits routing only under src/app',
+    );
+  }
+  failures.push(...nextPageExtensionPolicy(root).failures);
+  return failures;
+}
+
 export function discoverAuthorizationEntrypoints(root: string): DiscoveredEntrypoint[] {
   const discovered: DiscoveredEntrypoint[] = [];
+  const pageExtensions = new Set(nextPageExtensionPolicy(root).extensions);
   for (const absolute of sourceFiles(root)) {
     const source = normalized(path.relative(root, absolute));
     const text = readFileSync(absolute, 'utf8');
@@ -314,10 +472,15 @@ export function discoverAuthorizationEntrypoints(root: string): DiscoveredEntryp
       text,
       ts.ScriptTarget.Latest,
       true,
-      absolute.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+      scriptKind(absolute),
     );
     const base = path.basename(absolute);
-    if (source.startsWith('src/app/') && (base === 'page.tsx' || base === 'page.ts')) {
+    const extension = path.extname(base).slice(1).toLowerCase();
+    if (
+      source.startsWith('src/app/') &&
+      base === `page.${extension}` &&
+      pageExtensions.has(extension)
+    ) {
       discovered.push({
         key: entrypointKey('page', source),
         kind: 'page',
@@ -327,7 +490,11 @@ export function discoverAuthorizationEntrypoints(root: string): DiscoveredEntryp
         node: pageNode(sourceFile),
       });
     }
-    if (source.startsWith('src/app/') && (base === 'route.tsx' || base === 'route.ts')) {
+    if (
+      source.startsWith('src/app/') &&
+      base === `route.${extension}` &&
+      pageExtensions.has(extension)
+    ) {
       discovered.push(...routeHandlers(source, sourceFile));
     }
     if (moduleHasUseServerDirective(sourceFile)) {
@@ -547,6 +714,35 @@ function isAsyncFunctionExpression(node: ts.Expression | undefined): boolean {
   );
 }
 
+function protectedBindingMutationFailures(entry: DiscoveredEntrypoint): string[] {
+  if (!entry.exportName) return [];
+  const failures: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isBinaryExpression(node) &&
+      ts.isIdentifier(node.left) &&
+      node.left.text === entry.exportName &&
+      node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+      node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+    ) {
+      failures.push(`protected export is reassigned after its wrapper: ${entry.key}`);
+      return;
+    }
+    if (
+      (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+      ts.isIdentifier(node.operand) &&
+      node.operand.text === entry.exportName &&
+      [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.operator)
+    ) {
+      failures.push(`protected export is updated after its wrapper: ${entry.key}`);
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(entry.sourceFile);
+  return failures;
+}
+
 function permissionPageFailures(
   entry: DiscoveredEntrypoint,
   expected: Extract<RouteInventoryEntry['classification'], { access: 'permission' }>,
@@ -582,6 +778,20 @@ function permissionWrapperFailures(
     );
     return failures;
   }
+  const declarationList = entry.node.parent;
+  const statement = declarationList.parent;
+  if (
+    !ts.isVariableDeclarationList(declarationList) ||
+    (declarationList.flags & ts.NodeFlags.Const) === 0 ||
+    declarationList.declarations.length !== 1 ||
+    !ts.isVariableStatement(statement) ||
+    !hasModifier(statement, ts.SyntaxKind.ExportKeyword)
+  ) {
+    failures.push(
+      `${entry.kind} permission entry must be one direct immutable export const: ${entry.key}`,
+    );
+  }
+  failures.push(...protectedBindingMutationFailures(entry));
   const initializer = entry.node.initializer;
   if (
     !initializer ||

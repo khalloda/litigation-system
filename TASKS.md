@@ -1341,17 +1341,24 @@ only ever seen good data is not known to work.
       authorization layer.
 
       Every current App Router page and Route Handler and every project-owned
-      Server Action anywhere under `src` is classified in
+      Server Action anywhere in the repository is classified in
       `src/lib/auth/route-inventory.ts`. Its structural test is part of
       `npm run check`; `npm run test:permissions` adds the full negative suite.
       Static enforcement requires the exact authoritative import, literal
-      area/action agreement and authorization before protected work; it checks
-      each exported HTTP method separately. Generated Prisma output is the one
-      exact source-tree exclusion. The fixtures reject unclassified
-      out-of-`src/app` actions, locally shadowed or wrong imports,
-      ignored/late/conditional guards, dynamic or mismatched permissions,
-      partially guarded handlers and proxy-only protection. Correct pages,
-      handlers, actions and the narrow authentication exemptions still pass.
+      area/action agreement, direct immutable `export const` wrappers and
+      authorization before protected work; it checks each exported HTTP method
+      separately. `src/app` is the only routing root: root `app`, root `pages`
+      and `src/pages` fail. Project-owned `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`,
+      `.mts`, `.cjs` and `.cts` are inspected, while App Router `page.*` and
+      `route.*` follow the statically proved `pageExtensions` policy (currently
+      the Next.js 16.3.1 default `tsx`, `ts`, `jsx`, `js`). Unsupported or
+      unprovable patterns fail closed. Generated Prisma output is the one exact
+      source-tree exclusion. The fixtures reject alternate router roots,
+      unclassified out-of-`src/app` actions, mutable/aliased/reassigned
+      wrappers, locally shadowed or wrong imports, ignored/late/conditional
+      guards, dynamic or mismatched permissions, partially guarded handlers
+      and proxy-only protection. Correct pages, handlers, actions and the
+      narrow authentication exemptions still pass.
       The independent matrix oracle checks all 448 outcomes and deliberately
       proves weakened/missing lifecycle rules, client-supplied roles, direct
       handler/action access, 401/403 behavior, database role refresh and

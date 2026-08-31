@@ -34,9 +34,14 @@ import {
   type PermissionArea,
 } from '../src/lib/auth/permissions';
 import { createSessionClaims, validateSessionClaims } from '../src/lib/auth/session';
-import type { RouteInventoryEntry } from '../src/lib/auth/route-inventory';
+import {
+  AUTHORIZATION_SOURCE_EXTENSIONS,
+  NEXT_DEFAULT_PAGE_EXTENSIONS,
+  type RouteInventoryEntry,
+} from '../src/lib/auth/route-inventory';
 import {
   authorizationSourceExclusionFailures,
+  authorizationSourcePolicyFailures,
   discoverAuthorizationEntrypoints,
   proxyExemptionFailures,
   routeInventoryFailures,
@@ -182,7 +187,10 @@ function staticFixture(
     }
     const discovered = discoverAuthorizationEntrypoints(root);
     return {
-      failures: routeInventoryFailures(discovered, inventory),
+      failures: [
+        ...authorizationSourcePolicyFailures(root),
+        ...routeInventoryFailures(discovered, inventory),
+      ],
       discoveredKeys: discovered.map((entry) => entry.key),
     };
   } finally {
@@ -455,7 +463,15 @@ async function main(): Promise<void> {
     (error: unknown) =>
       error instanceof AuthorizationError && error.status === 403 && error.reason === 'forbidden',
   );
-  assert.equal(directServerAction(session('Paralegal'), { role: 'Lawyer' }).user.role, 'Paralegal');
+  assert.equal(
+    directServerAction(session('Paralegal'), {
+      role: 'Administrator',
+      headers: { role: 'Administrator' },
+      query: { role: 'Administrator' },
+      cookie: { role: 'Administrator' },
+    }).user.role,
+    'Paralegal',
+  );
   assert.throws(
     () => directServerAction(null, { role: 'Administrator' }),
     (error: unknown) => error instanceof AuthorizationError && error.status === 401,
@@ -503,9 +519,39 @@ async function main(): Promise<void> {
   assert.equal(actionResult, 'completed');
   assert.deepEqual(actionOrder, ['authorize', 'handler']);
 
+  let deniedActionCalled = false;
+  await assert.rejects(
+    runAuthorizedAction(
+      async () => {
+        throw new AuthorizationError('forbidden');
+      },
+      async (validatedSession, untrustedInput: Record<string, unknown>) => {
+        void validatedSession;
+        void untrustedInput;
+        deniedActionCalled = true;
+        return 'should-not-run';
+      },
+      [{ role: 'Administrator', headers: { role: 'Administrator' } }],
+    ),
+    (error: unknown) => error instanceof AuthorizationError && error.status === 403,
+  );
+  assert.equal(deniedActionCalled, false);
+
   const discovered = discoverAuthorizationEntrypoints(process.cwd());
+  assert.deepEqual(AUTHORIZATION_SOURCE_EXTENSIONS, [
+    '.js',
+    '.jsx',
+    '.ts',
+    '.tsx',
+    '.mjs',
+    '.mts',
+    '.cjs',
+    '.cts',
+  ]);
+  assert.deepEqual(NEXT_DEFAULT_PAGE_EXTENSIONS, ['tsx', 'ts', 'jsx', 'js']);
   assert.deepEqual(routeInventoryFailures(discovered), []);
   assert.deepEqual(authorizationSourceExclusionFailures(), []);
+  assert.deepEqual(authorizationSourcePolicyFailures(process.cwd()), []);
   assert.match(authorizationSourceExclusionFailures([]).join('; '), /<none>/u);
   assert.match(
     authorizationSourceExclusionFailures(['src/generated/']).join('; '),
@@ -559,6 +605,237 @@ export const updateClient = withActionPermission(
     ),
   ];
   assert.deepEqual(staticFixture(validFiles, validInventory).failures, []);
+
+  assertStaticFailure(
+    {
+      'app/page.tsx': 'export default function HiddenRootPage() { return null; }\n',
+      'src/app/clients/page.tsx': validPage,
+    },
+    [permissionEntry('page', 'src/app/clients/page.tsx', 'clients', 'view')],
+    /root app\/ is forbidden.*ignores src\/app/u,
+  );
+  assertStaticFailure(
+    {
+      'app/api/example/route.ts':
+        'export async function GET() { return new Response(null, { status: 204 }); }\n',
+    },
+    [],
+    /root app\/ is forbidden/u,
+  );
+  assertStaticFailure(
+    { 'pages/index.tsx': 'export default function Page() { return null; }\n' },
+    [],
+    /root pages\/ is forbidden.*App Router-only/u,
+  );
+  assertStaticFailure(
+    { 'src/pages/index.tsx': 'export default function Page() { return null; }\n' },
+    [],
+    /src\/pages\/ is forbidden.*App Router-only/u,
+  );
+
+  const validJavaScriptPage = `import { requirePagePermission } from '@/lib/auth/authorization';
+export default async function Page() {
+  const session = await requirePagePermission({ area: 'clients', action: 'view' });
+  return session.user.name;
+}
+`;
+  assert.deepEqual(
+    staticFixture({ 'src/app/clients/page.js': validJavaScriptPage }, [
+      permissionEntry('page', 'src/app/clients/page.js', 'clients', 'view'),
+    ]).failures,
+    [],
+  );
+  assert.deepEqual(
+    staticFixture(
+      {
+        'src/app/clients/page.jsx': validJavaScriptPage.replace(
+          'return session.user.name;',
+          'return <main>{session.user.name}</main>;',
+        ),
+      },
+      [permissionEntry('page', 'src/app/clients/page.jsx', 'clients', 'view')],
+    ).failures,
+    [],
+  );
+  const validJavaScriptRoute = `import { withRoutePermission } from '@/lib/auth/authorization';
+export const GET = withRoutePermission(
+  { area: 'clients', action: 'view' },
+  async (session) => new Response(session.user.name),
+);
+`;
+  assert.deepEqual(
+    staticFixture({ 'src/app/api/clients/route.js': validJavaScriptRoute }, [
+      permissionEntry('route', 'src/app/api/clients/route.js', 'clients', 'view', 'GET'),
+    ]).failures,
+    [],
+  );
+  const validJavaScriptAction = `'use server';
+import { withActionPermission } from '@/lib/auth/authorization';
+export const updateClient = withActionPermission(
+  { area: 'clients', action: 'update' },
+  async (session) => session.user.id,
+);
+`;
+  for (const extension of ['js', 'mjs', 'mts', 'cjs', 'cts'] as const) {
+    const source = `features/clients/actions.${extension}`;
+    assert.deepEqual(
+      staticFixture({ [source]: validJavaScriptAction }, [
+        permissionEntry('server-action', source, 'clients', 'update', 'updateClient'),
+      ]).failures,
+      [],
+    );
+  }
+  assert.deepEqual(
+    staticFixture(
+      {
+        'next.config.ts': `const nextConfig = { pageExtensions: ['mjs', 'js'] };
+export default nextConfig;
+`,
+        'src/app/clients/page.mjs': validJavaScriptPage,
+      },
+      [permissionEntry('page', 'src/app/clients/page.mjs', 'clients', 'view')],
+    ).failures,
+    [],
+  );
+  assertStaticFailure(
+    {
+      'next.config.ts': `const nextConfig = { pageExtensions: ['tsx', 'ts', 'mdx'] };
+export default nextConfig;
+`,
+    },
+    [],
+    /page extension is not supported by the authorization checker: mdx/u,
+  );
+  assertStaticFailure(
+    {
+      'next.config.ts': `const extensions = ['tsx', 'ts'];
+const nextConfig = { pageExtensions: extensions };
+export default nextConfig;
+`,
+    },
+    [],
+    /pageExtensions must be one non-empty array of string literals/u,
+  );
+  assertStaticFailure(
+    {
+      'features/open/actions.js':
+        "'use server';\nexport async function unclassifiedAction() { return null; }\n",
+    },
+    [],
+    /unclassified entrypoint: server-action:features\/open\/actions\.js#unclassifiedAction/u,
+  );
+
+  const protectedRouteInventory = [
+    permissionEntry('route', 'src/app/api/clients/route.ts', 'clients', 'view', 'GET'),
+  ];
+  assertStaticFailure(
+    {
+      'src/app/api/clients/route.ts': validRoute.replace('export const GET', 'export let GET'),
+    },
+    protectedRouteInventory,
+    /must be one direct immutable export const.*#GET/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/api/clients/route.ts': validRoute.replace('export const GET', 'export var GET'),
+    },
+    protectedRouteInventory,
+    /must be one direct immutable export const.*#GET/u,
+  );
+  assertStaticFailure(
+    { 'src/app/api/clients/route.ts': `${validRoute}\nGET = async () => new Response();\n` },
+    protectedRouteInventory,
+    /protected export is reassigned after its wrapper.*#GET/u,
+  );
+  assertStaticFailure(
+    { 'src/app/api/clients/route.ts': `${validRoute}\nGET++;\n` },
+    protectedRouteInventory,
+    /protected export is updated after its wrapper.*#GET/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/api/clients/route.ts': `${validRoute}
+export const POST = withRoutePermission(
+  { area: 'clients', action: 'create' },
+  async () => new Response(null, { status: 201 }),
+);
+POST = async () => new Response(null, { status: 201 });
+`,
+    },
+    [
+      ...protectedRouteInventory,
+      permissionEntry('route', 'src/app/api/clients/route.ts', 'clients', 'create', 'POST'),
+    ],
+    /protected export is reassigned after its wrapper.*#POST/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/api/clients/route.ts': `import { withRoutePermission } from '@/lib/auth/authorization';
+const enabled = false;
+export const GET = enabled
+  ? withRoutePermission({ area: 'clients', action: 'view' }, async () => new Response())
+  : async () => new Response();
+`,
+    },
+    protectedRouteInventory,
+    /route permission wrapper must be the direct export initializer.*#GET/u,
+  );
+  assertStaticFailure(
+    {
+      'src/app/api/clients/route.ts': `import { withRoutePermission } from '@/lib/auth/authorization';
+let guarded = withRoutePermission(
+  { area: 'clients', action: 'view' },
+  async () => new Response(),
+);
+export { guarded as GET };
+`,
+    },
+    protectedRouteInventory,
+    /route permission entry must be exported through withRoutePermission.*#GET/u,
+  );
+
+  const protectedActionInventory = [
+    permissionEntry(
+      'server-action',
+      'src/features/clients/actions.ts',
+      'clients',
+      'update',
+      'updateClient',
+    ),
+  ];
+  assertStaticFailure(
+    {
+      'src/features/clients/actions.ts': validAction.replace(
+        'export const updateClient',
+        'export let updateClient',
+      ),
+    },
+    protectedActionInventory,
+    /must be one direct immutable export const.*#updateClient/u,
+  );
+  assertStaticFailure(
+    {
+      'src/features/clients/actions.ts': `${validAction}
+updateClient = async () => null;
+`,
+    },
+    protectedActionInventory,
+    /protected export is reassigned after its wrapper.*#updateClient/u,
+  );
+  assertStaticFailure(
+    {
+      'src/features/clients/actions.ts': `'use server';
+import { withActionPermission } from '@/lib/auth/authorization';
+let guarded = withActionPermission(
+  { area: 'clients', action: 'update' },
+  async () => null,
+);
+export { guarded as updateClient };
+`,
+    },
+    protectedActionInventory,
+    /server-action permission entry must be exported through withActionPermission.*#updateClient/u,
+  );
 
   assertStaticFailure(
     { 'src/features/clients/actions.ts': validAction },
@@ -769,13 +1046,17 @@ export async function updateClient() {
     {
       'src/generated/prisma/actions.ts':
         "'use server';\nexport async function generatedAction() { return null; }\n",
-      'src/generated/prisma-adjacent/actions.ts':
+      'src/generated/prisma/actions.js':
+        "'use server';\nexport async function generatedJavaScriptAction() { return null; }\n",
+      'src/generated/prisma/actions.mjs':
+        "'use server';\nexport async function generatedModuleAction() { return null; }\n",
+      'src/generated/prisma-adjacent/actions.js':
         "'use server';\nexport async function visibleAction() { return null; }\n",
     },
     [],
   );
   assert.deepEqual(exclusionFixture.discoveredKeys, [
-    'server-action:src/generated/prisma-adjacent/actions.ts#visibleAction',
+    'server-action:src/generated/prisma-adjacent/actions.js#visibleAction',
   ]);
   assert.match(exclusionFixture.failures.join('; '), /visibleAction/u);
 
@@ -793,7 +1074,10 @@ export async function updateClient() {
   console.log('PASS permission wrappers authorize before any protected route/action work');
   console.log('PASS database role refresh, forced-password, disabled and inactive denials');
   console.log(
-    'PASS every current page, each HTTP handler and every server action under src is inventoried',
+    'PASS canonical App Router entries and project-owned JS/TS server actions are inventoried',
+  );
+  console.log(
+    'PASS alternate router roots, unclassified extensions, and mutable or reassigned wrappers fail closed',
   );
   console.log(
     'PASS static fixtures reject outside-app actions, shadowed/wrong guards, unawaited/late/conditional guards, dynamic or mismatched literals, partial methods and proxy-only enforcement',

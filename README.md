@@ -76,13 +76,20 @@ change at first login. See `docs/DATABASE.md` for the complete procedure.
 Server authorization is defined once in `src/lib/auth/permissions.ts` and
 enforced through the Auth.js-backed guards and wrappers in
 `src/lib/auth/authorization.ts`. Every App Router page and Route Handler, and
-every project-owned Server Action anywhere under `src`, is listed in
+every project-owned Server Action in the repository, is listed in
 `src/lib/auth/route-inventory.ts`. The permission test fails if a future entry
 point is unclassified, uses the wrong import or permission, authorizes after
-protected work, or relies only on `proxy.ts`; each exported HTTP method is
-checked separately. Generated Prisma output is the only narrow source-tree
-exclusion. The lightweight inventory check is also part of `npm run check`;
-run the full `npm run test:permissions` after adding any route or action.
+protected work, relies only on `proxy.ts`, or uses a mutable/aliased protected
+export; each exported HTTP method is checked separately. The only permitted
+routing root is `src/app`: root `app`, root `pages` and `src/pages` fail the
+check. JavaScript and TypeScript source in `.js`, `.jsx`, `.ts`, `.tsx`,
+`.mjs`, `.mts`, `.cjs` and `.cts` is inspected; App Router `page.*` and
+`route.*` follow the statically verified `pageExtensions` setting (the current
+Next.js default is `tsx`, `ts`, `jsx`, `js`). An extension or configuration
+the checker cannot prove fails closed. Generated Prisma output is the only
+narrow source-tree exclusion. The lightweight inventory check is also part of
+`npm run check`; run the full `npm run test:permissions` after adding any route
+or action.
 
 `npm run db:verify` confirms the database is set up correctly — every line
 must read PASS. Full details, including what to do when something is wrong,

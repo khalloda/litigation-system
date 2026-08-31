@@ -159,3 +159,22 @@ export const PROXY_INFRASTRUCTURE_EXEMPTIONS = [
  * application entry point. Keep this exact and narrow: neighbouring project
  * code under src/generated-* must still be scanned. */
 export const AUTHORIZATION_SOURCE_EXCLUSIONS = ['src/generated/prisma/'] as const;
+
+/**
+ * Project-owned JavaScript and TypeScript source forms that the authorization
+ * inventory parses. Keep this explicit: silently ignoring a new executable
+ * extension would create an authorization blind spot.
+ */
+export const AUTHORIZATION_SOURCE_EXTENSIONS = [
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.mjs',
+  '.mts',
+  '.cjs',
+  '.cts',
+] as const;
+
+/** Installed Next.js 16.3.1 defaults when next.config.ts omits pageExtensions. */
+export const NEXT_DEFAULT_PAGE_EXTENSIONS = ['tsx', 'ts', 'jsx', 'js'] as const;
