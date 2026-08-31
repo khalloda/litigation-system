@@ -1,0 +1,3684 @@
+From 5f2adacd9a0326e60bee4354edc8202086e1b5b8 Mon Sep 17 00:00:00 2001
+From: khalloda <khaled.h87@gmail.com>
+Date: Mon, 31 Aug 2026 11:34:12 +0300
+Subject: [PATCH] feat: add secure Auth.js login
+
+---
+ .env.example                                  |   9 +
+ README.md                                     |  13 +-
+ TASKS.md                                      |  23 +-
+ docs/DATA-MODEL.md                            |  47 +-
+ docs/DATABASE.md                              |  35 +
+ docs/DECISIONS.md                             |  24 +
+ docs/PERMISSIONS.md                           |   5 +
+ docs/reconciliations/2026-08-30-gate-4.md     |   6 +-
+ package-lock.json                             | 178 +++++-
+ package.json                                  |   4 +
+ .../migration.sql                             | 256 ++++++++
+ prisma/schema.prisma                          |  47 +-
+ proxy.ts                                      |   5 +
+ scripts/auth-set-password.ts                  |  78 +++
+ scripts/check-db.ts                           |  57 +-
+ scripts/lib/auth-structure.ts                 | 376 +++++++++++
+ scripts/test-auth.ts                          | 601 ++++++++++++++++++
+ scripts/test-gate4.ts                         |   1 -
+ src/app/_components/auth-shell.tsx            |  38 ++
+ src/app/api/auth/[...nextauth]/route.ts       |   4 +
+ src/app/auth.module.css                       | 218 +++++++
+ src/app/change-password/actions.ts            |  33 +
+ .../change-password/change-password-form.tsx  |  69 ++
+ src/app/change-password/page.tsx              |  19 +
+ src/app/login/actions.ts                      |  22 +
+ src/app/login/login-form.tsx                  |  59 ++
+ src/app/login/page.tsx                        |  23 +
+ src/app/page.tsx                              | 123 +---
+ src/auth.ts                                   | 103 +++
+ src/lib/auth/constants.ts                     |  19 +
+ src/lib/auth/password.ts                      |  52 ++
+ src/lib/auth/service.ts                       | 314 +++++++++
+ src/lib/auth/session.ts                       | 126 ++++
+ src/lib/db.ts                                 |   9 +-
+ src/strings.ts                                |  46 ++
+ src/types/next-auth.d.ts                      |  43 ++
+ 36 files changed, 2941 insertions(+), 144 deletions(-)
+ create mode 100644 prisma/migrations/20260831100000_authentication/migration.sql
+ create mode 100644 proxy.ts
+ create mode 100644 scripts/auth-set-password.ts
+ create mode 100644 scripts/lib/auth-structure.ts
+ create mode 100644 scripts/test-auth.ts
+ create mode 100644 src/app/_components/auth-shell.tsx
+ create mode 100644 src/app/api/auth/[...nextauth]/route.ts
+ create mode 100644 src/app/auth.module.css
+ create mode 100644 src/app/change-password/actions.ts
+ create mode 100644 src/app/change-password/change-password-form.tsx
+ create mode 100644 src/app/change-password/page.tsx
+ create mode 100644 src/app/login/actions.ts
+ create mode 100644 src/app/login/login-form.tsx
+ create mode 100644 src/app/login/page.tsx
+ create mode 100644 src/auth.ts
+ create mode 100644 src/lib/auth/constants.ts
+ create mode 100644 src/lib/auth/password.ts
+ create mode 100644 src/lib/auth/service.ts
+ create mode 100644 src/lib/auth/session.ts
+ create mode 100644 src/types/next-auth.d.ts
+
+diff --git a/.env.example b/.env.example
+index cbb5420..ae957ec 100644
+--- a/.env.example
++++ b/.env.example
+@@ -35,6 +35,15 @@ POSTGRES_PORT=5433
+ # Must match the four values above.
+ DATABASE_URL=postgresql://litigation:dev_only_change_me@localhost:5433/litigation?schema=public
+ 
++# ---- Authentication ------------------------------------------------------
++# Required before the web application starts. Set at least 32 random bytes
++# from a password manager or operating-system cryptographic generator. Never
++# commit, paste into a command argument, or share the real value.
++AUTH_SECRET=
++
++# Development address. Production uses the HTTPS address of the Ubuntu host.
++AUTH_URL=http://localhost:3000
++
+ # ---- Client logo files (D15) ---------------------------------------------
+ # Windows development example:
+ CLIENT_LOGO_ROOT=D:\Projects\litigation-system\storage\client-logos
+diff --git a/README.md b/README.md
+index 40a368a..940e49a 100644
+--- a/README.md
++++ b/README.md
+@@ -3,9 +3,9 @@
+ A web application replacing a Microsoft Access database that has run the firm's
+ litigation practice since 2010.
+ 
+-**Status:** Stage 2 migration and Gate 4 reconciliation are complete. The
+-owner-readable result is in `docs/reconciliations/2026-08-30-gate-4.md`.
+-Progress is tracked in `TASKS.md`.
++**Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
++login work has begun with Task 3.1. The owner-readable migration result is in
++`docs/reconciliations/2026-08-30-gate-4.md`; current progress is in `TASKS.md`.
+ 
+ ---
+ 
+@@ -56,15 +56,22 @@ Excel via ExcelJS. PDF via Playwright. Rationale in `docs/DECISIONS.md`.
+ 
+ ```bash
+ cp .env.example .env
++# Set a private AUTH_SECRET of at least 32 random bytes.
+ # Set CLIENT_LOGO_ROOT to a local folder; production uses
+ # /var/lib/litigation/client-logos.
+ npm install
+ npm run db:up             # PostgreSQL 17 in Docker, on port 5433
+ npm run db:migrate        # build the schema inside it
+ npm run db:check          # confirm the application can reach it
++npm run auth:set-password -- KHelmy  # interactive; repeat for each approved username
+ npm run dev               # http://localhost:3000
+ ```
+ 
++The application accepts usernames, not email addresses. The four initial
++accounts have no password in Git or in their migration; the owner initializes
++each one locally with `auth:set-password`, which hides input and forces a
++change at first login. See `docs/DATABASE.md` for the complete procedure.
++
+ `npm run db:verify` confirms the database is set up correctly — every line
+ must read PASS. Full details, including what to do when something is wrong,
+ are in `docs/DATABASE.md`.
+diff --git a/TASKS.md b/TASKS.md
+index 12d93cd..2e2bbcd 100644
+--- a/TASKS.md
++++ b/TASKS.md
+@@ -1281,7 +1281,14 @@ only ever seen good data is not known to work.
+ 
+ ## Stage 3 — Login and permissions
+ 
+-- [ ] **3.1 Auth.js login**, Arabic screen, firm logo.
++- [x] **3.1 Auth.js login**, Arabic screen, firm logo. Completed 31 August
++      2026 in migration 0052. Username-only Auth.js v5 Credentials; Argon2id
++      v19 (`m=19456`, `t=2`, `p=1`, 32-byte result); five failures lock for 15
++      minutes; absolute 8-hour normal and 7-day remembered sessions; forced
++      first password change; password/account changes invalidate JWT sessions.
++      The Arabic RTL login and change-password screens use the bundled font,
++      firm logo, central strings and logical CSS. Task 3.2 server-side role
++      enforcement remains outstanding.
+       **Four test users supplied by the firm** (do not build until this task):
+       | Name | Username | Email | Role |
+       |---|---|---|---|
+@@ -1295,15 +1302,19 @@ only ever seen good data is not known to work.
+         Ihab Hamdy  → `إيهاب حمدي` (person 4, 2,792 mentions, current, team أ)
+         Samy Khattab → `سامي إبراهيم خطاب` (2,211 mentions, current)
+       **Match through `person_name_alias`, never by typing the Arabic** —
+-      rule 15. Note `سامي إبراهيم خطاب` is one of the six people whose own
+-      name is not yet an alias (task 1.2a); that must be fixed first or the
+-      match returns nothing.
++      rule 15. Samy's exact self-alias was already added by task 1.2a and
++      resolves to person 5; migration 0052 asserts it and does not create a
++      duplicate.
+ 
+       Khaled Helmy and Mohamed Hussien are **new people** — confirmed absent
+       from the roster.
+ 
+-      `people.email` already exists (task 1.2). `can_login` is false for all
+-      138 and is set per account here.
++      `people.email` already existed (task 1.2). The 135 canonical Stage 2
++      people remain a separately checked protected set; Khaled and Mohamed are
++      the first two rows marked `is_application_native`. Four passwordless
++      account records are created and `can_login` follows active/enabled
++      account eligibility. The owner initializes passwords locally with
++      `npm run auth:set-password -- Username`; no password or hash is in Git.
+ 
+ - [ ] **3.2 The four roles**, enforced **server-side** on every route.
+ 
+diff --git a/docs/DATA-MODEL.md b/docs/DATA-MODEL.md
+index bf10962..b1511f0 100644
+--- a/docs/DATA-MODEL.md
++++ b/docs/DATA-MODEL.md
+@@ -14,10 +14,12 @@ Every table carries: `id`, `created_at`, `created_by`, `updated_at`,
+ 
+ ## People and organisation
+ 
+-### `people` — 135 rows
+-The single roster. Replaces both Access lawyer tables.
++### `people` — 137 rows after Task 3.1
++The single roster. Replaces both Access lawyer tables and also holds people
++created natively by the application.
+ 
+-**64 firm staff (21 current, 43 former) + 71 external.**
++**Protected Stage 2 roster: 135 canonical people — 64 firm staff (21 current,
++43 former) + 71 external. Task 3.1 adds two current native staff separately.**
+ 
+ Was 140, then 138, now 135. Two hamza duplicates went first —
+ `احمد إسماعيل`/`أحمد إسماعيل` and `احمد سعيد`/`أحمد سعيد`, differing only at
+@@ -34,18 +36,41 @@ instead of through the alias table. Every old spelling survives as an alias.
+ | `is_active` | boolean | false = has left the firm (43 of 135) |
+ | `is_trainee` | boolean | |
+ | `can_login` | boolean | Former staff never log in |
++| `is_application_native` | boolean | false for all 135 protected Stage 2 people; true for application-created people |
+ 
+-### `person_name_alias` — 347 rows
++### `person_name_alias` — 350 rows after Task 3.1
+ Every spelling ever typed, mapped to one person. Makes historical search work.
+ 
+-339 originals + 6 people whose own name was missing from the table + 2 spacing
+-variants the firm confirmed (task 1.2a). **Zero people are now unfindable by
+-their own name**, which rule 15 depends on: matching through the alias table
+-only works if every name is in it.
++The reviewed Stage 2 baseline contains 348 aliases. Task 3.1 adds the exact
++self-aliases for the two native people. **Zero people are unfindable by their
++own name**, which rule 15 depends on: matching through the alias table only
++works if every name is in it. Samy Khattab's exact self-alias was already
++present from task 1.2a and is asserted rather than duplicated.
+ 
+-### `users`
+-Login accounts. Linked to `people`. Role is one of the four in
+-`docs/PERMISSIONS.md`.
++### `user_accounts`
++One username/password account per person. Usernames keep their approved display
++case but are matched through a separately stored lowercase value with a unique
++constraint. Email is not a login identifier.
++
++| Column | Type | Notes |
++|---|---|---|
++| `person_id` | integer, unique FK | Exactly one account per person |
++| `username` | text | Approved display spelling |
++| `username_normalized` | text, unique | Lowercase login key |
++| `password_hash` | text, null | NULL until initialized locally; Argon2id only afterward |
++| `role_code` | checked text | Exactly the four fixed roles; not a PostgreSQL enum (D8) |
++| `is_enabled` | boolean | Disabled accounts cannot authenticate |
++| `must_change_password` | boolean | true after initialization or administrative reset |
++| `failed_login_attempts` | integer | 0–5; the fifth failure creates a 15-minute lock |
++| `locked_until` | timestamptz, null | Required exactly when the counter is 5 |
++| `session_version` | integer | Incrementing it invalidates every older JWT session |
++| `password_changed_at` | timestamptz, null | NULL only before initial password setup |
++| `last_login_at` | timestamptz, null | Successful credential verification time |
++
++Passwords use Argon2id v19 with 19,456 KiB memory, two iterations, parallelism
++one and a 32-byte result. Auth.js JWTs contain only account/person ids,
++username, Arabic display name, role, password-change state, session version
++and absolute timestamps; no password hash or email is placed in the session.
+ 
+ ---
+ 
+diff --git a/docs/DATABASE.md b/docs/DATABASE.md
+index cade2cf..ee8f701 100644
+--- a/docs/DATABASE.md
++++ b/docs/DATABASE.md
+@@ -316,6 +316,41 @@ The Ubuntu production value must be:
+ The database stores paths relative to this root only. Backups must snapshot
+ the database and this entire folder in one operation (D15/D16).
+ 
++### Authentication secret and initial passwords
++
++Set `AUTH_SECRET` in `.env` to at least 32 random bytes before starting the web
++application. Use a password manager or an operating-system cryptographic
++generator. The real value must never enter Git, a command argument, project
++documentation, chat or a log. `AUTH_URL` is `http://localhost:3000` on the
++development laptop and the application's HTTPS origin in production.
++
++Task 3.1 creates four approved accounts with no password hash. Initialize them
++one at a time from an interactive terminal:
++
++```bash
++npm run auth:set-password -- KHelmy
++npm run auth:set-password -- MHussien
++npm run auth:set-password -- IHamdy
++npm run auth:set-password -- SKhattab
++```
++
++The password is prompted twice with no echo. It is never a command argument or
++environment variable. Redirected input is refused. The command accepts only
++these four initial usernames, updates exactly one account in a transaction,
++clears any lockout, increments the session version and requires the person to
++change that temporary password at first successful login. Do not use email as
++the username.
++
++Passwords require at least 12 Unicode characters and may include spaces. There
++are no arbitrary uppercase, number or punctuation rules. They are hashed with
++Argon2id v19 using 19,456 KiB memory, two iterations, parallelism one and a
++32-byte result.
++
++Five consecutive failures lock an account for 15 minutes. A normal login has
++an absolute eight-hour lifetime; selecting “Remember me” gives an absolute
++seven-day lifetime. Neither duration slides forward. Password changes and
++account disabling invalidate existing sessions.
++
+ ---
+ 
+ ## What is inside, and why
+diff --git a/docs/DECISIONS.md b/docs/DECISIONS.md
+index 8a47014..b1201b7 100644
+--- a/docs/DECISIONS.md
++++ b/docs/DECISIONS.md
+@@ -446,3 +446,27 @@ settled five billing rules. They override the earlier assumption that
+ These rules are migration rules, not permission to rewrite source evidence.
+ Staging remains unchanged. `الفواتير.Pay-Date` remains absolutely excluded by
+ D4: it is neither migrated nor used to infer any billing fact.
++
++## D24 — Login is username-only, with short absolute sessions
++
++The Phase 1 application uses Auth.js v5 Credentials with one account linked to
++one person. Login accepts the approved username and password only: email is
++stored as contact information and is never accepted as a login identifier.
++There is no registration, OAuth, magic link, email reset or user-management
++screen in Task 3.1.
++
++The four role codes are fixed checked text — Administrator, Litigation
++Assistant, Lawyer and Paralegal — rather than a PostgreSQL enum, consistently
++with D8. Task 3.1 stores the role in the account and session. Task 3.2 remains
++responsible for enforcing the complete permission matrix on the server.
++
++Passwords use Argon2id v19 with 19,456 KiB memory, two iterations,
++parallelism one and a 32-byte result. A fifth consecutive failed attempt locks
++the account for 15 minutes. Initial and administratively reset passwords must
++be changed on first login; changing a password invalidates every older session.
++
++A normal session expires absolutely eight hours after authentication. The
++optional, unchecked “Remember me” choice expires absolutely after seven days.
++These are server-enforced non-sliding limits carried inside the encrypted JWT;
++the account's database session version independently invalidates older tokens
++after password or enablement changes.
+diff --git a/docs/PERMISSIONS.md b/docs/PERMISSIONS.md
+index 26d492a..33ed6cf 100644
+--- a/docs/PERMISSIONS.md
++++ b/docs/PERMISSIONS.md
+@@ -23,6 +23,11 @@ About 10 users. Four roles. Users can be added and removed by the Administrator.
+ 
+ ## Notes
+ 
++Task 3.1 stores these four role codes on the initial accounts and implements
++authentication only. **The route-by-route server permission matrix below is
++Task 3.2 and is not yet complete.** A stored role is not by itself an enforced
++permission.
++
+ **Invoices are view-only for everyone, including the Administrator.** New
+ invoicing lives in Excel until Phase 2, so there is nothing to create here yet.
+ 
+diff --git a/docs/reconciliations/2026-08-30-gate-4.md b/docs/reconciliations/2026-08-30-gate-4.md
+index 03eab46..eb4e44b 100644
+--- a/docs/reconciliations/2026-08-30-gate-4.md
++++ b/docs/reconciliations/2026-08-30-gate-4.md
+@@ -216,11 +216,11 @@ The administrative-works dataset compares Access `تاريخ الإنشاء` onl
+ - review answers: 668 value + 76 finding = 744; mapping `bebf8f20140a63d272f80d454d8363d68e1dc7bf12d82b43a45096281b059f51`; answers `cd19213bcad7ad24912c6067384f25aade84f5a1d479be37f0608755d9f75a35`
+ - accepted database-history profile: <code>historical-live</code>; profile digest <code>86eb32a96d97167d6bc699d3576f42c4a6916a53c0a37d557035abd79bd8447f</code>
+ - approved complete Stage 2 profiles: <code>historical-live</code> (<code>86eb32a96d97167d6bc699d3576f42c4a6916a53c0a37d557035abd79bd8447f</code>); <code>canonical-clean-replay</code> (<code>892b382f9d27606fe2b4e1a11eee5e58c2d82c47bab3a3a39b6da8446c358899</code>)
+-- canonical repository migration inventory: 51 files; digest <code>d396eb61965b8b58f96b8815bd5d1c8e086c040e483dc2fce4873bbe1140f2cf</code>
++- canonical repository migration inventory: 52 files; digest <code>d7a801236ab03e167db6a144b7a555c8d3551f532104428c42ade76324c89f00</code>
+ - required Stage 2 migrations proved: 51/51, through <code>20260830110000_preserve_admin_task_created_date</code>
+ - migration 0033 canonical repository checksum: <code>e2879b4449cdb45411857faf3a84cf12a9772bc763645e98139deeec8debdf25</code>; historical live apply-time checksum: <code>dce31bd5e1578a64f2bda516583207408e5911e384555f3db0d913ba9253bd37</code> (the canonical byte stream plus one additional terminal LF)
+-- total successfully applied migrations: 51 (51 required Stage 2 + 0 later)
+-- later successfully applied migrations: 0
++- total successfully applied migrations: 52 (51 required Stage 2 + 1 later)
++- later successfully applied migrations: 1 — <code>20260831100000_authentication</code> (<code>44f35ec266538072f5283d32fb0ff2c3681f5b1f3c4a0e86a9d6402906589de1</code>)
+ - pending repository migrations: 0
+ - approved clean rollbacks: 1 — <code>20260821081746_people_roster_and_teams</code>
+ - unfinished/failed migrations: 0
+diff --git a/package-lock.json b/package-lock.json
+index d0ce0ed..3d7d852 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -12,8 +12,10 @@
+         "@fontsource-variable/noto-naskh-arabic": "^5.3.0",
+         "@prisma/adapter-pg": "^7.9.1",
+         "@prisma/client": "^7.9.1",
++        "argon2": "0.45.1",
+         "exceljs": "^4.4.0",
+         "next": "16.3.1",
++        "next-auth": "5.0.0-beta.32",
+         "react": "19.2.8",
+         "react-dom": "19.2.8"
+       },
+@@ -36,6 +38,35 @@
+         "node": ">=22.0.0"
+       }
+     },
++    "node_modules/@auth/core": {
++      "version": "0.41.3",
++      "resolved": "https://registry.npmjs.org/@auth/core/-/core-0.41.3.tgz",
++      "integrity": "sha512-sJ3JMHHkXMD3aOjopv7mOBTO1Ocw4b0fAEXJBz6k7YHLpYQI6C40jCUPc5fNvUKxXRXNE1/sRISA15UrwWJBTw==",
++      "license": "ISC",
++      "dependencies": {
++        "@panva/hkdf": "^1.2.1",
++        "jose": "^6.0.6",
++        "oauth4webapi": "^3.3.0",
++        "preact": "10.24.3",
++        "preact-render-to-string": "6.5.11"
++      },
++      "peerDependencies": {
++        "@simplewebauthn/browser": "^9.0.1",
++        "@simplewebauthn/server": "^9.0.2",
++        "nodemailer": "^7.0.7 || ^8.0.5"
++      },
++      "peerDependenciesMeta": {
++        "@simplewebauthn/browser": {
++          "optional": true
++        },
++        "@simplewebauthn/server": {
++          "optional": true
++        },
++        "nodemailer": {
++          "optional": true
++        }
++      }
++    },
+     "node_modules/@babel/code-frame": {
+       "version": "7.29.7",
+       "resolved": "https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.29.7.tgz",
+@@ -339,6 +370,12 @@
+         "tslib": "^2.4.0"
+       }
+     },
++    "node_modules/@epic-web/invariant": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/@epic-web/invariant/-/invariant-1.0.0.tgz",
++      "integrity": "sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA==",
++      "license": "MIT"
++    },
+     "node_modules/@esbuild/aix-ppc64": {
+       "version": "0.28.2",
+       "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.28.2.tgz",
+@@ -1839,6 +1876,24 @@
+         "node": ">=12.4.0"
+       }
+     },
++    "node_modules/@panva/hkdf": {
++      "version": "1.2.1",
++      "resolved": "https://registry.npmjs.org/@panva/hkdf/-/hkdf-1.2.1.tgz",
++      "integrity": "sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==",
++      "license": "MIT",
++      "funding": {
++        "url": "https://github.com/sponsors/panva"
++      }
++    },
++    "node_modules/@phc/format": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/@phc/format/-/format-1.0.0.tgz",
++      "integrity": "sha512-m7X9U6BG2+J+R1lSOdCiITLLrxm+cWlNI3HUFA92oLO77ObGNzaKdh8pMLqdZcshtkKuV84olNNXDfMc4FezBQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=10"
++      }
++    },
+     "node_modules/@prisma/adapter-pg": {
+       "version": "7.9.1",
+       "resolved": "https://registry.npmjs.org/@prisma/adapter-pg/-/adapter-pg-7.9.1.tgz",
+@@ -3326,6 +3381,22 @@
+         "safe-buffer": "~5.1.0"
+       }
+     },
++    "node_modules/argon2": {
++      "version": "0.45.1",
++      "resolved": "https://registry.npmjs.org/argon2/-/argon2-0.45.1.tgz",
++      "integrity": "sha512-skm+/WCjkGqCQxF7FG1LuZXM5yvbFjgbfiCGsud2oLgaDhh6b6dbH0b1EkghbM+xx4Bj8Ape+KKgixoIlWZicQ==",
++      "hasInstallScript": true,
++      "license": "MIT",
++      "dependencies": {
++        "@phc/format": "^1.0.0",
++        "cross-env": "^10.1.0",
++        "node-addon-api": "^8.9.0",
++        "node-gyp-build": "^4.8.4"
++      },
++      "engines": {
++        "node": ">=16.17.0"
++      }
++    },
+     "node_modules/argparse": {
+       "version": "2.0.1",
+       "resolved": "https://registry.npmjs.org/argparse/-/argparse-2.0.1.tgz",
+@@ -4016,11 +4087,27 @@
+         "node": ">= 10"
+       }
+     },
++    "node_modules/cross-env": {
++      "version": "10.1.0",
++      "resolved": "https://registry.npmjs.org/cross-env/-/cross-env-10.1.0.tgz",
++      "integrity": "sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw==",
++      "license": "MIT",
++      "dependencies": {
++        "@epic-web/invariant": "^1.0.0",
++        "cross-spawn": "^7.0.6"
++      },
++      "bin": {
++        "cross-env": "dist/bin/cross-env.js",
++        "cross-env-shell": "dist/bin/cross-env-shell.js"
++      },
++      "engines": {
++        "node": ">=20"
++      }
++    },
+     "node_modules/cross-spawn": {
+       "version": "7.0.6",
+       "resolved": "https://registry.npmjs.org/cross-spawn/-/cross-spawn-7.0.6.tgz",
+       "integrity": "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==",
+-      "devOptional": true,
+       "license": "MIT",
+       "dependencies": {
+         "path-key": "^3.1.0",
+@@ -6447,7 +6534,6 @@
+       "version": "2.0.0",
+       "resolved": "https://registry.npmjs.org/isexe/-/isexe-2.0.0.tgz",
+       "integrity": "sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==",
+-      "devOptional": true,
+       "license": "ISC"
+     },
+     "node_modules/iterator.prototype": {
+@@ -6478,6 +6564,15 @@
+         "jiti": "lib/jiti-cli.mjs"
+       }
+     },
++    "node_modules/jose": {
++      "version": "6.2.10",
++      "resolved": "https://registry.npmjs.org/jose/-/jose-6.2.10.tgz",
++      "integrity": "sha512-iiW7J9qRFlGxvCOIBDBDxFePQSn7ZMAnrYGhrrOo6siO/MIqwfyilLR27pkfDgUk+raLuzADS8A3S/KLBisc0g==",
++      "license": "MIT",
++      "funding": {
++        "url": "https://github.com/sponsors/panva"
++      }
++    },
+     "node_modules/js-tokens": {
+       "version": "4.0.0",
+       "resolved": "https://registry.npmjs.org/js-tokens/-/js-tokens-4.0.0.tgz",
+@@ -7083,6 +7178,42 @@
+         }
+       }
+     },
++    "node_modules/next-auth": {
++      "version": "5.0.0-beta.32",
++      "resolved": "https://registry.npmjs.org/next-auth/-/next-auth-5.0.0-beta.32.tgz",
++      "integrity": "sha512-CGlChIEWZ6LltNVxrE5yiySMID+Idpmry47JYA5lLwgD8Sx02a8M65VL0TWVz9nbnOioS/tCW/rP/0+mE7Qp4Q==",
++      "license": "ISC",
++      "dependencies": {
++        "@auth/core": "0.41.3"
++      },
++      "peerDependencies": {
++        "@simplewebauthn/browser": "^9.0.1",
++        "@simplewebauthn/server": "^9.0.2",
++        "next": "^14.0.0-0 || ^15.0.0 || ^16.0.0",
++        "nodemailer": "^7.0.7 || ^8.0.5",
++        "react": "^18.2.0 || ^19.0.0"
++      },
++      "peerDependenciesMeta": {
++        "@simplewebauthn/browser": {
++          "optional": true
++        },
++        "@simplewebauthn/server": {
++          "optional": true
++        },
++        "nodemailer": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/node-addon-api": {
++      "version": "8.9.2",
++      "resolved": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.9.2.tgz",
++      "integrity": "sha512-VijLXbi3UACN69I0JVXJsX4tjACjNoQDgv2gTF6sx2wWEi8tkSg2eX8p5gSIFi8z2+DL3oHmY6OyKce38SDolg==",
++      "license": "MIT",
++      "engines": {
++        "node": "^18 || ^20 || >= 21"
++      }
++    },
+     "node_modules/node-exports-info": {
+       "version": "1.6.2",
+       "resolved": "https://registry.npmjs.org/node-exports-info/-/node-exports-info-1.6.2.tgz",
+@@ -7102,6 +7233,17 @@
+         "url": "https://github.com/sponsors/ljharb"
+       }
+     },
++    "node_modules/node-gyp-build": {
++      "version": "4.8.4",
++      "resolved": "https://registry.npmjs.org/node-gyp-build/-/node-gyp-build-4.8.4.tgz",
++      "integrity": "sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==",
++      "license": "MIT",
++      "bin": {
++        "node-gyp-build": "bin.js",
++        "node-gyp-build-optional": "optional.js",
++        "node-gyp-build-test": "build-test.js"
++      }
++    },
+     "node_modules/node-releases": {
+       "version": "2.0.53",
+       "resolved": "https://registry.npmjs.org/node-releases/-/node-releases-2.0.53.tgz",
+@@ -7121,6 +7263,15 @@
+         "node": ">=0.10.0"
+       }
+     },
++    "node_modules/oauth4webapi": {
++      "version": "3.8.7",
++      "resolved": "https://registry.npmjs.org/oauth4webapi/-/oauth4webapi-3.8.7.tgz",
++      "integrity": "sha512-4RxcKxXjuItDFZ20RRPf4YTw3kpeXJyCgJFxVzJ068A7PNJ18st2Dg90tlC1LkSDS0GecroagCLHYEIVUhCAkw==",
++      "license": "MIT",
++      "funding": {
++        "url": "https://github.com/sponsors/panva"
++      }
++    },
+     "node_modules/object-assign": {
+       "version": "4.1.1",
+       "resolved": "https://registry.npmjs.org/object-assign/-/object-assign-4.1.1.tgz",
+@@ -7371,7 +7522,6 @@
+       "version": "3.1.1",
+       "resolved": "https://registry.npmjs.org/path-key/-/path-key-3.1.1.tgz",
+       "integrity": "sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==",
+-      "devOptional": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8"
+@@ -7618,6 +7768,25 @@
+         "node": ">=0.10.0"
+       }
+     },
++    "node_modules/preact": {
++      "version": "10.24.3",
++      "resolved": "https://registry.npmjs.org/preact/-/preact-10.24.3.tgz",
++      "integrity": "sha512-Z2dPnBnMUfyQfSQ+GBdsGa16hz35YmLmtTLhM169uW944hYL6xzTYkJjC07j+Wosz733pMWx0fgON3JNw1jJQA==",
++      "license": "MIT",
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/preact"
++      }
++    },
++    "node_modules/preact-render-to-string": {
++      "version": "6.5.11",
++      "resolved": "https://registry.npmjs.org/preact-render-to-string/-/preact-render-to-string-6.5.11.tgz",
++      "integrity": "sha512-ubnauqoGczeGISiOh6RjX0/cdaF8v/oDXIjO85XALCQjwQP+SB4RDXXtvZ6yTYSjG+PC1QRP2AhPgCEsM2EvUw==",
++      "license": "MIT",
++      "peerDependencies": {
++        "preact": ">=10"
++      }
++    },
+     "node_modules/prelude-ls": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/prelude-ls/-/prelude-ls-1.2.1.tgz",
+@@ -8304,7 +8473,6 @@
+       "version": "2.0.0",
+       "resolved": "https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz",
+       "integrity": "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==",
+-      "devOptional": true,
+       "license": "MIT",
+       "dependencies": {
+         "shebang-regex": "^3.0.0"
+@@ -8317,7 +8485,6 @@
+       "version": "3.0.0",
+       "resolved": "https://registry.npmjs.org/shebang-regex/-/shebang-regex-3.0.0.tgz",
+       "integrity": "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==",
+-      "devOptional": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8"
+@@ -9144,7 +9311,6 @@
+       "version": "2.0.2",
+       "resolved": "https://registry.npmjs.org/which/-/which-2.0.2.tgz",
+       "integrity": "sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==",
+-      "devOptional": true,
+       "license": "ISC",
+       "dependencies": {
+         "isexe": "^2.0.0"
+diff --git a/package.json b/package.json
+index 902da59..22098fe 100644
+--- a/package.json
++++ b/package.json
+@@ -29,6 +29,7 @@
+     "db:studio": "prisma studio",
+     "db:generate": "prisma generate",
+     "db:check": "tsx scripts/check-db.ts",
++    "auth:set-password": "tsx scripts/auth-set-password.ts",
+     "load:staging": "tsx scripts/load-staging.ts",
+     "profile:staging": "tsx scripts/profile-staging.ts",
+     "review:workbook": "tsx scripts/build-review-workbook.ts",
+@@ -64,6 +65,7 @@
+     "test:fee-letter-transform": "tsx scripts/test-fee-letter-transform.ts",
+     "test:billing-transform": "tsx scripts/test-billing-transform.ts",
+     "test:attendance-transform": "tsx scripts/test-attendance-transform.ts",
++    "test:auth": "tsx scripts/test-auth.ts",
+     "transform:client-logos": "tsx scripts/transform-client-logos.ts",
+     "test:client-logo-transform": "tsx scripts/test-client-logo-transform.ts",
+     "reconcile:gate4": "tsx scripts/reconcile-gate4.ts --write-report --prove-idempotency",
+@@ -81,8 +83,10 @@
+     "@fontsource-variable/noto-naskh-arabic": "^5.3.0",
+     "@prisma/adapter-pg": "^7.9.1",
+     "@prisma/client": "^7.9.1",
++    "argon2": "0.45.1",
+     "exceljs": "^4.4.0",
+     "next": "16.3.1",
++    "next-auth": "5.0.0-beta.32",
+     "react": "19.2.8",
+     "react-dom": "19.2.8"
+   },
+diff --git a/prisma/migrations/20260831100000_authentication/migration.sql b/prisma/migrations/20260831100000_authentication/migration.sql
+new file mode 100644
+index 0000000..df95259
+--- /dev/null
++++ b/prisma/migrations/20260831100000_authentication/migration.sql
+@@ -0,0 +1,256 @@
++-- Task 3.1: username/password authentication and the four owner-approved
++-- initial account identities. Passwords are deliberately absent: the owner
++-- initializes each one through the interactive local command after review.
++
++ALTER TABLE public.people
++  ADD COLUMN is_application_native boolean NOT NULL DEFAULT false;
++
++CREATE TABLE public.user_accounts (
++  id integer GENERATED BY DEFAULT AS IDENTITY,
++  person_id integer NOT NULL,
++  username text NOT NULL,
++  username_normalized text NOT NULL,
++  password_hash text,
++  role_code text NOT NULL,
++  is_enabled boolean NOT NULL DEFAULT true,
++  must_change_password boolean NOT NULL DEFAULT true,
++  failed_login_attempts integer NOT NULL DEFAULT 0,
++  locked_until timestamptz(6),
++  session_version integer NOT NULL DEFAULT 0,
++  password_changed_at timestamptz(6),
++  last_login_at timestamptz(6),
++  created_at timestamptz(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++  created_by integer,
++  updated_at timestamptz(6) NOT NULL,
++  updated_by integer,
++  CONSTRAINT user_accounts_pkey PRIMARY KEY (id),
++  CONSTRAINT user_accounts_person_id_key UNIQUE (person_id),
++  CONSTRAINT user_accounts_username_normalized_key UNIQUE (username_normalized),
++  CONSTRAINT user_accounts_person_id_fkey
++    FOREIGN KEY (person_id) REFERENCES public.people(id)
++    ON UPDATE CASCADE ON DELETE RESTRICT,
++  CONSTRAINT user_accounts_username_display_shape CHECK (
++    username = btrim(username)
++    AND username ~ '^[A-Za-z][A-Za-z0-9._-]{2,63}$'::text
++  ),
++  CONSTRAINT user_accounts_username_normalized_shape CHECK (
++    username_normalized = lower(username)
++    AND username_normalized ~ '^[a-z][a-z0-9._-]{2,63}$'::text
++  ),
++  CONSTRAINT user_accounts_role_code_shape CHECK (
++    role_code = ANY (ARRAY[
++      'Administrator'::text,
++      'Litigation Assistant'::text,
++      'Lawyer'::text,
++      'Paralegal'::text
++    ])
++  ),
++  CONSTRAINT user_accounts_lockout_shape CHECK (
++    failed_login_attempts BETWEEN 0 AND 5
++    AND (
++      (failed_login_attempts < 5 AND locked_until IS NULL)
++      OR (failed_login_attempts = 5 AND locked_until IS NOT NULL)
++    )
++  ),
++  CONSTRAINT user_accounts_session_version_shape CHECK (session_version >= 0),
++  CONSTRAINT user_accounts_password_state_shape CHECK (
++    (
++      password_hash IS NULL
++      AND must_change_password
++      AND password_changed_at IS NULL
++      AND failed_login_attempts = 0
++      AND locked_until IS NULL
++    )
++    OR (
++      password_hash ~ '^\$argon2id\$v=19\$m=19456,p=1,t=2\$[A-Za-z0-9+/]+={0,2}\$[A-Za-z0-9+/]+={0,2}$'::text
++      AND password_changed_at IS NOT NULL
++    )
++  )
++);
++
++CREATE FUNCTION public.guard_user_account_security()
++RETURNS trigger
++LANGUAGE plpgsql
++VOLATILE
++SECURITY INVOKER
++SET search_path = pg_catalog, public
++AS $$
++BEGIN
++  IF NEW.person_id <> OLD.person_id THEN
++    RAISE EXCEPTION 'A user account cannot be moved to another person';
++  END IF;
++  IF NEW.session_version < OLD.session_version THEN
++    RAISE EXCEPTION 'A user account session version cannot decrease';
++  END IF;
++  IF OLD.password_hash IS NOT NULL AND NEW.password_hash IS NULL THEN
++    RAISE EXCEPTION 'An initialized user password cannot be cleared';
++  END IF;
++  IF NEW.password_hash IS DISTINCT FROM OLD.password_hash
++     OR (OLD.is_enabled AND NOT NEW.is_enabled) THEN
++    IF NEW.session_version <= OLD.session_version THEN
++      RAISE EXCEPTION 'Password changes and account disabling must invalidate sessions';
++    END IF;
++    IF NEW.failed_login_attempts <> 0 OR NEW.locked_until IS NOT NULL THEN
++      RAISE EXCEPTION 'Password changes and account disabling must clear lockout state';
++    END IF;
++  END IF;
++  RETURN NEW;
++END;
++$$;
++
++CREATE TRIGGER user_accounts_security_guard
++BEFORE UPDATE OF person_id, password_hash, is_enabled, failed_login_attempts,
++  locked_until, session_version ON public.user_accounts
++FOR EACH ROW EXECUTE FUNCTION public.guard_user_account_security();
++
++CREATE FUNCTION public.enforce_person_login_eligibility()
++RETURNS trigger
++LANGUAGE plpgsql
++VOLATILE
++SECURITY INVOKER
++SET search_path = pg_catalog, public
++AS $$
++BEGIN
++  NEW.can_login := NEW.is_active AND EXISTS (
++    SELECT 1 FROM public.user_accounts a
++     WHERE a.person_id = NEW.id AND a.is_enabled
++  );
++  RETURN NEW;
++END;
++$$;
++
++CREATE TRIGGER people_login_eligibility_guard
++BEFORE INSERT OR UPDATE OF is_active, can_login ON public.people
++FOR EACH ROW EXECUTE FUNCTION public.enforce_person_login_eligibility();
++
++CREATE FUNCTION public.sync_user_account_person_login()
++RETURNS trigger
++LANGUAGE plpgsql
++VOLATILE
++SECURITY INVOKER
++SET search_path = pg_catalog, public
++AS $$
++DECLARE
++  affected_person_id integer;
++BEGIN
++  affected_person_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.person_id ELSE NEW.person_id END;
++  UPDATE public.people
++     SET can_login = is_active AND EXISTS (
++           SELECT 1 FROM public.user_accounts a
++            WHERE a.person_id = affected_person_id AND a.is_enabled
++         ),
++         updated_at = CURRENT_TIMESTAMP
++   WHERE id = affected_person_id;
++  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
++END;
++$$;
++
++CREATE TRIGGER user_accounts_sync_person_login
++AFTER INSERT OR DELETE OR UPDATE OF is_enabled ON public.user_accounts
++FOR EACH ROW EXECUTE FUNCTION public.sync_user_account_person_login();
++
++-- Identity preconditions. Rule 15 applies: existing people resolve through
++-- person_name_alias, even when the canonical name is known.
++DO $$
++DECLARE
++  ihab_id integer;
++  samy_id integer;
++BEGIN
++  SELECT min(person_id) INTO ihab_id
++    FROM public.person_name_alias WHERE alias_ar = 'إيهاب حمدي'
++   HAVING count(*) = 1;
++  IF ihab_id IS DISTINCT FROM 4 THEN
++    RAISE EXCEPTION 'Ihab Hamdy must resolve once through alias to person 4';
++  END IF;
++
++  SELECT min(person_id) INTO samy_id
++    FROM public.person_name_alias WHERE alias_ar = 'سامي إبراهيم خطاب'
++   HAVING count(*) = 1;
++  IF samy_id IS NULL OR
++     (SELECT name_ar FROM public.people WHERE id = samy_id) <> 'سامي إبراهيم خطاب' THEN
++    RAISE EXCEPTION 'Samy Khattab exact self-alias must resolve once to the canonical person';
++  END IF;
++
++  IF EXISTS (
++    SELECT 1 FROM public.people
++     WHERE ar_normalise(name_ar) IN (ar_normalise('خالد حلمي'), ar_normalise('محمد حسين'))
++        OR lower(btrim(coalesce(name_en, ''))) IN ('khaled helmy', 'mohamed hussien')
++        OR lower(btrim(coalesce(email, ''))) IN (
++          'khelmy@sarieldin.com', 'mhussien@sarieldin.com',
++          'ihamdy@sarieldin.com', 'skhattab@sarieldin.com'
++        )
++  ) OR EXISTS (
++    SELECT 1 FROM public.person_name_alias
++     WHERE ar_normalise(alias_ar) IN (ar_normalise('خالد حلمي'), ar_normalise('محمد حسين'))
++  ) THEN
++    RAISE EXCEPTION 'A Task 3.1 native identity or approved email already exists';
++  END IF;
++END;
++$$;
++
++INSERT INTO public.people (
++  name_ar, name_en, email, is_staff, is_active, is_trainee, can_login,
++  is_application_native, updated_at
++) VALUES
++  ('خالد حلمي', 'Khaled Helmy', 'khelmy@sarieldin.com', true, true, false, false, true, CURRENT_TIMESTAMP),
++  ('محمد حسين', 'Mohamed Hussien', 'mhussien@sarieldin.com', true, true, false, false, true, CURRENT_TIMESTAMP);
++
++INSERT INTO public.person_name_alias (person_id, alias_ar, is_primary)
++SELECT id, name_ar, true FROM public.people
++ WHERE name_ar IN ('خالد حلمي', 'محمد حسين')
++ ORDER BY name_ar;
++
++UPDATE public.people p
++   SET email = approved.email,
++       updated_at = CURRENT_TIMESTAMP
++  FROM (VALUES
++    ('إيهاب حمدي'::text, 'ihamdy@sarieldin.com'::text),
++    ('سامي إبراهيم خطاب'::text, 'skhattab@sarieldin.com'::text)
++  ) AS approved(alias_ar, email)
++  JOIN public.person_name_alias a ON a.alias_ar = approved.alias_ar
++ WHERE p.id = a.person_id;
++
++INSERT INTO public.user_accounts (
++  person_id, username, username_normalized, role_code, updated_at
++)
++SELECT a.person_id, approved.username, lower(approved.username), approved.role_code,
++       CURRENT_TIMESTAMP
++  FROM (VALUES
++    ('خالد حلمي'::text, 'KHelmy'::text, 'Administrator'::text),
++    ('محمد حسين'::text, 'MHussien'::text, 'Litigation Assistant'::text),
++    ('إيهاب حمدي'::text, 'IHamdy'::text, 'Lawyer'::text),
++    ('سامي إبراهيم خطاب'::text, 'SKhattab'::text, 'Paralegal'::text)
++  ) AS approved(alias_ar, username, role_code)
++  JOIN public.person_name_alias a ON a.alias_ar = approved.alias_ar;
++
++DO $$
++DECLARE
++  problems integer;
++BEGIN
++  SELECT count(*) INTO problems FROM (
++    VALUES
++      ('KHelmy'::text, 'خالد حلمي'::text, 'khelmy@sarieldin.com'::text, 'Administrator'::text, true),
++      ('MHussien'::text, 'محمد حسين'::text, 'mhussien@sarieldin.com'::text, 'Litigation Assistant'::text, true),
++      ('IHamdy'::text, 'إيهاب حمدي'::text, 'ihamdy@sarieldin.com'::text, 'Lawyer'::text, false),
++      ('SKhattab'::text, 'سامي إبراهيم خطاب'::text, 'skhattab@sarieldin.com'::text, 'Paralegal'::text, false)
++  ) expected(username, name_ar, email, role_code, native)
++  LEFT JOIN public.user_accounts u ON u.username = expected.username
++  LEFT JOIN public.people p ON p.id = u.person_id
++  WHERE u.id IS NULL
++     OR p.name_ar IS DISTINCT FROM expected.name_ar
++     OR p.email IS DISTINCT FROM expected.email
++     OR u.role_code IS DISTINCT FROM expected.role_code
++     OR p.is_application_native IS DISTINCT FROM expected.native
++     OR p.can_login IS NOT TRUE
++     OR u.password_hash IS NOT NULL;
++
++  IF problems <> 0 OR (SELECT count(*) FROM public.user_accounts) <> 4 THEN
++    RAISE EXCEPTION 'Task 3.1 account mapping postcondition failed';
++  END IF;
++  IF (SELECT count(*) FROM public.people WHERE NOT is_application_native) <> 135
++     OR (SELECT count(*) FROM public.people WHERE is_application_native) <> 2
++     OR (SELECT count(*) FROM public.person_name_alias) <> 350 THEN
++    RAISE EXCEPTION 'Task 3.1 protected/native roster postcondition failed';
++  END IF;
++END;
++$$;
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index b9dd1bf..e4cb1f1 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -406,8 +406,9 @@ model MigrationExcludedName {
+ //  person_name_alias exists, and why every match goes through it.
+ // ===========================================================================
+ 
+-/// Every human the system knows about. 135 rows:
+-/// 64 firm staff (21 current, 43 former) + 71 external.
++/// Every human the system knows about. Task 3.1 has 137 rows:
++/// the protected 135-person migration roster (64 firm staff — 21 current and
++/// 43 former — plus 71 external) and two application-native people.
+ ///
+ /// Was 140, then 138, then 135 — two hamza duplicates merged out at task 1.2,
+ /// three generator artefacts at 1.2b. Every figure here is asserted by
+@@ -438,6 +439,12 @@ model Person {
+   /// Former staff never log in. Set per account at Milestone 4.
+   canLogin  Boolean @default(false) @map("can_login")
+ 
++  /// Distinguishes people created by the application after the protected
++  /// Stage 2 roster closed. The 135 canonical migrated people remain false;
++  /// Task 3.1 adds two named native people as true. This is deliberately not
++  /// inferred from ids or timestamps.
++  isApplicationNative Boolean @default(false) @map("is_application_native")
++
+   /// Which work team. NULL is valid and common — 16 of the 21 current staff
+   /// have none. Team-grouped reports must show those under an "unassigned"
+   /// heading, never drop them. Deliberately NOT on the matter (D6).
+@@ -448,6 +455,7 @@ model Person {
+   reviews LookupTeam[] @relation("TeamReviewer")
+ 
+   aliases PersonNameAlias[]
++  account UserAccount?
+ 
+   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+   createdBy Int?     @map("created_by")
+@@ -481,7 +489,8 @@ model Person {
+   @@map("people")
+ }
+ 
+-/// Every spelling ever typed, mapped to one person. 347 rows.
++/// Every spelling ever typed, mapped to one person. Task 3.1 has 350 rows:
++/// 348 protected migration aliases and two application-native self-aliases.
+ ///
+ /// This is what makes the migration safe and historical search work: any raw
+ /// Access string is looked up here to find the right person, and searching
+@@ -512,6 +521,38 @@ model PersonNameAlias {
+   @@map("person_name_alias")
+ }
+ 
++/// A username/password login linked one-to-one to a person. Auth.js uses the
++/// Credentials provider and encrypted JWT sessions; passwords, lockout state
++/// and the session invalidation version remain server-side here.
++///
++/// `role_code` is a checked string rather than a PostgreSQL enum (D8). The
++/// complete permission matrix is Task 3.2; Task 3.1 stores only the approved
++/// role assignment needed in the session.
++model UserAccount {
++  id                 Int       @id @default(autoincrement())
++  personId           Int       @unique @map("person_id")
++  person             Person    @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "user_accounts_person_id_fkey")
++  /// Approved display spelling. Login uses username_normalized instead.
++  username           String
++  usernameNormalized String    @unique @map("username_normalized")
++  passwordHash       String?   @map("password_hash")
++  roleCode           String    @map("role_code")
++  isEnabled          Boolean   @default(true) @map("is_enabled")
++  mustChangePassword Boolean   @default(true) @map("must_change_password")
++  failedLoginAttempts Int      @default(0) @map("failed_login_attempts")
++  lockedUntil        DateTime? @map("locked_until") @db.Timestamptz(6)
++  sessionVersion     Int       @default(0) @map("session_version")
++  passwordChangedAt  DateTime? @map("password_changed_at") @db.Timestamptz(6)
++  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz(6)
++
++  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
++  createdBy Int?     @map("created_by")
++  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
++  updatedBy Int?     @map("updated_by")
++
++  @@map("user_accounts")
++}
++
+ /// Owner-reviewed, legacy-only English person names used by the Task 2.10A
+ /// billing migration. This is deliberately separate from application aliases:
+ /// application-native rows do not inherit a historical correction by accident.
+diff --git a/proxy.ts b/proxy.ts
+new file mode 100644
+index 0000000..06ca267
+--- /dev/null
++++ b/proxy.ts
+@@ -0,0 +1,5 @@
++export { auth as proxy } from '@/auth';
++
++export const config = {
++  matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico|icon.png|fonts/).*)'],
++};
+diff --git a/scripts/auth-set-password.ts b/scripts/auth-set-password.ts
+new file mode 100644
+index 0000000..d2499e7
+--- /dev/null
++++ b/scripts/auth-set-password.ts
+@@ -0,0 +1,78 @@
++import 'dotenv/config';
++import { stdin, stdout } from 'node:process';
++import { setApprovedAccountPassword } from '../src/lib/auth/service';
++import { passwordMeetsPolicy } from '../src/lib/auth/password';
++import { db } from '../src/lib/db';
++import { t } from '../src/strings';
++
++async function readHidden(prompt: string): Promise<string> {
++  if (!stdin.isTTY || !stdout.isTTY || typeof stdin.setRawMode !== 'function') {
++    throw new Error('tty-required');
++  }
++  stdout.write(prompt);
++  stdin.setEncoding('utf8');
++  stdin.resume();
++  stdin.setRawMode(true);
++
++  return new Promise<string>((resolve, reject) => {
++    let value = '';
++    const finish = (error?: Error) => {
++      stdin.off('data', onData);
++      stdin.setRawMode(false);
++      stdin.pause();
++      stdout.write('\n');
++      if (error) reject(error);
++      else resolve(value);
++    };
++    const onData = (chunk: string) => {
++      for (const character of chunk) {
++        if (character === '\u0003') {
++          finish(new Error('cancelled'));
++          return;
++        }
++        if (character === '\r' || character === '\n') {
++          finish();
++          return;
++        }
++        if (character === '\u0008' || character === '\u007f') {
++          value = [...value].slice(0, -1).join('');
++          continue;
++        }
++        value += character;
++      }
++    };
++    stdin.on('data', onData);
++  });
++}
++
++async function main(): Promise<void> {
++  const username = process.argv[2];
++  if (!username || process.argv.length !== 3) throw new Error('usage');
++  if (!stdin.isTTY || !stdout.isTTY) throw new Error('tty-required');
++
++  const password = await readHidden(t.auth.passwordAdmin.firstPrompt);
++  const confirmation = await readHidden(t.auth.passwordAdmin.secondPrompt);
++  if (password !== confirmation) throw new Error('mismatch');
++  if (!passwordMeetsPolicy(password)) throw new Error('policy');
++
++  const result = await setApprovedAccountPassword(username, password);
++  console.log(`${t.auth.passwordAdmin.success} ${result.username} — ${result.personName}`);
++}
++
++main()
++  .catch((error: unknown) => {
++    const code = error instanceof Error ? error.message : '';
++    const message =
++      code === 'usage'
++        ? t.auth.passwordAdmin.usage
++        : code === 'tty-required'
++          ? t.auth.passwordAdmin.ttyRequired
++          : code === 'mismatch'
++            ? t.auth.passwordAdmin.mismatch
++            : code === 'policy' || code === 'password-policy'
++              ? t.auth.passwordAdmin.policy
++              : t.auth.passwordAdmin.failed;
++    console.error(message);
++    process.exitCode = 1;
++  })
++  .finally(() => void db.$disconnect());
+diff --git a/scripts/check-db.ts b/scripts/check-db.ts
+index e220745..2d0b5b4 100644
+--- a/scripts/check-db.ts
++++ b/scripts/check-db.ts
+@@ -55,6 +55,7 @@ import {
+ } from './lib/client-logo-baseline';
+ import { reconcileClientLogos } from './lib/client-logo-reconciliation';
+ import { clientLogoStructureFailures } from './lib/client-logo-structure';
++import { authDataFailures, authStructureFailures } from './lib/auth-structure';
+ 
+ type Check = { name: string; expected: string; actual: string; ok: boolean };
+ 
+@@ -505,31 +506,49 @@ async function main() {
+   //    once already: merging two duplicate people changed five numbers at
+   //    once, one was corrected and four were left stale, and the assertion
+   //    written at the time would have failed on correct data.
++  const protectedRosterNames = [...new Set(baseline.aliases.map((link) => link.person))];
++  const protectedRoster = { nameAr: { in: protectedRosterNames } };
+   const roster: Array<[string, number, number]> = [
+-    ['people', await db.person.count(), 135],
+-    ['aliases', await db.personNameAlias.count(), 348],
+-    ['staff', await db.person.count({ where: { isStaff: true } }), 64],
+-    ['current', await db.person.count({ where: { isStaff: true, isActive: true } }), 21],
+-    ['former', await db.person.count({ where: { isStaff: true, isActive: false } }), 43],
+-    ['external', await db.person.count({ where: { isStaff: false } }), 71],
++    ['people', await db.person.count({ where: protectedRoster }), 135],
++    [
++      'reviewed aliases',
++      baseline.counts.aliases - drift.filter((d) => d.kind === 'alias').length,
++      348,
++    ],
++    ['staff', await db.person.count({ where: { ...protectedRoster, isStaff: true } }), 64],
++    [
++      'current',
++      await db.person.count({ where: { ...protectedRoster, isStaff: true, isActive: true } }),
++      21,
++    ],
++    [
++      'former',
++      await db.person.count({ where: { ...protectedRoster, isStaff: true, isActive: false } }),
++      43,
++    ],
++    ['external', await db.person.count({ where: { ...protectedRoster, isStaff: false } }), 71],
+     ['teams', await db.lookupTeam.count(), 2],
+     [
+       'current with a team',
+-      await db.person.count({ where: { isStaff: true, isActive: true, teamId: { not: null } } }),
++      await db.person.count({
++        where: { ...protectedRoster, isStaff: true, isActive: true, teamId: { not: null } },
++      }),
+       5,
+     ],
+     [
+       'current without a team',
+-      await db.person.count({ where: { isStaff: true, isActive: true, teamId: null } }),
++      await db.person.count({
++        where: { ...protectedRoster, isStaff: true, isActive: true, teamId: null },
++      }),
+       16,
+     ],
+   ];
+   const rosterWrong = roster.filter(([, actual, expected]) => actual !== expected);
+   record(
+-    'Roster figures (9)',
++    'Protected Stage 2 roster figures (9)',
+     '135/348/64/21/43/71/2/5/16',
+     rosterWrong.length === 0
+-      ? roster.map(([, actual]) => actual).join('/')
++      ? `${roster.map(([, actual]) => actual).join('/')}; native additions excluded`
+       : rosterWrong.map(([n, a2, e]) => `${n} ${a2}/${e}`).join(', '),
+     rosterWrong.length === 0,
+   );
+@@ -623,7 +642,7 @@ async function main() {
+     'One primary alias per person',
+     'every person exactly 1, and it is their own name',
+     primaryCounts.length === 0 && notOwnName.length === 0
+-      ? 'all 135 correct'
++      ? `all ${await db.person.count()} correct`
+       : `${primaryCounts.length} with the wrong number, ` +
+           `${notOwnName.length} not the person's own name`,
+     primaryCounts.length === 0 && notOwnName.length === 0,
+@@ -2585,6 +2604,22 @@ async function main() {
+         : logoStructure.join('; '),
+       logoStructure.length === 0,
+     );
++    const authData = await authDataFailures(relationshipDb);
++    record(
++      'Task 3.1 initial identities and authentication state',
++      'four exact account/person/alias mappings; 135 protected canonical people plus two named native additions; valid eligibility and password states',
++      authData.length === 0 ? 'all identity and state invariants exact' : authData.join('; '),
++      authData.length === 0,
++    );
++    const authStructure = await authStructureFailures(relationshipDb);
++    record(
++      'Authentication constraints and security guards',
++      'complete PostgreSQL 17.11 definitions, including function configuration',
++      authStructure.length === 0
++        ? 'all complete catalog definitions exact'
++        : authStructure.join('; '),
++      authStructure.length === 0,
++    );
+   } finally {
+     await relationshipDb.end();
+   }
+diff --git a/scripts/lib/auth-structure.ts b/scripts/lib/auth-structure.ts
+new file mode 100644
+index 0000000..990f0cd
+--- /dev/null
++++ b/scripts/lib/auth-structure.ts
+@@ -0,0 +1,376 @@
++import type { ClientBase } from 'pg';
++
++type ConstraintRow = {
++  name: string;
++  schema_name: string;
++  table_name: string;
++  type: string;
++  validated: boolean;
++  no_inherit: boolean;
++  deferrable: boolean;
++  deferred: boolean;
++  definition: string;
++  source_columns: string[];
++  target_schema: string | null;
++  target_table: string | null;
++  target_columns: string[];
++  update_action: string;
++  delete_action: string;
++  match_type: string;
++};
++
++type IndexRow = {
++  name: string;
++  schema_name: string;
++  table_name: string;
++  method: string;
++  unique_index: boolean;
++  valid: boolean;
++  ready: boolean;
++  live: boolean;
++  immediate: boolean;
++  key_count: number;
++  attribute_count: number;
++  columns: string[];
++  predicate: string | null;
++  expressions: string | null;
++  definition: string;
++};
++
++type TriggerRow = {
++  name: string;
++  schema_name: string;
++  table_name: string;
++  enabled: string;
++  internal: boolean;
++  trigger_type: number;
++  function_schema: string;
++  function_name: string;
++  definition: string;
++};
++
++type FunctionRow = {
++  name: string;
++  schema_name: string;
++  return_type: string;
++  arguments: string;
++  identity_arguments: string;
++  language_name: string;
++  function_kind: string;
++  volatility: string;
++  strict: boolean;
++  security_definer: boolean;
++  leakproof: boolean;
++  parallel_safety: string;
++  configuration: string[] | null;
++  body: string;
++};
++
++const constraintDefinitions: Readonly<Record<string, string>> = {
++  user_accounts_pkey: 'PRIMARY KEY (id)',
++  user_accounts_person_id_key: 'UNIQUE (person_id)',
++  user_accounts_username_normalized_key: 'UNIQUE (username_normalized)',
++  user_accounts_person_id_fkey:
++    'FOREIGN KEY (person_id) REFERENCES people(id) ON UPDATE CASCADE ON DELETE RESTRICT',
++  user_accounts_username_display_shape:
++    "CHECK (username = btrim(username) AND username ~ '^[A-Za-z][A-Za-z0-9._-]{2,63}$'::text)",
++  user_accounts_username_normalized_shape:
++    "CHECK (username_normalized = lower(username) AND username_normalized ~ '^[a-z][a-z0-9._-]{2,63}$'::text)",
++  user_accounts_role_code_shape:
++    "CHECK (role_code = ANY (ARRAY['Administrator'::text, 'Litigation Assistant'::text, 'Lawyer'::text, 'Paralegal'::text]))",
++  user_accounts_lockout_shape:
++    'CHECK (failed_login_attempts >= 0 AND failed_login_attempts <= 5 AND (failed_login_attempts < 5 AND locked_until IS NULL OR failed_login_attempts = 5 AND locked_until IS NOT NULL))',
++  user_accounts_session_version_shape: 'CHECK (session_version >= 0)',
++  user_accounts_password_state_shape:
++    "CHECK (password_hash IS NULL AND must_change_password AND password_changed_at IS NULL AND failed_login_attempts = 0 AND locked_until IS NULL OR password_hash ~ '^\\$argon2id\\$v=19\\$m=19456,p=1,t=2\\$[A-Za-z0-9+/]+={0,2}\\$[A-Za-z0-9+/]+={0,2}$'::text AND password_changed_at IS NOT NULL)",
++};
++
++const indexDefinitions = {
++  user_accounts_pkey: ['id'],
++  user_accounts_person_id_key: ['person_id'],
++  user_accounts_username_normalized_key: ['username_normalized'],
++} as const;
++
++const triggerDefinitions = {
++  people_login_eligibility_guard: {
++    table: 'people',
++    type: 23,
++    function: 'enforce_person_login_eligibility',
++    definition:
++      'CREATE TRIGGER people_login_eligibility_guard BEFORE INSERT OR UPDATE OF is_active, can_login ON people FOR EACH ROW EXECUTE FUNCTION enforce_person_login_eligibility()',
++  },
++  user_accounts_security_guard: {
++    table: 'user_accounts',
++    type: 19,
++    function: 'guard_user_account_security',
++    definition:
++      'CREATE TRIGGER user_accounts_security_guard BEFORE UPDATE OF person_id, password_hash, is_enabled, failed_login_attempts, locked_until, session_version ON user_accounts FOR EACH ROW EXECUTE FUNCTION guard_user_account_security()',
++  },
++  user_accounts_sync_person_login: {
++    table: 'user_accounts',
++    type: 29,
++    function: 'sync_user_account_person_login',
++    definition:
++      'CREATE TRIGGER user_accounts_sync_person_login AFTER INSERT OR DELETE OR UPDATE OF is_enabled ON user_accounts FOR EACH ROW EXECUTE FUNCTION sync_user_account_person_login()',
++  },
++} as const;
++
++const functionBodies: Readonly<Record<string, string>> = {
++  enforce_person_login_eligibility: `BEGIN
++  NEW.can_login := NEW.is_active AND EXISTS (
++    SELECT 1 FROM public.user_accounts a
++     WHERE a.person_id = NEW.id AND a.is_enabled
++  );
++  RETURN NEW;
++END;`,
++  guard_user_account_security: `BEGIN
++  IF NEW.person_id <> OLD.person_id THEN
++    RAISE EXCEPTION 'A user account cannot be moved to another person';
++  END IF;
++  IF NEW.session_version < OLD.session_version THEN
++    RAISE EXCEPTION 'A user account session version cannot decrease';
++  END IF;
++  IF OLD.password_hash IS NOT NULL AND NEW.password_hash IS NULL THEN
++    RAISE EXCEPTION 'An initialized user password cannot be cleared';
++  END IF;
++  IF NEW.password_hash IS DISTINCT FROM OLD.password_hash
++     OR (OLD.is_enabled AND NOT NEW.is_enabled) THEN
++    IF NEW.session_version <= OLD.session_version THEN
++      RAISE EXCEPTION 'Password changes and account disabling must invalidate sessions';
++    END IF;
++    IF NEW.failed_login_attempts <> 0 OR NEW.locked_until IS NOT NULL THEN
++      RAISE EXCEPTION 'Password changes and account disabling must clear lockout state';
++    END IF;
++  END IF;
++  RETURN NEW;
++END;`,
++  sync_user_account_person_login: `DECLARE
++  affected_person_id integer;
++BEGIN
++  affected_person_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.person_id ELSE NEW.person_id END;
++  UPDATE public.people
++     SET can_login = is_active AND EXISTS (
++           SELECT 1 FROM public.user_accounts a
++            WHERE a.person_id = affected_person_id AND a.is_enabled
++         ),
++         updated_at = CURRENT_TIMESTAMP
++   WHERE id = affected_person_id;
++  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
++END;`,
++};
++
++function canon(value: string): string {
++  return value.replaceAll(/\s+/gu, ' ').trim();
++}
++
++function same(left: readonly string[], right: readonly string[]): boolean {
++  return left.length === right.length && left.every((value, index) => value === right[index]);
++}
++
++export async function authStructureFailures(db: ClientBase): Promise<string[]> {
++  const failures: string[] = [];
++  const constraints = await db.query<ConstraintRow>(`
++    SELECT con.conname name,ns.nspname schema_name,rel.relname table_name,
++           con.contype::text type,con.convalidated validated,con.connoinherit no_inherit,
++           con.condeferrable deferrable,con.condeferred deferred,
++           pg_get_constraintdef(con.oid,true) definition,
++           coalesce((SELECT array_agg(a.attname ORDER BY k.ordinality)
++             FROM unnest(con.conkey) WITH ORDINALITY k(attnum,ordinality)
++             JOIN pg_attribute a ON a.attrelid=con.conrelid AND a.attnum=k.attnum),
++             ARRAY[]::name[])::text[] source_columns,
++           tns.nspname target_schema,trel.relname target_table,
++           coalesce((SELECT array_agg(a.attname ORDER BY k.ordinality)
++             FROM unnest(con.confkey) WITH ORDINALITY k(attnum,ordinality)
++             JOIN pg_attribute a ON a.attrelid=con.confrelid AND a.attnum=k.attnum),
++             ARRAY[]::name[])::text[] target_columns,
++           con.confupdtype::text update_action,con.confdeltype::text delete_action,
++           con.confmatchtype::text match_type
++      FROM pg_constraint con JOIN pg_class rel ON rel.oid=con.conrelid
++      JOIN pg_namespace ns ON ns.oid=rel.relnamespace
++      LEFT JOIN pg_class trel ON trel.oid=con.confrelid
++      LEFT JOIN pg_namespace tns ON tns.oid=trel.relnamespace
++     WHERE ns.nspname='public' AND rel.relname='user_accounts'
++     ORDER BY con.conname`);
++  const expectedNames = Object.keys(constraintDefinitions).sort();
++  for (const name of expectedNames) {
++    const row = constraints.rows.find((candidate) => candidate.name === name);
++    if (!row) {
++      failures.push(`missing constraint ${name}`);
++      continue;
++    }
++    const expectedType =
++      name === 'user_accounts_pkey'
++        ? 'p'
++        : name.endsWith('_key')
++          ? 'u'
++          : name.endsWith('_fkey')
++            ? 'f'
++            : 'c';
++    if (
++      row.schema_name !== 'public' ||
++      row.table_name !== 'user_accounts' ||
++      row.type !== expectedType ||
++      !row.validated ||
++      row.no_inherit !== (expectedType !== 'c') ||
++      row.deferrable ||
++      row.deferred ||
++      row.definition !== constraintDefinitions[name]
++    ) {
++      failures.push(`constraint ${name} definition/options differ`);
++    }
++    if (
++      name === 'user_accounts_person_id_fkey' &&
++      (!same(row.source_columns, ['person_id']) ||
++        row.target_schema !== 'public' ||
++        row.target_table !== 'people' ||
++        !same(row.target_columns, ['id']) ||
++        row.update_action !== 'c' ||
++        row.delete_action !== 'r' ||
++        row.match_type !== 's')
++    ) {
++      failures.push('user_accounts_person_id_fkey relation actions/columns differ');
++    }
++  }
++
++  const indexes = await db.query<IndexRow>(`
++    SELECT ir.relname name,ins.nspname schema_name,tr.relname table_name,
++           am.amname method,i.indisunique unique_index,i.indisvalid valid,
++           i.indisready ready,i.indislive live,i.indimmediate immediate,
++           i.indnkeyatts key_count,i.indnatts attribute_count,
++           ARRAY(SELECT pg_get_indexdef(i.indexrelid,n,true)
++                   FROM generate_series(1,i.indnkeyatts)n ORDER BY n) columns,
++           pg_get_expr(i.indpred,i.indrelid,true) predicate,
++           pg_get_expr(i.indexprs,i.indrelid,true) expressions,
++           pg_get_indexdef(i.indexrelid,0,true) definition
++      FROM pg_index i JOIN pg_class ir ON ir.oid=i.indexrelid
++      JOIN pg_namespace ins ON ins.oid=ir.relnamespace
++      JOIN pg_class tr ON tr.oid=i.indrelid JOIN pg_am am ON am.oid=ir.relam
++     WHERE ins.nspname='public' AND tr.relname='user_accounts'
++     ORDER BY ir.relname`);
++  for (const [name, columns] of Object.entries(indexDefinitions)) {
++    const row = indexes.rows.find((candidate) => candidate.name === name);
++    const expectedDefinition = `CREATE UNIQUE INDEX ${name} ON user_accounts USING btree (${columns.join(', ')})`;
++    if (
++      !row ||
++      row.schema_name !== 'public' ||
++      row.table_name !== 'user_accounts' ||
++      row.method !== 'btree' ||
++      !row.unique_index ||
++      !row.valid ||
++      !row.ready ||
++      !row.live ||
++      !row.immediate ||
++      row.key_count !== 1 ||
++      row.attribute_count !== 1 ||
++      !same(row.columns, columns) ||
++      row.predicate !== null ||
++      row.expressions !== null ||
++      row.definition !== expectedDefinition
++    ) {
++      failures.push(`index ${name} definition/options differ`);
++    }
++  }
++
++  const triggers = await db.query<TriggerRow>(`
++    SELECT t.tgname name,ns.nspname schema_name,r.relname table_name,
++           t.tgenabled::text enabled,t.tgisinternal internal,t.tgtype trigger_type,
++           fns.nspname function_schema,p.proname function_name,
++           pg_get_triggerdef(t.oid,true) definition
++      FROM pg_trigger t JOIN pg_class r ON r.oid=t.tgrelid
++      JOIN pg_namespace ns ON ns.oid=r.relnamespace JOIN pg_proc p ON p.oid=t.tgfoid
++      JOIN pg_namespace fns ON fns.oid=p.pronamespace
++     WHERE ns.nspname='public' AND NOT t.tgisinternal
++       AND t.tgname IN ('people_login_eligibility_guard','user_accounts_security_guard','user_accounts_sync_person_login')
++     ORDER BY t.tgname`);
++  for (const [name, expected] of Object.entries(triggerDefinitions)) {
++    const row = triggers.rows.find((candidate) => candidate.name === name);
++    if (
++      !row ||
++      row.schema_name !== 'public' ||
++      row.table_name !== expected.table ||
++      row.enabled !== 'O' ||
++      row.internal ||
++      row.trigger_type !== expected.type ||
++      row.function_schema !== 'public' ||
++      row.function_name !== expected.function ||
++      row.definition !== expected.definition
++    ) {
++      failures.push(`trigger ${name} definition/options differ`);
++    }
++  }
++
++  const functions = await db.query<FunctionRow>(`
++    SELECT p.proname name,ns.nspname schema_name,
++           pg_get_function_result(p.oid) return_type,
++           pg_get_function_arguments(p.oid) arguments,
++           pg_get_function_identity_arguments(p.oid) identity_arguments,
++           l.lanname language_name,p.prokind::text function_kind,
++           p.provolatile::text volatility,p.proisstrict strict,
++           p.prosecdef security_definer,p.proleakproof leakproof,
++           p.proparallel::text parallel_safety,p.proconfig configuration,p.prosrc body
++      FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
++      JOIN pg_language l ON l.oid=p.prolang
++     WHERE ns.nspname='public'
++       AND p.proname IN ('guard_user_account_security','enforce_person_login_eligibility','sync_user_account_person_login')
++     ORDER BY p.proname`);
++  for (const [name, expectedBody] of Object.entries(functionBodies)) {
++    const row = functions.rows.find((candidate) => candidate.name === name);
++    if (
++      !row ||
++      row.schema_name !== 'public' ||
++      row.return_type !== 'trigger' ||
++      row.arguments !== '' ||
++      row.identity_arguments !== '' ||
++      row.language_name !== 'plpgsql' ||
++      row.function_kind !== 'f' ||
++      row.volatility !== 'v' ||
++      row.strict ||
++      row.security_definer ||
++      row.leakproof ||
++      row.parallel_safety !== 'u' ||
++      !same(row.configuration ?? [], ['search_path=pg_catalog, public']) ||
++      canon(row.body) !== canon(expectedBody)
++    ) {
++      failures.push(`function ${name} definition/configuration differ`);
++    }
++  }
++  return failures;
++}
++
++export async function authDataFailures(db: ClientBase): Promise<string[]> {
++  const result = await db.query<{ defect: string }>(`
++    WITH expected(username,name_ar,email,role_code,native,person_id) AS (VALUES
++      ('KHelmy','خالد حلمي','khelmy@sarieldin.com','Administrator',true,NULL::integer),
++      ('MHussien','محمد حسين','mhussien@sarieldin.com','Litigation Assistant',true,NULL::integer),
++      ('IHamdy','إيهاب حمدي','ihamdy@sarieldin.com','Lawyer',false,4),
++      ('SKhattab','سامي إبراهيم خطاب','skhattab@sarieldin.com','Paralegal',false,5)
++    ), defects AS (
++      SELECT 'approved account mapping differs' defect FROM expected e
++      LEFT JOIN user_accounts u ON u.username=e.username
++      LEFT JOIN people p ON p.id=u.person_id
++      LEFT JOIN person_name_alias a ON a.person_id=p.id AND a.alias_ar=e.name_ar
++      WHERE u.id IS NULL OR p.name_ar IS DISTINCT FROM e.name_ar
++         OR p.email IS DISTINCT FROM e.email OR u.role_code IS DISTINCT FROM e.role_code
++         OR p.is_application_native IS DISTINCT FROM e.native
++         OR (e.person_id IS NOT NULL AND p.id IS DISTINCT FROM e.person_id)
++         OR a.person_id IS NULL
++      UNION ALL
++      SELECT 'protected canonical roster no longer has 135 people'
++       WHERE (SELECT count(*) FROM people WHERE NOT is_application_native) <> 135
++      UNION ALL
++      SELECT 'the two Task 3.1 native people are not exact'
++       WHERE (SELECT count(*) FROM people WHERE is_application_native
++               AND name_ar IN ('خالد حلمي','محمد حسين')) <> 2
++      UNION ALL
++      SELECT 'people.can_login differs from active enabled-account eligibility'
++       WHERE EXISTS (
++         SELECT 1 FROM people p WHERE p.can_login IS DISTINCT FROM
++           (p.is_active AND EXISTS (SELECT 1 FROM user_accounts u WHERE u.person_id=p.id AND u.is_enabled))
++       )
++      UNION ALL
++      SELECT 'an initialized password does not use the approved Argon2id parameters'
++       WHERE EXISTS (SELECT 1 FROM user_accounts WHERE password_hash IS NOT NULL AND
++         password_hash !~ '^\\$argon2id\\$v=19\\$m=19456,p=1,t=2\\$[A-Za-z0-9+/]+={0,2}\\$[A-Za-z0-9+/]+={0,2}$')
++    ) SELECT defect FROM defects ORDER BY defect`);
++  return result.rows.map((row) => row.defect);
++}
+diff --git a/scripts/test-auth.ts b/scripts/test-auth.ts
+new file mode 100644
+index 0000000..0c36a86
+--- /dev/null
++++ b/scripts/test-auth.ts
+@@ -0,0 +1,601 @@
++import 'dotenv/config';
++import assert from 'node:assert/strict';
++import { spawnSync } from 'node:child_process';
++import { randomBytes } from 'node:crypto';
++import { Client } from 'pg';
++import { createDatabaseClient } from '../src/lib/db';
++import {
++  authenticateCredentials,
++  changeOwnPassword,
++  setApprovedAccountPassword,
++} from '../src/lib/auth/service';
++import {
++  createSessionClaims,
++  readSessionClaims,
++  validateSessionClaims,
++} from '../src/lib/auth/session';
++import {
++  ARGON2ID_PARAMETERS,
++  hashPassword,
++  isApprovedArgon2idHash,
++  passwordMeetsPolicy,
++  verifyPassword,
++} from '../src/lib/auth/password';
++import { NORMAL_SESSION_SECONDS, REMEMBERED_SESSION_SECONDS } from '../src/lib/auth/constants';
++import { authDataFailures, authStructureFailures } from './lib/auth-structure';
++import { createAuthConfig } from '../src/auth';
++
++function identifier(value: string): string {
++  assert.match(value, /^[a-z0-9_]+$/u);
++  return `"${value}"`;
++}
++
++function migrate(databaseUrl: string): void {
++  const result = spawnSync(
++    process.execPath,
++    ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
++    {
++      cwd: process.cwd(),
++      env: { ...process.env, DATABASE_URL: databaseUrl },
++      encoding: 'utf8',
++      maxBuffer: 64 * 1024 * 1024,
++    },
++  );
++  if (result.error) throw result.error;
++  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
++}
++
++async function proveStructureMutation(
++  db: Client,
++  label: string,
++  mutation: string,
++  expected: RegExp,
++): Promise<void> {
++  await db.query('BEGIN');
++  try {
++    await db.query(mutation);
++    const failures = await authStructureFailures(db);
++    assert.match(failures.join('; '), expected, label);
++  } finally {
++    await db.query('ROLLBACK');
++  }
++  assert.deepEqual(
++    await authStructureFailures(db),
++    [],
++    `${label} rollback did not restore structure`,
++  );
++}
++
++async function main(): Promise<void> {
++  const sourceUrl = process.env['DATABASE_URL'];
++  assert.ok(sourceUrl, 'DATABASE_URL is required');
++  const parsed = new URL(sourceUrl);
++  assert.ok(['localhost', '127.0.0.1'].includes(parsed.hostname));
++  assert.equal(parsed.port, '5433');
++  const fixtureName = `litigation_auth_fixture_${process.pid}_${Date.now()}`;
++  const fixtureUrl = new URL(parsed);
++  fixtureUrl.pathname = `/${fixtureName}`;
++  const adminUrl = new URL(parsed);
++  adminUrl.pathname = '/postgres';
++
++  const admin = new Client({ connectionString: adminUrl.toString() });
++  let created = false;
++  await admin.connect();
++  try {
++    const prior = await admin.query<{ count: string }>(
++      'SELECT count(*)::text count FROM pg_database WHERE datname=$1',
++      [fixtureName],
++    );
++    assert.equal(prior.rows[0]?.count, '0');
++    await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
++    created = true;
++    migrate(fixtureUrl.toString());
++
++    const database = createDatabaseClient(fixtureUrl.toString());
++    const catalog = new Client({ connectionString: fixtureUrl.toString() });
++    await catalog.connect();
++    try {
++      assert.deepEqual(await authStructureFailures(catalog), []);
++      assert.deepEqual(await authDataFailures(catalog), []);
++
++      const priorSecret = process.env['AUTH_SECRET'];
++      delete process.env['AUTH_SECRET'];
++      assert.throws(() => createAuthConfig(), /AUTH_SECRET/u);
++      const productionConfig = createAuthConfig({
++        secret: randomBytes(48).toString('base64url'),
++        secure: true,
++      });
++      assert.equal(productionConfig.providers.length, 1);
++      assert.equal(productionConfig.session?.strategy, 'jwt');
++      assert.equal(productionConfig.session?.maxAge, REMEMBERED_SESSION_SECONDS);
++      assert.equal(productionConfig.useSecureCookies, true);
++      assert.equal(productionConfig.cookies?.sessionToken?.options?.httpOnly, true);
++      assert.equal(productionConfig.cookies?.sessionToken?.options?.sameSite, 'lax');
++      assert.equal(productionConfig.cookies?.sessionToken?.options?.secure, true);
++      if (priorSecret === undefined) delete process.env['AUTH_SECRET'];
++      else process.env['AUTH_SECRET'] = priorSecret;
++
++      const mappings = await database.userAccount.findMany({
++        where: { username: { in: ['KHelmy', 'MHussien', 'IHamdy', 'SKhattab'] } },
++        select: {
++          username: true,
++          usernameNormalized: true,
++          roleCode: true,
++          passwordHash: true,
++          person: {
++            select: {
++              id: true,
++              nameAr: true,
++              email: true,
++              isApplicationNative: true,
++              canLogin: true,
++            },
++          },
++        },
++        orderBy: { username: 'asc' },
++      });
++      assert.deepEqual(
++        mappings.map((row) => ({
++          username: row.username,
++          normalized: row.usernameNormalized,
++          role: row.roleCode,
++          nameAr: row.person.nameAr,
++          email: row.person.email,
++          native: row.person.isApplicationNative,
++          canLogin: row.person.canLogin,
++          initialized: row.passwordHash !== null,
++        })),
++        [
++          {
++            username: 'IHamdy',
++            normalized: 'ihamdy',
++            role: 'Lawyer',
++            nameAr: 'إيهاب حمدي',
++            email: 'ihamdy@sarieldin.com',
++            native: false,
++            canLogin: true,
++            initialized: false,
++          },
++          {
++            username: 'KHelmy',
++            normalized: 'khelmy',
++            role: 'Administrator',
++            nameAr: 'خالد حلمي',
++            email: 'khelmy@sarieldin.com',
++            native: true,
++            canLogin: true,
++            initialized: false,
++          },
++          {
++            username: 'MHussien',
++            normalized: 'mhussien',
++            role: 'Litigation Assistant',
++            nameAr: 'محمد حسين',
++            email: 'mhussien@sarieldin.com',
++            native: true,
++            canLogin: true,
++            initialized: false,
++          },
++          {
++            username: 'SKhattab',
++            normalized: 'skhattab',
++            role: 'Paralegal',
++            nameAr: 'سامي إبراهيم خطاب',
++            email: 'skhattab@sarieldin.com',
++            native: false,
++            canLogin: true,
++            initialized: false,
++          },
++        ],
++      );
++      assert.equal(mappings.find((row) => row.username === 'IHamdy')?.person.id, 4);
++      assert.equal(mappings.find((row) => row.username === 'SKhattab')?.person.id, 5);
++      assert.notEqual(
++        mappings.find((row) => row.username === 'KHelmy')?.person.id,
++        mappings.find((row) => row.username === 'MHussien')?.person.id,
++      );
++      assert.equal(await database.person.count({ where: { isApplicationNative: false } }), 135);
++      assert.equal(await database.person.count({ where: { isApplicationNative: true } }), 2);
++      assert.equal(await database.personNameAlias.count(), 350);
++
++      await assert.rejects(
++        database.personNameAlias.create({
++          data: { personId: 4, aliasAr: 'سامي إبراهيم خطاب', isPrimary: false },
++        }),
++      );
++      await assert.rejects(
++        database.userAccount.create({
++          data: {
++            personId: 4,
++            username: 'Another',
++            usernameNormalized: 'another',
++            roleCode: 'Lawyer',
++            updatedAt: new Date(),
++          },
++        }),
++      );
++      await assert.rejects(
++        database.userAccount.create({
++          data: {
++            personId: 6,
++            username: 'khelmy',
++            usernameNormalized: 'khelmy',
++            roleCode: 'Lawyer',
++            updatedAt: new Date(),
++          },
++        }),
++      );
++
++      assert.equal(ARGON2ID_PARAMETERS.memoryCost, 19_456);
++      assert.equal(ARGON2ID_PARAMETERS.timeCost, 2);
++      assert.equal(ARGON2ID_PARAMETERS.parallelism, 1);
++      assert.equal(passwordMeetsPolicy('مسافات مقبولة 12'), true);
++      assert.equal(passwordMeetsPolicy('short'), false);
++      const directHash = await hashPassword(`fixture ${randomBytes(12).toString('base64url')}`);
++      assert.equal(isApprovedArgon2idHash(directHash), true);
++      assert.equal(await verifyPassword(directHash, 'incorrect fixture value'), false);
++      assert.equal(await verifyPassword('malformed', 'anything'), false);
++
++      const temporaryPassword = `A ${randomBytes(18).toString('base64url')}`;
++      const replacementPassword = `B ${randomBytes(18).toString('base64url')}`;
++      await setApprovedAccountPassword('kHeLmY', temporaryPassword, { database });
++      const initialized = await database.userAccount.findUniqueOrThrow({
++        where: { usernameNormalized: 'khelmy' },
++      });
++      assert.equal(initialized.mustChangePassword, true);
++      assert.equal(initialized.failedLoginAttempts, 0);
++      assert.equal(initialized.lockedUntil, null);
++      assert.ok(initialized.passwordHash);
++      assert.equal(isApprovedArgon2idHash(initialized.passwordHash), true);
++      await assert.rejects(
++        database.userAccount.update({
++          where: { id: initialized.id },
++          data: {
++            passwordHash: 'malformed',
++            passwordChangedAt: new Date(),
++            sessionVersion: { increment: 1 },
++          },
++        }),
++      );
++      await assert.rejects(
++        setApprovedAccountPassword('not-approved', temporaryPassword, { database }),
++        /approved-account-required/u,
++      );
++
++      let dummyCalls = 0;
++      assert.equal(
++        await authenticateCredentials(
++          { username: 'does-not-exist', password: temporaryPassword },
++          {
++            database,
++            dummyVerify: async () => {
++              dummyCalls += 1;
++            },
++          },
++        ),
++        null,
++      );
++      assert.equal(dummyCalls, 1, 'nonexistent username did not take the dummy verification path');
++      assert.equal(
++        await authenticateCredentials(
++          { username: 'MHussien', password: temporaryPassword },
++          {
++            database,
++            dummyVerify: async () => {
++              dummyCalls += 1;
++            },
++          },
++        ),
++        null,
++        'an account without an initial password authenticated',
++      );
++
++      const clock = new Date('2026-08-31T09:00:00.000Z');
++      for (let attempt = 1; attempt <= 4; attempt += 1) {
++        assert.equal(
++          await authenticateCredentials(
++            { username: 'KHELmy', password: `${temporaryPassword} wrong` },
++            { database, now: clock },
++          ),
++          null,
++        );
++        const state = await database.userAccount.findUniqueOrThrow({
++          where: { usernameNormalized: 'khelmy' },
++        });
++        assert.equal(state.failedLoginAttempts, attempt);
++        assert.equal(state.lockedUntil, null);
++      }
++      assert.equal(
++        await authenticateCredentials(
++          { username: 'KHelmy', password: `${temporaryPassword} wrong` },
++          { database, now: clock },
++        ),
++        null,
++      );
++      let state = await database.userAccount.findUniqueOrThrow({
++        where: { usernameNormalized: 'khelmy' },
++      });
++      assert.equal(state.failedLoginAttempts, 5);
++      assert.equal(state.lockedUntil?.toISOString(), '2026-08-31T09:15:00.000Z');
++      assert.equal(
++        await authenticateCredentials(
++          { username: 'KHelmy', password: temporaryPassword },
++          { database, now: new Date('2026-08-31T09:14:59.999Z') },
++        ),
++        null,
++      );
++
++      const afterExpiry = await authenticateCredentials(
++        { username: 'KHelmy', password: temporaryPassword },
++        { database, now: new Date('2026-08-31T09:15:00.001Z') },
++      );
++      assert.ok(afterExpiry);
++      state = await database.userAccount.findUniqueOrThrow({
++        where: { usernameNormalized: 'khelmy' },
++      });
++      assert.equal(state.failedLoginAttempts, 0);
++      assert.equal(state.lockedUntil, null);
++
++      await database.userAccount.update({
++        where: { id: state.id },
++        data: { failedLoginAttempts: 3, updatedAt: clock },
++      });
++      assert.ok(
++        await authenticateCredentials(
++          { username: 'KHelmy', password: temporaryPassword },
++          { database, now: clock },
++        ),
++      );
++      assert.equal(
++        (await database.userAccount.findUniqueOrThrow({ where: { id: state.id } }))
++          .failedLoginAttempts,
++        0,
++      );
++
++      await database.userAccount.update({
++        where: { id: state.id },
++        data: { failedLoginAttempts: 0, lockedUntil: null, updatedAt: clock },
++      });
++      await Promise.all(
++        Array.from({ length: 5 }, () =>
++          authenticateCredentials(
++            { username: 'KHelmy', password: `${temporaryPassword} concurrent-wrong` },
++            { database, now: clock },
++          ),
++        ),
++      );
++      state = await database.userAccount.findUniqueOrThrow({ where: { id: state.id } });
++      assert.equal(state.failedLoginAttempts, 5);
++      assert.ok(state.lockedUntil);
++
++      await setApprovedAccountPassword('KHelmy', temporaryPassword, { database, now: clock });
++      const normalUser = await authenticateCredentials(
++        { username: 'KHelmy', password: temporaryPassword },
++        { database, now: clock },
++      );
++      const rememberedUser = await authenticateCredentials(
++        { username: 'KHelmy', password: temporaryPassword, rememberMe: 'true' },
++        { database, now: clock },
++      );
++      assert.ok(normalUser);
++      assert.ok(rememberedUser);
++      const normalClaims = createSessionClaims(normalUser);
++      const rememberedClaims = createSessionClaims(rememberedUser);
++      assert.equal(
++        normalClaims.absoluteExpiresAt - normalClaims.authenticatedAt,
++        NORMAL_SESSION_SECONDS * 1_000,
++      );
++      assert.equal(
++        rememberedClaims.absoluteExpiresAt - rememberedClaims.authenticatedAt,
++        REMEMBERED_SESSION_SECONDS * 1_000,
++      );
++      assert.ok(
++        await validateSessionClaims(normalClaims, {
++          database,
++          now: new Date(normalClaims.absoluteExpiresAt - 1),
++        }),
++      );
++      assert.equal(
++        await validateSessionClaims(normalClaims, {
++          database,
++          now: new Date(normalClaims.absoluteExpiresAt),
++        }),
++        null,
++      );
++      assert.equal(readSessionClaims({ ...normalClaims, remembered: true }), null);
++      assert.equal(
++        await validateSessionClaims(
++          { ...normalClaims, personId: 999_999 },
++          { database, now: clock },
++        ),
++        null,
++      );
++
++      assert.equal(
++        await changeOwnPassword(
++          {
++            accountId: Number(normalUser.id),
++            sessionVersion: normalUser.sessionVersion,
++            currentPassword: temporaryPassword,
++            newPassword: temporaryPassword,
++          },
++          { database, now: clock },
++        ),
++        'reused',
++      );
++      assert.equal(
++        await changeOwnPassword(
++          {
++            accountId: Number(normalUser.id),
++            sessionVersion: normalUser.sessionVersion,
++            currentPassword: `${temporaryPassword} wrong`,
++            newPassword: replacementPassword,
++          },
++          { database, now: clock },
++        ),
++        'invalid-current',
++      );
++      assert.equal(
++        await changeOwnPassword(
++          {
++            accountId: Number(normalUser.id),
++            sessionVersion: normalUser.sessionVersion,
++            currentPassword: temporaryPassword,
++            newPassword: replacementPassword,
++          },
++          { database, now: clock },
++        ),
++        'changed',
++      );
++      assert.equal(await validateSessionClaims(normalClaims, { database, now: clock }), null);
++      const replacementLogin = await authenticateCredentials(
++        { username: 'KHelmy', password: replacementPassword },
++        { database, now: clock },
++      );
++      assert.ok(replacementLogin);
++      assert.equal(replacementLogin.mustChangePassword, false);
++      const replacementClaims = createSessionClaims(replacementLogin);
++
++      const beforeDisable = await database.userAccount.findUniqueOrThrow({
++        where: { id: Number(replacementLogin.id) },
++      });
++      await database.userAccount.update({
++        where: { id: beforeDisable.id },
++        data: {
++          isEnabled: false,
++          failedLoginAttempts: 0,
++          lockedUntil: null,
++          sessionVersion: { increment: 1 },
++          updatedAt: clock,
++        },
++      });
++      assert.equal(await validateSessionClaims(replacementClaims, { database, now: clock }), null);
++      assert.equal(
++        await authenticateCredentials(
++          { username: 'KHelmy', password: replacementPassword },
++          { database, now: clock },
++        ),
++        null,
++      );
++      assert.equal(
++        (await database.person.findUniqueOrThrow({ where: { id: beforeDisable.personId } }))
++          .canLogin,
++        false,
++      );
++      await database.userAccount.update({
++        where: { id: beforeDisable.id },
++        data: { isEnabled: true, updatedAt: clock },
++      });
++      await database.person.update({
++        where: { id: beforeDisable.personId },
++        data: { isActive: false, updatedAt: clock },
++      });
++      assert.equal(
++        await authenticateCredentials(
++          { username: 'KHelmy', password: replacementPassword },
++          { database, now: clock },
++        ),
++        null,
++      );
++      await database.person.update({
++        where: { id: beforeDisable.personId },
++        data: { isActive: true, updatedAt: clock },
++      });
++      assert.equal(
++        (await database.person.findUniqueOrThrow({ where: { id: beforeDisable.personId } }))
++          .canLogin,
++        true,
++      );
++
++      const nonInteractive = spawnSync(
++        process.execPath,
++        ['node_modules/tsx/dist/cli.mjs', 'scripts/auth-set-password.ts', 'KHelmy'],
++        {
++          cwd: process.cwd(),
++          env: { ...process.env, DATABASE_URL: fixtureUrl.toString() },
++          input: '',
++          encoding: 'utf8',
++        },
++      );
++      assert.equal(nonInteractive.status, 1);
++      assert.match(nonInteractive.stderr, /طرفية تفاعلية/u);
++
++      await proveStructureMutation(
++        catalog,
++        'weakened role CHECK',
++        `ALTER TABLE user_accounts DROP CONSTRAINT user_accounts_role_code_shape;
++         ALTER TABLE user_accounts ADD CONSTRAINT user_accounts_role_code_shape CHECK(role_code <> '');`,
++        /constraint user_accounts_role_code_shape/u,
++      );
++      await proveStructureMutation(
++        catalog,
++        'wrong foreign-key action',
++        `ALTER TABLE user_accounts DROP CONSTRAINT user_accounts_person_id_fkey;
++         ALTER TABLE user_accounts ADD CONSTRAINT user_accounts_person_id_fkey
++           FOREIGN KEY(person_id) REFERENCES people(id) ON UPDATE CASCADE ON DELETE CASCADE;`,
++        /user_accounts_person_id_fkey/u,
++      );
++      await proveStructureMutation(
++        catalog,
++        'non-unique username index',
++        `ALTER TABLE user_accounts DROP CONSTRAINT user_accounts_username_normalized_key;
++         CREATE INDEX user_accounts_username_normalized_key ON user_accounts(username_normalized);`,
++        /index user_accounts_username_normalized_key/u,
++      );
++      await proveStructureMutation(
++        catalog,
++        'permissive diagnostic-retaining function',
++        `CREATE OR REPLACE FUNCTION guard_user_account_security() RETURNS trigger
++           LANGUAGE plpgsql SET search_path=pg_catalog,public AS $$
++         BEGIN
++           PERFORM 'Password changes and account disabling must invalidate sessions';
++           RETURN NEW;
++         END; $$;`,
++        /function guard_user_account_security/u,
++      );
++      await proveStructureMutation(
++        catalog,
++        'function configuration change',
++        `ALTER FUNCTION guard_user_account_security() SET search_path=public;`,
++        /function guard_user_account_security/u,
++      );
++      await proveStructureMutation(
++        catalog,
++        'trigger retargeted to permissive function',
++        `CREATE FUNCTION fixture_permissive_auth_guard() RETURNS trigger LANGUAGE plpgsql AS $$
++         BEGIN RETURN NEW; END; $$;
++         DROP TRIGGER user_accounts_security_guard ON user_accounts;
++         CREATE TRIGGER user_accounts_security_guard BEFORE UPDATE OF person_id,password_hash,
++           is_enabled,failed_login_attempts,locked_until,session_version ON user_accounts
++           FOR EACH ROW EXECUTE FUNCTION fixture_permissive_auth_guard();`,
++        /trigger user_accounts_security_guard/u,
++      );
++
++      assert.deepEqual(await authStructureFailures(catalog), []);
++      assert.deepEqual(await authDataFailures(catalog), []);
++      console.log('PASS Task 3.1 authentication fixture and negative tests');
++      console.log('PASS exact four identities; two native people; Ihab person 4; Samy person 5');
++      console.log(
++        'PASS Argon2id, lockout concurrency, forced change, absolute sessions, invalidation',
++      );
++      console.log('PASS exact PostgreSQL constraints, indexes, triggers and functions');
++    } finally {
++      await catalog.end();
++      await database.$disconnect();
++    }
++  } finally {
++    if (created) {
++      await admin.query(
++        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()`,
++        [fixtureName],
++      );
++      await admin.query(`DROP DATABASE ${identifier(fixtureName)}`);
++    }
++    await admin.end();
++  }
++}
++
++main().catch((error: unknown) => {
++  console.error(error instanceof Error ? error.stack : String(error));
++  process.exitCode = 1;
++});
+diff --git a/scripts/test-gate4.ts b/scripts/test-gate4.ts
+index 0862d0b..7843f79 100644
+--- a/scripts/test-gate4.ts
++++ b/scripts/test-gate4.ts
+@@ -435,7 +435,6 @@ const tests: readonly Test[] = [
+     run: async () => {
+       const inventory = await readGate4RepositoryMigrationInventory();
+       assert.deepEqual(inventory.defects, []);
+-      assert.equal(inventory.migrations.length, 51);
+       const canonical = inventory.migrations.find(
+         (migration) => migration.name === GATE4_WHITESPACE_MIGRATION,
+       );
+diff --git a/src/app/_components/auth-shell.tsx b/src/app/_components/auth-shell.tsx
+new file mode 100644
+index 0000000..3c5b804
+--- /dev/null
++++ b/src/app/_components/auth-shell.tsx
+@@ -0,0 +1,38 @@
++import Image from 'next/image';
++import firmLogo from '../../../assets/logo.png';
++import { t } from '@/strings';
++import styles from '../auth.module.css';
++
++export function AuthShell({
++  title,
++  subtitle,
++  children,
++}: {
++  title: string;
++  subtitle: string;
++  children: React.ReactNode;
++}) {
++  return (
++    <main className={styles.screen}>
++      <section className={styles.panel} aria-labelledby="auth-title">
++        <div className={styles.brand}>
++          <Image
++            className={styles.logo}
++            src={firmLogo}
++            alt={t.auth.logoAlt}
++            priority
++            sizes="(max-width: 40rem) 70vw, 24rem"
++          />
++          <p className={styles.systemName}>{t.app.system}</p>
++        </div>
++        <div className={styles.formPanel}>
++          <header className={styles.heading}>
++            <h1 id="auth-title">{title}</h1>
++            <p>{subtitle}</p>
++          </header>
++          {children}
++        </div>
++      </section>
++    </main>
++  );
++}
+diff --git a/src/app/api/auth/[...nextauth]/route.ts b/src/app/api/auth/[...nextauth]/route.ts
+new file mode 100644
+index 0000000..d5566a7
+--- /dev/null
++++ b/src/app/api/auth/[...nextauth]/route.ts
+@@ -0,0 +1,4 @@
++import { handlers } from '@/auth';
++
++export const runtime = 'nodejs';
++export const { GET, POST } = handlers;
+diff --git a/src/app/auth.module.css b/src/app/auth.module.css
+new file mode 100644
+index 0000000..b744493
+--- /dev/null
++++ b/src/app/auth.module.css
+@@ -0,0 +1,218 @@
++.screen {
++  min-block-size: 100dvh;
++  display: grid;
++  place-items: center;
++  padding-block: var(--space-8);
++  padding-inline: var(--space-4);
++  background-color: var(--colour-primary-dark);
++}
++
++.panel {
++  inline-size: min(100%, 62rem);
++  display: grid;
++  grid-template-columns: minmax(18rem, 0.9fr) minmax(20rem, 1.1fr);
++  overflow: hidden;
++  border-radius: calc(var(--radius) * 2);
++  border: 1px solid var(--colour-primary-mid);
++  background-color: var(--colour-surface);
++  box-shadow: 0 1rem 3rem color-mix(in srgb, var(--colour-text) 28%, transparent);
++}
++
++.brand {
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  gap: var(--space-6);
++  padding-block: var(--space-8);
++  padding-inline: var(--space-8);
++  background-color: var(--colour-background);
++  background-image: repeating-linear-gradient(
++    135deg,
++    transparent 0,
++    transparent 2.25rem,
++    var(--hairline) 2.25rem,
++    var(--hairline) 2.3rem
++  );
++}
++
++.logo {
++  inline-size: 100%;
++  block-size: auto;
++}
++
++.systemName {
++  margin: 0;
++  color: var(--colour-primary);
++  font-size: var(--text-lg);
++  font-weight: 700;
++  text-align: center;
++}
++
++.formPanel {
++  padding-block: calc(var(--space-8) * 1.5);
++  padding-inline: calc(var(--space-8) * 1.25);
++}
++
++.heading {
++  margin-block-end: var(--space-6);
++}
++
++.heading p {
++  color: var(--colour-text-muted);
++}
++
++.form {
++  display: grid;
++  gap: var(--space-4);
++}
++
++.field {
++  display: grid;
++  gap: var(--space-1);
++}
++
++.field label {
++  color: var(--colour-text);
++  font-weight: 700;
++}
++
++.field input {
++  inline-size: 100%;
++  min-block-size: 3rem;
++  border: 1px solid var(--colour-border);
++  border-radius: var(--radius);
++  padding-block: var(--space-2);
++  padding-inline: var(--space-3);
++  background-color: var(--colour-surface);
++  color: var(--colour-text);
++  font: inherit;
++  text-align: start;
++}
++
++.field input:focus-visible,
++.checkbox input:focus-visible,
++.primaryButton:focus-visible,
++.secondaryButton:focus-visible {
++  outline: 3px solid var(--colour-accent);
++  outline-offset: 3px;
++}
++
++.field input:disabled,
++.primaryButton:disabled {
++  opacity: 0.65;
++  cursor: not-allowed;
++}
++
++.checkbox {
++  display: flex;
++  align-items: center;
++  gap: var(--space-2);
++  cursor: pointer;
++}
++
++.checkbox input {
++  inline-size: 1.25rem;
++  block-size: 1.25rem;
++  accent-color: var(--colour-primary);
++}
++
++.hint {
++  margin: 0;
++  color: var(--colour-text-muted);
++  font-size: var(--text-sm);
++}
++
++.error,
++.success {
++  margin: 0;
++  border-radius: var(--radius);
++  padding-block: var(--space-3);
++  padding-inline: var(--space-4);
++}
++
++.error {
++  border: 1px solid var(--colour-danger);
++  color: var(--text-attention);
++  background-color: var(--panel-inset);
++}
++
++.success {
++  border: 1px solid var(--colour-accent);
++  color: var(--text-positive);
++  background-color: var(--panel-inset);
++}
++
++.primaryButton,
++.secondaryButton {
++  min-block-size: 3rem;
++  border-radius: var(--radius);
++  padding-block: var(--space-2);
++  padding-inline: var(--space-6);
++  font: inherit;
++  font-weight: 700;
++  cursor: pointer;
++}
++
++.primaryButton {
++  border: 1px solid var(--colour-primary);
++  background-color: var(--colour-primary);
++  color: var(--colour-on-primary);
++}
++
++.primaryButton:hover:not(:disabled) {
++  background-color: var(--colour-primary-mid);
++}
++
++.secondaryButton {
++  border: 1px solid var(--colour-primary);
++  background-color: var(--colour-surface);
++  color: var(--colour-primary);
++}
++
++.accountSummary {
++  display: grid;
++  gap: var(--space-2);
++  margin-block-end: var(--space-6);
++  padding-block: var(--space-4);
++  padding-inline: var(--space-4);
++  background-color: var(--panel-inset);
++  border: 1px solid var(--hairline);
++  border-radius: var(--radius);
++}
++
++.accountSummary p {
++  margin: 0;
++}
++
++@media (max-width: 46rem) {
++  .screen {
++    padding-block: var(--space-4);
++    padding-inline: var(--space-3);
++  }
++
++  .panel {
++    grid-template-columns: minmax(0, 1fr);
++  }
++
++  .brand {
++    padding-block: var(--space-6);
++    padding-inline: var(--space-8);
++  }
++
++  .logo {
++    max-inline-size: 23rem;
++    margin-inline: auto;
++  }
++
++  .formPanel {
++    padding-block: var(--space-8);
++    padding-inline: var(--space-6);
++  }
++}
++
++@media (max-width: 24rem) {
++  .formPanel,
++  .brand {
++    padding-inline: var(--space-4);
++  }
++}
+diff --git a/src/app/change-password/actions.ts b/src/app/change-password/actions.ts
+new file mode 100644
+index 0000000..1a1c8c9
+--- /dev/null
++++ b/src/app/change-password/actions.ts
+@@ -0,0 +1,33 @@
++'use server';
++
++import { auth, signOut } from '@/auth';
++import { changeOwnPassword } from '@/lib/auth/service';
++import { t } from '@/strings';
++
++export type PasswordChangeState = { error: string };
++
++export async function changePasswordAction(
++  _previous: PasswordChangeState,
++  formData: FormData,
++): Promise<PasswordChangeState> {
++  const session = await auth();
++  if (!session) return { error: t.auth.passwordChangeFailed };
++  const currentPassword = String(formData.get('currentPassword') ?? '');
++  const newPassword = String(formData.get('newPassword') ?? '');
++  const confirmation = String(formData.get('confirmPassword') ?? '');
++  if (newPassword !== confirmation) return { error: t.auth.passwordMismatch };
++
++  const result = await changeOwnPassword({
++    accountId: Number(session.user.id),
++    sessionVersion: session.user.sessionVersion,
++    currentPassword,
++    newPassword,
++  });
++  if (result === 'policy') return { error: t.auth.passwordTooShort };
++  if (result === 'reused') return { error: t.auth.passwordReused };
++  if (result !== 'changed') return { error: t.auth.passwordChangeFailed };
++
++  await signOut({ redirect: false });
++  const { redirect } = await import('next/navigation');
++  return redirect('/login?changed=1');
++}
+diff --git a/src/app/change-password/change-password-form.tsx b/src/app/change-password/change-password-form.tsx
+new file mode 100644
+index 0000000..52d0974
+--- /dev/null
++++ b/src/app/change-password/change-password-form.tsx
+@@ -0,0 +1,69 @@
++'use client';
++
++import { useActionState } from 'react';
++import { t } from '@/strings';
++import styles from '../auth.module.css';
++import { changePasswordAction, type PasswordChangeState } from './actions';
++
++const INITIAL_PASSWORD_CHANGE_STATE: PasswordChangeState = { error: '' };
++
++export function ChangePasswordForm() {
++  const [state, action, pending] = useActionState(
++    changePasswordAction,
++    INITIAL_PASSWORD_CHANGE_STATE,
++  );
++  return (
++    <form className={styles.form} action={action} noValidate>
++      {state.error ? (
++        <p className={styles.error} role="alert" aria-live="assertive">
++          {state.error}
++        </p>
++      ) : null}
++      <div className={styles.field}>
++        <label htmlFor="currentPassword">{t.auth.currentPassword}</label>
++        <input
++          id="currentPassword"
++          name="currentPassword"
++          type="password"
++          autoComplete="current-password"
++          dir="ltr"
++          required
++          autoFocus
++          disabled={pending}
++        />
++      </div>
++      <div className={styles.field}>
++        <label htmlFor="newPassword">{t.auth.newPassword}</label>
++        <input
++          id="newPassword"
++          name="newPassword"
++          type="password"
++          autoComplete="new-password"
++          dir="ltr"
++          required
++          aria-describedby="password-policy"
++          disabled={pending}
++        />
++      </div>
++      <div className={styles.field}>
++        <label htmlFor="confirmPassword">{t.auth.confirmPassword}</label>
++        <input
++          id="confirmPassword"
++          name="confirmPassword"
++          type="password"
++          autoComplete="new-password"
++          dir="ltr"
++          required
++          aria-describedby="password-policy"
++          disabled={pending}
++        />
++      </div>
++      <p className={styles.hint} id="password-policy">
++        {t.auth.passwordPolicy}
++      </p>
++      <button className={styles.primaryButton} type="submit" disabled={pending}>
++        {pending ? t.auth.changing : t.auth.changeSubmit}
++      </button>
++    </form>
++  );
++}
+diff --git a/src/app/change-password/page.tsx b/src/app/change-password/page.tsx
+new file mode 100644
+index 0000000..f79f975
+--- /dev/null
++++ b/src/app/change-password/page.tsx
+@@ -0,0 +1,19 @@
++import type { Metadata } from 'next';
++import { redirect } from 'next/navigation';
++import { auth } from '@/auth';
++import { AuthShell } from '@/app/_components/auth-shell';
++import { t } from '@/strings';
++import { ChangePasswordForm } from './change-password-form';
++
++export const metadata: Metadata = { title: t.auth.changeTitle };
++
++export default async function ChangePasswordPage() {
++  const session = await auth();
++  if (!session) redirect('/login');
++  if (!session.user.mustChangePassword) redirect('/');
++  return (
++    <AuthShell title={t.auth.changeTitle} subtitle={t.auth.changeSubtitle}>
++      <ChangePasswordForm />
++    </AuthShell>
++  );
++}
+diff --git a/src/app/login/actions.ts b/src/app/login/actions.ts
+new file mode 100644
+index 0000000..8d58aa8
+--- /dev/null
++++ b/src/app/login/actions.ts
+@@ -0,0 +1,22 @@
++'use server';
++
++import { signIn } from '@/auth';
++import { t } from '@/strings';
++
++export type LoginState = { error: string };
++
++export async function loginAction(_previous: LoginState, formData: FormData): Promise<LoginState> {
++  try {
++    await signIn('credentials', {
++      username: formData.get('username'),
++      password: formData.get('password'),
++      rememberMe: formData.get('rememberMe'),
++      redirect: false,
++    });
++  } catch {
++    return { error: t.auth.invalidCredentials };
++  }
++
++  const { redirect } = await import('next/navigation');
++  return redirect('/');
++}
+diff --git a/src/app/login/login-form.tsx b/src/app/login/login-form.tsx
+new file mode 100644
+index 0000000..2121875
+--- /dev/null
++++ b/src/app/login/login-form.tsx
+@@ -0,0 +1,59 @@
++'use client';
++
++import { useActionState } from 'react';
++import { t } from '@/strings';
++import styles from '../auth.module.css';
++import { loginAction, type LoginState } from './actions';
++
++const INITIAL_LOGIN_STATE: LoginState = { error: '' };
++
++export function LoginForm({ status }: { status?: string }) {
++  const [state, action, pending] = useActionState(loginAction, INITIAL_LOGIN_STATE);
++  return (
++    <form className={styles.form} action={action} noValidate>
++      {status ? (
++        <p className={styles.success} role="status">
++          {status}
++        </p>
++      ) : null}
++      {state.error ? (
++        <p className={styles.error} role="alert" aria-live="assertive">
++          {state.error}
++        </p>
++      ) : null}
++      <div className={styles.field}>
++        <label htmlFor="username">{t.auth.username}</label>
++        <input
++          id="username"
++          name="username"
++          type="text"
++          autoComplete="username"
++          dir="ltr"
++          required
++          autoFocus
++          disabled={pending}
++        />
++      </div>
++      <div className={styles.field}>
++        <label htmlFor="password">{t.auth.password}</label>
++        <input
++          id="password"
++          name="password"
++          type="password"
++          autoComplete="current-password"
++          dir="ltr"
++          required
++          disabled={pending}
++        />
++      </div>
++      <label className={styles.checkbox}>
++        <input name="rememberMe" type="checkbox" value="true" disabled={pending} />
++        <span>{t.auth.rememberMe}</span>
++      </label>
++      <p className={styles.hint}>{t.auth.normalSessionNote}</p>
++      <button className={styles.primaryButton} type="submit" disabled={pending}>
++        {pending ? t.auth.submitting : t.auth.submit}
++      </button>
++    </form>
++  );
++}
+diff --git a/src/app/login/page.tsx b/src/app/login/page.tsx
+new file mode 100644
+index 0000000..fc7dced
+--- /dev/null
++++ b/src/app/login/page.tsx
+@@ -0,0 +1,23 @@
++import type { Metadata } from 'next';
++import { redirect } from 'next/navigation';
++import { auth } from '@/auth';
++import { AuthShell } from '@/app/_components/auth-shell';
++import { t } from '@/strings';
++import { LoginForm } from './login-form';
++
++export const metadata: Metadata = { title: t.auth.loginTitle };
++
++export default async function LoginPage({
++  searchParams,
++}: {
++  searchParams: Promise<{ changed?: string }>;
++}) {
++  const session = await auth();
++  if (session) redirect(session.user.mustChangePassword ? '/change-password' : '/');
++  const parameters = await searchParams;
++  return (
++    <AuthShell title={t.auth.loginTitle} subtitle={t.auth.loginSubtitle}>
++      <LoginForm status={parameters.changed === '1' ? t.auth.passwordChangedStatus : undefined} />
++    </AuthShell>
++  );
++}
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index 75375d5..3bfdb32 100644
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -1,105 +1,34 @@
++import { redirect } from 'next/navigation';
++import { auth, signOut } from '@/auth';
++import { AuthShell } from '@/app/_components/auth-shell';
+ import { t } from '@/strings';
+-import styles from './page.module.css';
++import styles from './auth.module.css';
+ 
+-/* A real line break, kept out of the JSX so it is unmistakable. */
+-const NEWLINE = String.fromCharCode(10);
++export default async function HomePage() {
++  const session = await auth();
++  if (!session) redirect('/login');
++  if (session.user.mustChangePassword) redirect('/change-password');
+ 
+-/*
+- * Task 0.4 verification page. Temporary — the real dashboard replaces it in
+- * Stage 5.
+- *
+- * Its job is to show, on screen, that the six things docs/BRAND.md requires
+- * actually work: right-to-left layout, the bundled Arabic font, the brand
+- * palette, mixed Arabic/Latin text, Western digits, and multi-line values
+- * kept intact.
+- *
+- * Note there is not one piece of visible text written in this file — not
+- * Arabic, and not English either. Everything a reader sees comes from
+- * src/strings.ts (decision D12). The colour names used to live here, which
+- * `npm run check:rtl` now refuses.
+- */
++  async function logoutAction() {
++    'use server';
++    await signOut({ redirectTo: '/login' });
++  }
+ 
+-/*
+- * Hex codes and token names are values, not words, so they stay here. The
+- * name beside each swatch is text a person reads, so it comes from strings.
+- *
+- * EVERY LINE BELOW CARRIES `rtl-ok`, and the reason is the same for all of
+- * them: these hexes are DATA, not styling. This is the task 0.4 page and its
+- * whole job is to prove that each Layer 1 token resolves to the colour
+- * docs/BRAND.md says it should — so the expected value has to be visible
+- * beside the swatch, which is painted by the token itself.
+- *
+- * This is the only place in the codebase where a raw colour is legitimate,
+- * and the exception is written out ten times rather than once because
+- * `rtl-ok` covers a line and the line above it. That is deliberate: an
+- * exception that could be granted to a whole block is an exception nobody
+- * notices growing. Stage 5 deletes this page and the exceptions with it.
+- */
+-const palette = [
+-  { label: t.setupCheck.palette.primary, hex: '#214B4B', token: '--colour-primary' }, // rtl-ok: expected value, see above
+-  { label: t.setupCheck.palette.primaryDark, hex: '#163232', token: '--colour-primary-dark' }, // rtl-ok: expected value
+-  { label: t.setupCheck.palette.primaryMid, hex: '#2B605C', token: '--colour-primary-mid' }, // rtl-ok: expected value
+-  { label: t.setupCheck.palette.accent, hex: '#46A398', token: '--colour-accent' }, // rtl-ok: expected value
+-  { label: t.setupCheck.palette.accentWarm, hex: '#B6AA92', token: '--colour-accent-warm' }, // rtl-ok: expected value
+-  {
+-    label: t.setupCheck.palette.accentWarmDark,
+-    hex: '#9C9174', // rtl-ok: expected value
+-    token: '--colour-accent-warm-dark',
+-  },
+-  { label: t.setupCheck.palette.background, hex: '#EEEDE8', token: '--colour-background' }, // rtl-ok: expected value
+-  { label: t.setupCheck.palette.text, hex: '#1E1E1E', token: '--colour-text' }, // rtl-ok: expected value
+-  { label: t.setupCheck.palette.border, hex: '#C7C7C7', token: '--colour-border' }, // rtl-ok: expected value
+-  { label: t.setupCheck.palette.danger, hex: '#802F1C', token: '--colour-danger' }, // rtl-ok: expected value
+-];
+-
+-export default function SetupCheck() {
+   return (
+-    <main className={styles.page}>
+-      <header className={styles.header}>
+-        <h1>{t.setupCheck.title}</h1>
+-        <p className={styles.subtitle}>{t.setupCheck.subtitle}</p>
+-      </header>
+-
+-      <section className={styles.card}>
+-        <h2>{t.setupCheck.direction}</h2>
+-        <p className={styles.value}>{t.setupCheck.directionValue}</p>
+-        <p className={styles.note}>{t.setupCheck.logical}</p>
+-      </section>
+-
+-      <section className={styles.card}>
+-        <h2>{t.setupCheck.font}</h2>
+-        <p className={styles.value}>{t.setupCheck.fontValue}</p>
+-      </section>
+-
+-      <section className={styles.card}>
+-        <h2>{t.setupCheck.mixedText}</h2>
+-        <p className={styles.value}>{t.setupCheck.sampleClientName}</p>
+-        <p className={styles.note}>{t.setupCheck.digits}: 0 1 2 3 4 5 6 7 8 9</p>
+-      </section>
+-
+-      <section className={styles.card}>
+-        <h2>{t.setupCheck.multiLine}</h2>
+-        <p className={`${styles.value} multiline`}>
+-          {t.setupCheck.sampleCaseNumbers.join(NEWLINE)}
++    <AuthShell title={t.auth.signedInTitle} subtitle={t.app.name}>
++      <div className={styles.accountSummary}>
++        <p>
++          <strong>{t.auth.signedInAs}:</strong> {session.user.name}
+         </p>
+-        <p className={styles.note}>{t.setupCheck.multiLineNote}</p>
+-      </section>
+-
+-      <section className={styles.card}>
+-        <h2>{t.setupCheck.colours}</h2>
+-        <ul className={styles.swatches}>
+-          {palette.map((colour) => (
+-            <li key={colour.token} className={styles.swatch}>
+-              <div className={styles.chip} style={{ backgroundColor: colour.hex }} />
+-              <div className={styles.swatchLabel}>
+-                {colour.label}
+-                <br />
+-                <span className={styles.hex}>{colour.hex}</span>
+-              </div>
+-            </li>
+-          ))}
+-        </ul>
+-      </section>
+-    </main>
++        <p>
++          <strong>{t.auth.role}:</strong> {t.auth.roles[session.user.role]}
++        </p>
++      </div>
++      <form action={logoutAction}>
++        <button className={styles.secondaryButton} type="submit">
++          {t.auth.logout}
++        </button>
++      </form>
++    </AuthShell>
+   );
+ }
+diff --git a/src/auth.ts b/src/auth.ts
+new file mode 100644
+index 0000000..b79c7e6
+--- /dev/null
++++ b/src/auth.ts
+@@ -0,0 +1,103 @@
++import NextAuth, { type NextAuthConfig } from 'next-auth';
++import Credentials from 'next-auth/providers/credentials';
++import { encode as encodeJwt, decode as decodeJwt } from 'next-auth/jwt';
++import { NextResponse } from 'next/server';
++import { REMEMBERED_SESSION_SECONDS } from '@/lib/auth/constants';
++import { authenticateCredentials, type AuthenticatedUser } from '@/lib/auth/service';
++import { createSessionClaims, readSessionClaims, validateSessionClaims } from '@/lib/auth/session';
++import { t } from '@/strings';
++
++function requireAuthSecret(override?: string): string {
++  const secret = override ?? process.env['AUTH_SECRET'];
++  if (!secret || Buffer.byteLength(secret, 'utf8') < 32 || secret.startsWith('replace_')) {
++    throw new Error('AUTH_SECRET must contain at least 32 random bytes; see .env.example.');
++  }
++  return secret;
++}
++
++function redirect(requestUrl: URL, pathname: string): NextResponse {
++  return NextResponse.redirect(new URL(pathname, requestUrl));
++}
++
++export function createAuthConfig(
++  options: { secret?: string; secure?: boolean } = {},
++): NextAuthConfig {
++  const secure = options.secure ?? process.env.NODE_ENV === 'production';
++  return {
++    secret: requireAuthSecret(options.secret),
++    trustHost: true,
++    providers: [
++      Credentials({
++        credentials: {
++          username: { label: t.auth.username, type: 'text' },
++          password: { label: t.auth.password, type: 'password' },
++          rememberMe: { label: t.auth.rememberMe, type: 'checkbox' },
++        },
++        authorize: (credentials) => authenticateCredentials(credentials),
++      }),
++    ],
++    pages: { signIn: '/login' },
++    session: { strategy: 'jwt', maxAge: REMEMBERED_SESSION_SECONDS, updateAge: 0 },
++    useSecureCookies: secure,
++    cookies: {
++      sessionToken: {
++        name: secure ? '__Secure-authjs.session-token' : 'authjs.session-token',
++        options: { httpOnly: true, sameSite: 'lax', path: '/', secure },
++      },
++    },
++    jwt: {
++      maxAge: REMEMBERED_SESSION_SECONDS,
++      decode: decodeJwt,
++      async encode(parameters) {
++        const claims = parameters.token ? readSessionClaims(parameters.token) : null;
++        const remaining = claims
++          ? Math.max(1, Math.ceil((claims.absoluteExpiresAt - Date.now()) / 1_000))
++          : parameters.maxAge;
++        return encodeJwt({ ...parameters, maxAge: remaining });
++      },
++    },
++    callbacks: {
++      async jwt({ token, user }) {
++        if (user) {
++          const claims = createSessionClaims(user as AuthenticatedUser);
++          return { sub: String(claims.userId), ...claims };
++        }
++        const claims = await validateSessionClaims(token);
++        return claims ? { sub: String(claims.userId), ...claims } : null;
++      },
++      session({ session, token }) {
++        const claims = readSessionClaims(token);
++        if (!claims) return session;
++        return {
++          expires: new Date(claims.absoluteExpiresAt).toISOString(),
++          user: {
++            id: String(claims.userId),
++            personId: claims.personId,
++            username: claims.username,
++            name: claims.displayName,
++            role: claims.role,
++            mustChangePassword: claims.mustChangePassword,
++            sessionVersion: claims.sessionVersion,
++          },
++        };
++      },
++      authorized({ auth, request }) {
++        const path = request.nextUrl.pathname;
++        if (path === '/login') {
++          if (!auth) return true;
++          return redirect(request.nextUrl, auth.user.mustChangePassword ? '/change-password' : '/');
++        }
++        if (!auth) return redirect(request.nextUrl, '/login');
++        if (auth.user.mustChangePassword && path !== '/change-password') {
++          return redirect(request.nextUrl, '/change-password');
++        }
++        if (!auth.user.mustChangePassword && path === '/change-password') {
++          return redirect(request.nextUrl, '/');
++        }
++        return true;
++      },
++    },
++  };
++}
++
++export const { handlers, auth, signIn, signOut } = NextAuth(() => createAuthConfig());
+diff --git a/src/lib/auth/constants.ts b/src/lib/auth/constants.ts
+new file mode 100644
+index 0000000..1f2cc95
+--- /dev/null
++++ b/src/lib/auth/constants.ts
+@@ -0,0 +1,19 @@
++export const AUTH_ROLES = ['Administrator', 'Litigation Assistant', 'Lawyer', 'Paralegal'] as const;
++
++export type AuthRole = (typeof AUTH_ROLES)[number];
++
++export const APPROVED_INITIAL_USERNAMES = ['KHelmy', 'MHussien', 'IHamdy', 'SKhattab'] as const;
++
++export const NORMAL_SESSION_SECONDS = 8 * 60 * 60;
++export const REMEMBERED_SESSION_SECONDS = 7 * 24 * 60 * 60;
++export const LOCKOUT_FAILURES = 5;
++export const LOCKOUT_MINUTES = 15;
++export const MINIMUM_PASSWORD_CHARACTERS = 12;
++
++export function normalizeUsername(value: string): string {
++  return value.trim().toLocaleLowerCase('en-US');
++}
++
++export function isAuthRole(value: string): value is AuthRole {
++  return AUTH_ROLES.some((role) => role === value);
++}
+diff --git a/src/lib/auth/password.ts b/src/lib/auth/password.ts
+new file mode 100644
+index 0000000..0433e92
+--- /dev/null
++++ b/src/lib/auth/password.ts
+@@ -0,0 +1,52 @@
++import { randomBytes } from 'node:crypto';
++import argon2 from 'argon2';
++import { MINIMUM_PASSWORD_CHARACTERS } from './constants';
++
++export const ARGON2ID_PARAMETERS = {
++  type: argon2.argon2id,
++  version: 0x13,
++  memoryCost: 19_456,
++  timeCost: 2,
++  parallelism: 1,
++  hashLength: 32,
++} as const;
++
++const APPROVED_HASH =
++  /^\$argon2id\$v=19\$m=19456,p=1,t=2\$[A-Za-z0-9+/]+={0,2}\$[A-Za-z0-9+/]+={0,2}$/u;
++
++let dummyHashPromise: Promise<string> | undefined;
++
++function passwordLength(value: string): number {
++  return [...value].length;
++}
++
++export function passwordMeetsPolicy(value: string): boolean {
++  return passwordLength(value) >= MINIMUM_PASSWORD_CHARACTERS;
++}
++
++export function isApprovedArgon2idHash(value: string): boolean {
++  return APPROVED_HASH.test(value);
++}
++
++export async function hashPassword(value: string): Promise<string> {
++  if (!passwordMeetsPolicy(value)) throw new Error('password-policy');
++  return argon2.hash(value, ARGON2ID_PARAMETERS);
++}
++
++export async function verifyPassword(hash: string, value: string): Promise<boolean> {
++  if (!isApprovedArgon2idHash(hash)) return false;
++  try {
++    return await argon2.verify(hash, value);
++  } catch {
++    return false;
++  }
++}
++
++async function dummyHash(): Promise<string> {
++  dummyHashPromise ??= argon2.hash(randomBytes(32), ARGON2ID_PARAMETERS);
++  return dummyHashPromise;
++}
++
++export async function performDummyPasswordVerification(value: string): Promise<void> {
++  await verifyPassword(await dummyHash(), value);
++}
+diff --git a/src/lib/auth/service.ts b/src/lib/auth/service.ts
+new file mode 100644
+index 0000000..cc17d38
+--- /dev/null
++++ b/src/lib/auth/service.ts
+@@ -0,0 +1,314 @@
++import { Prisma, type PrismaClient } from '@/generated/prisma/client';
++import { db } from '@/lib/db';
++import {
++  APPROVED_INITIAL_USERNAMES,
++  LOCKOUT_FAILURES,
++  LOCKOUT_MINUTES,
++  normalizeUsername,
++  type AuthRole,
++  isAuthRole,
++} from './constants';
++import {
++  hashPassword,
++  isApprovedArgon2idHash,
++  passwordMeetsPolicy,
++  performDummyPasswordVerification,
++  verifyPassword,
++} from './password';
++
++type AccountRow = {
++  id: number;
++  personId: number;
++  username: string;
++  passwordHash: string | null;
++  roleCode: string;
++  isEnabled: boolean;
++  mustChangePassword: boolean;
++  failedLoginAttempts: number;
++  lockedUntil: Date | null;
++  sessionVersion: number;
++  displayName: string;
++  personActive: boolean;
++  personCanLogin: boolean;
++};
++
++export type AuthenticatedUser = {
++  id: string;
++  personId: number;
++  username: string;
++  name: string;
++  role: AuthRole;
++  mustChangePassword: boolean;
++  sessionVersion: number;
++  rememberSession: boolean;
++  authenticatedAt: number;
++};
++
++type AuthenticationDependencies = {
++  database?: PrismaClient;
++  now?: Date;
++  verify?: typeof verifyPassword;
++  dummyVerify?: typeof performDummyPasswordVerification;
++};
++
++const approvedNormalizedUsernames = new Set(
++  APPROVED_INITIAL_USERNAMES.map((username) => normalizeUsername(username)),
++);
++
++async function withSerializableRetry<T>(operation: () => Promise<T>): Promise<T> {
++  for (let attempt = 1; attempt <= 10; attempt += 1) {
++    try {
++      return await operation();
++    } catch (error) {
++      const databaseCode =
++        error instanceof Prisma.PrismaClientKnownRequestError &&
++        typeof error.meta === 'object' &&
++        error.meta !== null &&
++        'code' in error.meta
++          ? String(error.meta.code)
++          : '';
++      const message = error instanceof Error ? error.message : '';
++      if (
++        attempt < 10 &&
++        ((error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') ||
++          databaseCode === '40001' ||
++          message.includes('Code: `40001`'))
++      ) {
++        await new Promise((resolve) => setTimeout(resolve, attempt * 5));
++        continue;
++      }
++      throw error;
++    }
++  }
++  throw new Error('serializable transaction retry exhausted');
++}
++
++async function lockedAccount(
++  tx: Prisma.TransactionClient,
++  usernameNormalized: string,
++): Promise<AccountRow | undefined> {
++  const rows = await tx.$queryRaw<AccountRow[]>(Prisma.sql`
++    SELECT u.id,
++           u.person_id AS "personId",
++           u.username,
++           u.password_hash AS "passwordHash",
++           u.role_code AS "roleCode",
++           u.is_enabled AS "isEnabled",
++           u.must_change_password AS "mustChangePassword",
++           u.failed_login_attempts AS "failedLoginAttempts",
++           u.locked_until AS "lockedUntil",
++           u.session_version AS "sessionVersion",
++           p.name_ar AS "displayName",
++           p.is_active AS "personActive",
++           p.can_login AS "personCanLogin"
++      FROM user_accounts u
++      JOIN people p ON p.id = u.person_id
++     WHERE u.username_normalized = ${usernameNormalized}
++     FOR UPDATE OF u
++  `);
++  return rows[0];
++}
++
++function rememberRequested(value: unknown): boolean {
++  return value === true || value === 'true' || value === 'on' || value === '1';
++}
++
++export async function authenticateCredentials(
++  credentials: Partial<Record<'username' | 'password' | 'rememberMe', unknown>> | undefined,
++  dependencies: AuthenticationDependencies = {},
++): Promise<AuthenticatedUser | null> {
++  const database = dependencies.database ?? db;
++  const now = dependencies.now ?? new Date();
++  const verify = dependencies.verify ?? verifyPassword;
++  const dummyVerify = dependencies.dummyVerify ?? performDummyPasswordVerification;
++  const username = typeof credentials?.username === 'string' ? credentials.username : '';
++  const password = typeof credentials?.password === 'string' ? credentials.password : '';
++  const usernameNormalized = normalizeUsername(username);
++
++  if (usernameNormalized.length < 3 || usernameNormalized.length > 64) {
++    await dummyVerify(password);
++    return null;
++  }
++
++  return withSerializableRetry(() =>
++    database.$transaction(
++      async (tx) => {
++        const account = await lockedAccount(tx, usernameNormalized);
++        if (!account) {
++          await dummyVerify(password);
++          return null;
++        }
++
++        const hashUsable =
++          account.passwordHash !== null && isApprovedArgon2idHash(account.passwordHash);
++        const passwordCorrect = hashUsable
++          ? await verify(account.passwordHash!, password)
++          : await dummyVerify(password).then(() => false);
++
++        if (account.lockedUntil && account.lockedUntil.getTime() > now.getTime()) return null;
++
++        const priorFailures = account.lockedUntil ? 0 : account.failedLoginAttempts;
++        if (!isAuthRole(account.roleCode)) return null;
++        const eligible =
++          account.isEnabled && account.personActive && account.personCanLogin && hashUsable;
++        if (!eligible) return null;
++
++        if (!passwordCorrect) {
++          const failures = Math.min(priorFailures + 1, LOCKOUT_FAILURES);
++          await tx.userAccount.update({
++            where: { id: account.id },
++            data: {
++              failedLoginAttempts: failures,
++              lockedUntil:
++                failures === LOCKOUT_FAILURES
++                  ? new Date(now.getTime() + LOCKOUT_MINUTES * 60_000)
++                  : null,
++              updatedAt: now,
++            },
++          });
++          return null;
++        }
++
++        await tx.userAccount.update({
++          where: { id: account.id },
++          data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: now, updatedAt: now },
++        });
++        return {
++          id: String(account.id),
++          personId: account.personId,
++          username: account.username,
++          name: account.displayName,
++          role: account.roleCode,
++          mustChangePassword: account.mustChangePassword,
++          sessionVersion: account.sessionVersion,
++          rememberSession: rememberRequested(credentials?.rememberMe),
++          authenticatedAt: now.getTime(),
++        };
++      },
++      {
++        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
++        maxWait: 5_000,
++        timeout: 30_000,
++      },
++    ),
++  );
++}
++
++export type PasswordChangeResult =
++  'changed' | 'invalid-current' | 'invalid-session' | 'policy' | 'reused';
++
++export async function changeOwnPassword(
++  input: {
++    accountId: number;
++    sessionVersion: number;
++    currentPassword: string;
++    newPassword: string;
++  },
++  dependencies: Pick<AuthenticationDependencies, 'database' | 'now' | 'verify'> = {},
++): Promise<PasswordChangeResult> {
++  if (!passwordMeetsPolicy(input.newPassword)) return 'policy';
++  if (input.currentPassword === input.newPassword) return 'reused';
++
++  const database = dependencies.database ?? db;
++  const now = dependencies.now ?? new Date();
++  const verify = dependencies.verify ?? verifyPassword;
++
++  return withSerializableRetry(() =>
++    database.$transaction(
++      async (tx) => {
++        const rows = await tx.$queryRaw<AccountRow[]>(Prisma.sql`
++          SELECT u.id,
++                 u.person_id AS "personId",
++                 u.username,
++                 u.password_hash AS "passwordHash",
++                 u.role_code AS "roleCode",
++                 u.is_enabled AS "isEnabled",
++                 u.must_change_password AS "mustChangePassword",
++                 u.failed_login_attempts AS "failedLoginAttempts",
++                 u.locked_until AS "lockedUntil",
++                 u.session_version AS "sessionVersion",
++                 p.name_ar AS "displayName",
++                 p.is_active AS "personActive",
++                 p.can_login AS "personCanLogin"
++            FROM user_accounts u JOIN people p ON p.id=u.person_id
++           WHERE u.id=${input.accountId}
++           FOR UPDATE OF u
++        `);
++        const account = rows[0];
++        if (
++          !account ||
++          !account.isEnabled ||
++          !account.personActive ||
++          !account.personCanLogin ||
++          account.sessionVersion !== input.sessionVersion ||
++          !account.passwordHash
++        ) {
++          return 'invalid-session';
++        }
++        if (!(await verify(account.passwordHash, input.currentPassword))) return 'invalid-current';
++
++        const passwordHash = await hashPassword(input.newPassword);
++        await tx.userAccount.update({
++          where: { id: account.id },
++          data: {
++            passwordHash,
++            mustChangePassword: false,
++            passwordChangedAt: now,
++            failedLoginAttempts: 0,
++            lockedUntil: null,
++            sessionVersion: { increment: 1 },
++            updatedAt: now,
++          },
++        });
++        return 'changed';
++      },
++      {
++        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
++        maxWait: 5_000,
++        timeout: 30_000,
++      },
++    ),
++  );
++}
++
++export async function setApprovedAccountPassword(
++  username: string,
++  password: string,
++  dependencies: Pick<AuthenticationDependencies, 'database' | 'now'> = {},
++): Promise<{ username: string; personName: string }> {
++  const usernameNormalized = normalizeUsername(username);
++  if (!approvedNormalizedUsernames.has(usernameNormalized))
++    throw new Error('approved-account-required');
++  if (!passwordMeetsPolicy(password)) throw new Error('password-policy');
++
++  const database = dependencies.database ?? db;
++  const now = dependencies.now ?? new Date();
++  const passwordHash = await hashPassword(password);
++
++  return withSerializableRetry(() =>
++    database.$transaction(
++      async (tx) => {
++        const account = await lockedAccount(tx, usernameNormalized);
++        if (!account) throw new Error('approved-account-not-found');
++        await tx.userAccount.update({
++          where: { id: account.id },
++          data: {
++            passwordHash,
++            mustChangePassword: true,
++            passwordChangedAt: now,
++            failedLoginAttempts: 0,
++            lockedUntil: null,
++            sessionVersion: { increment: 1 },
++            updatedAt: now,
++          },
++        });
++        return { username: account.username, personName: account.displayName };
++      },
++      {
++        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
++        maxWait: 5_000,
++        timeout: 30_000,
++      },
++    ),
++  );
++}
+diff --git a/src/lib/auth/session.ts b/src/lib/auth/session.ts
+new file mode 100644
+index 0000000..47c8f79
+--- /dev/null
++++ b/src/lib/auth/session.ts
+@@ -0,0 +1,126 @@
++import type { PrismaClient } from '@/generated/prisma/client';
++import { db } from '@/lib/db';
++import {
++  isAuthRole,
++  NORMAL_SESSION_SECONDS,
++  REMEMBERED_SESSION_SECONDS,
++  type AuthRole,
++} from './constants';
++import type { AuthenticatedUser } from './service';
++
++export type SessionClaims = {
++  userId: number;
++  personId: number;
++  username: string;
++  displayName: string;
++  role: AuthRole;
++  sessionVersion: number;
++  mustChangePassword: boolean;
++  authenticatedAt: number;
++  absoluteExpiresAt: number;
++  remembered: boolean;
++};
++
++export function createSessionClaims(user: AuthenticatedUser): SessionClaims {
++  const duration = user.rememberSession ? REMEMBERED_SESSION_SECONDS : NORMAL_SESSION_SECONDS;
++  return {
++    userId: Number(user.id),
++    personId: user.personId,
++    username: user.username,
++    displayName: user.name,
++    role: user.role,
++    sessionVersion: user.sessionVersion,
++    mustChangePassword: user.mustChangePassword,
++    authenticatedAt: user.authenticatedAt,
++    absoluteExpiresAt: user.authenticatedAt + duration * 1_000,
++    remembered: user.rememberSession,
++  };
++}
++
++export function readSessionClaims(value: Record<string, unknown>): SessionClaims | null {
++  const role = value['role'];
++  const claims: SessionClaims = {
++    userId: Number(value['userId']),
++    personId: Number(value['personId']),
++    username: typeof value['username'] === 'string' ? value['username'] : '',
++    displayName: typeof value['displayName'] === 'string' ? value['displayName'] : '',
++    role: typeof role === 'string' && isAuthRole(role) ? role : 'Lawyer',
++    sessionVersion: Number(value['sessionVersion']),
++    mustChangePassword: value['mustChangePassword'] === true,
++    authenticatedAt: Number(value['authenticatedAt']),
++    absoluteExpiresAt: Number(value['absoluteExpiresAt']),
++    remembered: value['remembered'] === true,
++  };
++  const expectedDuration = claims.remembered
++    ? REMEMBERED_SESSION_SECONDS * 1_000
++    : NORMAL_SESSION_SECONDS * 1_000;
++  if (
++    !Number.isSafeInteger(claims.userId) ||
++    claims.userId < 1 ||
++    !Number.isSafeInteger(claims.personId) ||
++    claims.personId < 1 ||
++    !Number.isSafeInteger(claims.sessionVersion) ||
++    claims.sessionVersion < 0 ||
++    !Number.isSafeInteger(claims.authenticatedAt) ||
++    !Number.isSafeInteger(claims.absoluteExpiresAt) ||
++    claims.username.length === 0 ||
++    claims.displayName.length === 0 ||
++    typeof role !== 'string' ||
++    !isAuthRole(role) ||
++    claims.absoluteExpiresAt - claims.authenticatedAt !== expectedDuration
++  ) {
++    return null;
++  }
++  return claims;
++}
++
++export async function validateSessionClaims(
++  value: Record<string, unknown>,
++  options: { database?: PrismaClient; now?: Date } = {},
++): Promise<SessionClaims | null> {
++  const claims = readSessionClaims(value);
++  const now = options.now ?? new Date();
++  if (
++    !claims ||
++    claims.authenticatedAt > now.getTime() + 60_000 ||
++    claims.absoluteExpiresAt <= now.getTime()
++  ) {
++    return null;
++  }
++
++  const database = options.database ?? db;
++  const account = await database.userAccount.findUnique({
++    where: { id: claims.userId },
++    select: {
++      id: true,
++      personId: true,
++      username: true,
++      roleCode: true,
++      isEnabled: true,
++      mustChangePassword: true,
++      sessionVersion: true,
++      passwordHash: true,
++      person: { select: { nameAr: true, isActive: true, canLogin: true } },
++    },
++  });
++  if (
++    !account ||
++    !account.isEnabled ||
++    !account.passwordHash ||
++    !account.person.isActive ||
++    !account.person.canLogin ||
++    account.personId !== claims.personId ||
++    account.sessionVersion !== claims.sessionVersion ||
++    !isAuthRole(account.roleCode)
++  ) {
++    return null;
++  }
++
++  return {
++    ...claims,
++    username: account.username,
++    displayName: account.person.nameAr,
++    role: account.roleCode,
++    mustChangePassword: account.mustChangePassword,
++  };
++}
+diff --git a/src/lib/db.ts b/src/lib/db.ts
+index c601ecf..2aa149c 100644
+--- a/src/lib/db.ts
++++ b/src/lib/db.ts
+@@ -24,14 +24,17 @@ const globalForPrisma = globalThis as unknown as {
+   prisma: PrismaClient | undefined;
+ };
+ 
+-function createClient(): PrismaClient {
++export function createDatabaseClient(url = connectionString): PrismaClient {
++  if (!url) {
++    throw new Error('DATABASE_URL is not set. Copy .env.example to .env — see docs/DATABASE.md.');
++  }
+   return new PrismaClient({
+-    adapter: new PrismaPg({ connectionString }),
++    adapter: new PrismaPg({ connectionString: url }),
+     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+   });
+ }
+ 
+-export const db = globalForPrisma.prisma ?? createClient();
++export const db = globalForPrisma.prisma ?? createDatabaseClient();
+ 
+ if (process.env.NODE_ENV !== 'production') {
+   globalForPrisma.prisma = db;
+diff --git a/src/strings.ts b/src/strings.ts
+index 83698b3..6a709e3 100644
+--- a/src/strings.ts
++++ b/src/strings.ts
+@@ -92,6 +92,52 @@ export const t = {
+     forbidden: 'ليس لديك صلاحية للاطلاع على هذه الصفحة',
+   },
+ 
++  auth: {
++    loginTitle: 'تسجيل الدخول',
++    loginSubtitle: 'استخدم اسم المستخدم وكلمة المرور الخاصة بك',
++    username: 'اسم المستخدم',
++    password: 'كلمة المرور',
++    rememberMe: 'تذكرني لمدة 7 أيام',
++    normalSessionNote: 'بدون هذا الاختيار تنتهي الجلسة بعد 8 ساعات',
++    submit: 'دخول',
++    submitting: 'جارٍ التحقق…',
++    invalidCredentials: 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.',
++    passwordChangedStatus: 'تم تغيير كلمة المرور. سجّل الدخول بكلمة المرور الجديدة.',
++    changeTitle: 'تغيير كلمة المرور',
++    changeSubtitle: 'يجب تغيير كلمة المرور المؤقتة قبل متابعة استخدام النظام',
++    currentPassword: 'كلمة المرور الحالية',
++    newPassword: 'كلمة المرور الجديدة',
++    confirmPassword: 'تأكيد كلمة المرور الجديدة',
++    passwordPolicy: 'يجب ألا تقل كلمة المرور عن 12 حرفاً. يمكن استخدام المسافات والحروف العربية.',
++    changeSubmit: 'حفظ كلمة المرور الجديدة',
++    changing: 'جارٍ الحفظ…',
++    passwordMismatch: 'كلمتا المرور الجديدتان غير متطابقتين.',
++    passwordTooShort: 'يجب ألا تقل كلمة المرور الجديدة عن 12 حرفاً.',
++    passwordReused: 'يجب أن تختلف كلمة المرور الجديدة عن كلمة المرور المؤقتة.',
++    passwordChangeFailed: 'تعذر تغيير كلمة المرور. تحقق من كلمة المرور الحالية وحاول مرة أخرى.',
++    signedInTitle: 'تم تسجيل الدخول',
++    signedInAs: 'المستخدم',
++    role: 'الدور',
++    logout: 'تسجيل الخروج',
++    logoAlt: 'ساري الدين وشركاه — مستشارون قانونيون',
++    passwordAdmin: {
++      usage: 'الاستخدام: npm run auth:set-password -- Username',
++      ttyRequired: 'يجب تشغيل هذا الأمر مباشرة من طرفية تفاعلية.',
++      firstPrompt: 'أدخل كلمة المرور المؤقتة: ',
++      secondPrompt: 'أعد إدخال كلمة المرور المؤقتة: ',
++      mismatch: 'كلمتا المرور غير متطابقتين.',
++      policy: 'يجب ألا تقل كلمة المرور عن 12 حرفاً.',
++      success: 'تم تعيين كلمة المرور المؤقتة وإبطال الجلسات السابقة للحساب:',
++      failed: 'تعذر تعيين كلمة المرور للحساب المطلوب.',
++    },
++    roles: {
++      Administrator: 'مدير النظام',
++      'Litigation Assistant': 'مساعد إدارة الدعاوى',
++      Lawyer: 'محامٍ',
++      Paralegal: 'مساعد قانوني',
++    },
++  },
++
+   // Temporary — the task 0.4 proof page. Removed when real screens arrive.
+   setupCheck: {
+     title: 'التخطيط العربي من اليمين إلى اليسار',
+diff --git a/src/types/next-auth.d.ts b/src/types/next-auth.d.ts
+new file mode 100644
+index 0000000..009fe6b
+--- /dev/null
++++ b/src/types/next-auth.d.ts
+@@ -0,0 +1,43 @@
++import type { DefaultSession } from 'next-auth';
++import type { AuthRole } from '@/lib/auth/constants';
++
++declare module 'next-auth' {
++  interface User {
++    personId: number;
++    username: string;
++    role: AuthRole;
++    mustChangePassword: boolean;
++    sessionVersion: number;
++    rememberSession?: boolean;
++    authenticatedAt?: number;
++  }
++
++  interface Session {
++    user: {
++      id: string;
++      personId: number;
++      username: string;
++      name: string;
++      role: AuthRole;
++      mustChangePassword: boolean;
++      sessionVersion: number;
++    } & DefaultSession['user'];
++  }
++}
++
++declare module '@auth/core/jwt' {
++  interface JWT {
++    userId?: number;
++    personId?: number;
++    username?: string;
++    displayName?: string;
++    role?: AuthRole;
++    sessionVersion?: number;
++    mustChangePassword?: boolean;
++    authenticatedAt?: number;
++    absoluteExpiresAt?: number;
++    remembered?: boolean;
++  }
++}
++
++export {};
+-- 
+2.55.0.windows.4
+
