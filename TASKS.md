@@ -7,10 +7,12 @@ Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
 **Current return point — 1 September 2026:** Task 3.2 closed at commit
-`553b3d1`. **Task 3.3 is the first unchecked implementation task, has not
-started, and is the exact place to resume.** `docs/DECISIONS.md` owns approved
-decisions; this file owns status and work order. Dated reviews and task reports
-are evidence, not priority authorities.
+`553b3d1`. The owner-approved Task 3.3 contract is now split into the two
+ordered checkpoints below. **Task 3.3A — Secure actor attribution is the first
+unchecked implementation task, is approved but not started, and is the exact
+place to resume.** `docs/DECISIONS.md` owns approved decisions; this file owns
+status and work order. Dated reviews and task reports are evidence, not priority
+authorities.
 
 ---
 
@@ -1378,11 +1380,66 @@ only ever seen good data is not known to work.
       Task 3.3 audit population and Task 3.4 user management remain
       outstanding.
 
-- [ ] **3.3 Audit columns** populated everywhere.
+- [ ] **3.3A Secure actor attribution** — approved 1 September 2026, not
+      started (**D30**, **D33**). Cover the **37 current four-column
+      application tables plus `person_name_alias`**. Add the alias table's
+      missing audit columns; establish a stable audit-actor registry and the
+      approved `system_migration` actor; and backfill only attribution the
+      repository can prove. Documented historical unknowns are valid — never
+      invent a human actor merely to make a column non-null.
+
+      Acceptance requires actor foreign keys; trusted transaction-local
+      context; database overwrite or rejection of caller-supplied actor and
+      timestamp values; failure when a future application write lacks valid
+      context; and permanent negative fixtures for spoofing, missing context,
+      pooled-context leakage, direct SQL and nested trigger writes. The running
+      web application must use a separate restricted non-superuser PostgreSQL
+      principal; the privileged migration/administration principal must not be
+      its runtime connection. Exact role names and secret provisioning are
+      implementation details and no credential enters Git.
+
+      The protected migration-safety population is exactly **5,209 rows**:
+      543 invoices + 597 payments + 47 invoice allocations + 4,022 attendance
+      rows. No business field or historical timestamp may change. Existing
+      immutability guards must never be permanently disabled, weakened or
+      omitted. Acceptance must prove atomic rollback; exact guard definitions
+      before and after; unchanged protected business/source row values,
+      timestamps and digests; a separate permanent audit-attribution digest;
+      and both current-history and clean-replay migration paths. Never replace
+      a protected digest merely because an audit backfill produces a new value.
+
+      Do **not** retrofit this four-column model onto staging, quarantine,
+      immutable migration evidence, infrastructure tables, the actor registry
+      or the future event table. The exact 38-table application inventory is a
+      permanent invariant. Full readiness evidence and risk gates:
+      [`docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md).
+
+- [ ] **3.3B Append-only event foundation** — begins only after 3.3A is
+      accepted (**D30**, **D32**). Record create, update, archive and restore;
+      field-level before/after values; relationship changes; user and role
+      lifecycle; password-change facts without passwords or hashes; successful
+      and failed logins including lockouts; report execution; exports; and
+      downloads.
+
+      Every event must carry the stable actor where one exists, the role at the
+      time, IP address, bounded user-agent/device information, a request or
+      correlation identifier and a separate non-secret audit-session
+      identifier. Use field-level redaction and per-table allowlists. Passwords,
+      hashes, tokens, cookies, credentials, keys, connection strings, raw
+      binaries and other secrets must never enter the event trail. Forwarding
+      headers are trusted only behind an explicitly configured trusted reverse
+      proxy; otherwise use the directly observed connection address.
+
+      Do **not** log ordinary record views, searches, list loading or
+      navigation. Do not fabricate historical events that cannot be proved.
+      Retain events indefinitely: no automatic deletion, rolling expiration or
+      purge, and no application role may update, delete or truncate them.
+      Disabling an account or archiving a record never removes its history.
+      Audit UI remains later work and is not part of 3.3A or 3.3B.
 
 - [ ] **3.4 User management** — Administrator only. Removing access means
       disable/deactivate while retaining the user and staff rows (D25); do not
-      add physical deletion.
+      add physical deletion. Do not begin until both 3.3A and 3.3B are accepted.
 
 - [ ] **3.5 High-impact quarantine review checkpoint** — firm review after
       Task 3.4 and before Stage 4 (**D26**). Review all 55 quarantined matters,
@@ -1452,6 +1509,21 @@ than assuming one rule for every workflow. Test with real volumes.
       Arabic display label. Do not invent terminology and do not use temporary
       English labels on the Arabic interface.
 - [ ] **4.8 Billing** — read-only list of invoices and payments
+- [ ] **4.9 Audit history UI** — deferred owner-approved direction (**D31**,
+      **D34**), to be implemented only under a later explicit prompt. Provide a
+      contextual Arabic/RTL entity-history drawer and a global Administrator
+      audit page; group changes by save event; show before/after differences and
+      date groups; filter by date, user and action; search by field or value;
+      paginate or load more; pair Arabic action labels and icons with text; use
+      a full-screen mobile sheet; and meet keyboard/focus accessibility plus the
+      Sarie Eldin visual direction. Use archive/restore terminology.
+
+      All Administrators may view. Audit export requires a separate
+      account-level capability, initially held only by `KHelmy`; it is never
+      authorized by hard-coding that username and it does not create a fifth
+      Owner role. Exact dimensions or component choices in the recovered Figma
+      artifact are evidence of that artifact, not universal product
+      requirements.
 
 ---
 

@@ -13,11 +13,12 @@ held in `src/strings.ts` — not the column name. The Access data has 122 Arabic
 column names and 139 containing spaces (`الموقف الحالي`, `Cash/probono`,
 `Inv-No`), which are legal in Access and hostile to everything else.
 
-The application tables already carry the structural audit columns: `id`,
-`created_at`, `created_by`, `updated_at`, `updated_by`. **That structure does
-not complete Task 3.3.** Task 3.3 remains necessary to populate and
-consistently maintain the acting-user identities in `created_by` and
-`updated_by`; it has not started.
+Thirty-seven current application tables carry `created_at`, `created_by`,
+`updated_at` and `updated_by`; `person_name_alias` carries only `created_at`.
+**That structure does not complete Task 3.3.** The owner-approved Task 3.3A
+boundary is those 37 tables plus the alias table. It must add the missing alias
+columns and securely populate and maintain acting-user identities. Task 3.3A is
+approved but has not started.
 
 ---
 
@@ -80,6 +81,85 @@ Passwords use Argon2id v19 with 19,456 KiB memory, two iterations, parallelism
 one and a 32-byte result. Auth.js JWTs contain only account/person ids,
 username, Arabic display name, role, password-change state, session version
 and absolute timestamps; no password hash or email is placed in the session.
+
+---
+
+## Task 3.3 approved target model — not yet implemented
+
+This section is a target contract, not a description of current database
+objects. No audit-actor registry or append-only event table exists yet, no actor
+column has an actor foreign key, and every current `created_by` and `updated_by`
+value is null. The exact readiness inventory and owner resolution are in the
+[`Task 3.3 readiness audit`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md).
+
+### Alias baseline versus current population
+
+The **348-row reviewed migration baseline** and the **350-row current
+application table** answer different questions:
+
+- [`reviewed-links.json`](../scripts/baselines/reviewed-links.json) protects 348
+  reviewed Stage 2 alias-to-person outcomes.
+- Task 3.1 migration `20260831100000_authentication` adds exactly two
+  application-native people and one primary self-alias for each.
+- Its standing postcondition requires 135 protected people, two native people
+  and 350 aliases. A 1 September aggregate-only read-only database check proved
+  348 aliases owned by protected people and two primary self-aliases owned
+  one-to-one by the two native account identities.
+
+The two native rows are not additions to the reviewed migration baseline and
+do not indicate baseline drift.
+
+### Task 3.3A — actor attribution
+
+Owner-approved requirements (**D30**, **D33**):
+
+- A stable audit-actor registry, including one non-login `system_migration`
+  actor and stable links for application accounts.
+- The four structural audit columns on the exact 38-table application
+  inventory: the 37 existing four-column tables plus `person_name_alias`.
+- Actor foreign keys, trusted transaction-local actor context, rejection or
+  overwrite of caller-supplied attribution, and failure for future application
+  writes with missing or invalid context.
+- Truthful backfill. Migrated and migration-defined state may use
+  `system_migration`; historical human attribution that cannot be proved stays
+  documented as unknown rather than being invented.
+- A restricted non-superuser web-runtime database principal, separate from the
+  privileged migration/administration principal.
+
+Staging, quarantine, immutable migration evidence, `_prisma_migrations`, the
+actor registry and the event table retain their purpose-specific provenance
+models. They do not receive the application four-column pattern.
+
+`audit_actor` is the current recommended working name for the registry, not a
+schema object that already exists. Exact column names, role names, grants and
+security-definer functions remain Task 3.3A implementation details and must be
+proved before they become current model documentation.
+
+### Task 3.3B — append-only events
+
+The owner-approved event foundation (**D30**, **D32**) must cover:
+
+- create, update, archive and restore;
+- field-level before/after values and relationship changes;
+- user and role lifecycle;
+- password-change facts without passwords or hashes;
+- successful and failed login attempts, including lockouts;
+- report execution, exports and downloads.
+
+Each event carries the stable actor when one exists, the role effective at the
+time, IP address, bounded user-agent/device information, a request/correlation
+identifier and a separate non-secret audit-session identifier. Field-level
+redaction and per-table allowlists prevent passwords, hashes, tokens, cookies,
+credentials, keys, connection strings, raw binaries and other secrets from
+entering the event record. Ordinary views, searches, list loading and
+navigation generate no event. Unprovable historical events are never
+fabricated.
+
+Events are retained indefinitely. No application role may update, delete or
+truncate them, and account disablement or record archival never removes
+history. `audit_event` is the current recommended working name; its exact key,
+JSON, index and function design remains subject to Task 3.3B implementation
+review. The approved UI is later work and does not alter this storage boundary.
 
 ---
 

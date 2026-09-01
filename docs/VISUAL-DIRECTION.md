@@ -165,7 +165,41 @@ twelve-colour brand palette, and a derived, extensible UI token set. All five
 are seeded as Layer 2 tokens with their derivations, and `npm run check:rtl`
 now fails on any raw colour outside the token definitions.
 
-## 7. What this file is not
+## 7. Audit history — owner-approved direction, deferred
+
+Recovered owner conversation evidence from 31 August 2026 confirms the hybrid
+audit-history direction. It is approved visual/product direction, but nothing
+in this section has been implemented. Task 3.3A and 3.3B build attribution and
+events only; the UI is the later Task 4.9 checkpoint and requires a separate
+implementation prompt.
+
+### Two connected views
+
+- A contextual Arabic/RTL entity-history drawer, opened from the record being
+  reviewed.
+- A global audit page available to Administrators.
+
+Both views group field changes made in one save event, show before/after
+differences, group history by date, and support date/user/action filters plus
+search by changed field or value. Long histories use pagination or load-more
+behavior. Actions use Arabic labels; an icon is always accompanied by text.
+Archive and restore are the lifecycle terms, consistently with D25.
+
+On mobile, the contextual history becomes a full-screen sheet. Keyboard order,
+focus entry, focus return and visible focus are required. The views use the
+Sarie Eldin palette, bundled Noto Naskh Arabic and the typography/composition
+rules in this file; colour and icons never carry meaning alone.
+
+Decision D31 controls access separately from layout: every Administrator may
+view, while audit export requires a separate account capability initially held
+only by `KHelmy`. The interface must not imply a fifth Owner role.
+
+The recovered Figma artifact is evidence of the approved direction, but its
+particular dimensions, spacing and component selections are not automatically
+universal requirements. Re-evaluate those details with the real event volumes,
+screen context and responsive behavior when Task 4.9 begins.
+
+## 8. What this file is not
 
 - Not a component library
 - Not a specification anyone should build from without revisiting

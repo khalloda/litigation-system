@@ -269,6 +269,37 @@ one.
 
 ---
 
+## Database principals for Task 3.3A — approved, not implemented
+
+At the 1 September 2026 readiness checkpoint, the web application and migration
+tools both connect through `litigation`; that PostgreSQL principal is a
+superuser and owns the project tables. This is the current state, not the
+approved end state. A superuser/table owner can bypass grants, triggers and an
+append-only event table.
+
+Decision **D33** therefore requires Task 3.3A to separate:
+
+- a privileged migration/administration principal that owns and changes the
+  schema; and
+- a restricted, non-superuser web-runtime login with only the privileges the
+  application needs.
+
+The runtime must not be able to update, delete or truncate audit events, disable
+their protections, take ownership of protected objects or use the privileged
+migration connection. Any security-definer function exposed to it must be
+narrow, have a fixed safe `search_path` and be covered by exact privilege and
+bypass fixtures. Task 3.3A must prove the same arrangement on the current
+historical database, a clean replay, disposable test databases and the Ubuntu
+deployment path before append-only enforcement is described as operational.
+
+The exact PostgreSQL role names, environment-variable layout, bootstrap order
+and secret-provisioning mechanism remain implementation details. Do not invent
+them in advance and do not commit a credential, connection string or real
+secret. The commands elsewhere in this file still describe the current setup
+until Task 3.3A is implemented and accepted.
+
+---
+
 ## If something is wrong
 
 **`npm run db:up` says "unhealthy".** The database started but its setup is

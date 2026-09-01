@@ -66,6 +66,39 @@ About 10 people, four roles. Full matrix in `docs/PERMISSIONS.md`.
 - **Lawyer** — view only
 - **Paralegal** — view only, except administrative works which they update
 
+### Audit and accountability
+
+The old Access system cannot say who changed a record or reconstruct a sequence
+of changes. The owner-approved replacement contract is therefore two layers,
+neither of which is implemented yet:
+
+1. **Secure actor attribution (Task 3.3A):** the exact 37 current four-column
+   application tables plus `person_name_alias`; stable human/system actors;
+   truthful historical attribution; database-enforced anti-spoofing; and a
+   restricted non-superuser web database connection.
+2. **Append-only events (Task 3.3B):** create, update, archive, restore,
+   field-level before/after values, relationships, user/role lifecycle,
+   password-change facts, login success/failure/lockout, report execution,
+   exports and downloads.
+
+Ordinary record views, searches, list loading and navigation are not logged.
+Passwords, hashes, tokens, cookies, credentials, keys, connection strings, raw
+binaries and other secrets never enter the trail. Events include the effective
+actor and role where available, IP address, bounded user-agent/device data,
+request/correlation identity and a separate non-secret audit-session identity.
+Unprovable historical events are not fabricated.
+
+Audit events are retained indefinitely with no automatic purge. Application
+roles cannot update, delete or truncate them, and disabling an account or
+archiving a record cannot erase history. All Administrators may eventually view
+audit history; export requires a separate account capability initially held
+only by `KHelmy`, without adding an Owner role or hard-coding a username.
+
+The approved Arabic/RTL contextual history drawer and global Administrator
+audit page are later UI work. They are not part of Task 3.3A or 3.3B. See
+decisions D30–D34 and
+[`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md).
+
 ## 4. Language
 
 **Arabic only.** Right-to-left throughout, screens and printed reports.
@@ -124,12 +157,17 @@ Arabic/Latin/number text, and produce disconnected reversed letterforms.
 4. The four roles are enforced on the server
 5. Search finds records regardless of hamza, diacritics or numeral system
 6. Usable with 13,000+ hearings without noticeable delay
+7. Every future application write in the 38-table audit boundary has a truthful,
+   non-spoofable actor or an explicitly permitted historical-unknown state
+8. The approved chronological events are append-only, redacted, indefinitely
+   retained and complete across row, authentication, report and export paths
 
 ## 7. Phases
 
 **Phase 1** — clients, matters, hearings, administrative works, powers of
 attorney, documents, fee letters, historical billing (read-only), the 45
-reports, login and roles.
+reports, login and roles, secure actor attribution, append-only audit events and
+the later approved audit-history UI.
 
 **Phase 2** — attendance screens, invoicing and payment entry, collection
 splitting.

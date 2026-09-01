@@ -548,3 +548,114 @@ gap 9.8 and the owner-resolution addendum.
 The exact Arabic source fields and their values remain preserved. This decision
 settles their documented meaning; it does not authorise rewriting historical
 source evidence.
+
+## D30 — Task 3.3 is two ordered audit-foundation checkpoints
+
+**Approved by Khaled Helmy on 1 September 2026.** Evidence:
+[`2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md),
+including the original readiness assessment and the owner-resolution addendum.
+
+**Context:** the former task text, “Audit columns populated everywhere,” could
+be satisfied without the chronological event history the owner had already
+approved, and “everywhere” incorrectly implied that staging and immutable
+migration evidence should use the application audit shape.
+
+**Decision:** Task 3.3 is split, in order:
+
+1. **Task 3.3A — Secure actor attribution.** Cover the 37 current
+   four-column application tables plus `person_name_alias`; add its missing
+   columns; create a stable actor registry and `system_migration`; backfill only
+   truthful attribution; permit documented historical unknowns; add actor
+   foreign keys, trusted transaction-local context, spoofing protection and
+   permanent checks.
+2. **Task 3.3B — Append-only event foundation.** Record create, update,
+   archive, restore, field before/after values, relationships, user/role
+   lifecycle, password-change facts, login success/failure/lockout, report
+   execution, exports and downloads. Do not record ordinary views, searches,
+   list loading or navigation, and never record secrets.
+
+Staging, quarantine, immutable migration evidence, infrastructure tables, the
+actor registry and the event table keep purpose-specific provenance models; the
+four-column pattern is not retrofitted onto them. Unprovable historical events
+or human attribution must not be fabricated. Task 3.4 begins only after 3.3A
+and 3.3B are accepted. Audit UI is later work.
+
+**Rationale and rejected alternatives:** columns-only would leave the firm
+unable to reconstruct what changed; one combined columns/events/full-UI task
+would be too broad and would jump ahead of screens that do not exist. Applying
+the four columns to every physical table would weaken rather than improve
+migration evidence. Revisit only through a new explicit owner decision.
+
+## D31 — Administrators view audit history; export is an account capability
+
+**Approved by Khaled Helmy on 1 September 2026.** Evidence: the Task 3.3
+readiness audit linked in D30.
+
+All Administrators may view audit history. Export requires an explicit
+account-level audit-export capability, initially granted only to `KHelmy`.
+The schema field name is an implementation detail; authorization must not be
+hard-coded to the username string.
+
+**Rationale:** “Owner” is not one of the four application roles. Giving every
+Administrator export rights would silently weaken the owner-only rule when a
+second Administrator is added; adding a fifth Owner role would contradict the
+fixed four-role model. The account capability keeps those concerns separate.
+
+The existing four roles and 448 Task 3.2 authorization decisions remain
+unchanged until the capability is implemented and its exact effect is
+documented and tested. Revisit only by explicit owner decision.
+
+## D32 — Audit events are retained indefinitely
+
+**Approved by Khaled Helmy on 1 September 2026.** Evidence: the Task 3.3
+readiness audit linked in D30.
+
+Audit events are retained indefinitely. There is no automatic deletion,
+rolling expiration or purge. No application role may update, delete or truncate
+events. Disabling an account and archiving or restoring a record must retain its
+complete history.
+
+**Rationale and rejected alternative:** an earlier finite-retention period was
+only a recommendation and is not approved. Indefinite retention prevents routine
+retention deletion from defeating a legal hold and avoids destructive policy
+machinery without a later owner decision. Any future retention change requires
+a new explicit owner decision and must itself leave durable audit evidence.
+
+## D33 — The web application and migrations use different database principals
+
+**Approved by Khaled Helmy on 1 September 2026.** Evidence: the Task 3.3
+readiness audit linked in D30.
+
+The running web application must use a restricted, non-superuser PostgreSQL
+runtime principal. The privileged migration/administration principal must not
+be used by the web runtime. Exact role names and secret-provisioning mechanisms
+remain implementation details for Task 3.3A; credentials and connection strings
+must never enter Git.
+
+**Rationale and rejected alternative:** the current application connection is a
+superuser and table owner, which can bypass grants, triggers and append-only
+protections. Keeping that one principal would make append-only behavior a
+convention rather than an enforceable security boundary. Task 3.3A must prove
+the final privileges, ownership, fixed-search-path security-definer functions,
+fixtures and deployment procedure before this control is described as
+operational.
+
+## D34 — The hybrid audit-history interface direction is approved and deferred
+
+**Approved by Khaled Helmy on 31 August 2026; recovered evidence confirmed and
+classified by the owner on 1 September 2026.** Evidence: the Task 3.3 readiness
+audit linked in D30, under its owner-resolution and UI-correction sections.
+
+The later audit interface uses both a contextual Arabic/RTL entity-history
+drawer and a global Administrator audit page. Changes are grouped by save
+event, with before/after field differences, date grouping, date/user/action
+filters, field-or-value search, pagination or load-more behavior, Arabic action
+labels, icons accompanied by text, a full-screen mobile sheet, keyboard/focus
+accessibility, Sarie Eldin branding and typography, and archive/restore
+terminology.
+
+**Boundary:** this direction is approved but remains deferred until a later
+explicit implementation prompt. It is not part of Task 3.3A or 3.3B. Particular
+dimensions and component choices in the recovered Figma artifact describe that
+artifact; they are not automatically universal product requirements. Revisit
+screen-specific details with real data when the later UI task begins.

@@ -5,12 +5,16 @@ litigation practice since 2010.
 
 **Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
 authentication and server-side role permissions are complete through Task 3.2,
-closed at commit `553b3d1`. **Task 3.3 has not started and is the exact return
+closed at commit `553b3d1`. The owner approved the Task 3.3 contract on
+1 September 2026 and split it into two ordered checkpoints. **Task 3.3A —
+Secure actor attribution is approved but not started, and is the exact return
 point.** The owner-readable migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
 current progress and work order are in [`TASKS.md`](TASKS.md). The dated
 continuity evidence is preserved separately in
-[`docs/reviews/2026-09-01-project-continuity-recovery-audit.md`](docs/reviews/2026-09-01-project-continuity-recovery-audit.md).
+[`docs/reviews/2026-09-01-project-continuity-recovery-audit.md`](docs/reviews/2026-09-01-project-continuity-recovery-audit.md),
+and the approved Task 3.3 contract and its readiness evidence are in
+[`docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md).
 
 ---
 

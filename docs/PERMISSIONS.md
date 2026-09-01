@@ -62,8 +62,10 @@ lawyer's own matters — **981 of the 1,689 transformed matters have no target
 lawyer relationship**, so such a rule would hide billing from everyone. The
 earlier 834 of 1,730 figure was the pre-migration planning snapshot. See D14.
 
-**Everyone can export.** If a role can see data on screen, it can export it to
-Excel or PDF.
+**Everyone can export ordinary reports and visible business data.** If a role
+can see ordinary data on screen, it can export it to Excel or PDF. Audit-history
+export is the narrow exception described below; it must not be folded into this
+general rule.
 
 **Only the Administrator manages the dropdown lists** (courts, categories,
 degrees, venues, party roles).
@@ -80,6 +82,23 @@ eventually be recoverable and retain the file and its evidence. These
 lifecycle operations are policy only in Task 3.2: the screens, handlers,
 database representation, archived-record visibility, filters and reporting
 behavior will be designed with the relevant later tasks.
+
+## Audit access — approved, not implemented
+
+Decision **D31** does not change the current four roles or the 448 explicit
+Task 3.2 decisions until its later capability is implemented and tested:
+
+- Every Administrator may view audit history.
+- Audit export requires a separate account-level capability, initially granted
+  only to `KHelmy`.
+- The server must authorize that capability, not compare a username string.
+- There is no fifth Owner role.
+- Litigation Assistants, Lawyers and Paralegals receive no audit-history access
+  through their role.
+
+No audit event table, viewer, export or account capability exists yet. Task
+3.3A and 3.3B establish secure attribution and events; the contextual drawer,
+global Administrator page and export are the later Task 4.9 UI checkpoint.
 
 ## Server denial behavior
 
@@ -102,9 +121,13 @@ pages and ordinary 401/403 responses for handlers instead.
 
 1. **Enforce on the server.** Hiding a button is not security. Every API route
    checks the role.
-2. **Record who changed what.** Every table carries `created_by`, `created_at`,
-   `updated_by`, `updated_at`. The old system had no audit trail at all; this is
-   one of the main reasons for replacing it.
+2. **Record who changed what.** Task 3.3A securely attributes the exact
+   38-table application inventory; Task 3.3B adds the append-only chronological
+   event trail. Staging, quarantine, immutable migration evidence,
+   infrastructure, actor-registry and event tables keep their purpose-specific
+   provenance instead of receiving misleading application actor columns. The
+   old system had no audit trail at all; this is one of the main reasons for
+   replacing it.
 3. **Former staff cannot log in.** 43 of 135 people have left the firm. They
    remain in the roster so historical records still show who did the work, but
    `can_login` is false and they do not appear in dropdowns for new entries.
@@ -113,7 +136,8 @@ pages and ordinary 401/403 responses for handlers instead.
    project-owned server action must be added to the route inventory and use the
    statically enforced server-boundary pattern before it can pass the
    permission suite. Each exported HTTP method is checked separately.
-6. **Auditing is still Task 3.3.** Task 3.2 decides whether an operation is
-   allowed; it does not claim to populate `created_by` or `updated_by`.
+6. **Auditing is still Task 3.3A and 3.3B.** Task 3.2 decides whether an
+   operation is allowed; it does not claim to populate actors, create events or
+   implement D31's audit-export capability.
 7. **User management is still Task 3.4.** Administrator permission exists in
    the policy, but no user-management screen or mutation is built yet.

@@ -58,10 +58,20 @@ reconciliation instead of duplicating its tables and report datasets.
 | Reviewed link baseline | [`scripts/baselines/reviewed-links.json`](../scripts/baselines/reviewed-links.json); 348 aliases and 204 crosswalks; internal content digest `ed1d9ce58ff479560b6511322e48e36bff28e95ac2305cbee676ee414ed18ae0`; file SHA-256 `f2fb3e85503002721f3351e9e05b0e86ffae06a119d424d387c57cecfb25ee6c` | Tracked | Transform inputs and `npm run db:check`; exact destinations are verified, not merely counted. The separate review-workbook mapping digest is `bebf8f20140a63d272f80d454d8363d68e1dc7bf12d82b43a45096281b059f51` |
 | Gate 4 reconciliation | [`2026-08-30-gate-4.md`](reconciliations/2026-08-30-gate-4.md); stable generated-report digest `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b` | Tracked and reproducible | Complete 27-table accounting, logical equivalence, six report-category datasets, source/runtime/logo evidence and the 52-file migration inventory |
 | Continuity audit | [`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md) | Tracked dated evidence | Governance and evidence snapshot at commit `553b3d1`; it does not set current task priority |
+| Task 3.3 readiness and approved contract | [`2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md) | Tracked dated evidence | Complete audit-column/event readiness matrix, owner decisions D30–D34, risk dispositions and exact Task 3.3A return point |
 
 Ignored source material and workbooks are never committed. Their hashes,
 fingerprints, protected outcomes and reproduction procedures are the durable
 repository evidence; raw contents remain in the approved local storage only.
+
+The reviewed-link baseline's **348 aliases** are the protected Stage 2
+alias-to-person decisions. The current `person_name_alias` application table has
+**350 rows** because Task 3.1 migration `20260831100000_authentication` added
+exactly two application-native people and one primary self-alias for each. The
+migration asserts 135 protected people + two native people + 350 aliases, and a
+1 September aggregate-only read-only check proved the current 348/2 partition.
+The two native self-aliases are not reviewed migration mappings and do not
+change the 348-row baseline.
 
 ## The trap that destroys data silently
 
@@ -741,7 +751,7 @@ Three faults in this project are the same fault:
 |---|---|---|
 | The roster generator | a name it had failed to match | **"0 mentions"** — and two duplicate people were created, one carrying 1,309 hearings |
 | Gate 1 | a manifest with a table missing | a **total that happened to add up**, so the extraction looked complete |
-| The reset guard | `review|guard_fixture|3`, split on the pipe | `Number('guard_fixture')` → NaN → **an empty table**, and deletion was permitted |
+| The reset guard | `review\|guard_fixture\|3`, split on the pipe | `Number('guard_fixture')` → NaN → **an empty table**, and deletion was permitted |
 
 Each time, something unreadable was silently treated as nothing. Nothing is
 the most dangerous default a safety check can have, because "nothing here" is
@@ -2530,6 +2540,72 @@ The complete owner-readable evidence is in
   identical two-pass report digest is
   `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`
   byte for byte; no Access, extracted, database or logo data changed.
+
+## Task 3.3A attribution migration gate — approved, not started
+
+This section records the owner-approved migration contract from **D30** and
+**D33**. It does not describe an applied migration: no Task 3.3A SQL, backfill,
+actor registry, foreign key or database principal has been created.
+
+### Truthful attribution boundary
+
+- Cover the 37 current four-column application tables plus
+  `person_name_alias`.
+- Create a stable actor registry with the approved `system_migration` actor.
+- Use `system_migration` only where repository/migration evidence proves the
+  system created or last established the state.
+- Leave a documented historical actor unknown where no human or system actor
+  can be proved. In particular, later password setup, login and failed-attempt
+  changes do not justify inventing a human `user_accounts.updated_by` value.
+- Do not retrofit application actor columns onto staging, quarantine, immutable
+  migration evidence, infrastructure, the actor registry or the event table.
+- Do not rewrite business/source dates as authenticated audit timestamps.
+
+Task 3.3B begins an event trail from evidence the new system can actually
+observe. It must not fabricate historic logins, password changes, reports,
+exports, downloads or thousands of legacy create events.
+
+### Protected 5,209-row safety gate
+
+The actor backfill intersects existing immutability guards on exactly:
+
+| Protected target | Rows |
+|---|---:|
+| Invoices | 543 |
+| Payments | 597 |
+| Invoice allocations | 47 |
+| Attendance | 4,022 |
+| **Total** | **5,209** |
+
+No protected business field or historical timestamp may change. Existing
+immutability guards must never be permanently disabled, weakened or omitted.
+Task 3.3A is not accepted until it proves all of the following:
+
+1. Atomic rollback on any failure.
+2. Exact guard-function and trigger definitions before and after the backfill.
+3. Unchanged protected business/source digests.
+4. Unchanged protected row values and timestamps.
+5. A separate permanent audit-attribution digest.
+6. Successful current-history and canonical clean-replay migration paths.
+
+An implementation may need a temporary transaction-contained mechanism that
+permits only actor-column updates while restoring the exact guards before
+commit. That is the readiness audit's **implementation recommendation**, not an
+approved function body or permission to weaken a guard. It must be reviewed and
+proved against the six gates above.
+
+Several historical complete-row digests currently serialize null actor fields.
+Never replace an old protected digest merely because an audit backfill creates
+a different whole-row value. The recommended approach, subject to implementation
+review, is to preserve the historical business/timestamp contract by
+canonicalizing audit-only actor fields to their historical null representation
+inside that legacy digest and add the independent attribution digest. The old
+and new proofs answer different questions and both must remain reproducible.
+
+The exact 38-table inventory, actor mappings, context rules and protected-state
+digests become permanent `db:check` invariants; one-time migration assertions
+are not enough. Nothing in this documentation checkpoint authorizes the
+implementation.
 
 ## Cutover
 
