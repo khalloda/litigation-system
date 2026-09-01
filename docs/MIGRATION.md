@@ -2613,8 +2613,9 @@ actor-only fields to their historical null representation and the independent
 attribution digest checks their new values. The old and new proofs answer
 different questions and both remain reproducible.
 
-Permanent verification now has **88** `db:check` invariants (84 before Task
-3.3A). The protected audit-excluded digest is
+Permanent verification now has **89** `db:check` invariants (84 before Task
+3.3A and 88 before the final enforcement-inventory correction). The protected
+audit-excluded digest is
 `b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab`;
 the separate attribution digest is
 `edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`.
@@ -2623,10 +2624,15 @@ The historical billing complete-row digest remains
 and its identity/timestamp digest remains
 `a4e35c491255067d824aff6085a095d92d02bcf0946490c72c081632d4b200f2`.
 Historical-live upgrade and canonical clean replay fixtures both apply
-migration 53, preserve exact guard definitions and remove their disposable
+migrations 53–55, preserve exact guard definitions and remove their disposable
 databases afterward.
 
-### Task 3.3A acceptance correction — 1 September 2026
+### Initial Task 3.3A acceptance correction — 1 September 2026
+
+The source and database-principal “complete inventory” claims in this initial
+correction are superseded by the enforcement-inventory completion below. Its
+password, frozen-evidence and first fail-closed deployment corrections remain
+valid.
 
 Forward migration `20260901170000_close_task33a_acceptance_gaps` is migration
 54; its SHA-256 and applied checksum are
@@ -2645,15 +2651,44 @@ and connection access only after the whole exact inventory passes. An
 unexpected external condition aborts without being silently repaired and
 leaves the application role unusable for investigation.
 
+### Task 3.3A enforcement-inventory completion — 1 September 2026
+
+Forward migration
+`20260901190000_complete_task33a_enforcement_inventory` is migration 55. Its
+SHA-256 and applied checksum are
+`0c16867c5ef57b87aac57b929134e90b450cbf4339eeb78c02afd0c748d6c4b4`.
+Migrations 53 and 54 remain byte-identical at their recorded checksums.
+
+The runtime-source inventory now uses the installed TypeScript resolver and
+type checker to normalize aliases, relative paths, extensions and equivalent
+segments and to follow imported symbols through aliases and re-exports. The
+four context helpers remain confined to the exact gateway and three reviewed
+auth-service calls. Static, dynamic, CommonJS and ImportEquals loading; all
+eight JS/TS runtime extensions; the exact generated-Prisma exclusion; the
+canonical `src` boundary; direct PostgreSQL clients; every raw-SQL API; and
+unprovable computed execution are permanent fail-closed checks.
+
+The database principal boundary now covers inbound and outbound membership,
+direct ACL provenance, the exact four project schemas, effective and direct
+relation/column/sequence/function privileges, PostgreSQL 17 `MAINTAIN`, and
+direct, inherited or `PUBLIC` `SET`/`ALTER SYSTEM` capability for
+`session_replication_role`. A disposable ordinary trigger proves why replica
+mode is dangerous, while both deployment and canonical replay prove the real
+runtime is refused. Migration 55 commits `NOLOGIN` and removal of the direct
+target-database `CONNECT` grant before validation, terminates only target
+database runtime sessions, restores access only after every assertion passes,
+and never repairs an unexpected condition.
+
 The dated [Gate 4 report](reconciliations/2026-08-30-gate-4.md) is restored
 exactly to its commit `443227f` evidence: 52 migration files, stable generated
 digest
 `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`.
-It is not rewritten by current verification. The current 54-file repository
-migration inventory instead has digest
-`9dc23762f58ae0d04e2623bb79dd1d8acaf84ec6c6bd4f3555a56da173207eb4`;
-two non-writing current reconciliations were byte-identical at transient digest
-`4849b03f8c33a08242e5ad31368e140b7a49096469212c3028180e250e963b7c`.
+It is not rewritten by current verification. The current repository contains
+55 migrations with canonical inventory digest
+`73eee24f92e92c1c211d46013fd1a88349301861beb2c2fa6e49b33a0128e504`;
+two separate non-writing reconciliations, each with its own internal idempotency
+replay, were byte-identical at transient digest
+`3b6d584128e6d022abc9b10fbe98a6845e611322b56c350ca8695d6b4e791297`.
 Both approved Stage 2 database profiles remain unchanged.
 
 ## Cutover

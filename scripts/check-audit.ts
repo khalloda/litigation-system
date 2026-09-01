@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import path, { dirname, resolve } from 'node:path';
+import path, { resolve } from 'node:path';
 import ts from 'typescript';
 import {
   auditRuntimeSourceFailures,
@@ -53,109 +53,212 @@ function accountIdExpressions(sourceFile: ts.SourceFile): string[] {
   return expressions;
 }
 
-function fixtureFailures(fixturePath: string, text: string): string[] {
-  const root = mkdtempSync(path.join(tmpdir(), 'litigation-audit-source-'));
-  try {
-    const absolute = path.join(root, ...fixturePath.split('/'));
-    mkdirSync(dirname(absolute), { recursive: true });
-    writeFileSync(absolute, text, 'utf8');
-    return auditRuntimeSourceFailures(discoverAuditRuntimeSources(root), {
-      enforceReviewedCallsites: false,
-    });
-  } finally {
-    rmSync(root, { force: true, recursive: true });
-  }
-}
-
 function selfTest(): void {
+  const gateway: AuditRuntimeSource = {
+    path: 'src/lib/audit.ts',
+    text: `export async function setHumanAuditContext(tx: any, id: number) {}
+export async function setAuthenticationAuditContext(tx: any) {}
+export async function setAdministrationAuditContext(tx: any) {}
+export async function setMigrationAuditContext(tx: any) {}`,
+  };
+  const service: AuditRuntimeSource = {
+    path: 'src/lib/auth/service.ts',
+    text: `import { setAdministrationAuditContext, setAuthenticationAuditContext, setHumanAuditContext } from '@/lib/audit';
+export async function authenticateCredentials(tx: any) { await setAuthenticationAuditContext(tx); }
+export async function changeOwnPassword(tx: any, account: any) { await setHumanAuditContext(tx, account.id); }
+export async function setApprovedAccountPassword(tx: any) { await setAdministrationAuditContext(tx); }`,
+  };
+  const failures = (extra: readonly AuditRuntimeSource[], serviceSuffix = ''): string[] =>
+    auditRuntimeSourceFailures(
+      [gateway, { ...service, text: service.text + serviceSuffix }, ...extra],
+      { enforceReviewedCallsites: false },
+    );
+
   const positive: readonly AuditRuntimeSource[] = [
     {
       path: 'src/app/ordinary/actions.ts',
       text: `'use server';\nexport async function save(formData: FormData) { return formData.get('person'); }`,
     },
     {
-      path: 'src/lib/audit.ts',
-      text: `export async function gateway(tx: any, id: number) { return tx.sql('audit_set_human_context', id); }`,
-    },
-    {
-      path: 'src/lib/auth/service.ts',
-      text: `import { setHumanAuditContext } from '@/lib/audit';\nasync function changeOwnPassword(tx: any, account: any) { await setHumanAuditContext(tx, account.id); }`,
+      path: 'src/app/literal-dynamic.ts',
+      text: `export async function navigate() { return import('next/navigation'); }`,
     },
   ];
-  for (const fixture of positive) {
-    assert.deepEqual(
-      fixtureFailures(fixture.path, fixture.text),
+  assert.deepEqual(failures(positive), [], 'legitimate semantic source fixture failed');
+  assert.ok(
+    auditRuntimeSourceFailures(
+      [
+        {
+          ...gateway,
+          text: `${gateway.text}\nexport const exposed = setHumanAuditContext;`,
+        },
+        service,
+      ],
+      { enforceReviewedCallsites: false },
+    ).length > 0,
+    'audit gateway helper exposure was not rejected',
+  );
+
+  const negative: ReadonlyArray<
+    readonly [label: string, extra: readonly AuditRuntimeSource[], serviceSuffix?: string]
+  > = [
+    [
+      'helper local alias and request actor',
       [],
-      `${fixture.path} legitimate fixture failed`,
-    );
+      `\nconst delegated = setHumanAuditContext;\nexport async function unsafe(formData: FormData, tx: any) { return delegated(tx, Number(formData.get('person'))); }`,
+    ],
+    [
+      'auth-service helper re-export and renamed invocation',
+      [
+        {
+          path: 'src/lib/reexport-user.ts',
+          text: `import { exposed as invoke } from '@/lib/auth/service';\nexport const unsafe = (tx: any) => invoke(tx, 1);`,
+        },
+      ],
+      `\nexport { setHumanAuditContext as exposed };`,
+    ],
+    [
+      'equivalent normalized audit path',
+      [
+        {
+          path: 'src/lib/normalized.ts',
+          text: `import { setMigrationAuditContext as invoke } from '@/lib/../lib/audit';\nexport const unsafe = (tx: any) => invoke(tx);`,
+        },
+      ],
+    ],
+    [
+      'ImportEquals alias',
+      [
+        {
+          path: 'src/lib/import-equals.ts',
+          text: `import audit = require('@/lib/audit');\nconst hidden = audit.setMigrationAuditContext;\nexport const unsafe = (tx: any) => hidden(tx);`,
+        },
+      ],
+    ],
+    [
+      'variable dynamic import',
+      [
+        {
+          path: 'src/lib/dynamic.ts',
+          text: `const target = ['@/lib/', 'audit'].join('');\nexport async function unsafe(tx: any) { const audit = await import(target); return audit.setMigrationAuditContext(tx); }`,
+        },
+      ],
+    ],
+    [
+      'variable CommonJS require',
+      [
+        {
+          path: 'src/lib/commonjs.ts',
+          text: `const loader = require;\nexport const unsafe = (target: string) => loader(target);`,
+        },
+      ],
+    ],
+    [
+      'computed CommonJS require',
+      [
+        {
+          path: 'src/lib/computed-require.ts',
+          text: `const load=module['requ'+'ire']; export const unsafe=()=>load('@/lib/audit');`,
+        },
+      ],
+    ],
+    [
+      'runtime-constructed raw SQL',
+      [
+        {
+          path: 'src/lib/computed-sql.ts',
+          text: `const command=['SET','LOCAL'].join(' '); const a=['litigation.','audit_'].join(''); const b=['actor_','id'].join('');\nexport const unsafe=(tx:any)=>tx.$executeRawUnsafe([command,a+b,'=1'].join(' '));`,
+        },
+      ],
+    ],
+    [
+      'project-owned executable outside src',
+      [
+        {
+          path: 'outside-runtime.ts',
+          text: `import { setMigrationAuditContext as hidden } from '@/lib/audit';\nexport const outside = (tx: any) => hidden(tx);`,
+        },
+        {
+          path: 'src/lib/outside-user.ts',
+          text: `export { outside } from '../../outside-runtime';`,
+        },
+      ],
+    ],
+    [
+      'direct PostgreSQL client',
+      [
+        {
+          path: 'src/lib/direct-pg.ts',
+          text: `import { Client } from 'pg'; export const db=Client;`,
+        },
+      ],
+    ],
+    [
+      'eval',
+      [{ path: 'src/lib/eval.ts', text: `export const unsafe = (code: string) => eval(code);` }],
+    ],
+    [
+      'Function constructor alias',
+      [
+        {
+          path: 'src/lib/function.ts',
+          text: `const Build = Function; export const unsafe=Build('return 1');`,
+        },
+      ],
+    ],
+    [
+      'computed global Function constructor alias',
+      [
+        {
+          path: 'src/lib/computed-function.ts',
+          text: `const Build=globalThis['Fun'+'ction']; export const unsafe=Build('return 1');`,
+        },
+      ],
+    ],
+    [
+      'destructured raw SQL method',
+      [
+        {
+          path: 'src/lib/destructured-sql.ts',
+          text: `export const unsafe=(tx:any)=>{ const {$queryRaw:run}=tx; return run('SELECT 1'); };`,
+        },
+      ],
+    ],
+    [
+      'controlled password administration import',
+      [
+        {
+          path: 'src/app/unsafe-admin/actions.ts',
+          text: `import { setApprovedAccountPassword as reset } from '@/lib/auth/service';\nexport const unsafe=(tx:any)=>reset(tx);`,
+        },
+      ],
+    ],
+    [
+      'direct system actor selection',
+      [{ path: 'src/lib/system-key.ts', text: `export const actor='system_authentication';` }],
+    ],
+  ];
+  for (const [label, extra, suffix] of negative) {
+    assert.ok(failures(extra, suffix).length > 0, `${label} bypass was not rejected`);
   }
 
-  const negative: readonly AuditRuntimeSource[] = [
-    {
-      path: 'src/app/unsafe/actions.ts',
-      text: `import { setHumanAuditContext } from '@/lib/audit';\nexport async function save(formData: FormData, tx: any) { await setHumanAuditContext(tx, Number(formData.get('person'))); }`,
-    },
-    {
-      path: 'src/lib/unsafe-service.ts',
-      text: `export async function save(tx: any, person: string) { return tx.$queryRawUnsafe('SELECT audit_set_human_context(' + person + ')'); }`,
-    },
-    {
-      path: 'src/lib/guc-service.ts',
-      text: `export async function save(tx: any) { return tx.$queryRawUnsafe("SELECT set_config('litigation.audit_actor_id','1',true)"); }`,
-    },
-    {
-      path: 'src/lib/set-service.ts',
-      text: `export async function save(tx: any) { return tx.$executeRawUnsafe("SET LOCAL litigation.audit_actor_id='1'"); }`,
-    },
-    {
-      path: 'src/lib/system-service.ts',
-      text: `import { setAuthenticationAuditContext } from '@/lib/audit';\nexport async function save(tx: any) { return setAuthenticationAuditContext(tx); }`,
-    },
-    {
-      path: 'src/lib/admin-service.ts',
-      text: `import { setAdministrationAuditContext as choose } from '@/lib/audit';\nexport async function save(tx: any) { return choose(tx); }`,
-    },
-    {
-      path: 'src/lib/migration-service.ts',
-      text: `const audit = require('@/lib/audit');\nexport async function save(tx: any) { return audit['setMigrationAuditContext'](tx); }`,
-    },
-    {
-      path: 'src/lib/dynamic-service.ts',
-      text: `export async function save(tx: any) { const audit = await import('@/lib/audit'); return audit.setHumanAuditContext(tx, 1); }`,
-    },
-    {
-      path: 'src/lib/reexport.ts',
-      text: `export { setHumanAuditContext } from '@/lib/audit';`,
-    },
-    {
-      path: 'src/lib/computed-sql.ts',
-      text: `export async function save(tx: any) { return tx.$queryRawUnsafe('audit_' + 'set_human_context(1)'); }`,
-    },
-    {
-      path: 'src/lib/indirect-computed-sql.ts',
-      text: `const query = 'SELECT audit_' + 'set_human_context(1)';\nexport async function save(tx: any) { return tx.$queryRawUnsafe(query); }`,
-    },
-    {
-      path: 'src/lib/computed-import.ts',
-      text: `export async function save(tx: any) { const audit = await import('@/lib/' + 'audit'); return audit['set' + 'HumanAuditContext'](tx, 1); }`,
-    },
-    {
-      path: 'src/lib/key-selection.ts',
-      text: `export const actor = 'system_authentication';`,
-    },
-    {
-      path: 'src/app/unsafe-admin/actions.ts',
-      text: `import { setApprovedAccountPassword } from '@/lib/auth/service';\nexport async function save(formData: FormData) { return setApprovedAccountPassword(String(formData.get('person')), String(formData.get('password'))); }`,
-    },
-  ];
-  for (const fixture of negative) {
-    assert.ok(
-      fixtureFailures(fixture.path, fixture.text).length > 0,
-      `${fixture.path} bypass was not rejected`,
+  const root = mkdtempSync(path.join(tmpdir(), 'litigation-audit-source-'));
+  try {
+    mkdirSync(path.join(root, 'src', 'generated', 'prisma'), { recursive: true });
+    for (const extension of ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.mts', '.cjs', '.cts']) {
+      writeFileSync(path.join(root, 'src', `runtime${extension}`), 'export {};', 'utf8');
+    }
+    writeFileSync(
+      path.join(root, 'src', 'generated', 'prisma', 'ignored.ts'),
+      `import '@/lib/audit';`,
+      'utf8',
     );
+    assert.equal(discoverAuditRuntimeSources(root).length, 8);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
   }
   console.log(
-    `check:audit self-test — ${negative.length} bypass fixtures rejected; ${positive.length} legitimate fixtures accepted; all disposable files removed.`,
+    `check:audit self-test — ${negative.length + 1} semantic bypass fixtures rejected; ${positive.length} legitimate fixtures accepted; all 8 runtime extensions discovered and the exact generated-Prisma subtree excluded; all disposable files removed.`,
   );
 }
 

@@ -252,6 +252,11 @@ return point.
 
 ## Acceptance-gap correction — 1 September 2026
 
+This subsection records the first correction commit. Its “complete” source and
+database-principal inventory claims are superseded by the final
+enforcement-inventory completion below; its password, frozen-evidence and
+initial fail-closed corrections remain valid evidence.
+
 The focused forward correction starts directly from Task 3.3A commit
 `06eaee395d1eb28e8a32cb9245304aa8e070ae5d` and does not amend or replace it.
 The correction commit is named `fix: close Task 3.3A acceptance gaps`; it is
@@ -347,3 +352,67 @@ database verification; all 88 permanent invariants; and both current Gate 4
 reconciliations pass. The final build, staged-diff review, repository/content
 scans, fixture-absence proof, commit identity and review-patch identity are
 reported after this Markdown is included in the focused commit.
+
+## Enforcement-inventory completion — 1 September 2026
+
+This final Task 3.3A correction starts directly from commit
+`73995da744ce725b5e1647d4b3e5c6c03b42c46c`, preserves both earlier local
+commits, and is committed as `fix: complete Task 3.3A enforcement inventory`.
+It does not start Task 3.3B.
+
+### Reproduced gaps and permanent closure
+
+The earlier source checker accepted six disposable bypass classes: a local
+alias/wrapper carrying `Number(formData.get('person'))`; helper re-export or
+wrapping through the auth service; resolver-equivalent audit paths; ImportEquals,
+CommonJS and variable dynamic loading; runtime-assembled raw SQL; and a
+resolver-proved project module outside `src`. The replacement uses the installed
+TypeScript compiler resolver and symbol graph, enforces the canonical source
+root, follows aliases and re-exports, fixes the exact helper and raw-SQL call
+inventory, and rejects computed module or execution paths. Seventeen permanent
+negative fixtures fail and two legitimate fixtures pass across all eight JS/TS
+runtime extensions; the exact generated Prisma subtree is the only executable
+source exclusion.
+
+Disposable PostgreSQL 17 roles and objects proved the previous database check
+missed an inbound role path, `PUBLIC SELECT`, `PUBLIC EXECUTE`, column-level
+`SELECT`/`INSERT`/`UPDATE`/`REFERENCES`, `MAINTAIN`, and parameter `SET` that
+allowed replica mode to suppress an ordinarily enabled trigger. Permanent
+fixtures now reject both membership directions, unapproved ACL provenance,
+every relation/column/sequence/function path, extra project schemas, all eight
+table privileges, and both `SET` and `ALTER SYSTEM` capability for
+`session_replication_role`. The real runtime also fails an execution attempt.
+
+### Migration 55 and permanent evidence
+
+Forward migration
+`20260901190000_complete_task33a_enforcement_inventory` is the 55th migration.
+Its file and applied checksum are
+`0c16867c5ef57b87aac57b929134e90b450cbf4339eeb78c02afd0c748d6c4b4`.
+It commits runtime `NOLOGIN` and removes its direct target-database `CONNECT`
+grant before validation, terminates only target-database runtime sessions, and
+restores login/direct access only when the exact expanded boundary passes. A
+disposable-role execution of the same migration program proves an unexpected
+`PUBLIC` ACL leaves that role unavailable. No unexpected real condition was
+found or repaired.
+
+Permanent verification is now 89/89. All seven actors, the
+45,463/45,459/four attribution population, 448 authorization decisions, D30–D34,
+the four business roles and every protected row/digest remain exact. Migrations
+53/54 and the frozen Gate 4 report remain byte-identical. The complete final
+command, content-scan, commit and patch evidence is reported externally after
+this dated report enters the focused commit.
+
+### Material tools and primary sources
+
+The repository, installed TypeScript/Next.js packages, PostgreSQL 17.11
+catalogs and executable disposable fixtures were primary evidence. Context7 was
+used only to confirm the official TypeScript Compiler API resolver/symbol-alias
+semantics and PostgreSQL 17 membership, ACL, `MAINTAIN`, parameter-privilege and
+`session_replication_role` semantics. The installed security finding-fix
+workflow supplied the reproduce–correct–verify discipline; it did not override
+`docs/DECISIONS.md`. No plugin was installed, no external account was connected,
+and no subagent or browser was used.
+
+The exact next return point remains **Task 3.3B — Append-only event foundation,
+approved but not started**.

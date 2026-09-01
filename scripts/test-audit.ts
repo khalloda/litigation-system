@@ -2,8 +2,8 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { Client } from 'pg';
-import { createDatabaseClient } from '../src/lib/db';
 import { setHumanAuditContext } from '../src/lib/audit';
 import {
   auditDataFailures,
@@ -22,6 +22,7 @@ import {
 
 const TASK33A_MIGRATION = '20260901120000_secure_audit_actor_attribution';
 const TASK33A_CORRECTION_MIGRATION = '20260901170000_close_task33a_acceptance_gaps';
+const TASK33A_FINAL_ENFORCEMENT_MIGRATION = '20260901190000_complete_task33a_enforcement_inventory';
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
@@ -185,11 +186,11 @@ async function reverseTask33AForHistoricalFixture(db: Client, fixtureName: strin
       DROP FUNCTION public.enforce_audit_actor_columns()`);
     const removed = await db.query(
       `DELETE FROM _prisma_migrations
-        WHERE migration_name IN ($1,$2)
+        WHERE migration_name IN ($1,$2,$3)
         RETURNING migration_name`,
-      [TASK33A_MIGRATION, TASK33A_CORRECTION_MIGRATION],
+      [TASK33A_MIGRATION, TASK33A_CORRECTION_MIGRATION, TASK33A_FINAL_ENFORCEMENT_MIGRATION],
     );
-    assert.ok(removed.rowCount === 1 || removed.rowCount === 2);
+    assert.ok(removed.rowCount !== null && removed.rowCount >= 1 && removed.rowCount <= 3);
     assert.ok(removed.rows.some((row) => row['migration_name'] === TASK33A_MIGRATION));
     await db.query('COMMIT');
   } catch (error) {
@@ -255,27 +256,28 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
       );
       assert.deepEqual(await protectedGuardState(upgraded), guardsBefore);
       assert.deepEqual(await auditStructureFailures(upgraded), []);
+      assert.deepEqual(await runtimeRoleBoundaryFailures(upgraded), []);
       assert.deepEqual(await auditDataFailures(upgraded), []);
       const evidence = await gate4MigrationEvidence(upgraded);
       assert.deepEqual(evidence.defects, []);
       assert.equal(evidence.acceptedDatabaseProfile, 'historical-live');
       assert.deepEqual(
         evidence.laterAppliedMigrations.map((migration) => migration.name),
-        ['20260831100000_authentication', TASK33A_MIGRATION, TASK33A_CORRECTION_MIGRATION],
+        [
+          '20260831100000_authentication',
+          TASK33A_MIGRATION,
+          TASK33A_CORRECTION_MIGRATION,
+          TASK33A_FINAL_ENFORCEMENT_MIGRATION,
+        ],
       );
     } finally {
       await upgraded.end();
     }
     console.log(
-      'PASS historical-live clone: migrations 53/54 replay, protected digest and guard definitions unchanged',
+      'PASS historical-live clone: migrations 53/54/55 replay, protected digest and guard definitions unchanged',
     );
   } finally {
     if (created) {
-      await admin.query(
-        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
-          WHERE datname=$1 AND pid<>pg_backend_pid()`,
-        [fixtureName],
-      );
       await admin.query(`DROP DATABASE ${identifier(fixtureName)}`);
     }
   }
@@ -346,8 +348,63 @@ async function proveRoleBoundaryAdversarial(
     await admin.query(`CREATE ROLE ${identifier(bridgeRole)} NOLOGIN`);
     await admin.query(`CREATE ROLE ${identifier(targetRole)} NOLOGIN`);
     created = true;
+    // This database was created solely for this test. Remove the real runtime
+    // role's cloned object ACLs so the probe role can be checked as the one
+    // exact approved grantee, then restore the real grants in finally.
+    await owner.query('DROP OWNED BY litigation_runtime');
     await grantProbeRuntimeBoundary(owner, fixtureName, probeRole);
     assert.deepEqual(await runtimeRoleBoundaryFailures(owner, probeRole), []);
+
+    // Execute the exact forward migration with only its reviewed runtime-role
+    // identifier substituted for this disposable probe. An unexpected PUBLIC
+    // grant must leave the probe NOLOGIN and without CONNECT after validation
+    // fails, proving that the committed first transaction fails closed.
+    const migration55 = readFileSync(
+      new URL(
+        '../prisma/migrations/20260901190000_complete_task33a_enforcement_inventory/migration.sql',
+        import.meta.url,
+      ),
+      'utf8',
+    ).replaceAll('litigation_runtime', probeRole);
+    await owner.query('GRANT SELECT ON public.lookup_importance TO PUBLIC');
+    try {
+      await assert.rejects(
+        owner.query(migration55),
+        /project relation has a PUBLIC or unapproved-grantee ACL/u,
+      );
+      await owner.query('ROLLBACK');
+      assert.equal(
+        (
+          await admin.query<{ rolcanlogin: boolean }>(
+            'SELECT rolcanlogin FROM pg_roles WHERE rolname=$1',
+            [probeRole],
+          )
+        ).rows[0]?.rolcanlogin,
+        false,
+      );
+      assert.equal(
+        (
+          await owner.query<{ direct_connect: string }>(
+            `SELECT count(*)::text direct_connect
+               FROM pg_database d,LATERAL aclexplode(d.datacl) acl
+               JOIN pg_roles grantee ON grantee.oid=acl.grantee
+              WHERE d.datname=current_database() AND grantee.rolname=$1
+                AND acl.privilege_type='CONNECT'`,
+            [probeRole],
+          )
+        ).rows[0]?.direct_connect,
+        '0',
+      );
+    } finally {
+      await owner.query('ROLLBACK').catch(() => undefined);
+      await owner.query('REVOKE SELECT ON public.lookup_importance FROM PUBLIC');
+      await admin.query(`ALTER ROLE ${identifier(probeRole)} LOGIN`);
+      await owner.query(
+        `GRANT CONNECT ON DATABASE ${identifier(fixtureName)} TO ${identifier(probeRole)}`,
+      );
+    }
+    assert.deepEqual(await runtimeRoleBoundaryFailures(owner, probeRole), []);
+    console.log('PASS migration 55 validation failure leaves the disposable runtime unavailable');
 
     await admin.query(`ALTER ROLE ${identifier(probeRole)} INHERIT`);
     assert.ok(
@@ -529,14 +586,162 @@ async function proveRoleBoundaryAdversarial(
       ),
     );
     await owner.query('ROLLBACK');
+
+    await admin.query(
+      `GRANT ${identifier(probeRole)} TO ${identifier(targetRole)} WITH INHERIT TRUE, SET TRUE`,
+    );
+    const inboundMembership = await runtimeRoleBoundaryFailures(owner, probeRole);
+    assert.ok(inboundMembership.some((failure) => failure.includes('inherit or assume runtime')));
+    const inboundSession = new Client({ connectionString: fixtureOwnerUrl.toString() });
+    await inboundSession.connect();
+    try {
+      await inboundSession.query(`SET SESSION AUTHORIZATION ${identifier(targetRole)}`);
+      await inboundSession.query(`SET ROLE ${identifier(probeRole)}`);
+      assert.equal(
+        (await inboundSession.query<{ current_user: string }>('SELECT current_user')).rows[0]
+          ?.current_user,
+        probeRole,
+      );
+      await inboundSession.query('RESET ROLE');
+      await inboundSession.query('RESET SESSION AUTHORIZATION');
+    } finally {
+      await inboundSession.end();
+    }
+    await admin.query(`REVOKE ${identifier(probeRole)} FROM ${identifier(targetRole)}`);
+
+    await owner.query('BEGIN');
+    await owner.query('GRANT SELECT ON public.lookup_importance TO PUBLIC');
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('unapproved relation ACL grantee PUBLIC/SELECT'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(
+      `GRANT SELECT(id),INSERT(id),UPDATE(id),REFERENCES(id) ON public.audit_actors TO ${identifier(probeRole)}`,
+    );
+    const columnAcl = await runtimeRoleBoundaryFailures(owner, probeRole);
+    for (const privilege of ['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) {
+      assert.ok(columnAcl.some((failure) => failure.includes(`/${privilege}`)));
+    }
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(`GRANT MAINTAIN ON public.lookup_importance TO ${identifier(probeRole)}`);
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('lookup_importance'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    const approvedSequence = (
+      await owner.query<{ schema_name: string; sequence_name: string }>(
+        `SELECT n.nspname schema_name,c.relname sequence_name
+           FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+          WHERE c.relkind='S' AND c.oid IN (
+            SELECT to_regclass(pg_get_serial_sequence(format('public.%I',table_name),'id'))::oid
+              FROM unnest($1::text[]) table_name
+          ) ORDER BY n.nspname,c.relname LIMIT 1`,
+        [AUDITED_TABLES],
+      )
+    ).rows[0];
+    assert.ok(approvedSequence);
+    await owner.query('BEGIN');
+    await owner.query(
+      `GRANT SELECT ON SEQUENCE ${identifier(approvedSequence.schema_name)}.${identifier(approvedSequence.sequence_name)} TO PUBLIC`,
+    );
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('unapproved sequence ACL grantee PUBLIC/SELECT'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query('GRANT EXECUTE ON FUNCTION public.audit_current_actor_id() TO PUBLIC');
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('unapproved SECURITY DEFINER ACL grantee PUBLIC/EXECUTE'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(`GRANT SELECT ON public.lookup_importance TO ${identifier(targetRole)}`);
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes(`unapproved relation ACL grantee ${targetRole}/SELECT`),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(`CREATE SCHEMA ${identifier(`task33a_schema_${process.pid}`)}`);
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('project schema inventory differs'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    const triggerTable = `task33a_replica_probe_${process.pid}`;
+    const triggerFunction = `task33a_replica_mark_${process.pid}`;
+    await owner.query('BEGIN');
+    await owner.query(
+      `CREATE TABLE public.${identifier(triggerTable)}(id integer GENERATED ALWAYS AS IDENTITY,fired boolean NOT NULL DEFAULT false)`,
+    );
+    await owner.query(`
+      CREATE FUNCTION public.${identifier(triggerFunction)}() RETURNS trigger
+      LANGUAGE plpgsql AS $$ BEGIN NEW.fired:=true; RETURN NEW; END $$`);
+    await owner.query(
+      `CREATE TRIGGER mark_before_insert BEFORE INSERT ON public.${identifier(triggerTable)}
+       FOR EACH ROW EXECUTE FUNCTION public.${identifier(triggerFunction)}()`,
+    );
+    await owner.query(
+      `GRANT SET ON PARAMETER session_replication_role TO ${identifier(probeRole)}`,
+    );
+    const parameterAcl = await runtimeRoleBoundaryFailures(owner, probeRole);
+    assert.ok(parameterAcl.some((failure) => failure.includes('session_replication_role')));
+    await owner.query(
+      `GRANT INSERT,SELECT ON public.${identifier(triggerTable)} TO ${identifier(probeRole)}`,
+    );
+    await owner.query(`SET LOCAL ROLE ${identifier(probeRole)}`);
+    const originTrigger = await owner.query<{ fired: boolean }>(
+      `INSERT INTO public.${identifier(triggerTable)} DEFAULT VALUES RETURNING fired`,
+    );
+    assert.equal(originTrigger.rows[0]?.fired, true);
+    await owner.query(`SET LOCAL session_replication_role='replica'`);
+    const replicaTrigger = await owner.query<{ fired: boolean }>(
+      `INSERT INTO public.${identifier(triggerTable)} DEFAULT VALUES RETURNING fired`,
+    );
+    assert.equal(replicaTrigger.rows[0]?.fired, false);
+    await owner.query(`RESET session_replication_role`);
+    await owner.query('RESET ROLE');
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(
+      `GRANT ALTER SYSTEM ON PARAMETER session_replication_role TO ${identifier(probeRole)}`,
+    );
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('session_replication_role'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
     assert.deepEqual(await runtimeRoleBoundaryFailures(owner, probeRole), []);
     console.log(
-      'PASS disposable role graph, stored settings, ownership, effective grants and PUBLIC paths are rejected',
+      'PASS disposable bidirectional role graph, exact ACL provenance, columns, sequences, MAINTAIN, schemas and session_replication_role paths are rejected',
     );
   } finally {
     if (created) {
       await owner.query(`DROP TABLE IF EXISTS public.${identifier(ownedTable)}`);
       await owner.query(`DROP OWNED BY ${identifier(probeRole)}`);
+      await grantProbeRuntimeBoundary(owner, fixtureName, 'litigation_runtime');
       await admin.query(`DROP ROLE IF EXISTS ${identifier(probeRole)}`);
       await admin.query(`DROP ROLE IF EXISTS ${identifier(bridgeRole)}`);
       await admin.query(`DROP ROLE IF EXISTS ${identifier(targetRole)}`);
@@ -638,20 +843,29 @@ async function main(): Promise<void> {
     const owner = new Client({ connectionString: fixtureOwnerUrl.toString() });
     const runtimeOne = new Client({ connectionString: runtimeUrl.toString() });
     const runtimeTwo = new Client({ connectionString: runtimeUrl.toString() });
+    // Import only after both replay migrations finish: evaluating db.ts creates
+    // its global runtime pool, which fail-closed deployment must terminate.
+    const { createDatabaseClient } = await import('../src/lib/db');
     const prismaRuntime = createDatabaseClient(runtimeUrl.toString());
     await owner.connect();
-    await proveRoleBoundaryAdversarial(admin, owner, fixtureOwnerUrl, fixtureName);
-    await runtimeOne.connect();
-    await runtimeTwo.connect();
     try {
+      await proveRoleBoundaryAdversarial(admin, owner, fixtureOwnerUrl, fixtureName);
+      await runtimeOne.connect();
+      await runtimeTwo.connect();
       const migrationEvidence = await gate4MigrationEvidence(owner);
       assert.deepEqual(migrationEvidence.defects, []);
       assert.equal(migrationEvidence.acceptedDatabaseProfile, 'canonical-clean-replay');
       assert.deepEqual(
         migrationEvidence.laterAppliedMigrations.map((migration) => migration.name),
-        ['20260831100000_authentication', TASK33A_MIGRATION, TASK33A_CORRECTION_MIGRATION],
+        [
+          '20260831100000_authentication',
+          TASK33A_MIGRATION,
+          TASK33A_CORRECTION_MIGRATION,
+          TASK33A_FINAL_ENFORCEMENT_MIGRATION,
+        ],
       );
       assert.deepEqual(await auditStructureFailures(owner), []);
+      assert.deepEqual(await runtimeRoleBoundaryFailures(owner), []);
       assert.deepEqual(await auditDataFailures(owner), []);
       assert.deepEqual(
         (
@@ -660,6 +874,18 @@ async function main(): Promise<void> {
           )
         ).rows[0],
         { current_user: 'litigation_runtime', session_user: 'litigation_runtime' },
+      );
+      await rejectsDatabase(
+        () => runtimeOne.query(`SET session_replication_role='replica'`),
+        /permission denied/u,
+      );
+      assert.equal(
+        (
+          await runtimeOne.query<{ setting: string }>(
+            `SELECT current_setting('session_replication_role') setting`,
+          )
+        ).rows[0]?.setting,
+        'origin',
       );
 
       await rejectsDatabase(
@@ -926,10 +1152,11 @@ async function main(): Promise<void> {
       await runtimeOne.query('ROLLBACK');
 
       assert.deepEqual(await auditStructureFailures(owner), []);
+      assert.deepEqual(await runtimeRoleBoundaryFailures(owner), []);
       assert.deepEqual(await auditDataFailures(owner), []);
       assert.equal(AUDITED_TABLES.length, 38);
       console.log(
-        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54, exact 38 tables and immutable 7-actor registry',
+        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54/55, exact 38 tables and immutable 7-actor registry',
       );
       console.log(
         'PASS missing/invalid context, spoof overwrite and immutable creation attribution',

@@ -287,26 +287,36 @@ The runtime receives `CONNECT`, public-schema `USAGE`, and only
 application tables. It has no physical `DELETE`, actor-registry or migration
 evidence access, staging/quarantine access, schema `CREATE`, object ownership,
 trigger/function replacement or administration/migration context. It has no
-direct or indirect membership, cannot `SET ROLE` to **any** other role, and has
-no stored role-level or database-specific setting. The migration owner retains
-schema ownership.
+outbound membership, cannot `SET ROLE` to **any** other role, and no
+non-superuser role may inherit or assume it. It has no stored role-level or
+database-specific setting and cannot `SET` or `ALTER SYSTEM` for
+`session_replication_role`. The migration owner retains schema ownership.
 
-Migration `20260901170000_close_task33a_acceptance_gaps` is the forward-only
-acceptance correction. Deployment first commits `NOLOGIN` and revokes the
-runtime's connection to the target database, then terminates its existing
-sessions. A second transaction inventories the complete role graph, settings,
-database/schema/relation/sequence/function ownership, effective grants over all
-relations and sequences in `public`, `staging` and `quarantine`, and every
-runtime-executable project `SECURITY DEFINER` function. Only the exact three
-narrow context functions are approved. Future functions also default to no
-`PUBLIC EXECUTE`. Login and target-database `CONNECT` return only after every
-assertion passes; a failure leaves the web role unusable and never silently
-removes unexpected external ownership, membership or grants.
+Migration `20260901170000_close_task33a_acceptance_gaps` established the first
+forward-only fail-closed deployment and safe future-function defaults. Its
+claims of a complete source and database-principal inventory are superseded by
+migration `20260901190000_complete_task33a_enforcement_inventory` and the
+permanent semantic checker.
+
+Migration 55 commits runtime `NOLOGIN` and removal of its direct target-database
+`CONNECT` grant, then terminates only that principal's sessions in the target
+database. A second transaction checks the exact `_migration`, `public`,
+`quarantine` and `staging` schema inventory; both directions of the membership
+graph; settings and ownership; effective and direct-provenance ACLs for every
+project relation, column, sequence and `SECURITY DEFINER` function; all eight
+PostgreSQL 17 table privileges including `MAINTAIN`; and inherited, direct or
+`PUBLIC` parameter rights for `session_replication_role`. Only the exact 38
+tables, their required sequences and three narrow context functions are
+approved. An execution probe also proves the runtime cannot enter replica mode.
+Login and direct target-database `CONNECT` return only after every assertion
+passes. A failure leaves the web role unavailable and never silently removes an
+unexpected external ownership, membership, ACL or parameter grant.
 
 The same complete boundary runs in migration/deployment preflight,
 `db:provision-runtime`, `db:check` and disposable adversarial fixtures. A new
-gateway, role path, setting, owned object, relation/sequence grant or executable
-security-definer therefore requires an explicit reviewed inventory change.
+gateway, role path, setting, schema, owned object, ACL, column/sequence grant,
+executable security-definer or parameter capability therefore requires an
+explicit reviewed inventory change.
 
 ### Local setup and upgrade
 

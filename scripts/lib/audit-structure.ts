@@ -69,6 +69,7 @@ export const TASK33A_ATTRIBUTION_DIGEST =
   'edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d';
 
 export const RUNTIME_DATABASE_ROLE = 'litigation_runtime';
+export const PROJECT_DATABASE_SCHEMAS = ['_migration', 'public', 'quarantine', 'staging'] as const;
 export const APPROVED_RUNTIME_SECURITY_DEFINERS = [
   'public.audit_current_actor_id()',
   'public.audit_set_authentication_context()',
@@ -310,7 +311,6 @@ export async function auditStructureFailures(db: ClientBase): Promise<string[]> 
     failures.push('actor-registry immutability triggers differ');
   }
 
-  failures.push(...(await runtimeRoleBoundaryFailures(db)));
   return failures;
 }
 
@@ -386,6 +386,32 @@ export async function runtimeRoleBoundaryFailures(
     );
   }
 
+  const inboundMemberships = await db.query<{
+    role_name: string;
+    inherits_runtime: boolean;
+    can_set_runtime: boolean;
+  }>(
+    `SELECT rolname role_name,
+            pg_has_role(oid,(SELECT oid FROM pg_roles WHERE rolname=$1),'USAGE') inherits_runtime,
+            pg_has_role(oid,(SELECT oid FROM pg_roles WHERE rolname=$1),'SET') can_set_runtime
+       FROM pg_roles
+      WHERE rolname<>$1 AND NOT rolsuper
+        AND (pg_has_role(oid,(SELECT oid FROM pg_roles WHERE rolname=$1),'USAGE')
+          OR pg_has_role(oid,(SELECT oid FROM pg_roles WHERE rolname=$1),'SET'))
+      ORDER BY rolname`,
+    [roleName],
+  );
+  if (inboundMemberships.rows.length > 0) {
+    failures.push(
+      `non-superuser roles can inherit or assume runtime: ${inboundMemberships.rows
+        .map(
+          (row) =>
+            `${row.role_name}[inherit=${String(row.inherits_runtime)},set=${String(row.can_set_runtime)}]`,
+        )
+        .join(', ')}`,
+    );
+  }
+
   if ((roleRow?.rolconfig?.length ?? 0) > 0) failures.push('runtime role-level settings differ');
   const databaseSettings = await db.query<{ database_name: string; settings: string[] }>(
     `SELECT coalesce(d.datname,'all databases') database_name,s.setconfig settings
@@ -441,6 +467,23 @@ export async function runtimeRoleBoundaryFailures(
     failures.push('runtime database CONNECT/CREATE/TEMPORARY boundary differs');
   }
 
+  const projectSchemaInventory = await db.query<{ schema_name: string }>(`
+    SELECT nspname schema_name FROM pg_namespace
+     WHERE left(nspname,3)<>'pg_' AND nspname<>'information_schema'
+     ORDER BY nspname`);
+  if (
+    !same(
+      projectSchemaInventory.rows.map((row) => row.schema_name),
+      [...PROJECT_DATABASE_SCHEMAS],
+    )
+  ) {
+    failures.push(
+      `project schema inventory differs: ${projectSchemaInventory.rows
+        .map((row) => row.schema_name)
+        .join(', ')}`,
+    );
+  }
+
   const schemas = await db.query<{
     schema_name: string;
     usage_ok: boolean;
@@ -449,15 +492,15 @@ export async function runtimeRoleBoundaryFailures(
     `SELECT nspname schema_name,has_schema_privilege($1,oid,'USAGE') usage_ok,
             has_schema_privilege($1,oid,'CREATE') create_ok
        FROM pg_namespace WHERE nspname=ANY($2::text[]) ORDER BY nspname`,
-    [roleName, ['public', 'quarantine', 'staging']],
+    [roleName, PROJECT_DATABASE_SCHEMAS],
   );
   if (
-    schemas.rows.length !== 3 ||
+    schemas.rows.length !== PROJECT_DATABASE_SCHEMAS.length ||
     schemas.rows.some(
       (row) => row.create_ok || (row.schema_name === 'public' ? !row.usage_ok : row.usage_ok),
     )
   ) {
-    failures.push('runtime public/staging/quarantine schema boundary differs');
+    failures.push('runtime exact project-schema boundary differs');
   }
 
   const relations = await db.query<{
@@ -470,6 +513,7 @@ export async function runtimeRoleBoundaryFailures(
     truncate_ok: boolean;
     references_ok: boolean;
     trigger_ok: boolean;
+    maintain_ok: boolean;
   }>(
     `SELECT n.nspname schema_name,c.relname relation_name,
             has_table_privilege($1,c.oid,'SELECT') select_ok,
@@ -478,11 +522,12 @@ export async function runtimeRoleBoundaryFailures(
             has_table_privilege($1,c.oid,'DELETE') delete_ok,
             has_table_privilege($1,c.oid,'TRUNCATE') truncate_ok,
             has_table_privilege($1,c.oid,'REFERENCES') references_ok,
-            has_table_privilege($1,c.oid,'TRIGGER') trigger_ok
+            has_table_privilege($1,c.oid,'TRIGGER') trigger_ok,
+            has_table_privilege($1,c.oid,'MAINTAIN') maintain_ok
        FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname=ANY($2::text[]) AND c.relkind IN ('r','p','v','m','f')
       ORDER BY n.nspname,c.relname`,
-    [roleName, ['public', 'quarantine', 'staging']],
+    [roleName, PROJECT_DATABASE_SCHEMAS],
   );
   for (const row of relations.rows) {
     const approved =
@@ -494,7 +539,8 @@ export async function runtimeRoleBoundaryFailures(
       row.delete_ok ||
       row.truncate_ok ||
       row.references_ok ||
-      row.trigger_ok
+      row.trigger_ok ||
+      row.maintain_ok
     ) {
       failures.push(`${row.schema_name}.${row.relation_name}: runtime relation grants differ`);
     }
@@ -504,6 +550,120 @@ export async function runtimeRoleBoundaryFailures(
   ).length;
   if (approvedRelationCount !== AUDITED_TABLES.length)
     failures.push(`runtime approved relation inventory is ${approvedRelationCount}/38`);
+
+  const relationAcls = await db.query<{
+    schema_name: string;
+    relation_name: string;
+    owner_name: string;
+    grantee_name: string;
+    grantor_name: string | null;
+    privilege_type: string;
+    is_grantable: boolean;
+  }>(
+    `SELECT n.nspname schema_name,c.relname relation_name,owner.rolname owner_name,
+            coalesce(grantee.rolname,'PUBLIC') grantee_name,grantor.rolname grantor_name,
+            acl.privilege_type,acl.is_grantable
+       FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+       JOIN pg_roles owner ON owner.oid=c.relowner
+       CROSS JOIN LATERAL aclexplode(c.relacl) acl
+       LEFT JOIN pg_roles grantee ON grantee.oid=acl.grantee
+       LEFT JOIN pg_roles grantor ON grantor.oid=acl.grantor
+      WHERE n.nspname=ANY($1::text[]) AND c.relkind IN ('r','p','v','m','f')
+      ORDER BY n.nspname,c.relname,grantee_name,acl.privilege_type`,
+    [PROJECT_DATABASE_SCHEMAS],
+  );
+  for (const acl of relationAcls.rows) {
+    if (acl.grantee_name !== acl.owner_name && acl.grantee_name !== roleName) {
+      failures.push(
+        `${acl.schema_name}.${acl.relation_name}: unapproved relation ACL grantee ${acl.grantee_name}/${acl.privilege_type}`,
+      );
+    }
+    if (
+      acl.grantee_name === roleName &&
+      (acl.grantor_name !== acl.owner_name || acl.is_grantable)
+    ) {
+      failures.push(
+        `${acl.schema_name}.${acl.relation_name}: runtime relation ACL provenance differs`,
+      );
+    }
+  }
+  for (const relation of relations.rows) {
+    const approved =
+      relation.schema_name === 'public' && AUDITED_TABLES.includes(relation.relation_name as never);
+    const direct = relationAcls.rows
+      .filter(
+        (acl) =>
+          acl.schema_name === relation.schema_name &&
+          acl.relation_name === relation.relation_name &&
+          acl.grantee_name === roleName,
+      )
+      .map((acl) => acl.privilege_type)
+      .sort();
+    const expected = approved ? ['INSERT', 'SELECT', 'UPDATE'] : [];
+    if (!same(direct, expected)) {
+      failures.push(
+        `${relation.schema_name}.${relation.relation_name}: direct runtime relation ACL is ${direct.join(',') || 'none'}`,
+      );
+    }
+  }
+
+  const columnPrivileges = await db.query<{
+    schema_name: string;
+    relation_name: string;
+    select_ok: boolean;
+    insert_ok: boolean;
+    update_ok: boolean;
+    references_ok: boolean;
+  }>(
+    `SELECT n.nspname schema_name,c.relname relation_name,
+            has_any_column_privilege($1,c.oid,'SELECT') select_ok,
+            has_any_column_privilege($1,c.oid,'INSERT') insert_ok,
+            has_any_column_privilege($1,c.oid,'UPDATE') update_ok,
+            has_any_column_privilege($1,c.oid,'REFERENCES') references_ok
+       FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname=ANY($2::text[]) AND c.relkind IN ('r','p','v','m','f')
+      ORDER BY n.nspname,c.relname`,
+    [roleName, PROJECT_DATABASE_SCHEMAS],
+  );
+  for (const row of columnPrivileges.rows) {
+    const approved =
+      row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never);
+    if (
+      row.select_ok !== approved ||
+      row.insert_ok !== approved ||
+      row.update_ok !== approved ||
+      row.references_ok
+    ) {
+      failures.push(`${row.schema_name}.${row.relation_name}: effective column grants differ`);
+    }
+  }
+  const columnAcls = await db.query<{
+    schema_name: string;
+    relation_name: string;
+    column_name: string;
+    owner_name: string;
+    grantee_name: string;
+    privilege_type: string;
+  }>(
+    `SELECT n.nspname schema_name,c.relname relation_name,a.attname column_name,
+            owner.rolname owner_name,coalesce(grantee.rolname,'PUBLIC') grantee_name,
+            acl.privilege_type
+       FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid
+       JOIN pg_namespace n ON n.oid=c.relnamespace
+       JOIN pg_roles owner ON owner.oid=c.relowner
+       CROSS JOIN LATERAL aclexplode(a.attacl) acl
+       LEFT JOIN pg_roles grantee ON grantee.oid=acl.grantee
+      WHERE n.nspname=ANY($1::text[]) AND a.attnum>0 AND NOT a.attisdropped
+      ORDER BY n.nspname,c.relname,a.attname,grantee_name,acl.privilege_type`,
+    [PROJECT_DATABASE_SCHEMAS],
+  );
+  for (const acl of columnAcls.rows) {
+    if (acl.grantee_name !== acl.owner_name) {
+      failures.push(
+        `${acl.schema_name}.${acl.relation_name}.${acl.column_name}: unapproved column ACL ${acl.grantee_name}/${acl.privilege_type}`,
+      );
+    }
+  }
 
   const approvedSequences = await db.query<{ oid: string | null }>(
     `SELECT to_regclass(pg_get_serial_sequence(format('public.%I',table_name),'id'))::oid::text oid
@@ -528,7 +688,7 @@ export async function runtimeRoleBoundaryFailures(
        FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname=ANY($2::text[]) AND c.relkind='S'
       ORDER BY n.nspname,c.relname`,
-    [roleName, ['public', 'quarantine', 'staging']],
+    [roleName, PROJECT_DATABASE_SCHEMAS],
   );
   for (const row of sequences.rows) {
     const approved = approvedSequenceOids.has(row.oid);
@@ -543,13 +703,63 @@ export async function runtimeRoleBoundaryFailures(
     failures.push('runtime approved sequence inventory differs');
   }
 
+  const sequenceAcls = await db.query<{
+    oid: string;
+    schema_name: string;
+    sequence_name: string;
+    owner_name: string;
+    grantee_name: string;
+    grantor_name: string | null;
+    privilege_type: string;
+    is_grantable: boolean;
+  }>(
+    `SELECT c.oid::text,n.nspname schema_name,c.relname sequence_name,
+            owner.rolname owner_name,coalesce(grantee.rolname,'PUBLIC') grantee_name,
+            grantor.rolname grantor_name,acl.privilege_type,acl.is_grantable
+       FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+       JOIN pg_roles owner ON owner.oid=c.relowner
+       CROSS JOIN LATERAL aclexplode(c.relacl) acl
+       LEFT JOIN pg_roles grantee ON grantee.oid=acl.grantee
+       LEFT JOIN pg_roles grantor ON grantor.oid=acl.grantor
+      WHERE n.nspname=ANY($1::text[]) AND c.relkind='S'
+      ORDER BY n.nspname,c.relname,grantee_name,acl.privilege_type`,
+    [PROJECT_DATABASE_SCHEMAS],
+  );
+  for (const acl of sequenceAcls.rows) {
+    if (acl.grantee_name !== acl.owner_name && acl.grantee_name !== roleName) {
+      failures.push(
+        `${acl.schema_name}.${acl.sequence_name}: unapproved sequence ACL grantee ${acl.grantee_name}/${acl.privilege_type}`,
+      );
+    }
+    if (
+      acl.grantee_name === roleName &&
+      (acl.grantor_name !== acl.owner_name || acl.is_grantable)
+    ) {
+      failures.push(
+        `${acl.schema_name}.${acl.sequence_name}: runtime sequence ACL provenance differs`,
+      );
+    }
+  }
+  for (const sequence of sequences.rows) {
+    const direct = sequenceAcls.rows
+      .filter((acl) => acl.oid === sequence.oid && acl.grantee_name === roleName)
+      .map((acl) => acl.privilege_type)
+      .sort();
+    const expected = approvedSequenceOids.has(sequence.oid) ? ['SELECT', 'USAGE'] : [];
+    if (!same(direct, expected)) {
+      failures.push(
+        `${sequence.schema_name}.${sequence.sequence_name}: direct runtime sequence ACL is ${direct.join(',') || 'none'}`,
+      );
+    }
+  }
+
   const executableDefiners = await db.query<{ signature: string }>(
     `SELECT n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' signature
        FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
       WHERE n.nspname=ANY($2::text[]) AND p.prosecdef
         AND has_function_privilege($1,p.oid,'EXECUTE')
       ORDER BY signature`,
-    [roleName, ['public', 'quarantine', 'staging']],
+    [roleName, PROJECT_DATABASE_SCHEMAS],
   );
   if (
     !same(
@@ -558,6 +768,55 @@ export async function runtimeRoleBoundaryFailures(
     )
   ) {
     failures.push('runtime executable SECURITY DEFINER inventory differs');
+  }
+
+  const definerAcls = await db.query<{
+    signature: string;
+    owner_name: string;
+    grantee_name: string;
+    grantor_name: string | null;
+    privilege_type: string;
+    is_grantable: boolean;
+  }>(
+    `SELECT n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' signature,
+            owner.rolname owner_name,coalesce(grantee.rolname,'PUBLIC') grantee_name,
+            grantor.rolname grantor_name,acl.privilege_type,acl.is_grantable
+       FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+       JOIN pg_roles owner ON owner.oid=p.proowner
+       CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+       LEFT JOIN pg_roles grantee ON grantee.oid=acl.grantee
+       LEFT JOIN pg_roles grantor ON grantor.oid=acl.grantor
+      WHERE n.nspname=ANY($1::text[]) AND p.prosecdef
+      ORDER BY signature,grantee_name,acl.privilege_type`,
+    [PROJECT_DATABASE_SCHEMAS],
+  );
+  for (const acl of definerAcls.rows) {
+    if (acl.grantee_name !== acl.owner_name && acl.grantee_name !== roleName) {
+      failures.push(
+        `${acl.signature}: unapproved SECURITY DEFINER ACL grantee ${acl.grantee_name}/${acl.privilege_type}`,
+      );
+    }
+    if (
+      acl.grantee_name === roleName &&
+      (!APPROVED_RUNTIME_SECURITY_DEFINERS.includes(acl.signature as never) ||
+        acl.privilege_type !== 'EXECUTE' ||
+        acl.grantor_name !== acl.owner_name ||
+        acl.is_grantable)
+    ) {
+      failures.push(`${acl.signature}: runtime SECURITY DEFINER ACL provenance differs`);
+    }
+  }
+  for (const signature of APPROVED_RUNTIME_SECURITY_DEFINERS) {
+    if (
+      definerAcls.rows.filter(
+        (acl) =>
+          acl.signature === signature &&
+          acl.grantee_name === roleName &&
+          acl.privilege_type === 'EXECUTE',
+      ).length !== 1
+    ) {
+      failures.push(`${signature}: direct runtime EXECUTE ACL differs`);
+    }
   }
 
   const defaultFunctionPrivileges = await db.query<{
@@ -586,7 +845,8 @@ export async function runtimeRoleBoundaryFailures(
       (SELECT count(*)::int FROM pg_default_acl d,project_owner o
         WHERE d.defaclrole=o.owner_oid AND d.defaclobjtype='f'
           AND d.defaclnamespace IN (
-            'public'::regnamespace,'quarantine'::regnamespace,'staging'::regnamespace
+            '_migration'::regnamespace,'public'::regnamespace,
+            'quarantine'::regnamespace,'staging'::regnamespace
           )) project_schema_acl_count`);
   const defaultFunctionPrivilege = defaultFunctionPrivileges.rows[0];
   if (
@@ -597,6 +857,36 @@ export async function runtimeRoleBoundaryFailures(
     defaultFunctionPrivilege.project_schema_acl_count !== 0
   ) {
     failures.push('project-owner default SECURITY DEFINER execution boundary differs');
+  }
+
+  const parameterCapabilities = await db.query<{
+    set_ok: boolean;
+    alter_system_ok: boolean;
+  }>(
+    `SELECT has_parameter_privilege($1,'session_replication_role','SET') set_ok,
+            has_parameter_privilege($1,'session_replication_role','ALTER SYSTEM') alter_system_ok`,
+    [roleName],
+  );
+  const parameterCapability = parameterCapabilities.rows[0];
+  if (!parameterCapability || parameterCapability.set_ok || parameterCapability.alter_system_ok) {
+    failures.push('runtime can SET or ALTER SYSTEM session_replication_role');
+  }
+  const unsafeParameterAcls = await db.query<{
+    grantee_name: string;
+    privilege_type: string;
+  }>(`
+    SELECT coalesce(r.rolname,'PUBLIC') grantee_name,acl.privilege_type
+      FROM pg_parameter_acl p CROSS JOIN LATERAL aclexplode(p.paracl) acl
+      LEFT JOIN pg_roles r ON r.oid=acl.grantee
+     WHERE p.parname='session_replication_role'
+       AND (acl.grantee=0 OR NOT coalesce(r.rolsuper,false))
+     ORDER BY grantee_name,acl.privilege_type`);
+  if (unsafeParameterAcls.rows.length > 0) {
+    failures.push(
+      `session_replication_role has non-superuser/PUBLIC ACLs: ${unsafeParameterAcls.rows
+        .map((row) => `${row.grantee_name}/${row.privilege_type}`)
+        .join(', ')}`,
+    );
   }
   return failures;
 }

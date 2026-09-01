@@ -61,6 +61,7 @@ import {
   auditDataFailures,
   auditStructureFailures,
   protectedAuditExcludedDigest,
+  runtimeRoleBoundaryFailures,
   TASK33A_ATTRIBUTION_DIGEST,
   TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
 } from './lib/audit-structure';
@@ -2630,12 +2631,21 @@ async function main() {
     );
     const auditStructure = await auditStructureFailures(relationshipDb);
     record(
-      'Task 3.3A actor schema, triggers and runtime privileges',
-      'exact 38-table boundary, 76 foreign keys/indexes, immutable registry/context functions and restricted runtime grants',
+      'Task 3.3A actor schema and trigger enforcement',
+      'exact 38-table boundary, 76 foreign keys/indexes and immutable registry/context functions',
       auditStructure.length === 0
-        ? 'all actor, context, trigger, ownership and grant definitions exact'
+        ? 'all actor, context and trigger definitions exact'
         : auditStructure.join('; '),
       auditStructure.length === 0,
+    );
+    const runtimeBoundary = await runtimeRoleBoundaryFailures(relationshipDb);
+    record(
+      'Task 3.3A complete runtime principal and ACL boundary',
+      'exact schemas, bidirectional memberships, ACL provenance, columns, sequences, functions, MAINTAIN and session_replication_role refusal',
+      runtimeBoundary.length === 0
+        ? 'all role, ownership, effective privilege, direct ACL and parameter boundaries exact'
+        : runtimeBoundary.join('; '),
+      runtimeBoundary.length === 0,
     );
     const auditData = await auditDataFailures(relationshipDb, { historicalLive: true });
     record(
