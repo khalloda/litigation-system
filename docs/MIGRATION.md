@@ -55,7 +55,7 @@ reconciliation instead of duplicating its tables and report datasets.
 | Column and relationship manifests | `columns.csv` SHA-256 `C41116DDB9F7A8CA9DFF0D860CB4BD552CE32B5E13A4EE876106B020B87240A0`; `relationships.csv` SHA-256 `1CB0E79DDCC7FF990EFC02E47367D2865307142F472776338B5C225B2F22E7E6` | `_migration/meta/`, ignored; locally available | Gate 4 independently proves all 194 extracted column definitions and 17 relationships |
 | Original firm review workbook | `_migration/review/review-2026-08-23.xlsx`; 71,386 bytes; SHA-256 `17FDDA9FCEC64528FE256789BFBFBAB72CAF3ABA5F0557D46FC9FD26CEF85BDF` | Ignored; locally available | One-time legacy identity bridge for the 744 approved answers; associations and answer digests are permanently checked |
 | Durable-contract review workbook | `_migration/review/review-2026-08-24.xlsx`; 96,555 bytes; SHA-256 `D37E60780517F00C4A96443204F721A3B97B7140D3F2FAAC40E3B5DF7172B595` | Ignored; locally available | Reproducible `review-workbook-v2` source/manifest identity and all-or-nothing import contract |
-| Reviewed link baseline | [`scripts/baselines/reviewed-links.json`](../scripts/baselines/reviewed-links.json); protected mapping digest `bebf8f20140a63d272f80d454d8363d68e1dc7bf12d82b43a45096281b059f51` | Tracked | Transform inputs and `npm run db:check`; exact destinations are verified, not merely counted |
+| Reviewed link baseline | [`scripts/baselines/reviewed-links.json`](../scripts/baselines/reviewed-links.json); 348 aliases and 204 crosswalks; internal content digest `ed1d9ce58ff479560b6511322e48e36bff28e95ac2305cbee676ee414ed18ae0`; file SHA-256 `f2fb3e85503002721f3351e9e05b0e86ffae06a119d424d387c57cecfb25ee6c` | Tracked | Transform inputs and `npm run db:check`; exact destinations are verified, not merely counted. The separate review-workbook mapping digest is `bebf8f20140a63d272f80d454d8363d68e1dc7bf12d82b43a45096281b059f51` |
 | Gate 4 reconciliation | [`2026-08-30-gate-4.md`](reconciliations/2026-08-30-gate-4.md); stable generated-report digest `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b` | Tracked and reproducible | Complete 27-table accounting, logical equivalence, six report-category datasets, source/runtime/logo evidence and the 52-file migration inventory |
 | Continuity audit | [`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md) | Tracked dated evidence | Governance and evidence snapshot at commit `553b3d1`; it does not set current task priority |
 
@@ -68,14 +68,17 @@ repository evidence; raw contents remain in the approved local storage only.
 Access "complex columns" (Attachment, Multi-Value) are not stored in the
 visible table. The visible column holds an internal pointer.
 
-Exporting `العملاء` to CSV gives a `logo` column that looks fully populated —
-all 318 rows in the current source have a pointer-like value. The values look
-like `136`, `42`, `1`. **Only 54 clients have a logo**, and the real image data
-lives in a hidden table; 264 current clients therefore use the text fallback.
+At the 19 August planning snapshot, an ordinary export of `العملاء` appeared
+to contain a populated `logo` value for all 313 clients, but those values were
+pointer-like integers such as `136`, `42` and `1`, not the image data. The
+current protected result does not assert how many of the 318 current Access
+logo fields contain pointers: it proves **318 clients, 54 unique real client
+logos and 264 clients using the text fallback**. The real images live in a
+hidden table.
 
-| Column | CSV export gives | Reality |
+| Column | Ordinary-export evidence | Protected result |
 |---|---|---|
-| `العملاء.logo` | 318 pointer-like values | 54 image files |
+| `العملاء.logo` | 19 August: 313 pointer-like integers; no current 318-pointer count asserted | Current: 318 clients, 54 unique image files and 264 text fallbacks |
 | `خطابات الأتعاب.Matter` | 331 integers | 288 case-number strings across 195 parents |
 | `Contacts.Attachments` | looks populated | **empty** |
 

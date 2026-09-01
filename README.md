@@ -17,8 +17,8 @@ continuity evidence is preserved separately in
 ## Read this first
 
 The owner of this project is **not a programmer**. Every explanation, question
-and status update must be in plain language. See `CLAUDE.md` / `AGENTS.md` for
-the rules on how to communicate.
+and status update must be in plain language. See [`AGENTS.md`](AGENTS.md) and
+[`CLAUDE.md`](CLAUDE.md) for the rules on how to communicate and perform work.
 
 ## What is being replaced
 
@@ -38,6 +38,8 @@ in the database for a possible future bilingual version.
 
 | Authority | What it owns |
 |---|---|
+| [`AGENTS.md`](AGENTS.md) | Current highest Codex/project operating instruction: how work must be performed and which durable rules apply. |
+| [`CLAUDE.md`](CLAUDE.md) | Shared durable development rules incorporated by `AGENTS.md`, including the binding working rules. |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Approved product and data decisions. Do not silently override or reopen them. |
 | [`TASKS.md`](TASKS.md) | Work order, completion status and the exact current return point. |
 | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | Approved Arabic field meanings and terminology. |
@@ -49,9 +51,12 @@ in the database for a possible future bilingual version.
 | [`docs/BRAND.md`](docs/BRAND.md) and [`docs/VISUAL-DIRECTION.md`](docs/VISUAL-DIRECTION.md) | Arabic/RTL design rules and agreed visual direction. |
 | [`docs/DATABASE.md`](docs/DATABASE.md) | Safe database operation and verification. |
 | [`docs/STAGE-2-PLAN.md`](docs/STAGE-2-PLAN.md) | Owner-approved historical Stage 2 plan and completion context. |
+| [`docs/task-reports/README.md`](docs/task-reports/README.md) | Required dated acceptance-evidence format for Task 3.3 onward. |
 
-Code, migrations and tests prove what is implemented, but cannot silently
-override an owner decision. Dated files under `docs/reviews/`,
+`AGENTS.md` and `CLAUDE.md` govern how work is performed;
+`docs/DECISIONS.md` governs approved product and data decisions; and `TASKS.md`
+governs work order and status. Code, migrations and tests prove what is
+implemented, but cannot silently override an owner decision. Dated files under `docs/reviews/`,
 `docs/reconciliations/` and `docs/task-reports/` are evidence snapshots, not
 current task or decision authorities. `HANDOFF.md` is a superseded historical
 checkpoint; use this README and `TASKS.md` to resume work.

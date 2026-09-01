@@ -20,21 +20,27 @@ task evidence exactly as it stood at acceptance. Use a dated filename such as
 Every accepted task report must contain:
 
 1. **Task identity** — task number, exact title and acceptance date.
-2. **Git checkpoints** — full starting commit and full final commit.
-3. **Scope** — the approved scope and the explicitly prohibited scope.
-4. **Authority** — relevant decision IDs, owner approvals, approver and approval
+2. **Run configuration** — Codex model, reasoning effort, environment (`Local`,
+   `Worktree` or `Cloud`), whether subagents were permitted, whether any were
+   used, expected qualitative usage (`low`, `medium` or `high`), and why this
+   was the least expensive safe configuration for the task.
+3. **Git checkpoints** — full starting commit and full final commit.
+4. **Scope** — the approved scope and the explicitly prohibited scope.
+5. **Authorized stop point** — the exact point at which the accepted task was
+   required to stop.
+6. **Authority** — relevant decision IDs, owner approvals, approver and approval
    date where applicable; never reconstruct approval evidence that was not
    retained.
-5. **Principal outputs** — what changed and the complete changed-file list.
-6. **Verification** — every command run and its exact result, including an
+7. **Principal outputs** — what changed and the complete changed-file list.
+8. **Verification** — every command run and its exact result, including an
    honest note for a required suite that was not run and why.
-7. **Protected state** — counts, hashes, digests, invariants or other contracts
+9. **Protected state** — counts, hashes, digests, invariants or other contracts
    affected, with their evidence source and before/after meaning.
-8. **Unresolved items** — quarantines, follow-up decisions, deferred checks,
+10. **Unresolved items** — quarantines, follow-up decisions, deferred checks,
    known limitations and who must resolve them.
-9. **Remote state** — whether the final commit was pushed and, if authorized,
+11. **Remote state** — whether the final commit was pushed and, if authorized,
    where. Never imply that a local commit is remote.
-10. **Exact next return point** — the first task or prerequisite that may be
+12. **Exact next return point** — the first task or prerequisite that may be
     started next, consistent with `TASKS.md`.
 
 ## Template
@@ -43,10 +49,19 @@ Every accepted task report must contain:
 # Task N.N — title
 
 - Accepted: YYYY-MM-DD
+- Codex model: model name
+- Reasoning effort: effort level
+- Environment: Local / Worktree / Cloud
+- Subagents: permitted yes/no; used yes/no
+- Expected qualitative usage: low / medium / high
+- Least-expensive safe configuration rationale: concise reason
 - Starting commit: full SHA
 - Final commit: full SHA
 - Push status: not pushed / pushed to named authorized remote
+- Exact authorized stop point: precise task boundary
 - Exact next return point: Task N.N
+
+## Run configuration and cost rationale
 
 ## Approved and prohibited scope
 
