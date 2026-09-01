@@ -56,7 +56,7 @@ reconciliation instead of duplicating its tables and report datasets.
 | Original firm review workbook | `_migration/review/review-2026-08-23.xlsx`; 71,386 bytes; SHA-256 `17FDDA9FCEC64528FE256789BFBFBAB72CAF3ABA5F0557D46FC9FD26CEF85BDF` | Ignored; locally available | One-time legacy identity bridge for the 744 approved answers; associations and answer digests are permanently checked |
 | Durable-contract review workbook | `_migration/review/review-2026-08-24.xlsx`; 96,555 bytes; SHA-256 `D37E60780517F00C4A96443204F721A3B97B7140D3F2FAAC40E3B5DF7172B595` | Ignored; locally available | Reproducible `review-workbook-v2` source/manifest identity and all-or-nothing import contract |
 | Reviewed link baseline | [`scripts/baselines/reviewed-links.json`](../scripts/baselines/reviewed-links.json); 348 aliases and 204 crosswalks; internal content digest `ed1d9ce58ff479560b6511322e48e36bff28e95ac2305cbee676ee414ed18ae0`; file SHA-256 `f2fb3e85503002721f3351e9e05b0e86ffae06a119d424d387c57cecfb25ee6c` | Tracked | Transform inputs and `npm run db:check`; exact destinations are verified, not merely counted. The separate review-workbook mapping digest is `bebf8f20140a63d272f80d454d8363d68e1dc7bf12d82b43a45096281b059f51` |
-| Gate 4 reconciliation | [`2026-08-30-gate-4.md`](reconciliations/2026-08-30-gate-4.md); stable generated-report digest `feae9da499509777b66f277e58b6e3cf353708d6e70e7a0db52cdb9cc4e498ce` | Tracked and reproducible | Complete 27-table accounting, logical equivalence, six report-category datasets, source/runtime/logo evidence and the 53-file migration inventory |
+| Gate 4 reconciliation | [`2026-08-30-gate-4.md`](reconciliations/2026-08-30-gate-4.md); stable generated-report digest `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b` | Tracked and reproducible | Complete 27-table accounting, logical equivalence, six report-category datasets, source/runtime/logo evidence and the 52-file migration inventory |
 | Continuity audit | [`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md) | Tracked dated evidence | Governance and evidence snapshot at commit `553b3d1`; it does not set current task priority |
 | Task 3.3 readiness and approved contract | [`2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md) | Tracked dated evidence | Complete audit-column/event readiness matrix, owner decisions D30–D34, risk dispositions and exact Task 3.3A return point |
 | Task 3.3A acceptance | [`2026-09-01-task-3-3a-secure-actor-attribution.md`](task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md) | Tracked dated evidence | Migration 53, seven-actor taxonomy, 38-table attribution, 5,209-row protection, database-principal split, verification and exact Task 3.3B return point |
@@ -2537,9 +2537,9 @@ The complete owner-readable evidence is in
   changed only the report's migration evidence and produced historical report
   digest `15bd21a3…9a6`. The subsequent exact repository/profile correction
   likewise changed only that evidence. The six
-  approved dataset counts and digests remain pinned exactly. Its current
-  identical two-pass report digest is
-  `feae9da499509777b66f277e58b6e3cf353708d6e70e7a0db52cdb9cc4e498ce`
+  approved dataset counts and digests remain pinned exactly. Its frozen
+  30 August identical two-pass report digest is
+  `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`
   byte for byte; no Access, extracted, database or logo data changed.
 
 ## Task 3.3A attribution migration gate — implemented 1 September 2026
@@ -2625,6 +2625,36 @@ and its identity/timestamp digest remains
 Historical-live upgrade and canonical clean replay fixtures both apply
 migration 53, preserve exact guard definitions and remove their disposable
 databases afterward.
+
+### Task 3.3A acceptance correction — 1 September 2026
+
+Forward migration `20260901170000_close_task33a_acceptance_gaps` is migration
+54; its SHA-256 and applied checksum are
+`80133981c148edc6daec81474b4c86e470e3aab7bb5c64404cb26e661f16cb4d`.
+Migration 53 remains byte-identical at
+`40de7e27f840805f627e4e75467182c0c9e0bcf974824871ce03bf01e3049ca2`.
+The correction closes the actor-ingress inventory, exact restricted-role and
+password-provisioning gaps without altering the 38-table actor population or
+any protected business/source row or timestamp.
+
+Deployment fails closed: migration 54 commits `NOLOGIN` and revokes target
+database `CONNECT` before it checks memberships, `SET ROLE`, stored settings,
+ownership, complete effective relation/sequence access, executable
+`SECURITY DEFINER` routines and future-function defaults. It restores login
+and connection access only after the whole exact inventory passes. An
+unexpected external condition aborts without being silently repaired and
+leaves the application role unusable for investigation.
+
+The dated [Gate 4 report](reconciliations/2026-08-30-gate-4.md) is restored
+exactly to its commit `443227f` evidence: 52 migration files, stable generated
+digest
+`dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`.
+It is not rewritten by current verification. The current 54-file repository
+migration inventory instead has digest
+`9dc23762f58ae0d04e2623bb79dd1d8acaf84ec6c6bd4f3555a56da173207eb4`;
+two non-writing current reconciliations were byte-identical at transient digest
+`4849b03f8c33a08242e5ad31368e140b7a49096469212c3028180e250e963b7c`.
+Both approved Stage 2 database profiles remain unchanged.
 
 ## Cutover
 

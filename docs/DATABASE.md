@@ -284,12 +284,29 @@ Decision **D33** is operational:
 
 The runtime receives `CONNECT`, public-schema `USAGE`, and only
 `SELECT`/`INSERT`/`UPDATE` plus required sequence access for the exact 38
-application tables. It has no physical `DELETE`, actor-registry access,
-staging/quarantine access, schema `CREATE`, object ownership, trigger/function
-replacement, administration/migration context or ability to assume
-`litigation`. The migration owner retains schema ownership. Task 3.3A's
-permanent catalog checks verify exact roles, ownership, grants, trigger
-definitions and fixed-search-path security-definer functions.
+application tables. It has no physical `DELETE`, actor-registry or migration
+evidence access, staging/quarantine access, schema `CREATE`, object ownership,
+trigger/function replacement or administration/migration context. It has no
+direct or indirect membership, cannot `SET ROLE` to **any** other role, and has
+no stored role-level or database-specific setting. The migration owner retains
+schema ownership.
+
+Migration `20260901170000_close_task33a_acceptance_gaps` is the forward-only
+acceptance correction. Deployment first commits `NOLOGIN` and revokes the
+runtime's connection to the target database, then terminates its existing
+sessions. A second transaction inventories the complete role graph, settings,
+database/schema/relation/sequence/function ownership, effective grants over all
+relations and sequences in `public`, `staging` and `quarantine`, and every
+runtime-executable project `SECURITY DEFINER` function. Only the exact three
+narrow context functions are approved. Future functions also default to no
+`PUBLIC EXECUTE`. Login and target-database `CONNECT` return only after every
+assertion passes; a failure leaves the web role unusable and never silently
+removes unexpected external ownership, membership or grants.
+
+The same complete boundary runs in migration/deployment preflight,
+`db:provision-runtime`, `db:check` and disposable adversarial fixtures. A new
+gateway, role path, setting, owned object, relation/sequence grant or executable
+security-definer therefore requires an explicit reviewed inventory change.
 
 ### Local setup and upgrade
 
@@ -312,11 +329,15 @@ npm run db:migrate:deploy
 npm run db:provision-runtime
 ```
 
-The second command checks the exact safe role attributes, sets only the
-password supplied by `DATABASE_URL`, confirms a runtime connection and never
-prints the credential. On Ubuntu, generate distinct long random passwords for
-both URLs through the server's approved secret mechanism; never reuse a local
-credential or place either value in Git, documentation or command arguments.
+The second command checks the complete boundary above before changing the
+password, decodes URL userinfo exactly once, quotes the decoded value as a
+PostgreSQL string literal, confirms a runtime connection and never prints the
+credential. This matters for reserved characters: `URL.password` retains
+percent encoding while the PostgreSQL driver authenticates with the decoded
+value. Existing generated base64url passwords remain supported. On Ubuntu,
+generate distinct long random passwords for both URLs through the server's
+approved secret mechanism; never reuse a local credential or place either
+value in Git, documentation or command arguments.
 
 Prisma 7 schema/migration commands read `MIGRATION_DATABASE_URL` from
 `prisma.config.ts`. Application code rejects a `DATABASE_URL` whose username is

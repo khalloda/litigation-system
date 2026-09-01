@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { Client } from 'pg';
 import { createDatabaseClient } from '../src/lib/db';
 import { setHumanAuditContext } from '../src/lib/audit';
@@ -9,20 +10,25 @@ import {
   auditStructureFailures,
   AUDITED_TABLES,
   protectedAuditExcludedDigest,
+  runtimeRoleBoundaryFailures,
   TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
 } from './lib/audit-structure';
+import { decodeUrlPassword, postgresqlStringLiteral } from './lib/database-principal';
 import {
   readGate4RepositoryMigrationInventory,
   reconcileGate4Migrations,
   type Gate4MigrationHistoryRow,
 } from './lib/gate4-migrations';
 
+const TASK33A_MIGRATION = '20260901120000_secure_audit_actor_attribution';
+const TASK33A_CORRECTION_MIGRATION = '20260901170000_close_task33a_acceptance_gaps';
+
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
   return `"${value}"`;
 }
 
-function migrate(databaseUrl: string): void {
+async function migrate(databaseUrl: string): Promise<void> {
   const result = spawnSync(
     process.execPath,
     ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
@@ -34,7 +40,24 @@ function migrate(databaseUrl: string): void {
     },
   );
   if (result.error) throw result.error;
-  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  if (result.status !== 0) {
+    const failed = new Client({ connectionString: databaseUrl });
+    let migrationLog = '';
+    try {
+      await failed.connect();
+      const row = await failed.query<{ migration_name: string; logs: string | null }>(`
+        SELECT migration_name,logs FROM _prisma_migrations
+         WHERE finished_at IS NULL AND rolled_back_at IS NULL
+         ORDER BY started_at DESC LIMIT 1`);
+      if (row.rows[0]) {
+        migrationLog = `\nfailed migration ${row.rows[0].migration_name}:\n${row.rows[0].logs ?? ''}`;
+      }
+    } finally {
+      await failed.end().catch(() => undefined);
+    }
+    const commandOutput = `${result.stdout}\n${result.stderr}`;
+    assert.equal(result.status, 0, `${migrationLog}\n${commandOutput.slice(-12_000)}`);
+  }
 }
 
 function fixtureRuntimeUrl(fixtureOwnerUrl: URL): URL {
@@ -107,6 +130,9 @@ async function reverseTask33AForHistoricalFixture(db: Client, fixtureName: strin
   await db.query('BEGIN');
   try {
     await db.query(`
+      ALTER DEFAULT PRIVILEGES
+        GRANT EXECUTE ON FUNCTIONS TO PUBLIC`);
+    await db.query(`
       DO $REVERSE_TASK33A$
       DECLARE
         audited_tables constant text[] := ARRAY[
@@ -159,10 +185,12 @@ async function reverseTask33AForHistoricalFixture(db: Client, fixtureName: strin
       DROP FUNCTION public.enforce_audit_actor_columns()`);
     const removed = await db.query(
       `DELETE FROM _prisma_migrations
-        WHERE migration_name='20260901120000_secure_audit_actor_attribution'
-        RETURNING id`,
+        WHERE migration_name IN ($1,$2)
+        RETURNING migration_name`,
+      [TASK33A_MIGRATION, TASK33A_CORRECTION_MIGRATION],
     );
-    assert.equal(removed.rowCount, 1);
+    assert.ok(removed.rowCount === 1 || removed.rowCount === 2);
+    assert.ok(removed.rows.some((row) => row['migration_name'] === TASK33A_MIGRATION));
     await db.query('COMMIT');
   } catch (error) {
     await db.query('ROLLBACK');
@@ -217,7 +245,7 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
       await fixture.end();
     }
 
-    migrate(fixtureUrl.toString());
+    await migrate(fixtureUrl.toString());
     const upgraded = new Client({ connectionString: fixtureUrl.toString() });
     await upgraded.connect();
     try {
@@ -233,13 +261,13 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
       assert.equal(evidence.acceptedDatabaseProfile, 'historical-live');
       assert.deepEqual(
         evidence.laterAppliedMigrations.map((migration) => migration.name),
-        ['20260831100000_authentication', '20260901120000_secure_audit_actor_attribution'],
+        ['20260831100000_authentication', TASK33A_MIGRATION, TASK33A_CORRECTION_MIGRATION],
       );
     } finally {
       await upgraded.end();
     }
     console.log(
-      'PASS historical-live clone: migration 53 replay, protected digest and guard definitions unchanged',
+      'PASS historical-live clone: migrations 53/54 replay, protected digest and guard definitions unchanged',
     );
   } finally {
     if (created) {
@@ -250,6 +278,322 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
       );
       await admin.query(`DROP DATABASE ${identifier(fixtureName)}`);
     }
+  }
+}
+
+async function grantProbeRuntimeBoundary(
+  owner: Client,
+  fixtureName: string,
+  roleName: string,
+): Promise<void> {
+  await owner.query(
+    `GRANT CONNECT ON DATABASE ${identifier(fixtureName)} TO ${identifier(roleName)}`,
+  );
+  await owner.query(`GRANT USAGE ON SCHEMA public TO ${identifier(roleName)}`);
+  for (const table of AUDITED_TABLES) {
+    await owner.query(
+      `GRANT SELECT,INSERT,UPDATE ON TABLE public.${identifier(table)} TO ${identifier(roleName)}`,
+    );
+  }
+  const sequences = await owner.query<{ schema_name: string; sequence_name: string }>(
+    `
+    SELECT n.nspname schema_name,c.relname sequence_name
+      FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+     WHERE c.relkind='S' AND c.oid IN (
+       SELECT to_regclass(pg_get_serial_sequence(format('public.%I',table_name),'id'))::oid
+         FROM unnest($1::text[]) table_name
+     ) ORDER BY n.nspname,c.relname`,
+    [AUDITED_TABLES],
+  );
+  for (const sequence of sequences.rows) {
+    await owner.query(
+      `GRANT USAGE,SELECT ON SEQUENCE ${identifier(sequence.schema_name)}.${identifier(sequence.sequence_name)} TO ${identifier(roleName)}`,
+    );
+  }
+  await owner.query(
+    `GRANT EXECUTE ON FUNCTION public.audit_current_actor_id() TO ${identifier(roleName)}`,
+  );
+  await owner.query(
+    `GRANT EXECUTE ON FUNCTION public.audit_set_human_context(integer) TO ${identifier(roleName)}`,
+  );
+  await owner.query(
+    `GRANT EXECUTE ON FUNCTION public.audit_set_authentication_context() TO ${identifier(roleName)}`,
+  );
+}
+
+async function proveRoleBoundaryAdversarial(
+  admin: Client,
+  owner: Client,
+  fixtureOwnerUrl: URL,
+  fixtureName: string,
+): Promise<void> {
+  const suffix = `${process.pid}_${Date.now()}`;
+  const probeRole = `litigation_task33a_probe_${suffix}`;
+  const bridgeRole = `litigation_task33a_bridge_${suffix}`;
+  const targetRole = `litigation_task33a_target_${suffix}`;
+  const ownedTable = `task33a_role_owned_${process.pid}`;
+  for (const role of [probeRole, bridgeRole, targetRole]) assert.match(role, /^[a-z0-9_]+$/u);
+  let created = false;
+  try {
+    const existing = await admin.query<{ count: string }>(
+      `SELECT count(*)::text count FROM pg_roles WHERE rolname=ANY($1::text[])`,
+      [[probeRole, bridgeRole, targetRole]],
+    );
+    assert.equal(existing.rows[0]?.count, '0');
+    await admin.query(
+      `CREATE ROLE ${identifier(probeRole)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS`,
+    );
+    await admin.query(`CREATE ROLE ${identifier(bridgeRole)} NOLOGIN`);
+    await admin.query(`CREATE ROLE ${identifier(targetRole)} NOLOGIN`);
+    created = true;
+    await grantProbeRuntimeBoundary(owner, fixtureName, probeRole);
+    assert.deepEqual(await runtimeRoleBoundaryFailures(owner, probeRole), []);
+
+    await admin.query(`ALTER ROLE ${identifier(probeRole)} INHERIT`);
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('attributes'),
+      ),
+    );
+    await admin.query(`ALTER ROLE ${identifier(probeRole)} NOINHERIT`);
+
+    await admin.query(
+      `GRANT ${identifier(targetRole)} TO ${identifier(probeRole)} WITH INHERIT FALSE, SET TRUE`,
+    );
+    const directMembership = await runtimeRoleBoundaryFailures(owner, probeRole);
+    assert.ok(directMembership.some((failure) => failure.includes('memberships')));
+    assert.ok(directMembership.some((failure) => failure.includes('SET ROLE')));
+    const impersonation = new Client({ connectionString: fixtureOwnerUrl.toString() });
+    await impersonation.connect();
+    try {
+      await impersonation.query(`SET SESSION AUTHORIZATION ${identifier(probeRole)}`);
+      await impersonation.query(`SET ROLE ${identifier(targetRole)}`);
+      assert.equal(
+        (await impersonation.query<{ current_user: string }>('SELECT current_user')).rows[0]
+          ?.current_user,
+        targetRole,
+      );
+      await impersonation.query('RESET ROLE');
+      await impersonation.query('RESET SESSION AUTHORIZATION');
+    } finally {
+      await impersonation.end();
+    }
+    await admin.query(`ALTER ROLE ${identifier(probeRole)} SET role TO ${identifier(targetRole)}`);
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('role-level settings'),
+      ),
+    );
+    await admin.query(`ALTER ROLE ${identifier(probeRole)} RESET role`);
+    await admin.query(`REVOKE ${identifier(targetRole)} FROM ${identifier(probeRole)}`);
+
+    await admin.query(
+      `GRANT ${identifier(bridgeRole)} TO ${identifier(probeRole)} WITH INHERIT FALSE, SET TRUE`,
+    );
+    await admin.query(
+      `GRANT ${identifier(targetRole)} TO ${identifier(bridgeRole)} WITH INHERIT FALSE, SET TRUE`,
+    );
+    const indirectMembership = await runtimeRoleBoundaryFailures(owner, probeRole);
+    assert.ok(indirectMembership.some((failure) => failure.includes(targetRole)));
+    await admin.query(`REVOKE ${identifier(targetRole)} FROM ${identifier(bridgeRole)}`);
+    await admin.query(`REVOKE ${identifier(bridgeRole)} FROM ${identifier(probeRole)}`);
+
+    await admin.query(
+      `ALTER ROLE ${identifier(probeRole)} IN DATABASE ${identifier(fixtureName)} SET litigation.audit_actor_id TO '1'`,
+    );
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('database-specific settings'),
+      ),
+    );
+    await admin.query(
+      `ALTER ROLE ${identifier(probeRole)} IN DATABASE ${identifier(fixtureName)} RESET litigation.audit_actor_id`,
+    );
+
+    await owner.query(`CREATE TABLE public.${identifier(ownedTable)}(id integer)`);
+    await owner.query(
+      `ALTER TABLE public.${identifier(ownedTable)} OWNER TO ${identifier(probeRole)}`,
+    );
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('owns a database'),
+      ),
+    );
+    await owner.query(
+      `ALTER TABLE public.${identifier(ownedTable)} OWNER TO ${identifier('litigation')}`,
+    );
+    await owner.query(`DROP TABLE public.${identifier(ownedTable)}`);
+
+    await owner.query('BEGIN');
+    await owner.query(`GRANT DELETE ON public.lookup_importance TO ${identifier(probeRole)}`);
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('lookup_importance'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query('GRANT DELETE ON public.lookup_importance TO PUBLIC');
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('lookup_importance'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(`GRANT SELECT ON public._prisma_migrations TO ${identifier(probeRole)}`);
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('_prisma_migrations'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(`GRANT CREATE ON SCHEMA public TO ${identifier(probeRole)}`);
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('schema boundary'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(
+      `GRANT TEMPORARY ON DATABASE ${identifier(fixtureName)} TO ${identifier(probeRole)}`,
+    );
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('CONNECT/CREATE/TEMPORARY'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    const unapprovedSequence = (
+      await owner.query<{ schema_name: string; sequence_name: string }>(
+        `SELECT n.nspname schema_name,c.relname sequence_name
+           FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+          WHERE n.nspname IN ('public','staging','quarantine') AND c.relkind='S'
+            AND c.oid NOT IN (
+              SELECT to_regclass(
+                       pg_get_serial_sequence(format('public.%I',table_name),'id')
+                     )::oid
+                FROM unnest($1::text[]) table_name
+               WHERE pg_get_serial_sequence(format('public.%I',table_name),'id') IS NOT NULL
+            )
+          ORDER BY n.nspname,c.relname LIMIT 1`,
+        [AUDITED_TABLES],
+      )
+    ).rows[0];
+    assert.ok(unapprovedSequence, 'fixture requires an unapproved project sequence');
+    await owner.query('BEGIN');
+    await owner.query(
+      `GRANT USAGE,SELECT ON SEQUENCE ${identifier(unapprovedSequence.schema_name)}.${identifier(unapprovedSequence.sequence_name)} TO ${identifier(probeRole)}`,
+    );
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes(unapprovedSequence.sequence_name),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(`GRANT SELECT ON public.audit_actors TO ${identifier(probeRole)}`);
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('audit_actors'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(
+      `GRANT EXECUTE ON FUNCTION public.audit_set_administration_context() TO ${identifier(probeRole)}`,
+    );
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('SECURITY DEFINER'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+
+    await owner.query('BEGIN');
+    await owner.query(
+      'GRANT EXECUTE ON FUNCTION public.audit_set_administration_context() TO PUBLIC',
+    );
+    assert.ok(
+      (await runtimeRoleBoundaryFailures(owner, probeRole)).some((failure) =>
+        failure.includes('SECURITY DEFINER'),
+      ),
+    );
+    await owner.query('ROLLBACK');
+    assert.deepEqual(await runtimeRoleBoundaryFailures(owner, probeRole), []);
+    console.log(
+      'PASS disposable role graph, stored settings, ownership, effective grants and PUBLIC paths are rejected',
+    );
+  } finally {
+    if (created) {
+      await owner.query(`DROP TABLE IF EXISTS public.${identifier(ownedTable)}`);
+      await owner.query(`DROP OWNED BY ${identifier(probeRole)}`);
+      await admin.query(`DROP ROLE IF EXISTS ${identifier(probeRole)}`);
+      await admin.query(`DROP ROLE IF EXISTS ${identifier(bridgeRole)}`);
+      await admin.query(`DROP ROLE IF EXISTS ${identifier(targetRole)}`);
+    }
+  }
+}
+
+async function provePasswordProvisioning(admin: Client, source: URL): Promise<void> {
+  const roleName = `litigation_task33a_password_${process.pid}_${Date.now()}`;
+  assert.match(roleName, /^[a-z0-9_]+$/u);
+  let created = false;
+  let reservedClient: Client | undefined;
+  let base64urlClient: Client | undefined;
+  try {
+    assert.equal(
+      (
+        await admin.query<{ count: string }>(
+          'SELECT count(*)::text count FROM pg_roles WHERE rolname=$1',
+          [roleName],
+        )
+      ).rows[0]?.count,
+      '0',
+    );
+    const reservedPassword =
+      randomBytes(18).toString('base64url') +
+      String.fromCharCode(47, 58, 64, 63, 35, 38, 61, 39, 37, 43, 59, 92);
+    const connection = new URL(source);
+    connection.username = roleName;
+    connection.password = encodeURIComponent(reservedPassword);
+    assert.notEqual(connection.password, reservedPassword);
+    assert.equal(decodeUrlPassword(connection, 'fixture URL'), reservedPassword);
+    await admin.query(
+      `CREATE ROLE ${identifier(roleName)} LOGIN PASSWORD ${postgresqlStringLiteral(decodeUrlPassword(connection, 'fixture URL'))}`,
+    );
+    created = true;
+    reservedClient = new Client({ connectionString: connection.toString() });
+    await reservedClient.connect();
+    await reservedClient.query('SELECT 1');
+    await reservedClient.end();
+
+    const base64urlPassword = randomBytes(36).toString('base64url');
+    connection.password = base64urlPassword;
+    assert.equal(decodeUrlPassword(connection, 'fixture URL'), base64urlPassword);
+    await admin.query(
+      `ALTER ROLE ${identifier(roleName)} PASSWORD ${postgresqlStringLiteral(decodeUrlPassword(connection, 'fixture URL'))}`,
+    );
+    base64urlClient = new Client({ connectionString: connection.toString() });
+    await base64urlClient.connect();
+    await base64urlClient.query('SELECT 1');
+    await base64urlClient.end();
+    console.log(
+      'PASS URL-reserved and existing base64url runtime passwords authenticate after one safe decode',
+    );
+  } finally {
+    await base64urlClient?.end().catch(() => undefined);
+    await reservedClient?.end().catch(() => undefined);
+    if (created) await admin.query(`DROP ROLE ${identifier(roleName)}`);
   }
 }
 
@@ -269,7 +613,14 @@ async function main(): Promise<void> {
   const admin = new Client({ connectionString: adminUrl.toString() });
   let created = false;
   await admin.connect();
+  const runtimeLoginBefore = (
+    await admin.query<{ rolcanlogin: boolean }>(
+      `SELECT rolcanlogin FROM pg_roles WHERE rolname='litigation_runtime'`,
+    )
+  ).rows[0]?.rolcanlogin;
+  assert.equal(typeof runtimeLoginBefore, 'boolean');
   try {
+    await provePasswordProvisioning(admin, source);
     await proveHistoricalUpgrade(admin, source);
     assert.equal(
       (
@@ -282,13 +633,14 @@ async function main(): Promise<void> {
     );
     await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
     created = true;
-    migrate(fixtureOwnerUrl.toString());
+    await migrate(fixtureOwnerUrl.toString());
 
     const owner = new Client({ connectionString: fixtureOwnerUrl.toString() });
     const runtimeOne = new Client({ connectionString: runtimeUrl.toString() });
     const runtimeTwo = new Client({ connectionString: runtimeUrl.toString() });
     const prismaRuntime = createDatabaseClient(runtimeUrl.toString());
     await owner.connect();
+    await proveRoleBoundaryAdversarial(admin, owner, fixtureOwnerUrl, fixtureName);
     await runtimeOne.connect();
     await runtimeTwo.connect();
     try {
@@ -297,7 +649,7 @@ async function main(): Promise<void> {
       assert.equal(migrationEvidence.acceptedDatabaseProfile, 'canonical-clean-replay');
       assert.deepEqual(
         migrationEvidence.laterAppliedMigrations.map((migration) => migration.name),
-        ['20260831100000_authentication', '20260901120000_secure_audit_actor_attribution'],
+        ['20260831100000_authentication', TASK33A_MIGRATION, TASK33A_CORRECTION_MIGRATION],
       );
       assert.deepEqual(await auditStructureFailures(owner), []);
       assert.deepEqual(await auditDataFailures(owner), []);
@@ -543,7 +895,16 @@ async function main(): Promise<void> {
         () => runtimeOne.query('UPDATE audit_actors SET identity_label=identity_label'),
         /permission denied/u,
       );
-      await rejectsDatabase(() => runtimeOne.query('SET ROLE litigation'), /permission denied/u);
+      const otherRoles = await owner.query<{ role_name: string }>(
+        `SELECT rolname role_name FROM pg_roles
+          WHERE rolname<>'litigation_runtime' ORDER BY rolname`,
+      );
+      for (const role of otherRoles.rows) {
+        await rejectsDatabase(
+          () => runtimeOne.query(`SET ROLE ${identifier(role.role_name)}`),
+          /permission denied/u,
+        );
+      }
 
       // PostgreSQL custom GUCs remain a trust boundary for a compromised
       // application process. The application exposes no request-controlled
@@ -568,7 +929,7 @@ async function main(): Promise<void> {
       assert.deepEqual(await auditDataFailures(owner), []);
       assert.equal(AUDITED_TABLES.length, 38);
       console.log(
-        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53, exact 38 tables and immutable 7-actor registry',
+        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54, exact 38 tables and immutable 7-actor registry',
       );
       console.log(
         'PASS missing/invalid context, spoof overwrite and immutable creation attribution',
@@ -593,6 +954,18 @@ async function main(): Promise<void> {
         [fixtureName],
       );
       await admin.query(`DROP DATABASE ${identifier(fixtureName)}`);
+    }
+    const runtimeLoginAfter = (
+      await admin.query<{ rolcanlogin: boolean }>(
+        `SELECT rolcanlogin FROM pg_roles WHERE rolname='litigation_runtime'`,
+      )
+    ).rows[0]?.rolcanlogin;
+    if (runtimeLoginAfter !== runtimeLoginBefore) {
+      await admin.query(
+        runtimeLoginBefore
+          ? 'ALTER ROLE litigation_runtime LOGIN'
+          : 'ALTER ROLE litigation_runtime NOLOGIN',
+      );
     }
     await admin.end();
   }

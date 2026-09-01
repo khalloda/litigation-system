@@ -4,6 +4,8 @@ import { randomBytes } from 'node:crypto';
 import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Client } from 'pg';
+import { runtimeRoleBoundaryFailures } from './lib/audit-structure';
+import { decodeUrlPassword, postgresqlStringLiteral } from './lib/database-principal';
 
 const RUNTIME_ROLE = 'litigation_runtime';
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
@@ -72,50 +74,27 @@ async function prepareLocalEnvironment(): Promise<void> {
   console.log('PASS updated only ignored DATABASE_URL and MIGRATION_DATABASE_URL values');
 }
 
-function sqlLiteral(value: string): string {
-  assert.equal(value.includes('\0'), false, 'database password contains a null byte');
-  return `'${value.replaceAll("'", "''")}'`;
-}
-
 async function provisionRuntimePrincipal(): Promise<void> {
   const migrationUrl = checkedUrl(process.env['MIGRATION_DATABASE_URL'], 'MIGRATION_DATABASE_URL');
   const runtimeUrl = checkedUrl(process.env['DATABASE_URL'], 'DATABASE_URL');
   assert.equal(runtimeUrl.username, RUNTIME_ROLE, 'DATABASE_URL must use litigation_runtime');
   assert.notEqual(migrationUrl.username, runtimeUrl.username, 'database principals must differ');
   assert.equal(databaseIdentity(migrationUrl), databaseIdentity(runtimeUrl));
-  assert.equal(
-    runtimeUrl.password.startsWith('replace_'),
-    false,
-    'runtime password is a placeholder',
-  );
+  const runtimePassword = decodeUrlPassword(runtimeUrl, 'DATABASE_URL');
+  assert.equal(runtimePassword.startsWith('replace_'), false, 'runtime password is a placeholder');
 
   const owner = new Client({ connectionString: migrationUrl.toString() });
   await owner.connect();
   try {
-    const role = await owner.query<{
-      rolsuper: boolean;
-      rolcreatedb: boolean;
-      rolcreaterole: boolean;
-      rolinherit: boolean;
-      rolreplication: boolean;
-      rolbypassrls: boolean;
-      rolcanlogin: boolean;
-    }>(
-      `SELECT rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolreplication,
-               rolbypassrls,rolcanlogin FROM pg_roles WHERE rolname=$1`,
-      [RUNTIME_ROLE],
+    const boundaryFailures = await runtimeRoleBoundaryFailures(owner);
+    assert.deepEqual(
+      boundaryFailures,
+      [],
+      `restricted runtime boundary failed: ${boundaryFailures.join('; ')}`,
     );
-    assert.equal(role.rowCount, 1, 'migration 53 has not created litigation_runtime');
-    assert.deepEqual(role.rows[0], {
-      rolsuper: false,
-      rolcreatedb: false,
-      rolcreaterole: false,
-      rolinherit: false,
-      rolreplication: false,
-      rolbypassrls: false,
-      rolcanlogin: true,
-    });
-    await owner.query(`ALTER ROLE litigation_runtime PASSWORD ${sqlLiteral(runtimeUrl.password)}`);
+    await owner.query(
+      `ALTER ROLE litigation_runtime PASSWORD ${postgresqlStringLiteral(runtimePassword)}`,
+    );
   } finally {
     await owner.end();
   }

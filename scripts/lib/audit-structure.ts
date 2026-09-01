@@ -68,6 +68,13 @@ export const TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST =
 export const TASK33A_ATTRIBUTION_DIGEST =
   'edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d';
 
+export const RUNTIME_DATABASE_ROLE = 'litigation_runtime';
+export const APPROVED_RUNTIME_SECURITY_DEFINERS = [
+  'public.audit_current_actor_id()',
+  'public.audit_set_authentication_context()',
+  'public.audit_set_human_context(p_user_account_id integer)',
+] as const;
+
 const FUNCTION_DEFINITION_MD5 = new Map([
   ['audit_current_actor_id', 'd84ec5a3e3065721f22f641ddce91b83'],
   ['audit_set_administration_context', 'cbf5acdf79e2c56439f934d5f5397320'],
@@ -303,7 +310,19 @@ export async function auditStructureFailures(db: ClientBase): Promise<string[]> 
     failures.push('actor-registry immutability triggers differ');
   }
 
+  failures.push(...(await runtimeRoleBoundaryFailures(db)));
+  return failures;
+}
+
+export async function runtimeRoleBoundaryFailures(
+  db: ClientBase,
+  roleName = RUNTIME_DATABASE_ROLE,
+): Promise<string[]> {
+  const failures: string[] = [];
+  if (!/^[a-z][a-z0-9_]*$/u.test(roleName)) return ['runtime role name is invalid'];
+
   const role = await db.query<{
+    oid: string;
     rolsuper: boolean;
     rolcreatedb: boolean;
     rolcreaterole: boolean;
@@ -311,79 +330,273 @@ export async function auditStructureFailures(db: ClientBase): Promise<string[]> 
     rolreplication: boolean;
     rolbypassrls: boolean;
     rolcanlogin: boolean;
-  }>(`SELECT rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolreplication,
-             rolbypassrls,rolcanlogin FROM pg_roles WHERE rolname='litigation_runtime'`);
+    rolconfig: string[] | null;
+  }>(
+    `SELECT oid::text,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolreplication,
+            rolbypassrls,rolcanlogin,rolconfig FROM pg_roles WHERE rolname=$1`,
+    [roleName],
+  );
+  const roleRow = role.rows[0];
   if (
     role.rows.length !== 1 ||
-    role.rows[0]!.rolsuper ||
-    role.rows[0]!.rolcreatedb ||
-    role.rows[0]!.rolcreaterole ||
-    role.rows[0]!.rolinherit ||
-    role.rows[0]!.rolreplication ||
-    role.rows[0]!.rolbypassrls ||
-    !role.rows[0]!.rolcanlogin
+    !roleRow ||
+    roleRow.rolsuper ||
+    roleRow.rolcreatedb ||
+    roleRow.rolcreaterole ||
+    roleRow.rolinherit ||
+    roleRow.rolreplication ||
+    roleRow.rolbypassrls ||
+    !roleRow.rolcanlogin
   ) {
     failures.push('restricted runtime role attributes differ');
+    if (!roleRow) return failures;
   }
-  const privileges = await db.query<{
-    table_name: string;
-    owner_name: string;
+
+  const memberships = await db.query<{ chain: string }>(
+    `WITH RECURSIVE paths(roleid,chain,visited) AS (
+       SELECT m.roleid,ARRAY[member.rolname,granted.rolname]::text[],
+              ARRAY[m.member,m.roleid]::oid[]
+         FROM pg_auth_members m JOIN pg_roles member ON member.oid=m.member
+         JOIN pg_roles granted ON granted.oid=m.roleid
+        WHERE member.rolname=$1
+       UNION ALL
+       SELECT m.roleid,p.chain||granted.rolname,p.visited||m.roleid
+         FROM paths p JOIN pg_auth_members m ON m.member=p.roleid
+         JOIN pg_roles granted ON granted.oid=m.roleid
+        WHERE NOT m.roleid=ANY(p.visited)
+     ) SELECT array_to_string(chain,' -> ') chain FROM paths ORDER BY chain::text`,
+    [roleName],
+  );
+  if (memberships.rows.length > 0) {
+    failures.push(
+      `runtime role has direct/indirect memberships: ${memberships.rows
+        .map((row) => row.chain)
+        .join(', ')}`,
+    );
+  }
+
+  const settableRoles = await db.query<{ role_name: string }>(
+    `SELECT rolname role_name FROM pg_roles
+      WHERE rolname<>$1 AND pg_has_role($1,oid,'SET') ORDER BY rolname`,
+    [roleName],
+  );
+  if (settableRoles.rows.length > 0) {
+    failures.push(
+      `runtime can SET ROLE to: ${settableRoles.rows.map((row) => row.role_name).join(', ')}`,
+    );
+  }
+
+  if ((roleRow?.rolconfig?.length ?? 0) > 0) failures.push('runtime role-level settings differ');
+  const databaseSettings = await db.query<{ database_name: string; settings: string[] }>(
+    `SELECT coalesce(d.datname,'all databases') database_name,s.setconfig settings
+       FROM pg_db_role_setting s LEFT JOIN pg_database d ON d.oid=s.setdatabase
+      WHERE s.setrole=(SELECT oid FROM pg_roles WHERE rolname=$1)
+      ORDER BY database_name`,
+    [roleName],
+  );
+  if (databaseSettings.rows.length > 0) failures.push('runtime database-specific settings differ');
+
+  const ownership = await db.query<{
+    databases: string;
+    schemas: string;
+    relations: string;
+    functions: string;
+  }>(
+    `SELECT
+       (SELECT count(*)::text FROM pg_database WHERE datdba=r.oid) databases,
+       (SELECT count(*)::text FROM pg_namespace WHERE nspowner=r.oid) schemas,
+       (SELECT count(*)::text FROM pg_class WHERE relowner=r.oid) relations,
+       (SELECT count(*)::text FROM pg_proc WHERE proowner=r.oid) functions
+       FROM pg_roles r WHERE r.rolname=$1`,
+    [roleName],
+  );
+  const owned = ownership.rows[0];
+  if (
+    !owned ||
+    owned.databases !== '0' ||
+    owned.schemas !== '0' ||
+    owned.relations !== '0' ||
+    owned.functions !== '0'
+  ) {
+    failures.push('runtime owns a database, schema, relation, sequence or function');
+  }
+
+  const databasePrivileges = await db.query<{
+    connect_ok: boolean;
+    create_ok: boolean;
+    temporary_ok: boolean;
+  }>(
+    `SELECT has_database_privilege($1,current_database(),'CONNECT') connect_ok,
+            has_database_privilege($1,current_database(),'CREATE') create_ok,
+            has_database_privilege($1,current_database(),'TEMPORARY') temporary_ok`,
+    [roleName],
+  );
+  const databaseGrant = databasePrivileges.rows[0];
+  if (
+    !databaseGrant ||
+    !databaseGrant.connect_ok ||
+    databaseGrant.create_ok ||
+    databaseGrant.temporary_ok
+  ) {
+    failures.push('runtime database CONNECT/CREATE/TEMPORARY boundary differs');
+  }
+
+  const schemas = await db.query<{
+    schema_name: string;
+    usage_ok: boolean;
+    create_ok: boolean;
+  }>(
+    `SELECT nspname schema_name,has_schema_privilege($1,oid,'USAGE') usage_ok,
+            has_schema_privilege($1,oid,'CREATE') create_ok
+       FROM pg_namespace WHERE nspname=ANY($2::text[]) ORDER BY nspname`,
+    [roleName, ['public', 'quarantine', 'staging']],
+  );
+  if (
+    schemas.rows.length !== 3 ||
+    schemas.rows.some(
+      (row) => row.create_ok || (row.schema_name === 'public' ? !row.usage_ok : row.usage_ok),
+    )
+  ) {
+    failures.push('runtime public/staging/quarantine schema boundary differs');
+  }
+
+  const relations = await db.query<{
+    schema_name: string;
+    relation_name: string;
     select_ok: boolean;
     insert_ok: boolean;
     update_ok: boolean;
     delete_ok: boolean;
+    truncate_ok: boolean;
+    references_ok: boolean;
+    trigger_ok: boolean;
   }>(
-    `
-    SELECT r.relname table_name,pg_get_userbyid(r.relowner) owner_name,
-           has_table_privilege('litigation_runtime',r.oid,'SELECT') select_ok,
-           has_table_privilege('litigation_runtime',r.oid,'INSERT') insert_ok,
-           has_table_privilege('litigation_runtime',r.oid,'UPDATE') update_ok,
-           has_table_privilege('litigation_runtime',r.oid,'DELETE') delete_ok
-      FROM pg_class r JOIN pg_namespace n ON n.oid=r.relnamespace
-     WHERE n.nspname='public' AND r.relname=ANY($1::text[]) ORDER BY r.relname`,
+    `SELECT n.nspname schema_name,c.relname relation_name,
+            has_table_privilege($1,c.oid,'SELECT') select_ok,
+            has_table_privilege($1,c.oid,'INSERT') insert_ok,
+            has_table_privilege($1,c.oid,'UPDATE') update_ok,
+            has_table_privilege($1,c.oid,'DELETE') delete_ok,
+            has_table_privilege($1,c.oid,'TRUNCATE') truncate_ok,
+            has_table_privilege($1,c.oid,'REFERENCES') references_ok,
+            has_table_privilege($1,c.oid,'TRIGGER') trigger_ok
+       FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname=ANY($2::text[]) AND c.relkind IN ('r','p','v','m','f')
+      ORDER BY n.nspname,c.relname`,
+    [roleName, ['public', 'quarantine', 'staging']],
+  );
+  for (const row of relations.rows) {
+    const approved =
+      row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never);
+    if (
+      row.select_ok !== approved ||
+      row.insert_ok !== approved ||
+      row.update_ok !== approved ||
+      row.delete_ok ||
+      row.truncate_ok ||
+      row.references_ok ||
+      row.trigger_ok
+    ) {
+      failures.push(`${row.schema_name}.${row.relation_name}: runtime relation grants differ`);
+    }
+  }
+  const approvedRelationCount = relations.rows.filter(
+    (row) => row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never),
+  ).length;
+  if (approvedRelationCount !== AUDITED_TABLES.length)
+    failures.push(`runtime approved relation inventory is ${approvedRelationCount}/38`);
+
+  const approvedSequences = await db.query<{ oid: string | null }>(
+    `SELECT to_regclass(pg_get_serial_sequence(format('public.%I',table_name),'id'))::oid::text oid
+       FROM unnest($1::text[]) table_name ORDER BY table_name`,
     [AUDITED_TABLES],
   );
+  const approvedSequenceOids = new Set(
+    approvedSequences.rows.flatMap((row) => (row.oid === null ? [] : [row.oid])),
+  );
+  const sequences = await db.query<{
+    oid: string;
+    schema_name: string;
+    sequence_name: string;
+    usage_ok: boolean;
+    select_ok: boolean;
+    update_ok: boolean;
+  }>(
+    `SELECT c.oid::text,n.nspname schema_name,c.relname sequence_name,
+            has_sequence_privilege($1,c.oid,'USAGE') usage_ok,
+            has_sequence_privilege($1,c.oid,'SELECT') select_ok,
+            has_sequence_privilege($1,c.oid,'UPDATE') update_ok
+       FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname=ANY($2::text[]) AND c.relkind='S'
+      ORDER BY n.nspname,c.relname`,
+    [roleName, ['public', 'quarantine', 'staging']],
+  );
+  for (const row of sequences.rows) {
+    const approved = approvedSequenceOids.has(row.oid);
+    if (row.usage_ok !== approved || row.select_ok !== approved || row.update_ok) {
+      failures.push(`${row.schema_name}.${row.sequence_name}: runtime sequence grants differ`);
+    }
+  }
   if (
-    privileges.rows.length !== 38 ||
-    privileges.rows.some(
-      (row) =>
-        row.owner_name === 'litigation_runtime' ||
-        !row.select_ok ||
-        !row.insert_ok ||
-        !row.update_ok ||
-        row.delete_ok,
+    sequences.rows.filter((row) => approvedSequenceOids.has(row.oid)).length !==
+    approvedSequenceOids.size
+  ) {
+    failures.push('runtime approved sequence inventory differs');
+  }
+
+  const executableDefiners = await db.query<{ signature: string }>(
+    `SELECT n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' signature
+       FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+      WHERE n.nspname=ANY($2::text[]) AND p.prosecdef
+        AND has_function_privilege($1,p.oid,'EXECUTE')
+      ORDER BY signature`,
+    [roleName, ['public', 'quarantine', 'staging']],
+  );
+  if (
+    !same(
+      executableDefiners.rows.map((row) => row.signature),
+      [...APPROVED_RUNTIME_SECURITY_DEFINERS].sort(),
     )
   ) {
-    failures.push('runtime application-table ownership/grants differ');
+    failures.push('runtime executable SECURITY DEFINER inventory differs');
   }
-  const boundary = await db.query<{
-    actor_read: boolean;
-    actor_write: boolean;
-    schema_create: boolean;
-    auth_context: boolean;
-    human_context: boolean;
-    admin_context: boolean;
-    migration_context: boolean;
-  }>(`SELECT
-    has_table_privilege('litigation_runtime','audit_actors','SELECT') actor_read,
-    has_table_privilege('litigation_runtime','audit_actors','INSERT,UPDATE,DELETE') actor_write,
-    has_schema_privilege('litigation_runtime','public','CREATE') schema_create,
-    has_function_privilege('litigation_runtime','audit_set_authentication_context()','EXECUTE') auth_context,
-    has_function_privilege('litigation_runtime','audit_set_human_context(integer)','EXECUTE') human_context,
-    has_function_privilege('litigation_runtime','audit_set_administration_context()','EXECUTE') admin_context,
-    has_function_privilege('litigation_runtime','audit_set_migration_context()','EXECUTE') migration_context`);
-  const grant = boundary.rows[0];
+
+  const defaultFunctionPrivileges = await db.query<{
+    global_acl_count: number;
+    global_acl_entry_count: number;
+    owner_execute_count: number;
+    project_schema_acl_count: number;
+  }>(`
+    WITH project_owner AS (
+      SELECT relowner owner_oid FROM pg_class
+       WHERE oid='public.people'::regclass
+    )
+    SELECT
+      (SELECT count(*)::int FROM pg_default_acl d,project_owner o
+        WHERE d.defaclrole=o.owner_oid AND d.defaclobjtype='f'
+          AND d.defaclnamespace=0) global_acl_count,
+      (SELECT count(*)::int FROM pg_default_acl d,project_owner o,
+              LATERAL aclexplode(d.defaclacl) a
+        WHERE d.defaclrole=o.owner_oid AND d.defaclobjtype='f'
+          AND d.defaclnamespace=0) global_acl_entry_count,
+      (SELECT count(*)::int FROM pg_default_acl d,project_owner o,
+              LATERAL aclexplode(d.defaclacl) a
+        WHERE d.defaclrole=o.owner_oid AND d.defaclobjtype='f'
+          AND d.defaclnamespace=0 AND a.grantee=o.owner_oid
+          AND a.privilege_type='EXECUTE') owner_execute_count,
+      (SELECT count(*)::int FROM pg_default_acl d,project_owner o
+        WHERE d.defaclrole=o.owner_oid AND d.defaclobjtype='f'
+          AND d.defaclnamespace IN (
+            'public'::regnamespace,'quarantine'::regnamespace,'staging'::regnamespace
+          )) project_schema_acl_count`);
+  const defaultFunctionPrivilege = defaultFunctionPrivileges.rows[0];
   if (
-    !grant ||
-    grant.actor_read ||
-    grant.actor_write ||
-    grant.schema_create ||
-    !grant.auth_context ||
-    !grant.human_context ||
-    grant.admin_context ||
-    grant.migration_context
+    defaultFunctionPrivileges.rows.length !== 1 ||
+    defaultFunctionPrivilege?.global_acl_count !== 1 ||
+    defaultFunctionPrivilege.global_acl_entry_count !== 1 ||
+    defaultFunctionPrivilege.owner_execute_count !== 1 ||
+    defaultFunctionPrivilege.project_schema_acl_count !== 0
   ) {
-    failures.push('runtime actor/context threat-boundary grants differ');
+    failures.push('project-owner default SECURITY DEFINER execution boundary differs');
   }
   return failures;
 }

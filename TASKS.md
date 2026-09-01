@@ -1423,6 +1423,14 @@ only ever seen good data is not known to work.
       projection and its separate attribution digest. Acceptance evidence:
       [`docs/task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md`](docs/task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md).
 
+      Forward migration `20260901170000_close_task33a_acceptance_gaps` closes
+      the reviewed source-inventory, exact role-boundary, frozen Gate 4 evidence
+      and reserved-character password-provisioning gaps. Runtime login now
+      fails closed during deployment until complete membership, setting,
+      ownership, effective-grant and executable-function inventories pass.
+      Migration 53 and every protected row, timestamp and digest remain
+      unchanged. This correction does not start Task 3.3B.
+
 - [ ] **3.3B Append-only event foundation** — approved but not started; this is
       the exact return point after accepted Task 3.3A (**D30**, **D32**).
       Record create, update, archive and restore;

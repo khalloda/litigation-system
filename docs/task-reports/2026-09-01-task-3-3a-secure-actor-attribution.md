@@ -221,9 +221,12 @@ printed, documented or committed.
 - `npm run test:gate4` — 60/60 PASS; every task-owned fixture removed.
 - `npm run verify:gate4-migrations -- historical-live` — PASS; 51 required +
   two later migrations + one approved rollback, no unaccounted row/file.
-- Two final `npm run reconcile:gate4` runs — byte-identical PASS; report digest
+- Two original-acceptance `npm run reconcile:gate4` runs — byte-identical PASS;
+  then-transient report digest
   `feae9da499509777b66f277e58b6e3cf353708d6e70e7a0db52cdb9cc4e498ce`;
-  all six dataset counts/digests unchanged.
+  all six dataset counts/digests unchanged. The acceptance-gap correction below
+  supersedes that transient inventory without rewriting the frozen 30 August
+  evidence.
 - `npm run build` — PASS; Next.js 16.3.1 production build completed.
 - `npm run db:verify` — PASS: PostgreSQL 17.11, UTF-8/ICU/extensions, 53
   migrations, restricted runtime, seven actors and 38 audit triggers.
@@ -246,3 +249,101 @@ trust, not cryptographic attribution against that compromise.
 Task 3.3B events, D31 export capability, audit UI, archive/restore and Task 3.4
 remain unimplemented. No new owner decision is required for the exact next
 return point.
+
+## Acceptance-gap correction — 1 September 2026
+
+The focused forward correction starts directly from Task 3.3A commit
+`06eaee395d1eb28e8a32cb9245304aa8e070ae5d` and does not amend or replace it.
+The correction commit is named `fix: close Task 3.3A acceptance gaps`; it is
+local only. Task 3.3B remains not started.
+
+### Four reproduced defects and their closure
+
+1. The previous source checker accepted all four disposable bypass classes:
+   request-controlled `FormData` human selection under the innocuous key
+   `person`; a raw human-context call in a service outside `src/app`; direct
+   `set_config`, `SET LOCAL`/`SESSION` or actor-GUC use outside the gateway; and
+   system-context selection outside authentication. The replacement uses the
+   TypeScript AST over every applicable JS/TS extension below `src`, excludes
+   only the exact generated Prisma subtree, and requires exact reviewed gateway
+   and call-site inventories. Fourteen permanent negative fixtures cover direct,
+   aliased, dynamic, CommonJS, re-exported, computed, raw-SQL and
+   request-controlled paths; three positive fixtures prove legitimate use.
+2. A disposable `NOINHERIT` role with a `SET`-enabled membership passed the old
+   attribute/grant checks and successfully executed `SET ROLE`. The complete
+   boundary now rejects direct and indirect memberships, `pg_has_role(...,
+   'SET')` to every other role, role/database settings, ownership, all effective
+   relation and sequence access, and all executable project
+   `SECURITY DEFINER` routines. Adversarial fixtures prove every class without
+   ever granting membership to the real runtime role.
+3. The earlier commit changed six migration-evidence lines in the frozen
+   [`2026-08-30 Gate 4 report`](../reconciliations/2026-08-30-gate-4.md). The
+   report is restored byte-for-byte to parent `443227f`, and both corresponding
+   historical digest/inventory references in [`MIGRATION.md`](../MIGRATION.md)
+   are restored. Current reconciliation no longer writes that dated file.
+4. A non-secret disposable reserved-character password proved that
+   `URL.password` is percent-encoded while the PostgreSQL driver authenticates
+   with the decoded value; the previous `ALTER ROLE` therefore set a different
+   password. Provisioning now decodes exactly once, safely quotes the decoded
+   value, logs no secret, and proves both reserved-character and existing
+   generated base64url credentials by successful disposable connections.
+
+### Forward migration and fail-closed deployment
+
+Migration `20260901170000_close_task33a_acceptance_gaps` is the 54th repository
+migration. Its SHA-256 and applied checksum are
+`80133981c148edc6daec81474b4c86e470e3aab7bb5c64404cb26e661f16cb4d`.
+Migration 53 remains byte-identical at
+`40de7e27f840805f627e4e75467182c0c9e0bcf974824871ce03bf01e3049ca2`;
+all earlier migration paths are unchanged.
+
+Migration 54 first commits `NOLOGIN` and revokes target-database `CONNECT`,
+then terminates existing runtime sessions. Its second transaction revokes the
+global default `PUBLIC EXECUTE` on future owner functions and validates the
+complete role graph, settings, ownership, effective grants and exact three
+approved executable security-definer functions. Only after every assertion
+passes does it restore login and connection access. Any failure leaves the
+application role unusable, rolls back the second phase and never silently
+removes unexpected external membership, ownership or grants.
+
+### Frozen and current reconciliation evidence
+
+- Frozen 30 August report: exact parent `443227f` content; raw file SHA-256
+  `515d035ead67553105af26eeb0d0546e15651d7d2066f0e2919846e98d4803c6`;
+  stable generated-report digest
+  `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`;
+  52-file historical inventory.
+- Current evidence: 54-file migration inventory digest
+  `9dc23762f58ae0d04e2623bb79dd1d8acaf84ec6c6bd4f3555a56da173207eb4`;
+  51 required Stage 2 + three later migrations + one approved rollback.
+- Two separate non-writing current Gate 4 commands, each with its own internal
+  idempotency replay, produced byte-identical transient digest
+  `4849b03f8c33a08242e5ad31368e140b7a49096469212c3028180e250e963b7c`.
+  The frozen report hash was identical before and after both runs.
+
+### Correction changed-file inventory
+
+- `TASKS.md`
+- `docs/DATABASE.md`
+- `docs/MIGRATION.md`
+- `docs/reconciliations/2026-08-30-gate-4.md`
+- `docs/task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md`
+- `package.json`
+- `prisma/migrations/20260901170000_close_task33a_acceptance_gaps/migration.sql`
+- `scripts/check-audit.ts`
+- `scripts/lib/audit-source-inventory.ts`
+- `scripts/lib/audit-structure.ts`
+- `scripts/lib/database-principal.ts`
+- `scripts/provision-database-principals.ts`
+- `scripts/test-audit.ts`
+
+### Correction verification snapshot
+
+Prisma format/validate/generate; the full static check and audit self-tests;
+historical-live and canonical-clean-replay audit migrations; authentication;
+all 448 permission decisions; the reset guard; every affected staging, review,
+transform and reconciliation fixture; Gate 4's 60 fixtures; migration status;
+database verification; all 88 permanent invariants; and both current Gate 4
+reconciliations pass. The final build, staged-diff review, repository/content
+scans, fixture-absence proof, commit identity and review-patch identity are
+reported after this Markdown is included in the focused commit.
