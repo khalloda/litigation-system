@@ -557,7 +557,7 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
 }
 
 export async function withGate4ReadOnlyDatabase<T>(run: (db: Client) => Promise<T>): Promise<T> {
-  const url = assertGate4DatabaseUrl(process.env.DATABASE_URL);
+  const url = assertGate4DatabaseUrl(process.env.MIGRATION_DATABASE_URL);
   const db = new Client({ connectionString: url.toString() });
   await db.connect();
   try {

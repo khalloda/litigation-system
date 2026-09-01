@@ -240,7 +240,7 @@ type Case = {
   needsEmptyVolume?: boolean;
 };
 
-const projectUrl = process.env['DATABASE_URL'] ?? '';
+const projectUrl = process.env['MIGRATION_DATABASE_URL'] ?? '';
 
 /* The same server, the same port, the throwaway database. */
 const url = projectUrl.replace(/\/[^/?]+(\?|$)/, `/${DATABASE}$1`);
@@ -253,7 +253,7 @@ const otherDatabaseUrl = projectUrl.replace(/\/[^/?]+(\?|$)/, '/postgres$1');
  * every case for the same uninteresting reason — twenty-two green refusals
  * that prove nothing.
  */
-const BASE_ENV: Record<string, string> = { POSTGRES_DB: DATABASE, DATABASE_URL: url };
+const BASE_ENV: Record<string, string> = { POSTGRES_DB: DATABASE, MIGRATION_DATABASE_URL: url };
 
 const cases: Case[] = [
   {
@@ -280,7 +280,7 @@ const cases: Case[] = [
   },
   {
     name: 'database on another machine',
-    env: { DATABASE_URL: 'postgresql://a:b@db.example.com:5432/litigation' },
+    env: { MIGRATION_DATABASE_URL: 'postgresql://a:b@db.example.com:5432/litigation' },
     args: ['--force-i-know'],
     expect: 'refuse',
     because: 'not on this machine',
@@ -289,7 +289,7 @@ const cases: Case[] = [
   {
     /*
      * The exact attack from the re-review: five rows in `litigation`,
-     * DATABASE_URL aimed at the empty built-in `postgres` in the SAME
+     * MIGRATION_DATABASE_URL aimed at the empty built-in `postgres` in the SAME
      * container on the SAME port. Previously reported "Tables: none" and
      * destroyed them.
      */
@@ -299,7 +299,7 @@ const cases: Case[] = [
       psql(DATABASE, 'TRUNCATE guard_fixture_rows');
       psql(DATABASE, 'INSERT INTO guard_fixture_rows VALUES (1),(2),(3),(4),(5)');
     },
-    env: { DATABASE_URL: otherDatabaseUrl },
+    env: { MIGRATION_DATABASE_URL: otherDatabaseUrl },
     expect: 'refuse',
     because: `not "${DATABASE}"`,
     noOverride: true,

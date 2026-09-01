@@ -266,8 +266,11 @@ function quoteIdentifier(value: string): string {
 }
 
 async function transactionRollbackFixture(parsed: ReturnType<typeof parsedFixture>) {
-  const projectUrlText = process.env['DATABASE_URL'];
-  assert.ok(projectUrlText, 'DATABASE_URL is required for the isolated transaction fixture');
+  const projectUrlText = process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(
+    projectUrlText,
+    'MIGRATION_DATABASE_URL is required for the isolated transaction fixture',
+  );
   const databaseName = `review_import_fixture_${process.pid}_${Date.now()}`;
   const adminUrl = new URL(projectUrlText);
   adminUrl.pathname = '/postgres';

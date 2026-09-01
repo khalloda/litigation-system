@@ -1,4 +1,9 @@
 import { Prisma, type PrismaClient } from '@/generated/prisma/client';
+import {
+  setAdministrationAuditContext,
+  setAuthenticationAuditContext,
+  setHumanAuditContext,
+} from '@/lib/audit';
 import { db } from '@/lib/db';
 import {
   APPROVED_INITIAL_USERNAMES,
@@ -133,6 +138,7 @@ export async function authenticateCredentials(
   return withSerializableRetry(() =>
     database.$transaction(
       async (tx) => {
+        await setAuthenticationAuditContext(tx);
         const account = await lockedAccount(tx, usernameNormalized);
         if (!account) {
           await dummyVerify(password);
@@ -248,6 +254,7 @@ export async function changeOwnPassword(
         if (!(await verify(account.passwordHash, input.currentPassword))) return 'invalid-current';
 
         const passwordHash = await hashPassword(input.newPassword);
+        await setHumanAuditContext(tx, account.id);
         await tx.userAccount.update({
           where: { id: account.id },
           data: {
@@ -290,6 +297,7 @@ export async function setApprovedAccountPassword(
       async (tx) => {
         const account = await lockedAccount(tx, usernameNormalized);
         if (!account) throw new Error('approved-account-not-found');
+        await setAdministrationAuditContext(tx);
         await tx.userAccount.update({
           where: { id: account.id },
           data: {

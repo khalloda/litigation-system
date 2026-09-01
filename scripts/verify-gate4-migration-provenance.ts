@@ -14,8 +14,8 @@ async function main(): Promise<void> {
       'usage: tsx scripts/verify-gate4-migration-provenance.ts historical-live|canonical-clean-replay',
     );
 
-  const rawUrl = process.env.DATABASE_URL;
-  if (rawUrl === undefined) throw new Error('DATABASE_URL is required');
+  const rawUrl = process.env.MIGRATION_DATABASE_URL;
+  if (rawUrl === undefined) throw new Error('MIGRATION_DATABASE_URL is required');
   const url = new URL(rawUrl);
   if (!['localhost', '127.0.0.1'].includes(url.hostname) || url.port !== '5433')
     throw new Error('migration-provenance verification requires localhost port 5433');

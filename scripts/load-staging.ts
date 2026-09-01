@@ -46,7 +46,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { db } from '../src/lib/db';
+import { migrationDb as db } from './lib/migration-db';
 import { sourceRecordKeys } from './lib/source-identity';
 
 const META = '_migration/meta';

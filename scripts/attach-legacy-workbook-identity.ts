@@ -9,7 +9,7 @@
 
 import 'dotenv/config';
 import ExcelJS from 'exceljs';
-import { db } from '../src/lib/db';
+import { migrationDb as db } from './lib/migration-db';
 import {
   buildLegacyIdentityAttachmentPlan,
   type LegacyFindingRow,

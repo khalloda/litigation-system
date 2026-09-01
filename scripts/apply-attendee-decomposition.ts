@@ -168,8 +168,8 @@ async function insertAmbiguousEvidence(db: Client, plan: AttendeeAuditPlan): Pro
 }
 
 export async function runAttendeeAudit(options: RunOptions = {}) {
-  const connectionString = options.databaseUrl ?? process.env['DATABASE_URL'];
-  assert.ok(connectionString, 'DATABASE_URL is required');
+  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
   const config: ClientConfig = { connectionString };
   const db = new Client(config);
   await db.connect();

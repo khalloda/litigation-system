@@ -20,6 +20,11 @@ if (!connectionString) {
   throw new Error('DATABASE_URL is not set. Copy .env.example to .env — see docs/DATABASE.md.');
 }
 
+const runtimeIdentity = new URL(connectionString);
+if (runtimeIdentity.username !== 'litigation_runtime') {
+  throw new Error('DATABASE_URL must use the restricted litigation_runtime principal.');
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };

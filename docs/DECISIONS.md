@@ -586,6 +586,15 @@ would be too broad and would jump ahead of screens that do not exist. Applying
 the four columns to every physical table would weaken rather than improve
 migration evidence. Revisit only through a new explicit owner decision.
 
+**Implementation evidence, 1 September 2026:** Task 3.3A is implemented by
+migration `20260901120000_secure_audit_actor_attribution` and the code/tests
+recorded in
+[`2026-09-01-task-3-3a-secure-actor-attribution.md`](task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md).
+It establishes the exact 38-table actor boundary and seven immutable actors,
+including the minimum distinct migration, authentication and controlled
+administration system purposes. Task 3.3B events remain approved but not
+started; no event table, UI or export was added.
+
 ## D31 — Administrators view audit history; export is an account capability
 
 **Approved by Khaled Helmy on 1 September 2026.** Evidence: the Task 3.3
@@ -639,6 +648,16 @@ convention rather than an enforceable security boundary. Task 3.3A must prove
 the final privileges, ownership, fixed-search-path security-definer functions,
 fixtures and deployment procedure before this control is described as
 operational.
+
+**Implementation evidence, 1 September 2026:** Prisma migrations and
+controlled tools use the owning `litigation` principal through
+`MIGRATION_DATABASE_URL`; the web runtime requires restricted
+`litigation_runtime` through `DATABASE_URL`. Exact catalog and adversarial
+fixtures prove role attributes, ownership, grants, fixed-search-path helper
+functions and refused runtime bypass attempts. The residual PostgreSQL custom
+setting available to a fully compromised application process is documented as
+a trust boundary rather than overstated as cryptographic attribution. See the
+Task 3.3A report linked in D30.
 
 ## D34 — The hybrid audit-history interface direction is approved and deferred
 

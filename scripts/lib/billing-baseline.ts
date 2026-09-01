@@ -30,7 +30,9 @@ export async function billingCanonicalState(db: ClientBase): Promise<BillingCano
   }>(`
     WITH canonical AS (
       SELECT 'invoice'::text kind,i.id,
-             (to_jsonb(i)-'created_at'-'updated_at') || jsonb_build_object(
+             (to_jsonb(i)-'created_at'-'updated_at'-'created_by'-'updated_by') || jsonb_build_object(
+               'created_by',NULL,
+               'updated_by',NULL,
                'created_at',to_char(i.created_at AT TIME ZONE 'UTC',
                                     'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
                'updated_at',to_char(i.updated_at AT TIME ZONE 'UTC',
@@ -42,7 +44,9 @@ export async function billingCanonicalState(db: ClientBase): Promise<BillingCano
         FROM invoices i WHERE i.legacy_source_record_key IS NOT NULL
       UNION ALL
       SELECT 'payment',p.id,
-             (to_jsonb(p)-'created_at'-'updated_at') || jsonb_build_object(
+             (to_jsonb(p)-'created_at'-'updated_at'-'created_by'-'updated_by') || jsonb_build_object(
+               'created_by',NULL,
+               'updated_by',NULL,
                'created_at',to_char(p.created_at AT TIME ZONE 'UTC',
                                     'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
                'updated_at',to_char(p.updated_at AT TIME ZONE 'UTC',
@@ -54,7 +58,9 @@ export async function billingCanonicalState(db: ClientBase): Promise<BillingCano
         FROM payments p WHERE p.legacy_source_record_key IS NOT NULL
       UNION ALL
       SELECT 'allocation',a.id,
-             (to_jsonb(a)-'created_at'-'updated_at') || jsonb_build_object(
+             (to_jsonb(a)-'created_at'-'updated_at'-'created_by'-'updated_by') || jsonb_build_object(
+               'created_by',NULL,
+               'updated_by',NULL,
                'created_at',to_char(a.created_at AT TIME ZONE 'UTC',
                                     'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
                'updated_at',to_char(a.updated_at AT TIME ZONE 'UTC',

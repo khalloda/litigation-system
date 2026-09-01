@@ -62,6 +62,15 @@ UNION ALL SELECT
 FROM unnest(ARRAY['pg_trgm', 'btree_gin', 'unaccent']) AS e
 
 UNION ALL SELECT
+    'Restricted web-runtime role',
+    coalesce((SELECT rolname FROM pg_roles WHERE rolname='litigation_runtime'), '(missing)'),
+    CASE WHEN EXISTS (
+        SELECT 1 FROM pg_roles WHERE rolname='litigation_runtime'
+          AND rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
+          AND NOT rolinherit AND NOT rolreplication AND NOT rolbypassrls)
+      THEN 'PASS' ELSE 'run migration 53 and npm run db:provision-runtime' END
+
+UNION ALL SELECT
     'Migrations applied',
     /*
      * _prisma_migrations does not exist until the first migration runs, and
@@ -129,6 +138,29 @@ UNION ALL SELECT
                                   false, true, '')))[1]::text::int > 0
               THEN 'FAIL — a migration started and never finished'
          ELSE 'PASS' END;
+
+SELECT to_regclass('public.audit_actors') IS NOT NULL AS has_audit_actors \gset
+\if :has_audit_actors
+SELECT
+    'Task 3.3A actor registry' AS check,
+    count(*)::text AS value,
+    CASE WHEN count(*)=7
+           AND count(*) FILTER(WHERE actor_kind='human')=4
+           AND count(*) FILTER(WHERE actor_kind='system')=3
+         THEN 'PASS' ELSE 'FAIL — expected 4 human + 3 system actors' END AS result
+FROM public.audit_actors
+UNION ALL SELECT
+    'Task 3.3A audit triggers',
+    count(*)::text,
+    CASE WHEN count(*)=38 THEN 'PASS' ELSE 'FAIL — expected 38' END
+FROM pg_trigger t JOIN pg_class r ON r.oid=t.tgrelid
+JOIN pg_namespace n ON n.oid=r.relnamespace
+WHERE n.nspname='public' AND t.tgname='audit_actor_columns_guard'
+  AND NOT t.tgisinternal AND t.tgenabled='O';
+\else
+SELECT 'Task 3.3A actor registry' AS check,'(missing)' AS value,
+       'run: npm run db:migrate:deploy' AS result;
+\endif
 
 
 -- ---------------------------------------------------------------------------

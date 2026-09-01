@@ -218,8 +218,8 @@ async function assertStructure(db: ClientBase): Promise<void> {
 }
 
 export async function runClientLogoTransform(options: Options = {}): Promise<RunResult> {
-  const connectionString = options.databaseUrl ?? process.env['DATABASE_URL'];
-  assert.ok(connectionString, 'DATABASE_URL is required');
+  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
   const logoRoot = options.logoRoot ?? process.env['CLIENT_LOGO_ROOT'];
   assert.ok(logoRoot, 'CLIENT_LOGO_ROOT is required');
   const paths = options.sourcePaths ?? DEFAULT_SOURCE_PATHS;

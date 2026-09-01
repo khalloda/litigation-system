@@ -77,7 +77,7 @@ function migrate(databaseUrl: string): void {
     ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
     {
       cwd: process.cwd(),
-      env: { ...process.env, DATABASE_URL: databaseUrl },
+      env: { ...process.env, MIGRATION_DATABASE_URL: databaseUrl },
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
     },
@@ -260,8 +260,8 @@ async function fileSnapshot(root: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
-  const projectUrl = process.env['DATABASE_URL'];
-  assert.ok(projectUrl, 'DATABASE_URL is required');
+  const projectUrl = process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(projectUrl, 'MIGRATION_DATABASE_URL is required');
   const projectTarget = new URL(projectUrl);
   assert.equal(projectTarget.hostname, 'localhost');
   assert.equal(projectTarget.port, '5433');
@@ -734,6 +734,7 @@ async function main(): Promise<void> {
       await writeFile(replacementPath, replacementBytes);
       await db.query('BEGIN');
       try {
+        await db.query('SELECT audit_set_human_context(1)');
         await db.query(
           `UPDATE client_logos
               SET relative_path=$1,file_name='replacement.png',content_type='image/png',

@@ -4,11 +4,10 @@ A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
 **Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
-authentication and server-side role permissions are complete through Task 3.2,
-closed at commit `553b3d1`. The owner approved the Task 3.3 contract on
-1 September 2026 and split it into two ordered checkpoints. **Task 3.3A —
-Secure actor attribution is approved but not started, and is the exact return
-point.** The owner-readable migration result is in
+authentication, server-side role permissions and Task 3.3A secure actor
+attribution are complete. **Task 3.3B — Append-only event foundation is
+approved but not started, and is the exact return point.** The owner-readable
+migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
 current progress and work order are in [`TASKS.md`](TASKS.md). The dated
 continuity evidence is preserved separately in
@@ -75,17 +74,22 @@ Excel via ExcelJS. PDF via Playwright. Rationale in `docs/DECISIONS.md`.
 ```bash
 cp .env.example .env
 # Set a private AUTH_SECRET of at least 32 random bytes.
-# Set CLIENT_LOGO_ROOT to a local folder; production uses
+# Set both database URLs to different principals, set CLIENT_LOGO_ROOT to a
+# local folder; production uses
 # /var/lib/litigation/client-logos.
 npm install
+npm run db:prepare-local-runtime # existing local setups only; does not print the generated password
 npm run db:up             # PostgreSQL 17 in Docker, on port 5433
 npm run db:migrate        # build the schema inside it
+npm run db:provision-runtime # set and verify the restricted runtime password
 npm run db:check          # confirm the application can reach it
 npm run auth:set-password -- KHelmy  # interactive; repeat for each approved username
 npm run dev               # http://localhost:3000
 ```
 
-The application accepts usernames, not email addresses. The four initial
+`MIGRATION_DATABASE_URL` is the privileged schema/administration connection;
+the web application uses the separate restricted `DATABASE_URL` as
+`litigation_runtime`. The application accepts usernames, not email addresses. The four initial
 accounts have no password in Git or in their migration; the owner initializes
 each one locally with `auth:set-password`, which hides input and forces a
 change at first login. See `docs/DATABASE.md` for the complete procedure.

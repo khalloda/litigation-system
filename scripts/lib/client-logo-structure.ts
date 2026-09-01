@@ -71,6 +71,10 @@ const constraintDefinitions: Readonly<Record<string, string>> = {
   client_logos_pkey: 'PRIMARY KEY (id)',
   client_logos_client_id_fkey:
     'FOREIGN KEY (client_id) REFERENCES clients(id) ON UPDATE CASCADE ON DELETE CASCADE',
+  client_logos_created_by_fkey:
+    'FOREIGN KEY (created_by) REFERENCES audit_actors(id) ON UPDATE RESTRICT ON DELETE RESTRICT',
+  client_logos_updated_by_fkey:
+    'FOREIGN KEY (updated_by) REFERENCES audit_actors(id) ON UPDATE RESTRICT ON DELETE RESTRICT',
   client_logos_relative_path_shape:
     "CHECK (relative_path ~ '^[1-9][0-9]*/[^/\\\\]+$'::text AND relative_path = ((client_id::text || '/'::text) || file_name))",
   client_logos_file_name_shape:
@@ -96,6 +100,8 @@ const constraintDefinitions: Readonly<Record<string, string>> = {
 const indexes = [
   ['client_logos_pkey', 'client_logos', true, ['id']],
   ['client_logos_client_id_key', 'client_logos', true, ['client_id']],
+  ['client_logos_created_by_idx', 'client_logos', false, ['created_by']],
+  ['client_logos_updated_by_idx', 'client_logos', false, ['updated_by']],
   [
     'migration_client_logo_import_pkey',
     'migration_client_logo_import',
@@ -222,6 +228,9 @@ export async function clientLogoStructureFailures(db: ClientBase): Promise<strin
   for (const [name, definition] of Object.entries(constraintDefinitions)) {
     const row = constraintRows.rows.find((item) => item.name === name);
     const isForeignKey = name.endsWith('_fkey');
+    const isActorForeignKey =
+      name.endsWith('_created_by_fkey') || name.endsWith('_updated_by_fkey');
+    const actorColumn = name.endsWith('_created_by_fkey') ? 'created_by' : 'updated_by';
     if (
       !row ||
       row.schema_name !== 'public' ||
@@ -233,12 +242,13 @@ export async function clientLogoStructureFailures(db: ClientBase): Promise<strin
       canon(row.definition) !== canon(definition) ||
       (isForeignKey &&
         (row.type !== 'f' ||
-          !same(row.source_columns, ['client_id']) ||
+          !same(row.source_columns, [isActorForeignKey ? actorColumn : 'client_id']) ||
           row.target_schema !== 'public' ||
-          row.target_table !== 'clients' ||
+          row.target_table !== (isActorForeignKey ? 'audit_actors' : 'clients') ||
           !same(row.target_columns, ['id']) ||
-          row.update_action !== 'c' ||
-          row.delete_action !== (name.startsWith('client_logos_') ? 'c' : 'r') ||
+          row.update_action !== (isActorForeignKey ? 'r' : 'c') ||
+          row.delete_action !==
+            (isActorForeignKey ? 'r' : name.startsWith('client_logos_') ? 'c' : 'r') ||
           row.match_type !== 's')) ||
       (!isForeignKey && row.target_schema !== null)
     )
@@ -249,7 +259,7 @@ export async function clientLogoStructureFailures(db: ClientBase): Promise<strin
 
   for (const [name, table, unique, columns] of indexes) {
     const row = indexRows.rows.find((item) => item.name === name);
-    const expectedDefinition = `CREATE UNIQUE INDEX ${name} ON ${table} USING btree (${columns.join(', ')})`;
+    const expectedDefinition = `CREATE ${unique ? 'UNIQUE ' : ''}INDEX ${name} ON ${table} USING btree (${columns.join(', ')})`;
     if (
       !row ||
       row.schema_name !== 'public' ||

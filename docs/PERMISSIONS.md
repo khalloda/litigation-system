@@ -83,7 +83,7 @@ lifecycle operations are policy only in Task 3.2: the screens, handlers,
 database representation, archived-record visibility, filters and reporting
 behavior will be designed with the relevant later tasks.
 
-## Audit access — approved, not implemented
+## Audit access — approved UI/capability, not implemented
 
 Decision **D31** does not change the current four roles or the 448 explicit
 Task 3.2 decisions until its later capability is implemented and tested:
@@ -96,9 +96,28 @@ Task 3.2 decisions until its later capability is implemented and tested:
 - Litigation Assistants, Lawyers and Paralegals receive no audit-history access
   through their role.
 
-No audit event table, viewer, export or account capability exists yet. Task
-3.3A and 3.3B establish secure attribution and events; the contextual drawer,
-global Administrator page and export are the later Task 4.9 UI checkpoint.
+Secure actor attribution exists, but no audit event table, viewer, export or
+account capability exists yet. Task 3.3B establishes events; the contextual
+drawer, global Administrator page and export are the later Task 4.9 UI
+checkpoint.
+
+### Attribution enforcement
+
+Every application write must run in one transaction after server-side session
+validation and set its actor through the fixed Task 3.3A helpers. Human context
+accepts only a validated account ID with an immutable linked actor. Login and
+lockout writes use `system_authentication`; controlled local password setup or
+reset uses `system_administration`; migration/import/seed tools use the
+privileged connection and `system_migration`. Request bodies, action arguments,
+URLs, headers and client-supplied usernames/roles never select an actor.
+
+The database trigger overwrites caller-supplied actor/timestamp fields and
+fails restricted-runtime writes without valid transaction-local context. The
+runtime cannot edit the actor registry or choose the administration/migration
+helpers. PostgreSQL's general custom-setting mechanism is still a residual
+trust boundary if the application process itself is fully compromised; the
+control prevents external request spoofing and ordinary direct writes, not
+cryptographic impersonation by that process.
 
 ## Server denial behavior
 
@@ -136,8 +155,9 @@ pages and ordinary 401/403 responses for handlers instead.
    project-owned server action must be added to the route inventory and use the
    statically enforced server-boundary pattern before it can pass the
    permission suite. Each exported HTTP method is checked separately.
-6. **Auditing is still Task 3.3A and 3.3B.** Task 3.2 decides whether an
-   operation is allowed; it does not claim to populate actors, create events or
-   implement D31's audit-export capability.
+6. **Attribution is implemented; events are still Task 3.3B.** Task 3.2
+   decides whether an operation is allowed and Task 3.3A records its actor on
+   application rows. Neither creates chronological events nor implements
+   D31's audit-export capability.
 7. **User management is still Task 3.4.** Administrator permission exists in
    the policy, but no user-management screen or mutation is built yet.

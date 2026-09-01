@@ -56,9 +56,10 @@ reconciliation instead of duplicating its tables and report datasets.
 | Original firm review workbook | `_migration/review/review-2026-08-23.xlsx`; 71,386 bytes; SHA-256 `17FDDA9FCEC64528FE256789BFBFBAB72CAF3ABA5F0557D46FC9FD26CEF85BDF` | Ignored; locally available | One-time legacy identity bridge for the 744 approved answers; associations and answer digests are permanently checked |
 | Durable-contract review workbook | `_migration/review/review-2026-08-24.xlsx`; 96,555 bytes; SHA-256 `D37E60780517F00C4A96443204F721A3B97B7140D3F2FAAC40E3B5DF7172B595` | Ignored; locally available | Reproducible `review-workbook-v2` source/manifest identity and all-or-nothing import contract |
 | Reviewed link baseline | [`scripts/baselines/reviewed-links.json`](../scripts/baselines/reviewed-links.json); 348 aliases and 204 crosswalks; internal content digest `ed1d9ce58ff479560b6511322e48e36bff28e95ac2305cbee676ee414ed18ae0`; file SHA-256 `f2fb3e85503002721f3351e9e05b0e86ffae06a119d424d387c57cecfb25ee6c` | Tracked | Transform inputs and `npm run db:check`; exact destinations are verified, not merely counted. The separate review-workbook mapping digest is `bebf8f20140a63d272f80d454d8363d68e1dc7bf12d82b43a45096281b059f51` |
-| Gate 4 reconciliation | [`2026-08-30-gate-4.md`](reconciliations/2026-08-30-gate-4.md); stable generated-report digest `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b` | Tracked and reproducible | Complete 27-table accounting, logical equivalence, six report-category datasets, source/runtime/logo evidence and the 52-file migration inventory |
+| Gate 4 reconciliation | [`2026-08-30-gate-4.md`](reconciliations/2026-08-30-gate-4.md); stable generated-report digest `feae9da499509777b66f277e58b6e3cf353708d6e70e7a0db52cdb9cc4e498ce` | Tracked and reproducible | Complete 27-table accounting, logical equivalence, six report-category datasets, source/runtime/logo evidence and the 53-file migration inventory |
 | Continuity audit | [`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md) | Tracked dated evidence | Governance and evidence snapshot at commit `553b3d1`; it does not set current task priority |
 | Task 3.3 readiness and approved contract | [`2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md) | Tracked dated evidence | Complete audit-column/event readiness matrix, owner decisions D30–D34, risk dispositions and exact Task 3.3A return point |
+| Task 3.3A acceptance | [`2026-09-01-task-3-3a-secure-actor-attribution.md`](task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md) | Tracked dated evidence | Migration 53, seven-actor taxonomy, 38-table attribution, 5,209-row protection, database-principal split, verification and exact Task 3.3B return point |
 
 Ignored source material and workbooks are never committed. Their hashes,
 fingerprints, protected outcomes and reproduction procedures are the durable
@@ -2538,20 +2539,22 @@ The complete owner-readable evidence is in
   likewise changed only that evidence. The six
   approved dataset counts and digests remain pinned exactly. Its current
   identical two-pass report digest is
-  `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`
+  `feae9da499509777b66f277e58b6e3cf353708d6e70e7a0db52cdb9cc4e498ce`
   byte for byte; no Access, extracted, database or logo data changed.
 
-## Task 3.3A attribution migration gate — approved, not started
+## Task 3.3A attribution migration gate — implemented 1 September 2026
 
-This section records the owner-approved migration contract from **D30** and
-**D33**. It does not describe an applied migration: no Task 3.3A SQL, backfill,
-actor registry, foreign key or database principal has been created.
+Migration `20260901120000_secure_audit_actor_attribution` implements the
+owner-approved **D30**/**D33** contract. Its complete acceptance evidence is in
+[`2026-09-01-task-3-3a-secure-actor-attribution.md`](task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md).
 
 ### Truthful attribution boundary
 
-- Cover the 37 current four-column application tables plus
-  `person_name_alias`.
-- Create a stable actor registry with the approved `system_migration` actor.
+- The exact 37 current four-column application tables plus
+  `person_name_alias` are the permanent 38-table boundary.
+- `audit_actors` contains seven immutable identities: four linked human
+  accounts and the minimum distinct `system_migration`,
+  `system_authentication` and `system_administration` purposes.
 - Use `system_migration` only where repository/migration evidence proves the
   system created or last established the state.
 - Leave a documented historical actor unknown where no human or system actor
@@ -2561,9 +2564,12 @@ actor registry, foreign key or database principal has been created.
   migration evidence, infrastructure, the actor registry or the event table.
 - Do not rewrite business/source dates as authenticated audit timestamps.
 
-Task 3.3B begins an event trail from evidence the new system can actually
-observe. It must not fabricate historic logins, password changes, reports,
-exports, downloads or thousands of legacy create events.
+The backfill records `system_migration` for all 45,463 existing creations and
+45,459 last updates. The exact four `user_accounts.updated_by` values remain
+null historical unknowns. `person_name_alias.updated_at` equals its existing
+`created_at`; every other historical timestamp is unchanged. Task 3.3B remains
+approved but not started, so no historic login, password, report, export,
+download or row-change event was fabricated.
 
 ### Protected 5,209-row safety gate
 
@@ -2577,9 +2583,9 @@ The actor backfill intersects existing immutability guards on exactly:
 | Attendance | 4,022 |
 | **Total** | **5,209** |
 
-No protected business field or historical timestamp may change. Existing
-immutability guards must never be permanently disabled, weakened or omitted.
-Task 3.3A is not accepted until it proves all of the following:
+No protected business field or historical timestamp changed. Existing
+immutability guards were never committed in a disabled, weakened or omitted
+state. Acceptance proves:
 
 1. Atomic rollback on any failure.
 2. Exact guard-function and trigger definitions before and after the backfill.
@@ -2588,24 +2594,37 @@ Task 3.3A is not accepted until it proves all of the following:
 5. A separate permanent audit-attribution digest.
 6. Successful current-history and canonical clean-replay migration paths.
 
-An implementation may need a temporary transaction-contained mechanism that
-permits only actor-column updates while restoring the exact guards before
-commit. That is the readiness audit's **implementation recommendation**, not an
-approved function body or permission to weaken a guard. It must be reviewed and
-proved against the six gates above.
+The selected migration mechanism is one atomic transaction. It temporarily
+replaces only the two protected guard functions with definitions that accept an
+exact JSON equality after removing `created_by`/`updated_by`, performs the
+actor-only backfill, and restores the exact original definitions before audit
+triggers or commit. Every precondition, population assertion, restored guard
+definition and final privilege assertion is inside that transaction; any
+failure rolls back the registry, backfill, columns, keys, grants and functions.
+This is narrower and more provable than disabling triggers, using replication
+mode, granting runtime bypass power or rewriting protected rows outside a
+transaction.
 
 Several historical complete-row digests currently serialize null actor fields.
 Never replace an old protected digest merely because an audit backfill creates
 a different whole-row value. The recommended approach, subject to implementation
-review, is to preserve the historical business/timestamp contract by
-canonicalizing audit-only actor fields to their historical null representation
-inside that legacy digest and add the independent attribution digest. The old
-and new proofs answer different questions and both must remain reproducible.
+review, was implemented: the billing complete-row projection canonicalizes the
+actor-only fields to their historical null representation and the independent
+attribution digest checks their new values. The old and new proofs answer
+different questions and both remain reproducible.
 
-The exact 38-table inventory, actor mappings, context rules and protected-state
-digests become permanent `db:check` invariants; one-time migration assertions
-are not enough. Nothing in this documentation checkpoint authorizes the
-implementation.
+Permanent verification now has **88** `db:check` invariants (84 before Task
+3.3A). The protected audit-excluded digest is
+`b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab`;
+the separate attribution digest is
+`edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`.
+The historical billing complete-row digest remains
+`81f1d4176828d109f5af1bd90a397408c32dc967751254e172312de74c330925`
+and its identity/timestamp digest remains
+`a4e35c491255067d824aff6085a095d92d02bcf0946490c72c081632d4b200f2`.
+Historical-live upgrade and canonical clean replay fixtures both apply
+migration 53, preserve exact guard definitions and remove their disposable
+databases afterward.
 
 ## Cutover
 

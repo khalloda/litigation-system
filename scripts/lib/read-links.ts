@@ -8,7 +8,7 @@
  * never disagree about what a link is.
  */
 
-import { db } from '../../src/lib/db';
+import { migrationDb as db } from './migration-db';
 import type { AliasLink, CrosswalkLink } from './reviewed-links';
 
 export async function readLinksFromDatabase(): Promise<{

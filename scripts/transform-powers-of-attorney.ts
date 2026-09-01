@@ -123,8 +123,8 @@ export async function poaResultDigest(db: ClientBase): Promise<string> {
 }
 
 export async function runPoaTransform(options: RunOptions = {}) {
-  const connectionString = options.databaseUrl ?? process.env['DATABASE_URL'];
-  assert.ok(connectionString, 'DATABASE_URL is required');
+  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
   const db = new Client({ connectionString });
   await db.connect();
   try {

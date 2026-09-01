@@ -37,7 +37,7 @@ import 'dotenv/config';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import ExcelJS from 'exceljs';
-import { db } from '../src/lib/db';
+import { migrationDb as db } from './lib/migration-db';
 import {
   CONTRACT_SHEET,
   contractSha256,

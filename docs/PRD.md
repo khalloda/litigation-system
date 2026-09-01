@@ -70,13 +70,16 @@ About 10 people, four roles. Full matrix in `docs/PERMISSIONS.md`.
 
 The old Access system cannot say who changed a record or reconstruct a sequence
 of changes. The owner-approved replacement contract is therefore two layers,
-neither of which is implemented yet:
+of which the first is implemented:
 
-1. **Secure actor attribution (Task 3.3A):** the exact 37 current four-column
+1. **Secure actor attribution (Task 3.3A — implemented):** the exact 37 current four-column
    application tables plus `person_name_alias`; stable human/system actors;
    truthful historical attribution; database-enforced anti-spoofing; and a
-   restricted non-superuser web database connection.
-2. **Append-only events (Task 3.3B):** create, update, archive, restore,
+   restricted non-superuser web database connection. Seven immutable actors
+   distinguish the four accounts from migration, authentication and controlled
+   administration activity. The exact four historical account-update actors
+   remain unknown rather than fabricated.
+2. **Append-only events (Task 3.3B — approved, not started):** create, update, archive, restore,
    field-level before/after values, relationships, user/role lifecycle,
    password-change facts, login success/failure/lockout, report execution,
    exports and downloads.

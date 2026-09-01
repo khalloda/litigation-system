@@ -5,7 +5,7 @@ export async function task29dProtectedState(db: ClientBase): Promise<string> {
   const prior = await task29cProtectedState(db);
   const r = await db.query<{ digest: string }>(
     `SELECT encode(sha256(convert_to($1||E'\\n'||coalesce(string_agg(payload,E'\\n'ORDER BY kind,identity),''),'UTF8')),'hex')digest FROM(
- SELECT'D'kind,id::text identity,to_jsonb(d)::text payload FROM documents d
+ SELECT'D'kind,id::text identity,(to_jsonb(d)||'{"created_by":null,"updated_by":null}'::jsonb)::text payload FROM documents d
  UNION ALL SELECT'DQT',src_record_key,to_jsonb(q)::text FROM quarantine.document_transform q
  UNION ALL SELECT'DQE',src_record_key||':'||field_kind,to_jsonb(q)::text FROM quarantine.document_evidence q)protected`,
     [prior],

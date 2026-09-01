@@ -27,7 +27,7 @@ function migrateFixture(databaseUrl: string): void {
     ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
     {
       cwd: process.cwd(),
-      env: { ...process.env, DATABASE_URL: databaseUrl },
+      env: { ...process.env, MIGRATION_DATABASE_URL: databaseUrl },
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
     },
@@ -193,8 +193,8 @@ async function proveFailure(
 }
 
 async function main(): Promise<void> {
-  const projectUrlText = process.env['DATABASE_URL'];
-  assert.ok(projectUrlText, 'DATABASE_URL is required');
+  const projectUrlText = process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(projectUrlText, 'MIGRATION_DATABASE_URL is required');
   const databaseName = `hearing_fixture_${process.pid}_${Date.now()}`;
   const adminUrl = new URL(projectUrlText);
   adminUrl.pathname = '/postgres';

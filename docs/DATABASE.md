@@ -13,6 +13,8 @@ Run these from the project folder.
 |---|---|
 | Start the database | `npm run db:up` |
 | Apply any new schema changes | `npm run db:migrate` |
+| Prepare an existing local `.env` for separate principals | `npm run db:prepare-local-runtime` |
+| Apply/verify the runtime login password from ignored `.env` | `npm run db:provision-runtime` |
 | Check the app can use it | `npm run db:check` |
 | Check the database itself | `npm run db:verify` |
 | Stop it (keeps all data) | `npm run db:down` |
@@ -24,9 +26,10 @@ Run these from the project folder.
 From nothing to a working database:
 
 ```bash
-npm run db:up        # start PostgreSQL
-npm run db:migrate   # build the schema inside it
-npm run db:check     # confirm the application can use it
+npm run db:up                # start PostgreSQL
+npm run db:migrate           # privileged URL builds the schema and runtime role
+npm run db:provision-runtime # set/verify the restricted login password
+npm run db:check             # confirm the application can use it
 ```
 
 `npm run db:up` waits until the database is genuinely ready before it returns.
@@ -269,34 +272,63 @@ one.
 
 ---
 
-## Database principals for Task 3.3A — approved, not implemented
+## Separate database principals — implemented by Task 3.3A
 
-At the 1 September 2026 readiness checkpoint, the web application and migration
-tools both connect through `litigation`; that PostgreSQL principal is a
-superuser and owns the project tables. This is the current state, not the
-approved end state. A superuser/table owner can bypass grants, triggers and an
-append-only event table.
+Decision **D33** is operational:
 
-Decision **D33** therefore requires Task 3.3A to separate:
+- `MIGRATION_DATABASE_URL` uses the privileged `litigation` owner for Prisma
+  migrations, controlled imports, checks and local administration.
+- `DATABASE_URL` uses `litigation_runtime` for the running web application.
+  It is a login but is not a superuser, owner, role creator, database creator,
+  inheriting role, replication role or row-security bypass role.
 
-- a privileged migration/administration principal that owns and changes the
-  schema; and
-- a restricted, non-superuser web-runtime login with only the privileges the
-  application needs.
+The runtime receives `CONNECT`, public-schema `USAGE`, and only
+`SELECT`/`INSERT`/`UPDATE` plus required sequence access for the exact 38
+application tables. It has no physical `DELETE`, actor-registry access,
+staging/quarantine access, schema `CREATE`, object ownership, trigger/function
+replacement, administration/migration context or ability to assume
+`litigation`. The migration owner retains schema ownership. Task 3.3A's
+permanent catalog checks verify exact roles, ownership, grants, trigger
+definitions and fixed-search-path security-definer functions.
 
-The runtime must not be able to update, delete or truncate audit events, disable
-their protections, take ownership of protected objects or use the privileged
-migration connection. Any security-definer function exposed to it must be
-narrow, have a fixed safe `search_path` and be covered by exact privilege and
-bypass fixtures. Task 3.3A must prove the same arrangement on the current
-historical database, a clean replay, disposable test databases and the Ubuntu
-deployment path before append-only enforcement is described as operational.
+### Local setup and upgrade
 
-The exact PostgreSQL role names, environment-variable layout, bootstrap order
-and secret-provisioning mechanism remain implementation details. Do not invent
-them in advance and do not commit a credential, connection string or real
-secret. The commands elsewhere in this file still describe the current setup
-until Task 3.3A is implemented and accepted.
+For an existing development `.env` that still has the old privileged
+`DATABASE_URL`, run this once before migration 53:
+
+```bash
+npm run db:prepare-local-runtime
+```
+
+It preserves the old URL as `MIGRATION_DATABASE_URL`, generates a new local
+runtime password, and writes the restricted `DATABASE_URL` through the ignored
+`.env` file without displaying either value. If the two variables are already
+separate, it validates them and changes nothing.
+
+After applying migrations, provision the cluster login from the ignored URL:
+
+```bash
+npm run db:migrate:deploy
+npm run db:provision-runtime
+```
+
+The second command checks the exact safe role attributes, sets only the
+password supplied by `DATABASE_URL`, confirms a runtime connection and never
+prints the credential. On Ubuntu, generate distinct long random passwords for
+both URLs through the server's approved secret mechanism; never reuse a local
+credential or place either value in Git, documentation or command arguments.
+
+Prisma 7 schema/migration commands read `MIGRATION_DATABASE_URL` from
+`prisma.config.ts`. Application code rejects a `DATABASE_URL` whose username is
+not exactly `litigation_runtime`; configuration validation also rejects equal
+migration/runtime usernames, and provisioning rejects different database
+targets.
+
+The runtime may technically call PostgreSQL's general `set_config` primitive
+if the application process itself is fully compromised. External request data
+has no path for selecting an actor, and all normal writes use fixed or
+server-validated transaction-local helpers, but this is a residual process
+trust boundary—not cryptographic actor proof against a compromised process.
 
 ---
 

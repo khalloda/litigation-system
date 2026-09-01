@@ -293,8 +293,8 @@ export async function billingResultDigest(db: ClientBase): Promise<string> {
 }
 
 export async function runBillingTransform(options: Options = {}) {
-  const connectionString = options.databaseUrl ?? process.env['DATABASE_URL'];
-  assert.ok(connectionString, 'DATABASE_URL is required');
+  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
   const expected =
     options.expectedCounts ?? (options.databaseUrl === undefined ? LIVE_BILLING_COUNTS : undefined);
   const db = new Client({ connectionString });

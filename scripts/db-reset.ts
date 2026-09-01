@@ -21,18 +21,18 @@
  *
  *   1. It counted only the `public` schema, so data staged in `stg` was
  *      invisible and would have been destroyed.
- *   2. It counted whatever DATABASE_URL reached, which might be a different
+ *   2. It counted whatever MIGRATION_DATABASE_URL reached, which might be a different
  *      server entirely, and then deleted this container regardless.
  *   3. It compared the cluster identifier, which fixed (2) — but every
  *      database inside one cluster shares that identifier. Pointing
- *      DATABASE_URL at the empty built-in `postgres` database in this very
+ *      MIGRATION_DATABASE_URL at the empty built-in `postgres` database in this very
  *      container passed every check, and five rows in `litigation` were
  *      destroyed.
  *
  * So the shape is different now. **The container is the authority.** This
  * script asks the container what is inside the volume, enumerates every
  * non-template database in it, and counts every table in every schema of
- * every one of them. DATABASE_URL is no longer trusted to describe what is
+ * every one of them. MIGRATION_DATABASE_URL is no longer trusted to describe what is
  * about to be deleted — it is only checked for agreement.
  *
  * If it cannot enumerate everything it is about to destroy, it refuses.
@@ -42,10 +42,10 @@
  * ---------------------------------------------------------------------------
  *
  *   1. APP_ENV is exactly "development"            no  -> refuse, NO OVERRIDE
- *   2. DATABASE_URL host is on this machine        no  -> refuse, NO OVERRIDE
- *   3. DATABASE_URL names the expected database    no  -> refuse, NO OVERRIDE
+ *   2. MIGRATION_DATABASE_URL host is on this machine        no  -> refuse, NO OVERRIDE
+ *   3. MIGRATION_DATABASE_URL names the expected database    no  -> refuse, NO OVERRIDE
  *   4. The container can be enumerated             no  -> refuse, NO OVERRIDE
- *   5. DATABASE_URL reaches that same cluster      no  -> refuse, NO OVERRIDE
+ *   5. MIGRATION_DATABASE_URL reaches that same cluster      no  -> refuse, NO OVERRIDE
  *   6. Every database in the volume is empty       no  -> refuse, --force-i-know
  */
 
@@ -143,18 +143,26 @@ if (nodeEnv === 'production') {
 }
 
 // ---------------------------------------------------------------------------
-//  2 and 3. Where does DATABASE_URL point, and does it name the right thing?
+//  2 and 3. Where does MIGRATION_DATABASE_URL point, and does it name the right thing?
 // ---------------------------------------------------------------------------
-const rawUrl = process.env['DATABASE_URL'];
+const rawUrl = process.env['MIGRATION_DATABASE_URL'];
 if (!rawUrl) {
-  refuse('DATABASE_URL is not set.', ['Copy .env.example to .env — see docs/DATABASE.md.'], false);
+  refuse(
+    'MIGRATION_DATABASE_URL is not set.',
+    ['Copy .env.example to .env — see docs/DATABASE.md.'],
+    false,
+  );
 }
 
 let url: URL;
 try {
   url = new URL(rawUrl);
 } catch {
-  refuse('DATABASE_URL could not be read as an address.', [rawUrl], false);
+  refuse(
+    'MIGRATION_DATABASE_URL could not be read as an address.',
+    ['Check its syntax in the ignored .env file; the value is not displayed.'],
+    false,
+  );
 }
 
 const host = url.hostname;
@@ -169,9 +177,9 @@ if (!LOCAL_HOSTS.includes(host)) {
 const namedDatabase = decodeURIComponent(url.pathname.replace(/^\//, ''));
 if (namedDatabase !== EXPECTED_DATABASE) {
   refuse(
-    `DATABASE_URL names the database "${namedDatabase}", not "${EXPECTED_DATABASE}".`,
+    `MIGRATION_DATABASE_URL names the database "${namedDatabase}", not "${EXPECTED_DATABASE}".`,
     [
-      `DATABASE_URL names   ${namedDatabase || '(none)'}`,
+      `MIGRATION_DATABASE_URL names   ${namedDatabase || '(none)'}`,
       `expected             ${EXPECTED_DATABASE}`,
       '',
       'One cluster holds several databases, and this command deletes the whole',
@@ -179,7 +187,7 @@ if (namedDatabase !== EXPECTED_DATABASE) {
       'database while every database in the volume is destroyed — which is',
       'exactly how five rows were lost during review.',
       '',
-      'Fix DATABASE_URL in .env, or set POSTGRES_DB if the name really changed.',
+      'Fix MIGRATION_DATABASE_URL in .env, or set POSTGRES_DB if the name really changed.',
     ],
     false,
   );
@@ -193,7 +201,7 @@ if (namedDatabase !== EXPECTED_DATABASE) {
  * service in this project's compose file — the same service whose volume the
  * reset removes — so anything this returns belongs to the thing being
  * deleted. That is the whole point: the container is the authority, not
- * DATABASE_URL.
+ * MIGRATION_DATABASE_URL.
  */
 function inContainer(database: string, sql: string): string {
   return execFileSync(
@@ -257,7 +265,7 @@ function clusterIdentifier(): string {
   return inContainer('postgres', 'SELECT system_identifier FROM pg_control_system()');
 }
 
-/* What DATABASE_URL actually reaches, for the agreement check. */
+/* What MIGRATION_DATABASE_URL actually reaches, for the agreement check. */
 async function identifierViaUrl(): Promise<string> {
   const client = new Client({ connectionString: rawUrl });
   await client.connect();
@@ -318,14 +326,14 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  //  5. Does DATABASE_URL reach this same cluster?
+  //  5. Does MIGRATION_DATABASE_URL reach this same cluster?
   // -------------------------------------------------------------------------
   let urlIdentifier: string;
   try {
     urlIdentifier = await identifierViaUrl();
   } catch (error) {
     refuse(
-      'DATABASE_URL could not be reached, so it cannot be shown to match this container.',
+      'MIGRATION_DATABASE_URL could not be reached, so it cannot be shown to match this container.',
       [describe(error), '', 'Start it first:  npm run db:up'],
       false,
     );
@@ -333,12 +341,12 @@ async function main() {
 
   if (urlIdentifier === '' || containerIdentifier === '' || urlIdentifier !== containerIdentifier) {
     refuse(
-      'DATABASE_URL does not reach the container this command would delete.',
+      'MIGRATION_DATABASE_URL does not reach the container this command would delete.',
       [
-        `DATABASE_URL reaches cluster   ${urlIdentifier || '(unknown)'}`,
+        `MIGRATION_DATABASE_URL reaches cluster   ${urlIdentifier || '(unknown)'}`,
         `the Docker container holds     ${containerIdentifier || '(unknown)'}`,
         '',
-        'These are two different servers. Point DATABASE_URL at the container,',
+        'These are two different servers. Point MIGRATION_DATABASE_URL at the container,',
         'or stop the other server.',
       ],
       false,
@@ -376,7 +384,7 @@ async function main() {
           ...detail,
           '',
           'Deleting the volume destroys every database above, not only the one',
-          'DATABASE_URL points at. None of it can be recovered.',
+          'MIGRATION_DATABASE_URL points at. None of it can be recovered.',
         ],
         true,
       );

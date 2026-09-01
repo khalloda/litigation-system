@@ -6,13 +6,11 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current return point — 1 September 2026:** Task 3.2 closed at commit
-`553b3d1`. The owner-approved Task 3.3 contract is now split into the two
-ordered checkpoints below. **Task 3.3A — Secure actor attribution is the first
-unchecked implementation task, is approved but not started, and is the exact
-place to resume.** `docs/DECISIONS.md` owns approved decisions; this file owns
-status and work order. Dated reviews and task reports are evidence, not priority
-authorities.
+**Current return point — 1 September 2026:** Task 3.3A — Secure actor
+attribution is complete. **Task 3.3B — Append-only event foundation is approved
+but not started, and is the exact place to resume.** `docs/DECISIONS.md` owns
+approved decisions; this file owns status and work order. Dated reviews and
+task reports are evidence, not priority authorities.
 
 ---
 
@@ -1377,11 +1375,10 @@ only ever seen good data is not known to work.
       auth interrupts remain disabled; stable redirects and ordinary 401/403
       responses are used instead.
 
-      Task 3.3 audit population and Task 3.4 user management remain
-      outstanding.
+      Task 3.3B events and Task 3.4 user management remain outstanding.
 
-- [ ] **3.3A Secure actor attribution** — approved 1 September 2026, not
-      started (**D30**, **D33**). Cover the **37 current four-column
+- [x] **3.3A Secure actor attribution** — approved and completed 1 September
+      2026 (**D30**, **D33**). Covers the **37 current four-column
       application tables plus `person_name_alias`**. Add the alias table's
       missing audit columns; establish a stable audit-actor registry and the
       approved `system_migration` actor; and backfill only attribution the
@@ -1414,8 +1411,21 @@ only ever seen good data is not known to work.
       permanent invariant. Full readiness evidence and risk gates:
       [`docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md).
 
-- [ ] **3.3B Append-only event foundation** — begins only after 3.3A is
-      accepted (**D30**, **D32**). Record create, update, archive and restore;
+      Migration `20260901120000_secure_audit_actor_attribution` implements an
+      immutable seven-actor registry, exact actor foreign keys/indexes and
+      trigger-maintained actor/timestamp behavior. The restricted
+      `litigation_runtime` web principal is separate from the privileged
+      migration owner. Historical backfill attributes 45,463 creations and
+      45,459 last updates to `system_migration`; the four existing account
+      `updated_by` values remain the exact documented unknowns. Permanent
+      checks prove the 38-table boundary, context isolation and spoof
+      overwrite, both migration profiles, the unchanged 5,209-row protected
+      projection and its separate attribution digest. Acceptance evidence:
+      [`docs/task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md`](docs/task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md).
+
+- [ ] **3.3B Append-only event foundation** — approved but not started; this is
+      the exact return point after accepted Task 3.3A (**D30**, **D32**).
+      Record create, update, archive and restore;
       field-level before/after values; relationship changes; user and role
       lifecycle; password-change facts without passwords or hashes; successful
       and failed logins including lockouts; report execution; exports; and

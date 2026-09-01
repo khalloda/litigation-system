@@ -18,7 +18,7 @@ function migrate(url: string) {
     ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
     {
       cwd: process.cwd(),
-      env: { ...process.env, DATABASE_URL: url },
+      env: { ...process.env, MIGRATION_DATABASE_URL: url },
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
     },
@@ -42,7 +42,7 @@ async function fail(db: Client, label: string, mutate: () => Promise<unknown>, p
   console.log(`  ok    ${label}`);
 }
 async function main() {
-  const project = process.env['DATABASE_URL'];
+  const project = process.env['MIGRATION_DATABASE_URL'];
   assert.ok(project);
   const name = `document_fixture_${process.pid}_${Date.now()}`;
   const adminUrl = new URL(project);

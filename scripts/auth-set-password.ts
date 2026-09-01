@@ -2,8 +2,8 @@ import 'dotenv/config';
 import { stdin, stdout } from 'node:process';
 import { setApprovedAccountPassword } from '../src/lib/auth/service';
 import { passwordMeetsPolicy } from '../src/lib/auth/password';
-import { db } from '../src/lib/db';
 import { t } from '../src/strings';
+import { migrationDb } from './lib/migration-db';
 
 async function readHidden(prompt: string): Promise<string> {
   if (!stdin.isTTY || !stdout.isTTY || typeof stdin.setRawMode !== 'function') {
@@ -55,7 +55,7 @@ async function main(): Promise<void> {
   if (password !== confirmation) throw new Error('mismatch');
   if (!passwordMeetsPolicy(password)) throw new Error('policy');
 
-  const result = await setApprovedAccountPassword(username, password);
+  const result = await setApprovedAccountPassword(username, password, { database: migrationDb });
   console.log(`${t.auth.passwordAdmin.success} ${result.username} — ${result.personName}`);
 }
 
@@ -75,4 +75,4 @@ main()
     console.error(message);
     process.exitCode = 1;
   })
-  .finally(() => void db.$disconnect());
+  .finally(() => void migrationDb.$disconnect());

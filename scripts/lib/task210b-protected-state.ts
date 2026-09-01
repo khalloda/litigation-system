@@ -12,9 +12,9 @@ export async function task210bProtectedState(db: ClientBase): Promise<string> {
        coalesce(string_agg(payload,chr(10) ORDER BY kind,identity),''),
        'UTF8')),'hex') digest
        FROM (
-         SELECT 'I' kind,id::text identity,to_jsonb(i)::text payload FROM invoices i
-         UNION ALL SELECT 'P',id::text,to_jsonb(p)::text FROM payments p
-         UNION ALL SELECT 'A',id::text,to_jsonb(a)::text FROM invoice_allocations a
+         SELECT 'I' kind,id::text identity,(to_jsonb(i)||'{"created_by":null,"updated_by":null}'::jsonb)::text payload FROM invoices i
+         UNION ALL SELECT 'P',id::text,(to_jsonb(p)||'{"created_by":null,"updated_by":null}'::jsonb)::text FROM payments p
+         UNION ALL SELECT 'A',id::text,(to_jsonb(a)||'{"created_by":null,"updated_by":null}'::jsonb)::text FROM invoice_allocations a
          UNION ALL SELECT 'QI',src_record_key,to_jsonb(q)::text FROM quarantine.invoice_transform q
          UNION ALL SELECT 'QP',src_record_key,to_jsonb(q)::text FROM quarantine.payment_transform q
          UNION ALL SELECT 'QA',src_record_key,to_jsonb(q)::text FROM quarantine.invoice_allocation_transform q

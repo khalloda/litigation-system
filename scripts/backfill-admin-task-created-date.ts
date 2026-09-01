@@ -82,7 +82,7 @@ async function adminStateIgnoringTaskCreatedDate(db: ClientBase): Promise<string
       FROM (
         SELECT 'T' kind,id::text identity,
                CASE WHEN legacy_source_record_key IS NOT NULL
-                    THEN (to_jsonb(t)-'task_created_date')::text
+                    THEN (to_jsonb(t)-ARRAY['task_created_date','updated_at','updated_by'])::text
                     ELSE to_jsonb(t)::text END payload
           FROM admin_tasks t
         UNION ALL SELECT 'A',id::text,to_jsonb(a)::text FROM task_actions a
@@ -105,8 +105,8 @@ export async function runAdminTaskCreatedDateBackfill(options: RunOptions = {}):
   summary: DateSummary;
   changedRows: number | null;
 }> {
-  const connectionString = options.databaseUrl ?? process.env['DATABASE_URL'];
-  assert.ok(connectionString, 'DATABASE_URL is required');
+  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
   if (options.fixtureOnly !== true) assertProjectDatabaseUrl(connectionString);
   const expected = options.expectedBaseline ?? ADMIN_TASK_CREATION_DATE_BASELINE;
   const db = new Client({ connectionString });

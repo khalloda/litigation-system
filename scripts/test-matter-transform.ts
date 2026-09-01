@@ -45,7 +45,7 @@ function migrateFixture(databaseUrl: string) {
     ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
     {
       cwd: process.cwd(),
-      env: { ...process.env, DATABASE_URL: databaseUrl },
+      env: { ...process.env, MIGRATION_DATABASE_URL: databaseUrl },
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
     },
@@ -190,8 +190,8 @@ async function runFixture() {
   assert.match(noteDrift[0]!.actual, /reviewer note is now/);
   console.log('  ok    changing an operational split note fails the reviewed-link baseline');
 
-  const projectUrlText = process.env['DATABASE_URL'];
-  assert.ok(projectUrlText, 'DATABASE_URL is required for the isolated matter fixture');
+  const projectUrlText = process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(projectUrlText, 'MIGRATION_DATABASE_URL is required for the isolated matter fixture');
   const databaseName = `matter_transform_fixture_${process.pid}_${Date.now()}`;
   const adminUrl = new URL(projectUrlText);
   adminUrl.pathname = '/postgres';

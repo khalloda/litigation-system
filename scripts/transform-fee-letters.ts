@@ -84,7 +84,7 @@ export async function feeResultDigest(db: ClientBase): Promise<string> {
   );
 }
 export async function runFeeLetterTransform(options: Options = {}) {
-  const connectionString = options.databaseUrl ?? process.env['DATABASE_URL'];
+  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
   assert.ok(connectionString);
   const db = new Client({ connectionString });
   await db.connect();

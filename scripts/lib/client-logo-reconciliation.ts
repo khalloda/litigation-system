@@ -42,6 +42,7 @@ type CurrentRow = {
   created_at: Date;
   updated_at: Date;
   updated_by: number | null;
+  updated_by_actor_key: string | null;
 };
 
 export type ClientLogoReconciliation = Readonly<{
@@ -215,9 +216,11 @@ export async function reconcileClientLogos(
       FROM migration_client_logo_import
      ORDER BY source_parent_key,source_record_key`);
   const current = await db.query<CurrentRow>(`
-    SELECT id,client_id,relative_path,file_name,content_type,byte_size,sha256,
-           created_at,updated_at,updated_by
-      FROM client_logos ORDER BY client_id,id`);
+    SELECT l.id,l.client_id,l.relative_path,l.file_name,l.content_type,l.byte_size,l.sha256,
+           l.created_at,l.updated_at,l.updated_by,a.actor_key updated_by_actor_key
+      FROM client_logos l
+      LEFT JOIN audit_actors a ON a.id=l.updated_by
+     ORDER BY l.client_id,l.id`);
   const auditByParent = new Map(audit.rows.map((row) => [row.source_parent_key, row]));
   if (auditByParent.size !== audit.rows.length)
     defects.push('duplicate client-logo audit parent key');
@@ -320,7 +323,7 @@ export async function reconcileClientLogos(
       defects.push(`${parentKey}: current client_logo is missing for the imported client`);
     } else if (
       options.requireCurrentImportRows ||
-      (currentForClient.id === auditRow.client_logo_id && currentForClient.updated_by === null)
+      currentForClient.updated_by_actor_key === 'system_migration'
     ) {
       if (
         currentForClient.id !== auditRow.client_logo_id ||
@@ -331,8 +334,10 @@ export async function reconcileClientLogos(
         currentForClient.sha256 !== auditRow.sha256
       )
         defects.push(`${parentKey}: current client_logo differs from the original import`);
-    } else if (currentForClient.updated_by === null) {
-      defects.push(`${parentKey}: unowned current client_logo cannot replace the original import`);
+    } else if (currentForClient.updated_by_actor_key === null) {
+      defects.push(
+        `${parentKey}: unattributed current client_logo cannot replace the original import`,
+      );
     }
   }
   if (source.rows.length !== audit.rows.length)

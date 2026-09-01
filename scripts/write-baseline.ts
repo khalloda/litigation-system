@@ -18,7 +18,7 @@
 import 'dotenv/config';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { db } from '../src/lib/db';
+import { migrationDb as db } from './lib/migration-db';
 import { readLinksFromDatabase } from './lib/read-links';
 import {
   BASELINE_PATH,

@@ -84,12 +84,11 @@ and absolute timestamps; no password hash or email is placed in the session.
 
 ---
 
-## Task 3.3 approved target model — not yet implemented
+## Task 3.3 audit foundation
 
-This section is a target contract, not a description of current database
-objects. No audit-actor registry or append-only event table exists yet, no actor
-column has an actor foreign key, and every current `created_by` and `updated_by`
-value is null. The exact readiness inventory and owner resolution are in the
+Task 3.3A actor attribution is implemented; Task 3.3B append-only events remain
+approved but not started. No audit-event table exists. The original readiness
+inventory and owner resolution are preserved in the
 [`Task 3.3 readiness audit`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md).
 
 ### Alias baseline versus current population
@@ -109,31 +108,53 @@ application table** answer different questions:
 The two native rows are not additions to the reviewed migration baseline and
 do not indicate baseline drift.
 
-### Task 3.3A — actor attribution
+### Task 3.3A — actor attribution (implemented)
 
-Owner-approved requirements (**D30**, **D33**):
+Migration `20260901120000_secure_audit_actor_attribution` implements **D30**
+and **D33** on the exact 38-table application boundary. `audit_actors` holds
+seven immutable identities:
 
-- A stable audit-actor registry, including one non-login `system_migration`
-  actor and stable links for application accounts.
-- The four structural audit columns on the exact 38-table application
-  inventory: the 37 existing four-column tables plus `person_name_alias`.
-- Actor foreign keys, trusted transaction-local actor context, rejection or
-  overwrite of caller-supplied attribution, and failure for future application
-  writes with missing or invalid context.
-- Truthful backfill. Migrated and migration-defined state may use
-  `system_migration`; historical human attribution that cannot be proved stays
-  documented as unknown rather than being invented.
-- A restricted non-superuser web-runtime database principal, separate from the
-  privileged migration/administration principal.
+- three system actors: `system_migration`, `system_authentication` and
+  `system_administration`;
+- four human actors, one for each current `user_accounts.id`, keyed as
+  `user_account:<id>` and linked by a restricted foreign key.
+
+The two additional system identities are purpose-specific, not application
+users or a fifth role. Failed/successful login and lockout state use
+`system_authentication`; controlled local password initialization/reset uses
+`system_administration`; only migration, import, seed and proved backfill work
+uses `system_migration`. Authenticated self-password changes use the linked
+human actor.
+
+The registry stores `id`, immutable `actor_key`, constrained `actor_kind`,
+optional unique `user_account_id`, immutable `identity_label`, exact `purpose`
+and `registered_at`. Update, delete and truncate are refused. Every application
+actor column references it with `ON UPDATE RESTRICT ON DELETE RESTRICT` and has
+a supporting index. The registry itself deliberately does not receive the
+four-column application audit pattern.
+
+All 38 application tables now have `created_at`, `created_by`, `updated_at`
+and `updated_by`; `person_name_alias.updated_at` was truthfully initialized
+from its existing `created_at`. A shared before-insert/update trigger obtains
+the actor from transaction-local validated context, overwrites caller-supplied
+actor/timestamp values, preserves `created_by`/`created_at` on update, and fails
+restricted-runtime writes with missing or invalid context.
+
+Historical backfill records 45,463 creations and 45,459 last updates as
+`system_migration`. The four pre-existing `user_accounts.updated_by` values
+remain null because their later password/authentication history cannot prove a
+human or system actor. No human attribution was fabricated.
 
 Staging, quarantine, immutable migration evidence, `_prisma_migrations`, the
 actor registry and the event table retain their purpose-specific provenance
 models. They do not receive the application four-column pattern.
 
-`audit_actor` is the current recommended working name for the registry, not a
-schema object that already exists. Exact column names, role names, grants and
-security-definer functions remain Task 3.3A implementation details and must be
-proved before they become current model documentation.
+The web runtime connects as restricted `litigation_runtime`; migration and
+controlled administration use the owning principal through
+`MIGRATION_DATABASE_URL`. The application exposes no request-controlled actor
+selector. PostgreSQL custom settings remain a documented trust boundary for a
+fully compromised runtime process; this is database-enforced anti-spoofing for
+external application inputs, not cryptographic proof against that process.
 
 ### Task 3.3B — append-only events
 

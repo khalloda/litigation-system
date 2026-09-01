@@ -191,12 +191,12 @@ export function gate4AccountingFailures(rows: readonly Gate4TableAccounting[]): 
 }
 
 export function assertGate4DatabaseUrl(raw: string | undefined): URL {
-  if (raw === undefined || raw.trim() === '') throw new Error('DATABASE_URL is missing');
+  if (raw === undefined || raw.trim() === '') throw new Error('MIGRATION_DATABASE_URL is missing');
   let parsed: URL;
   try {
     parsed = new URL(raw);
   } catch {
-    throw new Error('DATABASE_URL is not a valid URL');
+    throw new Error('MIGRATION_DATABASE_URL is not a valid URL');
   }
   if (parsed.protocol !== 'postgresql:' && parsed.protocol !== 'postgres:')
     throw new Error('Gate 4 requires PostgreSQL');

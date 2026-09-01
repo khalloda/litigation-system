@@ -217,7 +217,7 @@ function migrate(databaseUrl: string): void {
     ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
     {
       cwd: process.cwd(),
-      env: { ...process.env, DATABASE_URL: databaseUrl },
+      env: { ...process.env, MIGRATION_DATABASE_URL: databaseUrl },
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
     },
@@ -227,8 +227,8 @@ function migrate(databaseUrl: string): void {
 }
 
 async function proveDatabaseSessionAuthorization(): Promise<void> {
-  const sourceUrl = process.env['DATABASE_URL'];
-  assert.ok(sourceUrl, 'DATABASE_URL is required');
+  const sourceUrl = process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(sourceUrl, 'MIGRATION_DATABASE_URL is required');
   const parsed = new URL(sourceUrl);
   assert.ok(['localhost', '127.0.0.1'].includes(parsed.hostname));
   assert.equal(parsed.port, '5433');
@@ -1061,7 +1061,8 @@ export async function updateClient() {
   assert.match(exclusionFixture.failures.join('; '), /visibleAction/u);
 
   const tasks = readFileSync('TASKS.md', 'utf8');
-  assert.match(tasks, /- \[ \] \*\*3\.3 Audit columns\*\*/u);
+  assert.match(tasks, /- \[x\] \*\*3\.3A Secure actor attribution\*\*/u);
+  assert.match(tasks, /- \[ \] \*\*3\.3B Append-only event foundation\*\*/u);
   assert.match(tasks, /- \[ \] \*\*3\.4 User management\*\*/u);
 
   await proveDatabaseSessionAuthorization();
@@ -1083,7 +1084,7 @@ export async function updateClient() {
     'PASS static fixtures reject outside-app actions, shadowed/wrong guards, unawaited/late/conditional guards, dynamic or mismatched literals, partial methods and proxy-only enforcement',
   );
   console.log('PASS only the exact reviewed generated Prisma subtree is excluded from discovery');
-  console.log('PASS Task 3.3 auditing and Task 3.4 user management remain outstanding');
+  console.log('PASS Task 3.3B events and Task 3.4 user management remain outstanding');
 }
 
 main().catch((error: unknown) => {

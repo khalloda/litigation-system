@@ -36,7 +36,7 @@ function migrate(databaseUrl: string): void {
     ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
     {
       cwd: process.cwd(),
-      env: { ...process.env, DATABASE_URL: databaseUrl },
+      env: { ...process.env, MIGRATION_DATABASE_URL: databaseUrl },
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
     },
@@ -67,8 +67,8 @@ async function proveStructureMutation(
 }
 
 async function main(): Promise<void> {
-  const sourceUrl = process.env['DATABASE_URL'];
-  assert.ok(sourceUrl, 'DATABASE_URL is required');
+  const sourceUrl = process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(sourceUrl, 'MIGRATION_DATABASE_URL is required');
   const parsed = new URL(sourceUrl);
   assert.ok(['localhost', '127.0.0.1'].includes(parsed.hostname));
   assert.equal(parsed.port, '5433');
@@ -197,6 +197,26 @@ async function main(): Promise<void> {
       assert.equal(await database.person.count({ where: { isApplicationNative: false } }), 135);
       assert.equal(await database.person.count({ where: { isApplicationNative: true } }), 2);
       assert.equal(await database.personNameAlias.count(), 350);
+      const auditActors = await database.auditActor.findMany({
+        select: { actorKey: true, actorKind: true, userAccountId: true },
+        orderBy: { id: 'asc' },
+      });
+      assert.equal(auditActors.length, 7);
+      assert.deepEqual(
+        auditActors.filter((actor) => actor.actorKind === 'system').map((actor) => actor.actorKey),
+        ['system_migration', 'system_authentication', 'system_administration'],
+      );
+      assert.deepEqual(
+        auditActors
+          .filter((actor) => actor.actorKind === 'human')
+          .map((actor) => [actor.actorKey, actor.userAccountId]),
+        [
+          ['user_account:1', 1],
+          ['user_account:2', 2],
+          ['user_account:3', 3],
+          ['user_account:4', 4],
+        ],
+      );
 
       await assert.rejects(
         database.personNameAlias.create({
@@ -245,6 +265,8 @@ async function main(): Promise<void> {
       assert.equal(initialized.mustChangePassword, true);
       assert.equal(initialized.failedLoginAttempts, 0);
       assert.equal(initialized.lockedUntil, null);
+      assert.equal(initialized.createdBy, 1);
+      assert.equal(initialized.updatedBy, 3);
       assert.ok(initialized.passwordHash);
       assert.equal(isApprovedArgon2idHash(initialized.passwordHash), true);
       await assert.rejects(
@@ -304,6 +326,7 @@ async function main(): Promise<void> {
         });
         assert.equal(state.failedLoginAttempts, attempt);
         assert.equal(state.lockedUntil, null);
+        assert.equal(state.updatedBy, 2);
       }
       assert.equal(
         await authenticateCredentials(
@@ -335,6 +358,7 @@ async function main(): Promise<void> {
       });
       assert.equal(state.failedLoginAttempts, 0);
       assert.equal(state.lockedUntil, null);
+      assert.equal(state.updatedBy, 2);
 
       await database.userAccount.update({
         where: { id: state.id },
@@ -447,6 +471,11 @@ async function main(): Promise<void> {
         ),
         'changed',
       );
+      assert.equal(
+        (await database.userAccount.findUniqueOrThrow({ where: { id: Number(normalUser.id) } }))
+          .updatedBy,
+        1000 + Number(normalUser.id),
+      );
       assert.equal(await validateSessionClaims(normalClaims, { database, now: clock }), null);
       const replacementLogin = await authenticateCredentials(
         { username: 'KHelmy', password: replacementPassword },
@@ -512,7 +541,7 @@ async function main(): Promise<void> {
         ['node_modules/tsx/dist/cli.mjs', 'scripts/auth-set-password.ts', 'KHelmy'],
         {
           cwd: process.cwd(),
-          env: { ...process.env, DATABASE_URL: fixtureUrl.toString() },
+          env: { ...process.env, MIGRATION_DATABASE_URL: fixtureUrl.toString() },
           input: '',
           encoding: 'utf8',
         },

@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Client } from 'pg';
-import { db } from '../src/lib/db';
+import { migrationDb as db } from './lib/migration-db';
 import {
   asBigInt,
   MATTER_RECONCILIATION_SQL,
@@ -56,6 +56,14 @@ import {
 import { reconcileClientLogos } from './lib/client-logo-reconciliation';
 import { clientLogoStructureFailures } from './lib/client-logo-structure';
 import { authDataFailures, authStructureFailures } from './lib/auth-structure';
+import {
+  auditAttributionDigest,
+  auditDataFailures,
+  auditStructureFailures,
+  protectedAuditExcludedDigest,
+  TASK33A_ATTRIBUTION_DIGEST,
+  TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
+} from './lib/audit-structure';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
 
@@ -2278,8 +2286,8 @@ async function main() {
   // every expected lawyer, party, role, exclusion and quarantine row from
   // staging plus the reviewed database tables. It does not import or call the
   // transform's TypeScript planner/parser.
-  const databaseUrl = process.env['DATABASE_URL'];
-  assert.ok(databaseUrl, 'DATABASE_URL is required for relationship reconciliation');
+  const databaseUrl = process.env['MIGRATION_DATABASE_URL'];
+  assert.ok(databaseUrl, 'MIGRATION_DATABASE_URL is required for relationship reconciliation');
   const relationshipDb = new Client({ connectionString: databaseUrl });
   await relationshipDb.connect();
   try {
@@ -2619,6 +2627,38 @@ async function main() {
         ? 'all complete catalog definitions exact'
         : authStructure.join('; '),
       authStructure.length === 0,
+    );
+    const auditStructure = await auditStructureFailures(relationshipDb);
+    record(
+      'Task 3.3A actor schema, triggers and runtime privileges',
+      'exact 38-table boundary, 76 foreign keys/indexes, immutable registry/context functions and restricted runtime grants',
+      auditStructure.length === 0
+        ? 'all actor, context, trigger, ownership and grant definitions exact'
+        : auditStructure.join('; '),
+      auditStructure.length === 0,
+    );
+    const auditData = await auditDataFailures(relationshipDb, { historicalLive: true });
+    record(
+      'Task 3.3A truthful actor registry and historical backfill',
+      '7 immutable actors; 45,463 created by migration; 45,459 updated by migration; only 4 documented update actors unknown',
+      auditData.length === 0
+        ? '4 human + 3 system actors; exact 45,463/45,459/4 population'
+        : auditData.join('; '),
+      auditData.length === 0,
+    );
+    const protectedDigest = await protectedAuditExcludedDigest(relationshipDb);
+    record(
+      'Protected 5,209-row business and timestamp projection',
+      TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
+      protectedDigest,
+      protectedDigest === TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
+    );
+    const attributionDigest = await auditAttributionDigest(relationshipDb);
+    record(
+      'Task 3.3A audit-attribution projection',
+      TASK33A_ATTRIBUTION_DIGEST,
+      attributionDigest,
+      attributionDigest === TASK33A_ATTRIBUTION_DIGEST,
     );
   } finally {
     await relationshipDb.end();

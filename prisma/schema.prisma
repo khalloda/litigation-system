@@ -51,9 +51,9 @@ datasource db {
 //  application cannot function without these lists — a fresh database must
 //  arrive complete. Row counts are asserted in the migration itself.
 //
-//  Audit columns are on every table per docs/DATA-MODEL.md. created_by and
-//  updated_by are plain integers for now and gain their foreign key to
-//  `users` in Stage 3, when that table exists.
+//  Task 3.3A binds every actor column to the immutable audit_actors registry.
+//  Defaults and triggers resolve only approved transaction-local context; the
+//  web runtime never supplies attribution columns itself.
 // ===========================================================================
 
 /// What kind of work is this? 14 values. تقاضي is the default.
@@ -65,13 +65,16 @@ model LookupMatterType {
   isActive  Boolean @default(true) @map("is_active")
   isDefault Boolean @default(false) @map("is_default")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupMatterTypeCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_matter_type_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupMatterTypeUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_matter_type_updated_by_fkey")
+  matters        Matter[]
 
-  matters Matter[]
-
+  @@index([createdBy], map: "lookup_matter_type_created_by_idx")
+  @@index([updatedBy], map: "lookup_matter_type_updated_by_idx")
   @@map("lookup_matter_type")
 }
 
@@ -83,13 +86,16 @@ model LookupMatterCategory {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupMatterCategoryCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_matter_category_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupMatterCategoryUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_matter_category_updated_by_fkey")
+  matters        Matter[]
 
-  matters Matter[]
-
+  @@index([createdBy], map: "lookup_matter_category_created_by_idx")
+  @@index([updatedBy], map: "lookup_matter_category_updated_by_idx")
   @@map("lookup_matter_category")
 }
 
@@ -102,13 +108,16 @@ model LookupDegree {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupDegreeCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_degree_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupDegreeUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_degree_updated_by_fkey")
+  matters        Matter[]
 
-  matters Matter[]
-
+  @@index([createdBy], map: "lookup_degree_created_by_idx")
+  @@index([updatedBy], map: "lookup_degree_updated_by_idx")
   @@map("lookup_degree")
 }
 
@@ -120,13 +129,16 @@ model LookupVenue {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupVenueCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_venue_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupVenueUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_venue_updated_by_fkey")
+  matters        Matter[]
 
-  matters Matter[]
-
+  @@index([createdBy], map: "lookup_venue_created_by_idx")
+  @@index([updatedBy], map: "lookup_venue_updated_by_idx")
   @@map("lookup_venue")
 }
 
@@ -138,13 +150,16 @@ model LookupImportance {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupImportanceCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_importance_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupImportanceUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_importance_updated_by_fkey")
+  matters        Matter[]
 
-  matters Matter[]
-
+  @@index([createdBy], map: "lookup_importance_created_by_idx")
+  @@index([updatedBy], map: "lookup_importance_updated_by_idx")
   @@map("lookup_importance")
 }
 
@@ -163,13 +178,16 @@ model LookupPartyRole {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int               @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int               @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor        @relation("LookupPartyRoleCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_party_role_created_by_fkey")
+  updatedByActor AuditActor        @relation("LookupPartyRoleUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_party_role_updated_by_fkey")
+  partyRoles     MatterPartyRole[]
 
-  partyRoles MatterPartyRole[]
-
+  @@index([createdBy], map: "lookup_party_role_created_by_idx")
+  @@index([updatedBy], map: "lookup_party_role_updated_by_idx")
   @@map("lookup_party_role")
 }
 
@@ -198,13 +216,16 @@ model LookupHearingAction {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupHearingActionCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_hearing_action_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupHearingActionUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_hearing_action_updated_by_fkey")
+  hearings       Hearing[]
 
-  hearings Hearing[]
-
+  @@index([createdBy], map: "lookup_hearing_action_created_by_idx")
+  @@index([updatedBy], map: "lookup_hearing_action_updated_by_idx")
   @@map("lookup_hearing_action")
 }
 
@@ -219,15 +240,18 @@ model LookupMatterDestination {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int         @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int         @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor  @relation("LookupMatterDestinationCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_matter_destination_created_by_fkey")
+  updatedByActor AuditActor  @relation("LookupMatterDestinationUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_matter_destination_updated_by_fkey")
+  matters        Matter[]
+  adminTasks     AdminTask[]
+  hearings       Hearing[]
 
-  matters    Matter[]
-  adminTasks AdminTask[]
-  hearings   Hearing[]
-
+  @@index([createdBy], map: "lookup_matter_destination_created_by_idx")
+  @@index([updatedBy], map: "lookup_matter_destination_updated_by_idx")
   @@map("lookup_matter_destination")
 }
 
@@ -261,14 +285,17 @@ model LookupClientBranch {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupClientBranchCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_client_branch_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupClientBranchUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_client_branch_updated_by_fkey")
+  clients        Client[]
+  matters        Matter[]
 
-  clients Client[]
-  matters Matter[]
-
+  @@index([createdBy], map: "lookup_client_branch_created_by_idx")
+  @@index([updatedBy], map: "lookup_client_branch_updated_by_idx")
   @@map("lookup_client_branch")
 }
 
@@ -354,10 +381,10 @@ model MigrationCrosswalk {
 /// Task 2.7 loads 33 rules and 84 ordered members. The source text remains
 /// the key for matching; people are always reached through an exact alias.
 model MigrationMultiPersonRule {
-  id           Int    @id @default(autoincrement())
-  rawValue     String @unique @map("raw_value")
+  id           Int     @id @default(autoincrement())
+  rawValue     String  @unique @map("raw_value")
   occurrences  Int
-  reviewerNote String @map("reviewer_note")
+  reviewerNote String  @map("reviewer_note")
   /// Only the three firm-corrected rules are approved for substring matching
   /// in POA cells. All other reviewed rules require an exact whole-cell match.
   poaMatchMode String? @map("poa_match_mode")
@@ -457,11 +484,12 @@ model Person {
   aliases PersonNameAlias[]
   account UserAccount?
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
-
+  createdAt                       DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                       Int                               @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt                       DateTime                          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy                       Int                               @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor                  AuditActor                        @relation("PersonCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "people_created_by_fkey")
+  updatedByActor                  AuditActor                        @relation("PersonUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "people_updated_by_fkey")
   /// Administrative tasks assigned to this person (المسئول).
   adminTasks                      AdminTask[]
   /// Paper documents this person is responsible for.
@@ -486,6 +514,8 @@ model Person {
   /// dropped it — Prisma removes an index it can see the columns of but does
   /// not know about. db:check caught that; this stops it recurring.
   @@index([nameArNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([createdBy], map: "people_created_by_idx")
+  @@index([updatedBy], map: "people_updated_by_idx")
   @@map("people")
 }
 
@@ -510,7 +540,12 @@ model PersonNameAlias {
   aliasArNormalised String? @map("alias_ar_normalised")
   isPrimary         Boolean @default(false) @map("is_primary")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("PersonNameAliasCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "person_name_alias_created_by_fkey")
+  updatedByActor AuditActor @relation("PersonNameAliasUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "person_name_alias_updated_by_fkey")
 
   @@index([personId])
   /// The trigram index that makes a LIKE '%…%' search fast. DECLARED HERE ON
@@ -518,7 +553,102 @@ model PersonNameAlias {
   /// dropped it — Prisma removes an index it can see the columns of but does
   /// not know about. db:check caught that; this stops it recurring.
   @@index([aliasArNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([createdBy], map: "person_name_alias_created_by_idx")
+  @@index([updatedBy], map: "person_name_alias_updated_by_idx")
   @@map("person_name_alias")
+}
+
+/// Immutable identities used by the Task 3.3A actor/timestamp triggers.
+/// Human labels are snapshots: later username, role or person changes do not
+/// rewrite the meaning of historical attribution.
+model AuditActor {
+  id            Int          @id @default(autoincrement())
+  actorKey      String       @unique(map: "audit_actors_actor_key_key") @map("actor_key")
+  actorKind     String       @map("actor_kind")
+  userAccountId Int?         @unique(map: "audit_actors_user_account_id_key") @map("user_account_id")
+  userAccount   UserAccount? @relation("AuditActorUserAccount", fields: [userAccountId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "audit_actors_user_account_id_fkey")
+  identityLabel String       @map("identity_label")
+  purpose       String
+  registeredAt  DateTime     @default(now()) @map("registered_at") @db.Timestamptz(6)
+
+  lookupMatterTypeCreated         LookupMatterType[]         @relation("LookupMatterTypeCreatedBy")
+  lookupMatterTypeUpdated         LookupMatterType[]         @relation("LookupMatterTypeUpdatedBy")
+  lookupMatterCategoryCreated     LookupMatterCategory[]     @relation("LookupMatterCategoryCreatedBy")
+  lookupMatterCategoryUpdated     LookupMatterCategory[]     @relation("LookupMatterCategoryUpdatedBy")
+  lookupDegreeCreated             LookupDegree[]             @relation("LookupDegreeCreatedBy")
+  lookupDegreeUpdated             LookupDegree[]             @relation("LookupDegreeUpdatedBy")
+  lookupVenueCreated              LookupVenue[]              @relation("LookupVenueCreatedBy")
+  lookupVenueUpdated              LookupVenue[]              @relation("LookupVenueUpdatedBy")
+  lookupImportanceCreated         LookupImportance[]         @relation("LookupImportanceCreatedBy")
+  lookupImportanceUpdated         LookupImportance[]         @relation("LookupImportanceUpdatedBy")
+  lookupPartyRoleCreated          LookupPartyRole[]          @relation("LookupPartyRoleCreatedBy")
+  lookupPartyRoleUpdated          LookupPartyRole[]          @relation("LookupPartyRoleUpdatedBy")
+  lookupHearingActionCreated      LookupHearingAction[]      @relation("LookupHearingActionCreatedBy")
+  lookupHearingActionUpdated      LookupHearingAction[]      @relation("LookupHearingActionUpdatedBy")
+  lookupMatterDestinationCreated  LookupMatterDestination[]  @relation("LookupMatterDestinationCreatedBy")
+  lookupMatterDestinationUpdated  LookupMatterDestination[]  @relation("LookupMatterDestinationUpdatedBy")
+  lookupClientBranchCreated       LookupClientBranch[]       @relation("LookupClientBranchCreatedBy")
+  lookupClientBranchUpdated       LookupClientBranch[]       @relation("LookupClientBranchUpdatedBy")
+  personCreated                   Person[]                   @relation("PersonCreatedBy")
+  personUpdated                   Person[]                   @relation("PersonUpdatedBy")
+  userAccountCreated              UserAccount[]              @relation("UserAccountCreatedBy")
+  userAccountUpdated              UserAccount[]              @relation("UserAccountUpdatedBy")
+  lookupTeamCreated               LookupTeam[]               @relation("LookupTeamCreatedBy")
+  lookupTeamUpdated               LookupTeam[]               @relation("LookupTeamUpdatedBy")
+  lookupCourtCreated              LookupCourt[]              @relation("LookupCourtCreatedBy")
+  lookupCourtUpdated              LookupCourt[]              @relation("LookupCourtUpdatedBy")
+  clientCreated                   Client[]                   @relation("ClientCreatedBy")
+  clientUpdated                   Client[]                   @relation("ClientUpdatedBy")
+  clientLogoCreated               ClientLogo[]               @relation("ClientLogoCreatedBy")
+  clientLogoUpdated               ClientLogo[]               @relation("ClientLogoUpdatedBy")
+  contactCreated                  Contact[]                  @relation("ContactCreatedBy")
+  contactUpdated                  Contact[]                  @relation("ContactUpdatedBy")
+  matterCreated                   Matter[]                   @relation("MatterCreatedBy")
+  matterUpdated                   Matter[]                   @relation("MatterUpdatedBy")
+  hearingCreated                  Hearing[]                  @relation("HearingCreatedBy")
+  hearingUpdated                  Hearing[]                  @relation("HearingUpdatedBy")
+  adminTaskCreated                AdminTask[]                @relation("AdminTaskCreatedBy")
+  adminTaskUpdated                AdminTask[]                @relation("AdminTaskUpdatedBy")
+  taskActionCreated               TaskAction[]               @relation("TaskActionCreatedBy")
+  taskActionUpdated               TaskAction[]               @relation("TaskActionUpdatedBy")
+  powerOfAttorneyCreated          PowerOfAttorney[]          @relation("PowerOfAttorneyCreatedBy")
+  powerOfAttorneyUpdated          PowerOfAttorney[]          @relation("PowerOfAttorneyUpdatedBy")
+  powerOfAttorneyLawyerCreated    PowerOfAttorneyLawyer[]    @relation("PowerOfAttorneyLawyerCreatedBy")
+  powerOfAttorneyLawyerUpdated    PowerOfAttorneyLawyer[]    @relation("PowerOfAttorneyLawyerUpdatedBy")
+  documentCreated                 Document[]                 @relation("DocumentCreatedBy")
+  documentUpdated                 Document[]                 @relation("DocumentUpdatedBy")
+  feeLetterCreated                FeeLetter[]                @relation("FeeLetterCreatedBy")
+  feeLetterUpdated                FeeLetter[]                @relation("FeeLetterUpdatedBy")
+  matterLawyerCreated             MatterLawyer[]             @relation("MatterLawyerCreatedBy")
+  matterLawyerUpdated             MatterLawyer[]             @relation("MatterLawyerUpdatedBy")
+  matterPartyCreated              MatterParty[]              @relation("MatterPartyCreatedBy")
+  matterPartyUpdated              MatterParty[]              @relation("MatterPartyUpdatedBy")
+  matterPartyRoleCreated          MatterPartyRole[]          @relation("MatterPartyRoleCreatedBy")
+  matterPartyRoleUpdated          MatterPartyRole[]          @relation("MatterPartyRoleUpdatedBy")
+  hearingAttendeeCreated          HearingAttendee[]          @relation("HearingAttendeeCreatedBy")
+  hearingAttendeeUpdated          HearingAttendee[]          @relation("HearingAttendeeUpdatedBy")
+  feeLetterMatterCreated          FeeLetterMatter[]          @relation("FeeLetterMatterCreatedBy")
+  feeLetterMatterUpdated          FeeLetterMatter[]          @relation("FeeLetterMatterUpdatedBy")
+  matterFeeLetterReferenceCreated MatterFeeLetterReference[] @relation("MatterFeeLetterReferenceCreatedBy")
+  matterFeeLetterReferenceUpdated MatterFeeLetterReference[] @relation("MatterFeeLetterReferenceUpdatedBy")
+  lookupInvoiceStatusCreated      LookupInvoiceStatus[]      @relation("LookupInvoiceStatusCreatedBy")
+  lookupInvoiceStatusUpdated      LookupInvoiceStatus[]      @relation("LookupInvoiceStatusUpdatedBy")
+  lookupInvoiceTypeCreated        LookupInvoiceType[]        @relation("LookupInvoiceTypeCreatedBy")
+  lookupInvoiceTypeUpdated        LookupInvoiceType[]        @relation("LookupInvoiceTypeUpdatedBy")
+  lookupLawyerShareRoleCreated    LookupLawyerShareRole[]    @relation("LookupLawyerShareRoleCreatedBy")
+  lookupLawyerShareRoleUpdated    LookupLawyerShareRole[]    @relation("LookupLawyerShareRoleUpdatedBy")
+  invoiceCreated                  Invoice[]                  @relation("InvoiceCreatedBy")
+  invoiceUpdated                  Invoice[]                  @relation("InvoiceUpdatedBy")
+  paymentCreated                  Payment[]                  @relation("PaymentCreatedBy")
+  paymentUpdated                  Payment[]                  @relation("PaymentUpdatedBy")
+  invoiceAllocationCreated        InvoiceAllocation[]        @relation("InvoiceAllocationCreatedBy")
+  invoiceAllocationUpdated        InvoiceAllocation[]        @relation("InvoiceAllocationUpdatedBy")
+  attendanceCreated               Attendance[]               @relation("AttendanceCreatedBy")
+  attendanceUpdated               Attendance[]               @relation("AttendanceUpdatedBy")
+  personNameAliasesCreated        PersonNameAlias[]          @relation("PersonNameAliasCreatedBy")
+  personNameAliasesUpdated        PersonNameAlias[]          @relation("PersonNameAliasUpdatedBy")
+
+  @@map("audit_actors")
 }
 
 /// A username/password login linked one-to-one to a person. Auth.js uses the
@@ -529,27 +659,32 @@ model PersonNameAlias {
 /// complete permission matrix is Task 3.2; Task 3.1 stores only the approved
 /// role assignment needed in the session.
 model UserAccount {
-  id                 Int       @id @default(autoincrement())
-  personId           Int       @unique @map("person_id")
-  person             Person    @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "user_accounts_person_id_fkey")
+  id                  Int       @id @default(autoincrement())
+  personId            Int       @unique @map("person_id")
+  person              Person    @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "user_accounts_person_id_fkey")
   /// Approved display spelling. Login uses username_normalized instead.
-  username           String
-  usernameNormalized String    @unique @map("username_normalized")
-  passwordHash       String?   @map("password_hash")
-  roleCode           String    @map("role_code")
-  isEnabled          Boolean   @default(true) @map("is_enabled")
-  mustChangePassword Boolean   @default(true) @map("must_change_password")
-  failedLoginAttempts Int      @default(0) @map("failed_login_attempts")
-  lockedUntil        DateTime? @map("locked_until") @db.Timestamptz(6)
-  sessionVersion     Int       @default(0) @map("session_version")
-  passwordChangedAt  DateTime? @map("password_changed_at") @db.Timestamptz(6)
-  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz(6)
+  username            String
+  usernameNormalized  String    @unique @map("username_normalized")
+  passwordHash        String?   @map("password_hash")
+  roleCode            String    @map("role_code")
+  isEnabled           Boolean   @default(true) @map("is_enabled")
+  mustChangePassword  Boolean   @default(true) @map("must_change_password")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
+  sessionVersion      Int       @default(0) @map("session_version")
+  passwordChangedAt   DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  lastLoginAt         DateTime? @map("last_login_at") @db.Timestamptz(6)
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int         @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int?        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor  @relation("UserAccountCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "user_accounts_created_by_fkey")
+  updatedByActor AuditActor? @relation("UserAccountUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "user_accounts_updated_by_fkey")
+  auditActor     AuditActor? @relation("AuditActorUserAccount")
 
+  @@index([createdBy], map: "user_accounts_created_by_idx")
+  @@index([updatedBy], map: "user_accounts_updated_by_idx")
   @@map("user_accounts")
 }
 
@@ -603,11 +738,15 @@ model LookupTeam {
 
   members Person[] @relation("TeamMembers")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupTeamCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_team_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupTeamUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_team_updated_by_fkey")
 
+  @@index([createdBy], map: "lookup_team_created_by_idx")
+  @@index([updatedBy], map: "lookup_team_updated_by_idx")
   @@map("lookup_team")
 }
 
@@ -666,15 +805,18 @@ model LookupCourt {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int         @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int         @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor  @relation("LookupCourtCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_court_created_by_fkey")
+  updatedByActor AuditActor  @relation("LookupCourtUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_court_updated_by_fkey")
+  matters        Matter[]
+  hearings       Hearing[]
+  adminTasks     AdminTask[]
 
-  matters    Matter[]
-  hearings   Hearing[]
-  adminTasks AdminTask[]
-
+  @@index([createdBy], map: "lookup_court_created_by_idx")
+  @@index([updatedBy], map: "lookup_court_updated_by_idx")
   @@map("lookup_court")
 }
 
@@ -769,18 +911,19 @@ model Client {
   contactPersonId Int?     @map("contact_person_id")
   contactPerson   Contact? @relation("ClientPrimaryContact", fields: [contactPersonId], references: [id])
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
-
-  contacts   Contact[]         @relation("ClientContacts")
-  logo       ClientLogo?
-  logoImports MigrationClientLogoImport[]
-  matters    Matter[]
-  poas       PowerOfAttorney[]
-  documents  Document[]
-  feeLetters FeeLetter[]
+  createdAt      DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int                         @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int                         @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor                  @relation("ClientCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "clients_created_by_fkey")
+  updatedByActor AuditActor                  @relation("ClientUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "clients_updated_by_fkey")
+  contacts       Contact[]                   @relation("ClientContacts")
+  logo           ClientLogo?
+  logoImports    MigrationClientLogoImport[]
+  matters        Matter[]
+  poas           PowerOfAttorney[]
+  documents      Document[]
+  feeLetters     FeeLetter[]
 
   @@index([nameAr])
   /// The trigram index that makes a LIKE '%…%' search fast. DECLARED HERE ON
@@ -793,6 +936,8 @@ model Client {
   /// explaining every time somebody read the model, which costs more than
   /// the index does.
   @@index([fullNameNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([createdBy], map: "clients_created_by_idx")
+  @@index([updatedBy], map: "clients_updated_by_idx")
   @@map("clients")
 }
 
@@ -810,21 +955,25 @@ model ClientLogo {
 
   /// Relative to the logo root, never an absolute path — the root differs
   /// between the laptop and the Ubuntu server.
-  relativePath String  @map("relative_path")
-  fileName     String  @map("file_name")
-  contentType  String  @map("content_type")
-  byteSize     Int     @map("byte_size")
+  relativePath String @map("relative_path")
+  fileName     String @map("file_name")
+  contentType  String @map("content_type")
+  byteSize     Int    @map("byte_size")
   /// Checksum of the file as extracted from Access. Task 2.11 verifies it
   /// before and after writing, Gate 4 compares all 54, and it is what lets
   /// the weekly integrity job required by D15 report a CHANGED file rather
   /// than only a missing one.
   sha256       String
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("ClientLogoCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "client_logos_created_by_fkey")
+  updatedByActor AuditActor @relation("ClientLogoUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "client_logos_updated_by_fkey")
 
+  @@index([createdBy], map: "client_logos_created_by_idx")
+  @@index([updatedBy], map: "client_logos_updated_by_idx")
   @@map("client_logos")
 }
 
@@ -833,20 +982,20 @@ model ClientLogo {
 /// a client's current logo, but that must not rewrite what the migration read,
 /// where it wrote it or which client it resolved.
 model MigrationClientLogoImport {
-  sourceParentKey       Int      @id @map("source_parent_key")
-  clientId              Int      @unique @map("client_id")
-  client                Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  clientLogoId          Int      @unique @map("client_logo_id")
-  sourceRecordKey       String   @unique @map("source_record_key")
-  sourceExtractionSha256 String   @map("source_extraction_sha256")
-  sourceStoredPath      String   @unique @map("source_stored_path")
-  sourceFileName        String   @map("source_file_name")
-  detectedContentType   String   @map("detected_content_type")
-  byteSize              Int      @map("byte_size")
-  sha256                String
-  destinationRelativePath String @unique @map("destination_relative_path")
-  complexCsvSha256      String   @map("complex_csv_sha256")
-  importedAt            DateTime @default(now()) @map("imported_at") @db.Timestamptz(6)
+  sourceParentKey         Int      @id @map("source_parent_key")
+  clientId                Int      @unique @map("client_id")
+  client                  Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  clientLogoId            Int      @unique @map("client_logo_id")
+  sourceRecordKey         String   @unique @map("source_record_key")
+  sourceExtractionSha256  String   @map("source_extraction_sha256")
+  sourceStoredPath        String   @unique @map("source_stored_path")
+  sourceFileName          String   @map("source_file_name")
+  detectedContentType     String   @map("detected_content_type")
+  byteSize                Int      @map("byte_size")
+  sha256                  String
+  destinationRelativePath String   @unique @map("destination_relative_path")
+  complexCsvSha256        String   @map("complex_csv_sha256")
+  importedAt              DateTime @default(now()) @map("imported_at") @db.Timestamptz(6)
 
   @@map("migration_client_logo_import")
 }
@@ -908,13 +1057,14 @@ model Contact {
   /// Access `Country/Region`, 65%.
   countryRegion String? @map("country_region")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
-
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("ContactCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "contacts_created_by_fkey")
+  updatedByActor AuditActor @relation("ContactUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "contacts_updated_by_fkey")
   /// The clients for whom this person is the main contact.
-  primaryFor Client[] @relation("ClientPrimaryContact")
+  primaryFor     Client[]   @relation("ClientPrimaryContact")
 
   @@index([clientId])
   /// The trigram index that makes a LIKE '%…%' search fast. DECLARED HERE ON
@@ -922,6 +1072,8 @@ model Contact {
   /// dropped it — Prisma removes an index it can see the columns of but does
   /// not know about. db:check caught that; this stops it recurring.
   @@index([contactNameNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([createdBy], map: "contacts_created_by_idx")
+  @@index([updatedBy], map: "contacts_updated_by_idx")
   @@map("contacts")
 }
 
@@ -1054,17 +1206,18 @@ model Matter {
   /// source columns and different cardinalities.
   feeLetterReferenceLink MatterFeeLetterReference?
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
-
-  hearings   Hearing[]
-  adminTasks AdminTask[]
-  documents  Document[]
-  lawyers    MatterLawyer[]
-  parties    MatterParty[]
-  feeLetters FeeLetterMatter[]
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int               @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int               @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor        @relation("MatterCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matters_created_by_fkey")
+  updatedByActor AuditActor        @relation("MatterUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matters_updated_by_fkey")
+  hearings       Hearing[]
+  adminTasks     AdminTask[]
+  documents      Document[]
+  lawyers        MatterLawyer[]
+  parties        MatterParty[]
+  feeLetters     FeeLetterMatter[]
 
   @@index([clientId])
   @@index([branchId])
@@ -1076,6 +1229,8 @@ model Matter {
   /// not know about. db:check caught that; this stops it recurring.
   @@index([caseNumberArNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
   @@index([subjectNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([createdBy], map: "matters_created_by_idx")
+  @@index([updatedBy], map: "matters_updated_by_idx")
   @@map("matters")
 }
 
@@ -1101,12 +1256,12 @@ model Hearing {
 
   /// Access تقرير: a stored boolean flag, preserved even though its business
   /// use has not yet been surfaced in the web application.
-  report             Boolean?
+  report            Boolean?
   /// Access lastDecision, retained verbatim.
-  previousDecision   String?  @map("previous_decision")
+  previousDecision  String?  @map("previous_decision")
   /// Access حضور الجلسة القادمة. This is raw text, not a boolean and not the
   /// same field as client_notified.
-  nextAttendanceRaw  String?  @map("next_attendance_raw")
+  nextAttendanceRaw String?  @map("next_attendance_raw")
 
   actionId        Int?                 @map("action_id") @db.SmallInt
   action          LookupHearingAction? @relation(fields: [actionId], references: [id])
@@ -1120,18 +1275,18 @@ model Hearing {
   /// صالح / ضد. Drives the for-and-against reports and the dashboard charts.
   outcome  String?
 
-  courtId        Int?         @map("court_id") @db.SmallInt
-  court          LookupCourt? @relation(fields: [courtId], references: [id])
-  legacyCourtRaw String?      @map("legacy_court_raw")
+  courtId              Int?                     @map("court_id") @db.SmallInt
+  court                LookupCourt?             @relation(fields: [courtId], references: [id])
+  legacyCourtRaw       String?                  @map("legacy_court_raw")
   /// Set only by a firm-reviewed court rule saying the source value is a
   /// destination rather than a court. The independent Access الجهة text is
   /// preserved separately and is never overwritten by that rule.
   destinationId        Int?                     @map("destination_id") @db.SmallInt
   destination          LookupMatterDestination? @relation(fields: [destinationId], references: [id])
-  legacyDestinationRaw String?                   @map("legacy_destination_raw")
+  legacyDestinationRaw String?                  @map("legacy_destination_raw")
   /// Text, for the same reason as Matter.circuit.
-  circuit          String?
-  legacyCircuitRaw String? @map("legacy_circuit_raw")
+  circuit              String?
+  legacyCircuitRaw     String?                  @map("legacy_circuit_raw")
 
   /// A reviewed court split may supply a hearing note. The exact source note
   /// remains beside it so the derivation is reversible.
@@ -1147,18 +1302,21 @@ model Hearing {
   /// All 21 source columns, preserving NULL, empty text, Arabic and line breaks.
   legacySourcePayload          Json?   @map("legacy_source_payload")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
-
-  attendees HearingAttendee[]
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int               @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int               @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor        @relation("HearingCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "hearings_created_by_fkey")
+  updatedByActor AuditActor        @relation("HearingUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "hearings_updated_by_fkey")
+  attendees      HearingAttendee[]
 
   @@index([matterId])
   @@index([hearingDate])
   @@index([nextHearingDate])
   @@index([courtId])
   @@index([destinationId])
+  @@index([createdBy], map: "hearings_created_by_idx")
+  @@index([updatedBy], map: "hearings_updated_by_idx")
   @@map("hearings")
 }
 
@@ -1217,14 +1375,15 @@ model AdminTask {
   status String?
   alert  String?
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
-
-  legacySourceRecordKey        String? @unique @map("legacy_source_record_key")
-  legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
-  legacySourcePayload          Json?   @map("legacy_source_payload") @db.JsonB
+  createdAt                    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                    Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt                    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy                    Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor               AuditActor @relation("AdminTaskCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "admin_tasks_created_by_fkey")
+  updatedByActor               AuditActor @relation("AdminTaskUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "admin_tasks_updated_by_fkey")
+  legacySourceRecordKey        String?    @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String?    @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?      @map("legacy_source_payload") @db.JsonB
 
   actions TaskAction[]
 
@@ -1232,6 +1391,8 @@ model AdminTask {
   @@index([assignedToPersonId])
   @@index([executionDate])
   @@index([status])
+  @@index([createdBy], map: "admin_tasks_created_by_idx")
+  @@index([updatedBy], map: "admin_tasks_updated_by_idx")
   @@map("admin_tasks")
 }
 
@@ -1283,13 +1444,17 @@ model TaskAction {
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload") @db.JsonB
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("TaskActionCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "task_actions_created_by_fkey")
+  updatedByActor AuditActor @relation("TaskActionUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "task_actions_updated_by_fkey")
 
   @@index([taskId])
   @@index([performedByPersonId])
+  @@index([createdBy], map: "task_actions_created_by_idx")
+  @@index([updatedBy], map: "task_actions_updated_by_idx")
   @@map("task_actions")
 }
 
@@ -1397,7 +1562,7 @@ model PowerOfAttorney {
   copiesCount Int? @map("copies_count")
 
   /// Access `ملاحظات`, 53%.
-  notes     String?  @map("notes")
+  notes           String?  @map("notes")
   /// Access `جرد`, 100% — confirmed by the firm's litigation assistant as the
   /// editable setting controlling inclusion on the POA list report. Current
   /// extraction: 697 shown and 55 hidden. It is not an inventory fact.
@@ -1405,13 +1570,17 @@ model PowerOfAttorney {
 
   lawyers PowerOfAttorneyLawyer[]
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("PowerOfAttorneyCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "powers_of_attorney_created_by_fkey")
+  updatedByActor AuditActor @relation("PowerOfAttorneyUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "powers_of_attorney_updated_by_fkey")
 
-  @@index([clientId])
   @@unique([legacySourceRecordKey], map: "powers_of_attorney_legacy_source_record_key_key")
+  @@index([clientId])
+  @@index([createdBy], map: "powers_of_attorney_created_by_idx")
+  @@index([updatedBy], map: "powers_of_attorney_updated_by_idx")
   @@map("powers_of_attorney")
 }
 
@@ -1419,27 +1588,31 @@ model PowerOfAttorney {
 /// repeated on every migrated member so a row remains independently auditable;
 /// the ordered rule/member provenance identifies the exact reviewed decision.
 model PowerOfAttorneyLawyer {
-  id                       Int                       @id @default(autoincrement())
-  powerOfAttorneyId        Int                       @map("power_of_attorney_id")
-  powerOfAttorney          PowerOfAttorney           @relation(fields: [powerOfAttorneyId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_poa_fk")
-  personId                 Int                       @map("person_id")
-  person                   Person                    @relation(fields: [personId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_person_fk")
-  legacySourceRecordKey    String?                   @map("legacy_source_record_key")
-  legacySourceExtractionSha256 String?               @map("legacy_source_extraction_sha256")
-  legacyLawyersRaw         String?                   @map("legacy_lawyers_raw")
-  reviewedRuleId           Int?                      @map("reviewed_rule_id")
-  reviewedRule             MigrationMultiPersonRule? @relation(fields: [reviewedRuleId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_rule_fk")
-  sourceMemberOrdinal      Int?                      @map("source_member_ordinal")
+  id                           Int                       @id @default(autoincrement())
+  powerOfAttorneyId            Int                       @map("power_of_attorney_id")
+  powerOfAttorney              PowerOfAttorney           @relation(fields: [powerOfAttorneyId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_poa_fk")
+  personId                     Int                       @map("person_id")
+  person                       Person                    @relation(fields: [personId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_person_fk")
+  legacySourceRecordKey        String?                   @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String?                   @map("legacy_source_extraction_sha256")
+  legacyLawyersRaw             String?                   @map("legacy_lawyers_raw")
+  reviewedRuleId               Int?                      @map("reviewed_rule_id")
+  reviewedRule                 MigrationMultiPersonRule? @relation(fields: [reviewedRuleId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_rule_fk")
+  sourceMemberOrdinal          Int?                      @map("source_member_ordinal")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("PowerOfAttorneyLawyerCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "power_of_attorney_lawyers_created_by_fkey")
+  updatedByActor AuditActor @relation("PowerOfAttorneyLawyerUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "power_of_attorney_lawyers_updated_by_fkey")
 
   @@unique([powerOfAttorneyId, personId], map: "power_of_attorney_lawyers_poa_person_key")
   @@unique([legacySourceRecordKey, reviewedRuleId, sourceMemberOrdinal], map: "power_of_attorney_lawyers_source_rule_ordinal_key")
   @@index([personId])
   @@index([reviewedRuleId])
+  @@index([createdBy], map: "power_of_attorney_lawyers_created_by_idx")
+  @@index([updatedBy], map: "power_of_attorney_lawyers_updated_by_idx")
   @@map("power_of_attorney_lawyers")
 }
 
@@ -1476,22 +1649,26 @@ model Document {
 
   /// Optional reference into M-Files, the existing document system of the
   /// firm. Precedent: خطابات الأتعاب.mfilesID is filled on 306 of 331 rows.
-  mfilesId String? @map("mfiles_id")
+  mfilesId          String? @map("mfiles_id")
   legacyMfilesIdRaw String? @map("legacy_mfiles_id_raw")
 
   legacySourceRecordKey        String? @map("legacy_source_record_key")
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("DocumentCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "documents_created_by_fkey")
+  updatedByActor AuditActor @relation("DocumentUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "documents_updated_by_fkey")
 
+  @@unique([legacySourceRecordKey], map: "documents_legacy_source_record_key_key")
   @@index([matterId])
   @@index([clientId])
   @@index([responsiblePersonId])
-  @@unique([legacySourceRecordKey], map: "documents_legacy_source_record_key_key")
+  @@index([createdBy], map: "documents_created_by_idx")
+  @@index([updatedBy], map: "documents_updated_by_idx")
   @@map("documents")
 }
 
@@ -1543,17 +1720,20 @@ model FeeLetter {
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
-
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy          Int                        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy          Int                        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor     AuditActor                 @relation("FeeLetterCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fee_letters_created_by_fkey")
+  updatedByActor     AuditActor                 @relation("FeeLetterUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fee_letters_updated_by_fkey")
   matters            FeeLetterMatter[]
   referencingMatters MatterFeeLetterReference[]
   invoices           Invoice[]
 
   @@unique([legacySourceRecordKey], map: "fee_letters_legacy_source_record_key_key")
   @@index([clientId])
+  @@index([createdBy], map: "fee_letters_created_by_idx")
+  @@index([updatedBy], map: "fee_letters_updated_by_idx")
   @@map("fee_letters")
 }
 
@@ -1624,15 +1804,19 @@ model MatterLawyer {
   reviewedRule                 MigrationMultiPersonRule? @relation(fields: [reviewedRuleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   sourceMemberOrdinal          Int?                      @map("source_member_ordinal")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("MatterLawyerCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_lawyers_created_by_fkey")
+  updatedByActor AuditActor @relation("MatterLawyerUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_lawyers_updated_by_fkey")
 
   @@unique([matterId, personId], map: "matter_lawyers_matter_person_key")
   @@unique([legacySourceRecordKey, sourceField, sourceMemberOrdinal], map: "matter_lawyers_legacy_source_key")
   @@index([matterId])
   @@index([personId])
+  @@index([createdBy], map: "matter_lawyers_created_by_idx")
+  @@index([updatedBy], map: "matter_lawyers_updated_by_idx")
   @@map("matter_lawyers")
 }
 
@@ -1668,15 +1852,18 @@ model MatterParty {
   sourceField                  String? @map("source_field")
   sourceFragmentOrdinal        Int?    @map("source_fragment_ordinal")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
-
-  roles MatterPartyRole[]
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int               @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int               @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor        @relation("MatterPartyCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_parties_created_by_fkey")
+  updatedByActor AuditActor        @relation("MatterPartyUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_parties_updated_by_fkey")
+  roles          MatterPartyRole[]
 
   @@unique([legacySourceRecordKey, sourceField, sourceFragmentOrdinal], map: "matter_parties_legacy_source_key")
   @@index([matterId])
+  @@index([createdBy], map: "matter_parties_created_by_idx")
+  @@index([updatedBy], map: "matter_parties_updated_by_idx")
   @@map("matter_parties")
 }
 
@@ -1695,14 +1882,18 @@ model MatterPartyRole {
   /// Exact reviewed capacity fragment before it resolved to the 11-role list.
   legacyRoleRaw String? @map("legacy_role_raw")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("MatterPartyRoleCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_party_roles_created_by_fkey")
+  updatedByActor AuditActor @relation("MatterPartyRoleUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_party_roles_updated_by_fkey")
 
   @@unique([partyId, roleId], map: "matter_party_roles_party_role_key")
   @@unique([partyId, ordinal], map: "matter_party_roles_party_ordinal_key")
   @@index([partyId])
+  @@index([createdBy], map: "matter_party_roles_created_by_idx")
+  @@index([updatedBy], map: "matter_party_roles_updated_by_idx")
   @@map("matter_party_roles")
 }
 
@@ -1754,14 +1945,18 @@ model HearingAttendee {
   sourceSpanId                 String? @unique @map("source_span_id")
   sourceSpanSequence           Int?    @map("source_span_sequence")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("HearingAttendeeCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "hearing_attendees_created_by_fkey")
+  updatedByActor AuditActor @relation("HearingAttendeeUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "hearing_attendees_updated_by_fkey")
 
+  @@unique([hearingId, ordinal], map: "hearing_attendees_hearing_ordinal_key")
   @@index([hearingId])
   @@index([personId])
-  @@unique([hearingId, ordinal], map: "hearing_attendees_hearing_ordinal_key")
+  @@index([createdBy], map: "hearing_attendees_created_by_idx")
+  @@index([updatedBy], map: "hearing_attendees_updated_by_idx")
   @@map("hearing_attendees")
 }
 
@@ -1801,14 +1996,18 @@ model FeeLetterMatter {
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("FeeLetterMatterCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fee_letter_matters_created_by_fkey")
+  updatedByActor AuditActor @relation("FeeLetterMatterUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fee_letter_matters_updated_by_fkey")
 
   @@unique([legacySourceRecordKey], map: "fee_letter_matters_legacy_source_record_key_key")
   @@index([feeLetterId])
   @@index([matterId])
+  @@index([createdBy], map: "fee_letter_matters_created_by_idx")
+  @@index([updatedBy], map: "fee_letter_matters_updated_by_idx")
   @@map("fee_letter_matters")
 }
 
@@ -1817,22 +2016,26 @@ model FeeLetterMatter {
 /// value resolves through exactly one reviewed identifier space. Rows created
 /// later in the application keep every legacy provenance field null.
 model MatterFeeLetterReference {
-  id                           Int       @id @default(autoincrement())
-  matterId                     Int       @unique @map("matter_id")
-  matter                       Matter    @relation(fields: [matterId], references: [id], onDelete: Restrict, map: "matter_fee_letter_references_matter_fk")
-  feeLetterId                  Int       @map("fee_letter_id")
-  feeLetter                    FeeLetter @relation(fields: [feeLetterId], references: [id], onDelete: Restrict, map: "matter_fee_letter_references_fee_fk")
-  identifierSpace              String?   @map("identifier_space")
-  legacyReferenceRaw           String?   @map("legacy_reference_raw")
-  legacySourceRecordKey        String?   @unique @map("legacy_source_record_key")
-  legacySourceExtractionSha256 String?   @map("legacy_source_extraction_sha256")
-  legacySourcePayload          Json?     @map("legacy_source_payload")
-  createdAt                    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy                    Int?      @map("created_by")
-  updatedAt                    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy                    Int?      @map("updated_by")
+  id                           Int        @id @default(autoincrement())
+  matterId                     Int        @unique @map("matter_id")
+  matter                       Matter     @relation(fields: [matterId], references: [id], onDelete: Restrict, map: "matter_fee_letter_references_matter_fk")
+  feeLetterId                  Int        @map("fee_letter_id")
+  feeLetter                    FeeLetter  @relation(fields: [feeLetterId], references: [id], onDelete: Restrict, map: "matter_fee_letter_references_fee_fk")
+  identifierSpace              String?    @map("identifier_space")
+  legacyReferenceRaw           String?    @map("legacy_reference_raw")
+  legacySourceRecordKey        String?    @unique @map("legacy_source_record_key")
+  legacySourceExtractionSha256 String?    @map("legacy_source_extraction_sha256")
+  legacySourcePayload          Json?      @map("legacy_source_payload")
+  createdAt                    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                    Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt                    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy                    Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor               AuditActor @relation("MatterFeeLetterReferenceCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_fee_letter_references_created_by_fkey")
+  updatedByActor               AuditActor @relation("MatterFeeLetterReferenceUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_fee_letter_references_updated_by_fkey")
 
   @@index([feeLetterId])
+  @@index([createdBy], map: "matter_fee_letter_references_created_by_idx")
+  @@index([updatedBy], map: "matter_fee_letter_references_updated_by_idx")
   @@map("matter_fee_letter_references")
 }
 
@@ -1863,13 +2066,16 @@ model LookupInvoiceStatus {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupInvoiceStatusCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_invoice_status_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupInvoiceStatusUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_invoice_status_updated_by_fkey")
+  invoices       Invoice[]
 
-  invoices Invoice[]
-
+  @@index([createdBy], map: "lookup_invoice_status_created_by_idx")
+  @@index([updatedBy], map: "lookup_invoice_status_updated_by_idx")
   @@map("lookup_invoice_status")
 }
 
@@ -1881,13 +2087,16 @@ model LookupInvoiceType {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("LookupInvoiceTypeCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_invoice_type_created_by_fkey")
+  updatedByActor AuditActor @relation("LookupInvoiceTypeUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_invoice_type_updated_by_fkey")
+  invoices       Invoice[]
 
-  invoices Invoice[]
-
+  @@index([createdBy], map: "lookup_invoice_type_created_by_idx")
+  @@index([updatedBy], map: "lookup_invoice_type_updated_by_idx")
   @@map("lookup_invoice_type")
 }
 
@@ -1908,13 +2117,16 @@ model LookupLawyerShareRole {
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int                 @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int                 @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor          @relation("LookupLawyerShareRoleCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_lawyer_share_role_created_by_fkey")
+  updatedByActor AuditActor          @relation("LookupLawyerShareRoleUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "lookup_lawyer_share_role_updated_by_fkey")
+  allocations    InvoiceAllocation[]
 
-  allocations InvoiceAllocation[]
-
+  @@index([createdBy], map: "lookup_lawyer_share_role_created_by_idx")
+  @@index([updatedBy], map: "lookup_lawyer_share_role_updated_by_idx")
   @@map("lookup_lawyer_share_role")
 }
 
@@ -2041,17 +2253,20 @@ model Invoice {
   /// put two disagreeing answers to "when was this paid" in front of a
   /// partner. Its absence is asserted.
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
-
-  payments    Payment[]
-  allocations InvoiceAllocation[]
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int                 @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int                 @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor          @relation("InvoiceCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "invoices_created_by_fkey")
+  updatedByActor AuditActor          @relation("InvoiceUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "invoices_updated_by_fkey")
+  payments       Payment[]
+  allocations    InvoiceAllocation[]
 
   @@index([feeLetterId])
   @@index([invoiceDate])
   @@index([statusId])
+  @@index([createdBy], map: "invoices_created_by_idx")
+  @@index([updatedBy], map: "invoices_updated_by_idx")
   @@map("invoices")
 }
 
@@ -2096,13 +2311,17 @@ model Payment {
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("PaymentCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "payments_created_by_fkey")
+  updatedByActor AuditActor @relation("PaymentUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "payments_updated_by_fkey")
 
   @@index([invoiceId])
   @@index([paymentDate])
+  @@index([createdBy], map: "payments_created_by_idx")
+  @@index([updatedBy], map: "payments_updated_by_idx")
   @@map("payments")
 }
 
@@ -2182,14 +2401,18 @@ model InvoiceAllocation {
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("InvoiceAllocationCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_allocations_created_by_fkey")
+  updatedByActor AuditActor @relation("InvoiceAllocationUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_allocations_updated_by_fkey")
 
   @@unique([invoiceId, personId, lawyerRoleId], map: "invoice_allocations_invoice_person_role_key")
   @@index([invoiceId])
   @@index([personId])
+  @@index([createdBy], map: "invoice_allocations_created_by_idx")
+  @@index([updatedBy], map: "invoice_allocations_updated_by_idx")
   @@map("invoice_allocations")
 }
 
@@ -2238,12 +2461,16 @@ model Attendance {
   legacySourceExtractionSha256 String? @map("legacy_source_extraction_sha256")
   legacySourcePayload          Json?   @map("legacy_source_payload") @db.JsonB
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy Int?     @map("created_by")
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy Int?     @map("updated_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("updated_by")
+  createdByActor AuditActor @relation("AttendanceCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "attendance_created_by_fkey")
+  updatedByActor AuditActor @relation("AttendanceUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "attendance_updated_by_fkey")
 
   @@index([personId])
   @@index([attendanceDate])
+  @@index([createdBy], map: "attendance_created_by_idx")
+  @@index([updatedBy], map: "attendance_updated_by_idx")
   @@map("attendance")
 }
