@@ -146,7 +146,10 @@ contain a raw colour.
    - Converting on display means the first missed conversion shows a bare
      `493` in an otherwise Arabic-Indic screen — which reads as a bug rather
      than a choice.
-   - The data agrees: **zero** Arabic-Indic digits in all 35,343 rows.
+   - The 19 August planning inspection agreed: **zero** Arabic-Indic digits in
+     its 35,343-row snapshot. Gate 4 later measured 35,638 current user-table
+     rows; the earlier figure is historical evidence for the display decision,
+     not the current migration total.
 
    **Search accepts `٠-٩` regardless, and that is built** — `ar_normalise()`
    folds them, and `npm run db:check` asserts it. A user may type Arabic-Indic;

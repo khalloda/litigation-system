@@ -1,9 +1,19 @@
 # Project Continuity Recovery Audit
 
+> **Dated evidence snapshot — not current authority.** This report reconstructs
+> the repository as it stood at commit `553b3d1` on 1 September 2026. Current
+> decisions are in [`docs/DECISIONS.md`](../DECISIONS.md); current work order and
+> return point are in [`TASKS.md`](../../TASKS.md); migration identities are in
+> [`docs/MIGRATION.md`](../MIGRATION.md) and the
+> [Gate 4 report](../reconciliations/2026-08-30-gate-4.md). Later owner
+> resolutions and gap dispositions are recorded at the end of this report.
+
 - **Audit date:** 1 September 2026
-- **Repository:** `D:\Projects\litigation-system`
+- **Repository:** `litigation-system` repository root
 - **Audit type:** Read-only governance and evidence reconstruction
 - **Audited checkpoint:** `553b3d1f68f0f798d2edf5bd3bb5f452ad05d59b`
+- **Snapshot-preservation commit:**
+  `5909fb79a0bef1a3480f05036c6ffea8d9413988`
 
 **Verdict: continuity is recoverable.** The repository, Git history, local
 migration evidence, and database invariants identify one coherent state: Task
@@ -13,6 +23,24 @@ migration evidence, and database invariants identify one coherent state: Task
 Several documents are stale enough to misdirect a future agent—especially
 `HANDOFF.md`—but they do not undermine the implemented database or current Git
 checkpoint.
+
+## Audit mandate and boundaries
+
+- **Mandate:** reconstruct project continuity from repository, Git, migration,
+  test, manifest and recorded runtime evidence without assuming access to old
+  conversations.
+- **Starting checkpoint:** local `main`, clean and synchronized with fetched
+  `origin/main`, both at `553b3d1f68f0f798d2edf5bd3bb5f452ad05d59b`.
+- **Authorized scope:** read tracked documentation, Git objects, code, tests,
+  migration definitions, manifests, hashes and existing database/source
+  evidence needed to establish identity and protected counts.
+- **Configuration:** sole active agent; local repository and PostgreSQL evidence;
+  no delegation, browser, external service or dependency change.
+- **Prohibitions:** no file or database write, migration, import, seed, reset,
+  fixture suite, implementation, commit, push, secret disclosure, raw-record
+  reproduction, workbook-content reproduction or binary ingestion.
+- **Stopping point:** report the evidence and stop. Task 3.3 must remain not
+  started and must remain the exact implementation return point.
 
 ## 1. Repository checkpoint
 
@@ -680,6 +708,28 @@ contents or rerun database-writing fixtures.
 - **Khaled needed:** No.
 - **Risk:** A future developer could design around the wrong mechanism.
 
+## Gap disposition
+
+The audit findings above remain the evidence of what was true at `553b3d1`.
+The owner reviewed all 13 gaps on 1 September 2026. Their durable disposition is
+recorded below; a scheduled review or input is not mislabeled as completed.
+
+| Gap | Classification | Disposition and durable authority |
+|---|---|---|
+| 9.1 — obsolete `HANDOFF.md` | **corrected by this documentation commit** | The current file is a short superseded-checkpoint notice linking to README and TASKS; Git preserves the historical content. |
+| 9.2 — no quarantine-review checkpoint | **resolved by an owner-approved scheduled checkpoint** | D26 and Tasks 3.5/7.2a schedule the high-impact matter/hearing review after 3.4 and the lower-impact evidence review before final rehearsal/cutover. No quarantine is declared resolved merely by scheduling it. |
+| 9.3 — obsolete PRD migration totals | **corrected by this documentation commit** | PRD now uses 30,847 migration-source + 38 reference-only + 4,753 archive-only = 35,638 and links to migration evidence. |
+| 9.4 — Stage 2 plan understates Gate 1 | **corrected by this documentation commit** | The plan now states 17 named Access tables in two groups: 15 migration-source and two reference-only. |
+| 9.5 — stale quality/migration check descriptions | **corrected by this documentation commit** | README records seven quality checks; DATABASE records the 52-migration continuity checkpoint while treating the applied count as mutable. |
+| 9.6 — planning counts presented as current | **corrected by this documentation commit** | Current examples use 318 clients, 54 logos, 264 logo fallbacks, 1,689 transformed matters, 708 matters with lawyer relationships and 981 without; historical figures are explicitly dated. |
+| 9.7 — glossary attendance/date errors | **corrected by this documentation commit** | GLOSSARY records 873 attendance situations and the 23 August removal of `J → ق`. |
+| 9.8 — POA terminology conflict | **corrected by this documentation commit** | Khaled approved the three meanings on 1 September 2026; D29, GLOSSARY and DATA-MODEL record them. |
+| 9.9 — missing Arabic billing labels | **pending a specifically scheduled owner-supplied input** | D28 and Task 4.7a require firm approval of all 11 Arabic display labels before Task 4.8. Temporary English labels remain prohibited. |
+| 9.10 — unavailable report layout | **pending a specifically scheduled owner-supplied input** | D27 and Task 6.7a require an original representative PDF export or clear scan before Task 6.8. Replacement design needs further owner approval. |
+| 9.11 — missing historical conversations/prompts | **irrecoverable historical evidence, prospectively mitigated** | Missing transcripts cannot be reconstructed or fabricated. D1–D25 remain authoritative as recorded and are not reopened. D26–D29 carry prospective approver/date/evidence metadata; [`docs/task-reports/README.md`](../task-reports/README.md) defines future task evidence. |
+| 9.12 — historical fixture run output not retained | **accepted low-risk historical limitation** | This audit did not rerun `test:auth` or `test:permissions` because they create and drop disposable databases. This is not a current test failure. Both suites must be rerun before accepting a future authentication or authorization code change. |
+| 9.13 — data-model ambiguity | **corrected by this documentation commit** | DATA-MODEL distinguishes the 17-table Access scope from PostgreSQL's physical schema, identifies trigger-maintained search shadows, and separates structural audit columns from Task 3.3 acting-user population. |
+
 ## 10. Recommended canonical continuity structure
 
 The smallest safe structure does not need another master handoff document.
@@ -715,7 +765,11 @@ Recommended conflict rule for the documentation itself:
 - A code/document conflict with a decision is a defect to report, not
   permission to override the decision.
 
-## 11. Owner questions
+## 11. Owner questions at the audited checkpoint
+
+These were the four questions genuinely unresolved at `553b3d1`. Khaled
+answered all four on 1 September 2026; the approved resolutions are recorded in
+Section 12 and D26–D29. The original questions remain below as audit evidence.
 
 1. **Should the known migration quarantines receive an explicit firm-review
    checkpoint before Stage 4?**
@@ -808,3 +862,42 @@ Recommended conflict rule for the documentation itself:
    - **Estimated cost:** About 5–15 minutes of your or the litigation
      assistant’s review; no material implementation cost if the glossary is
      already correct.
+
+## 12. Owner resolutions — 1 September 2026
+
+Khaled Helmy approved the following resolutions after reviewing this audit.
+They are current decisions in [`docs/DECISIONS.md`](../DECISIONS.md), D26–D29;
+this section preserves the approval evidence without replacing that authority.
+
+1. **Quarantine review — D26.** Add a formal high-impact checkpoint after Task
+   3.4 and before Stage 4 for all 55 quarantined matters, prioritising the 14
+   `separate_client` / wrong-client cases, and all 327 quarantined hearings,
+   including the 313 inherited from quarantined parents. Apply only explicit
+   firm decisions. A second explicit checkpoint before final migration
+   rehearsal/cutover covers lower-impact administrative-task, task-action,
+   fee-link, relationship-cell and ambiguous-attendee evidence.
+2. **Unknown report layout — D27.** Obtain an original representative PDF
+   export or clear scan of `صالح-ضد مفصل حسب المحامي` before Task 6.8. Do not
+   design a replacement without further owner approval.
+3. **Billing labels — D28.** Obtain firm-approved Arabic display labels for all
+   11 exact billing codes before Task 4.8. Temporary English display labels are
+   prohibited. Present each exact source code with its established meaning for
+   review; do not invent Arabic legal or financial terminology.
+4. **Power-of-attorney meanings — D29.** `الصفة` is the principal's legal
+   capacity/status; `صفة الموكل بالتوكيل` is an abandoned duplicate of
+   `الصفة`; and `حرف` is the letter/series component of the identifier.
+
+### Prospective continuity evidence
+
+Historical conversations and task prompts that were not retained cannot be
+reconstructed or fabricated. Their absence does not reopen D1–D25, which remain
+authoritative as recorded. Approval metadata is preserved prospectively for
+D26–D29. From Task 3.3 onward, accepted work must use the evidence format in
+[`docs/task-reports/README.md`](../task-reports/README.md); those reports remain
+dated evidence and do not set priority or alter decisions.
+
+### Continuing stopping point
+
+This documentation recovery does not start implementation. **Task 3.3 remains
+not started, is the first unchecked implementation task, and is the exact
+return point.**

@@ -5,9 +5,10 @@
 Sarie Eldin & Partners runs its litigation practice on a Microsoft Access file
 built around 2010. It works, but:
 
-- **It had hit its size limit.** The file reached exactly 2 GiB — the maximum
-  Access allows — while holding 35,343 rows, and compacted down to 45 MB. 97.8%
-  was wasted space. A file at its limit can start refusing to save new records.
+- **It had hit its size limit.** At the 19 August 2026 planning snapshot, the
+  file reached exactly 2 GiB — the maximum Access allows — while holding
+  35,343 rows, and compacted down to 45 MB. 97.8% was wasted space. A file at
+  its limit can start refusing to save new records.
   **Compacted 23 August 2026**, live file and rehearsal copy both, so it is no
   longer a risk to daily work — but a store that bloats fifty-fold, silently,
   until it is one save away from refusing, is a reason to move off it.
@@ -101,8 +102,10 @@ rather than annotated, so that reading it does not reintroduce the fault.)*
 Full list in `docs/REPORTS.md`; house style and page layouts in
 `docs/REPORT-LAYOUTS.md`. Reduced from 49 — see D17.
 
-Client-facing reports carry the **client's own logo**. Where none exists —
-259 of 313 clients — the client's name prints in text instead.
+Client-facing reports carry the **client's own logo**. In the completed Stage 2
+result, 54 of 318 clients have a migrated logo and **264 do not**; where none
+exists, the client's name prints in text instead. The earlier planning snapshot
+was 54 of 313, or 259 without a logo.
 
 PDF must be produced by rendering HTML in headless Chromium (Playwright).
 Most PDF libraries cannot shape Arabic letters or handle mixed
@@ -110,10 +113,12 @@ Arabic/Latin/number text, and produce disconnected reversed letterforms.
 
 ## 6. Success criteria
 
-1. **All 30,553 rows migrated**, with a report proving nothing was lost.
-   The reconciliation report must show *migrated + archived = 35,343*, so both
-   numbers are visible and the difference is never rediscovered as a bug.
-   See "Which row count is the target?" in `docs/MIGRATION.md`.
+1. **All 30,847 migration-source rows accounted for**, as transformed,
+   quarantined or covered by an explicit reviewed exclusion, with a report
+   proving nothing was lost. The reconciliation report must also show the 38
+   reference-only and 4,753 archive-only rows, so
+   *30,847 + 38 + 4,753 = 35,638* and the difference is never rediscovered as a
+   bug. See "Which row count is the target?" in `docs/MIGRATION.md`.
 2. Six representative reports match the Access originals row for row
 3. Arabic renders correctly on screen, in Excel and in PDF
 4. The four roles are enforced on the server

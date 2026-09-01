@@ -182,9 +182,10 @@ report replaces the four Access copies `تقرير عملاء 2 / 6 / 8` and
 The **client's own logo** prints opposite the firm logo. This is what the
 `العملاء.logo` attachments are for — they are not decorative.
 
-**Where the client has no logo — 259 of 313 clients today — print the client's
-name in text in that position.** This is the normal case, not the exception, so
-build and test it first.
+**Where the client has no logo — 264 of the current 318 transformed clients —
+print the client's name in text in that position.** This is the normal case,
+not the exception, so build and test it first. The earlier 259 of 313 figure
+was the planning snapshot.
 
 Client logos appear on client-facing reports **only**. Not on the documents or
 powers-of-attorney reports.
@@ -308,13 +309,15 @@ people. Confirms these are multi-person fields needing the split rules.
 
 ## Still needed from the firm
 
-Only **one** report has an unknown layout:
+Only **one** report has an unknown layout, and D27 requires an original
+representative PDF export or clear scan before Task 6.8:
 
 - `صالح-ضد مفصل حسب المحامي`
 
 Its query is only 59% similar to the client report and pulls four extra columns —
 the for/against outcome (`صالح/ضد`), the lead lawyer, hearing notes and the
-matter partner — so it is genuinely its own report. Do not guess at it.
+matter partner — so it is genuinely its own report. Do not guess at it or
+design a replacement layout without further owner approval.
 
 `تقرير عملاء 2 / 6 / 8` and `تقرير عملاء -جميع الدعاوى سارية ومنتهية` are the
 **same report with different filters** (proven: two have byte-identical queries).

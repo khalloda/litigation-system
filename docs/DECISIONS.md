@@ -493,3 +493,58 @@ only. It does not add archive columns, migrations, handlers, controls or
 strings. The visibility of archived records and the filters and reporting
 behavior around them must be designed with each relevant Stage 4 screen using
 the real workflow; those rules are deliberately not invented here.
+
+## D26 — Quarantine decisions have two mandatory review checkpoints
+
+**Approved by Khaled Helmy on 1 September 2026.** Evidence:
+[`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md),
+gaps 9.2 and the owner-resolution addendum.
+
+After Task 3.4 and before Stage 4, the firm reviews the high-impact quarantine:
+all **55 matters**, prioritising the **14 `separate_client` / wrong-client
+cases**, and all **327 hearings**, including the **313** quarantined because
+their parent matter is quarantined. Only explicit firm decisions may be
+applied. Missing business facts must never be inferred.
+
+A second explicit checkpoint is required before the final migration rehearsal
+and cutover. It covers lower-impact administrative-task, task-action, fee-link,
+relationship-cell and ambiguous-attendee evidence. Neither checkpoint implies
+that a quarantined value has been resolved; `TASKS.md` records when each review
+is due.
+
+## D27 — The unknown report needs an original sample before Task 6.8
+
+**Approved by Khaled Helmy on 1 September 2026.** Evidence:
+[`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md),
+gap 9.10 and the owner-resolution addendum.
+
+An original representative PDF export or clear scan of
+`صالح-ضد مفصل حسب المحامي` is required before Task 6.8. Its known query and
+columns do not establish grouping, pagination, emphasis or manual-completion
+areas. Do not design a replacement layout without further owner approval.
+
+## D28 — All 11 billing codes need firm-approved Arabic display labels
+
+**Approved by Khaled Helmy on 1 September 2026.** Evidence:
+[`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md),
+gap 9.9 and the owner-resolution addendum.
+
+Before Task 4.8, the firm must approve Arabic display labels for all 11 exact
+source codes: five invoice statuses, two invoice types and four lawyer-share
+roles. Temporary English labels are not permitted. The source code and its
+established meaning must be presented together for review; Arabic legal or
+financial terminology must never be invented.
+
+## D29 — Power-of-attorney field meanings are settled
+
+**Approved by Khaled Helmy on 1 September 2026.** Evidence:
+[`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md),
+gap 9.8 and the owner-resolution addendum.
+
+- `الصفة` is the principal's legal capacity or status.
+- `صفة الموكل بالتوكيل` is an abandoned duplicate of `الصفة`.
+- `حرف` is the letter or series component of the power-of-attorney identifier.
+
+The exact Arabic source fields and their values remain preserved. This decision
+settles their documented meaning; it does not authorise rewriting historical
+source evidence.

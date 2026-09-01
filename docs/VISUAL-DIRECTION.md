@@ -72,8 +72,10 @@ printed reports already present it. In print, guillemets: `«مطعون ضده»
 
 ### Absence is stated, not blank
 
-834 matters have no lawyer recorded. Show `لم يُكلَّف أحد` in gold, not an empty
-cell. The same for any field the source data genuinely lacks.
+**981 of the current 1,689 transformed matters have no target lawyer
+relationship.** Show `لم يُكلَّف أحد` in gold, not an empty cell. The earlier
+834 of 1,730 figure was the planning snapshot. The same rule applies to any
+field the source data genuinely lacks.
 
 ### Search says what it matched
 
@@ -147,7 +149,10 @@ in `docs/BRAND.md` rule 3 so it is not reopened:
   screen.
 - Converting on display means the first missed conversion shows a bare `493`
   and reads as a bug rather than a choice.
-- The data agrees: zero Arabic-Indic digits in all 35,343 rows.
+- The 19 August planning inspection found zero Arabic-Indic digits in its
+  35,343-row snapshot. Gate 4 later measured 35,638 current user-table rows;
+  the earlier figure is historical evidence for this settled display choice,
+  not the current migration total.
 
 **Search accepts `٠-٩` regardless and always did** — `ar_normalise()` folds
 them and `npm run db:check` asserts it. A user may type Arabic-Indic; the

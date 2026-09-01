@@ -27,8 +27,9 @@ house style, taken from nine real printed samples.
 - Right-to-left page layout; page numbers mirror
 - Firm logo in the header, emerald green headings
 - **Client-facing reports also carry the client's own logo**, opposite the firm
-  logo. Where the client has no logo — 259 of 313 today — print the client's
-  name in text instead
+  logo. Where the client has no logo — **264 of the current 318 transformed
+  clients** — print the client's name in text instead. The earlier 259 of 313
+  figure was the planning snapshot
 - **Every list report ends with a count row**
 - Most reports take parameters: a date range (`من` / `إلى`), and one of client,
   branch, team or lawyer
@@ -37,8 +38,9 @@ house style, taken from nine real printed samples.
 ## The one report with an unknown layout
 
 `صالح-ضد مفصل حسب المحامي` could not be exported from Access. Its data source
-and columns are known; its page layout is not. The firm is supplying a sample.
-**Do not guess at it.**
+and columns are known; its page layout is not. Under D27, an original
+representative PDF export or clear scan is required before Task 6.8. **Do not
+guess at it or design a replacement layout without further owner approval.**
 
 ## Two reports carry a hard-coded date
 
@@ -95,7 +97,7 @@ count by four.
 - `صالح ضد -إحصائيات مجمعة`
 - `صالح-ضد شهور -تقرير فرعي`
 - `صالح-ضد محامين -بالنسبة`
-- `صالح-ضد مفصل حسب المحامي`  **(layout unknown — sample still needed)**
+- `صالح-ضد مفصل حسب المحامي`  **(layout unknown — original PDF/scan required before Task 6.8)**
 - `غلاف الملف`
 - `قرارات مفتوحة`
 - `قرارات مفتوحة جميع الجهات`

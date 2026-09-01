@@ -97,10 +97,10 @@ For anyone reading the data or the schema. Do not guess at these.
 | Arabic | English | Notes |
 |---|---|---|
 | الموكل | The principal | The person granting the power |
-| الصفة | Capacity of the principal | **Free text, 306 values. NOT the D7 party role** — see below |
-| صفة الموكل بالتوكيل | Capacity — abandoned duplicate | Same field as `الصفة`, no longer maintained. Migrated, never read |
+| الصفة | Principal's legal capacity/status | **Approved in D29.** Free text, 306 values. NOT the D7 party role — see below |
+| صفة الموكل بالتوكيل | Abandoned duplicate of `الصفة` | **Approved in D29.** No longer maintained. Migrated for evidence, never used as a competing field |
 | رقم التوكيل | POA number | The number part of the reference |
-| حرف | Letter-series | The letter part. 28 values, nearly all single Arabic letters — `أ` 183, `ب` 167 |
+| حرف | Identifier letter/series | **Approved in D29.** The letter part. 28 values, nearly all single Arabic letters — `أ` 183, `ب` 167 |
 | السنة | Year | The year part |
 | مسلسل | Sequence | **Latin letters — A, B, C. Not a number** |
 | جهة الإصدار | Issuing authority | |
@@ -150,8 +150,10 @@ attorney*: `شخصي` (personally), or a corporate office such as
 ## Billing (الفواتير / السداد / تقسيم التحصيلات)
 
 These are the **only** lookups in the system whose values are Latin. They stay
-exactly as Access holds them — the value is what Stage 2 matches on. The Arabic
-words to show on screen are **not yet supplied and were not invented**.
+exactly as Access holds them — the value is what Stage 2 matches on. Under D28,
+firm-approved Arabic display labels for all 11 codes are required before Task
+4.8. They are **not yet supplied**, temporary English display labels are not
+permitted, and Arabic financial terminology must not be invented.
 
 | Access | Values |
 |---|---|
@@ -269,7 +271,7 @@ firm's own reading.
 
 **Not meeting attendance** — D2 drops those entirely.
 
-`AttSituation` is **free text, not a status list**: 865 distinct values.
+`AttSituation` is **free text, not a status list**: 873 distinct values.
 `At the Office` 749 · `Nothing` 498 · `At the office` 327 (the same value in
 different case) · `Annual Vacation` 132, then hundreds of one-offs like
 `Admin work at Cairo economical court`. It is a daily log somebody typed into.
@@ -283,7 +285,7 @@ designed.
 `ق` (قضائية, judicial year) and `J` mean the same thing — 695 matters use `ق`,
 92 use `J`.
 
-**The search normaliser does NOT fold them together.** It did until 24 August
+**The search normaliser does NOT fold them together.** It did until 23 August
 2026, and the fold reached every field rather than only case numbers, so the
 real client **JTI** became `قTI`. The firm removed it. A lawyer searching a
 case number types it as recorded, and both spellings remain findable by their

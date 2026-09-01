@@ -6,6 +6,12 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
+**Current return point — 1 September 2026:** Task 3.2 closed at commit
+`553b3d1`. **Task 3.3 is the first unchecked implementation task, has not
+started, and is the exact place to resume.** `docs/DECISIONS.md` owns approved
+decisions; this file owns status and work order. Dated reviews and task reports
+are evidence, not priority authorities.
+
 ---
 
 ## Stage 0 — Foundations
@@ -214,10 +220,12 @@ be bigger than expected, split it and tell the owner.
       **`جرد` is settled — 23 August 2026, source: the firm's litigation
       assistant.** It is a checkbox controlling whether the record appears on
       the POA list report, not a fact about the power of attorney. Migrated as
-      `show_on_poa_report`. **Two POA column names still need the firm** —
-      `الصفة` against `صفة الموكل بالتوكيل`, and `حرف`. Not in
-      `docs/GLOSSARY.md`, so translated literally with the Arabic source
-      recorded against each. Renaming an empty table costs nothing.
+      `show_on_poa_report`. At this checkpoint, two POA column names still
+      needed the firm: `الصفة` against `صفة الموكل بالتوكيل`, and `حرف`.
+      **Resolved on 1 September 2026 by D29** without rewriting historical
+      source evidence: `الصفة` is the principal's legal capacity/status,
+      `صفة الموكل بالتوكيل` is its abandoned duplicate, and `حرف` is the
+      identifier's letter/series component.
       db:check 24 → **25 checks**.
 
       Six assertions proved by breaking them: a dropped `_raw` column, a
@@ -1287,8 +1295,9 @@ only ever seen good data is not known to work.
       minutes; absolute 8-hour normal and 7-day remembered sessions; forced
       first password change; password/account changes invalidate JWT sessions.
       The Arabic RTL login and change-password screens use the bundled font,
-      firm logo, central strings and logical CSS. Task 3.2 server-side role
-      enforcement remains outstanding.
+      firm logo, central strings and logical CSS. **At this task's completion,**
+      Task 3.2 server-side role enforcement remained outstanding; it is now
+      complete in the next task.
       **Four test users supplied by the firm** (do not build until this task):
       | Name | Username | Email | Role |
       |---|---|---|---|
@@ -1375,6 +1384,16 @@ only ever seen good data is not known to work.
       disable/deactivate while retaining the user and staff rows (D25); do not
       add physical deletion.
 
+- [ ] **3.5 High-impact quarantine review checkpoint** — firm review after
+      Task 3.4 and before Stage 4 (**D26**). Review all 55 quarantined matters,
+      prioritising the 14 `separate_client` / wrong-client cases, and all 327
+      quarantined hearings, including the 313 held only because their parent
+      matter is quarantined. Apply only explicit firm decisions; never infer a
+      missing client, classification, court or other business fact. Re-run the
+      applicable reconciliation and permanent invariants after approved
+      outcomes are implemented. This checkpoint is not complete merely because
+      the source values are preserved.
+
 ---
 
 ## Stage 4 — Core screens
@@ -1413,9 +1432,11 @@ than assuming one rule for every workflow. Test with real volumes.
       screen, in descending weight — D9 made visible.
       Two new visible strings it introduces, both of which live in
       `src/strings.ts` and never in a component (D12, rule 9):
-      `لم يُكلَّف أحد` for the 834 matters with no lawyer — **absence is stated,
-      not blank** — and `يشمل البحث:` for the alias disclosure, which is the
-      alias table doing visible work.
+      `لم يُكلَّف أحد` for the **981 of 1,689 transformed matters with no target
+      lawyer relationship** — **absence is stated, not blank** — and
+      `يشمل البحث:` for the alias disclosure, which is the alias table doing
+      visible work. The earlier 834 of 1,730 figure was the pre-migration
+      planning snapshot.
 - [ ] **4.3 Hearings** — 13,055 current target rows need paging and fast
       filters; 327 additional source hearings remain quarantined until their
       parent or reviewed court issue is resolved.
@@ -1424,6 +1445,12 @@ than assuming one rule for every workflow. Test with real volumes.
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
 - [ ] **4.7 Fee letters** — with linked matters
+- [ ] **4.7a Firm approval of Arabic billing labels** — prerequisite for 4.8
+      (**D28**). Prepare a review table containing each of the 11 exact source
+      codes and its established meaning: five invoice statuses, two invoice
+      types and four lawyer-share roles. The firm supplies or approves every
+      Arabic display label. Do not invent terminology and do not use temporary
+      English labels on the Arabic interface.
 - [ ] **4.8 Billing** — read-only list of invoices and payments
 
 ---
@@ -1478,6 +1505,11 @@ than assuming one rule for every workflow. Test with real volumes.
       of attorney are set to show and 55 are not. It is a report setting the firm controls per record —
       not a fact about the power of attorney — so the report must honour it
       and the record screen must let it be changed.
+- [ ] **6.7a Firm supplies the original unknown-layout report sample** —
+      prerequisite for 6.8 (**D27**). Obtain an original representative PDF
+      export or clear scan of `صالح-ضد مفصل حسب المحامي`. Do not approve a
+      substitute layout or begin replacement design without further owner
+      approval.
 - [ ] **6.8 The one report with an unknown layout** — do not start until the
       firm supplies the sample.
       Only `صالح-ضد مفصل حسب المحامي` remains unknown.
@@ -1504,6 +1536,13 @@ than assuming one rule for every workflow. Test with real volumes.
       d) Weekly integrity job: list clients whose logo file is missing.
       e) **Test a restore** onto a spare machine before go-live, and confirm a
          client logo appears in a printed report. Do not skip this.
+- [ ] **7.2a Lower-impact quarantine review checkpoint** — explicit
+      prerequisite before the final migration rehearsal and cutover (**D26**).
+      Review the remaining administrative-task, task-action, fee-link,
+      relationship-cell and ambiguous-attendee evidence. Apply only explicit
+      firm decisions, reconcile every resulting partition and retain unresolved
+      evidence intact. Do not silently convert an unanswered item into a target
+      row or exclusion.
 - [ ] **7.3 Full dry-run migration** (T-14d in `docs/MIGRATION.md`)
 - [ ] **7.4 Second dry run + sign-off by name** (T-7d)
       **Khaled Helmy signs off, by name** — not "the firm". One named person,

@@ -23,7 +23,7 @@ operational baseline below.
 is *migrated* (becomes records in the new system), *reference-only*
 (extracted, read during the migration, never becomes records), or
 *archive-only* (not extracted at all without `-IncludeArchiveTables`). The
-The migrated and reference-only classes are what Gate 1 expects; all three
+migrated and reference-only classes are what Gate 1 expects; all three
 classes together are the 35,638 measured by Gate 4.
 
 The older 35,343 / 30,553 / 4,790 figures elsewhere in dated planning history
@@ -42,18 +42,40 @@ why a constant here would fail every run from now on.
 The completed Gate 4 report also records the second staging identity:
 30,885 extracted parent rows + 342 complex values = 31,227 staging rows.
 
+## Source and evidence register
+
+This is the compact identity index. It deliberately links to the detailed
+reconciliation instead of duplicating its tables and report datasets.
+
+| Source or evidence | Durable identity | Tracking and availability | Reproducibility / consumer |
+|---|---|---|---|
+| Owner-approved current Access source | SHA-256 `1A1DA8D573CA92AD67EFBE638F2C043D02DF278E88563C31EEA8CE4A4F07B4BC`; 46,661,632 bytes; modified `2026-08-24T11:52:37.2957010Z` | Outside Git; locally available at the owner-approved migration-source location | Gate 4 works from a task-owned read-only copy and proves logical equivalence without rewriting the source |
+| Authoritative extraction | SHA-256 `40EBF988D4C952A676A4A00A403AE9576D87C18E35D4F7E3BAD0A62DF92D5979`; 46,661,632 bytes; modified `2026-08-23T07:31:52.6811852Z` | `_migration/`, deliberately ignored; locally available | All staging rows and migrated legacy associations retain this fingerprint; Gate 4 proves the later Access physical change did not change business content |
+| Extraction manifest | `_migration/meta/manifest.csv`; SHA-256 `5116C6622BB39594E49A73567EFFCA9767FC51B8FD38D9BCCAF087CC75F72A58` | Ignored; locally available | Gate 1, staging load and Gate 4; records the source plus 17 tables and three complex objects |
+| Column and relationship manifests | `columns.csv` SHA-256 `C41116DDB9F7A8CA9DFF0D860CB4BD552CE32B5E13A4EE876106B020B87240A0`; `relationships.csv` SHA-256 `1CB0E79DDCC7FF990EFC02E47367D2865307142F472776338B5C225B2F22E7E6` | `_migration/meta/`, ignored; locally available | Gate 4 independently proves all 194 extracted column definitions and 17 relationships |
+| Original firm review workbook | `_migration/review/review-2026-08-23.xlsx`; 71,386 bytes; SHA-256 `17FDDA9FCEC64528FE256789BFBFBAB72CAF3ABA5F0557D46FC9FD26CEF85BDF` | Ignored; locally available | One-time legacy identity bridge for the 744 approved answers; associations and answer digests are permanently checked |
+| Durable-contract review workbook | `_migration/review/review-2026-08-24.xlsx`; 96,555 bytes; SHA-256 `D37E60780517F00C4A96443204F721A3B97B7140D3F2FAAC40E3B5DF7172B595` | Ignored; locally available | Reproducible `review-workbook-v2` source/manifest identity and all-or-nothing import contract |
+| Reviewed link baseline | [`scripts/baselines/reviewed-links.json`](../scripts/baselines/reviewed-links.json); protected mapping digest `bebf8f20140a63d272f80d454d8363d68e1dc7bf12d82b43a45096281b059f51` | Tracked | Transform inputs and `npm run db:check`; exact destinations are verified, not merely counted |
+| Gate 4 reconciliation | [`2026-08-30-gate-4.md`](reconciliations/2026-08-30-gate-4.md); stable generated-report digest `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b` | Tracked and reproducible | Complete 27-table accounting, logical equivalence, six report-category datasets, source/runtime/logo evidence and the 52-file migration inventory |
+| Continuity audit | [`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md) | Tracked dated evidence | Governance and evidence snapshot at commit `553b3d1`; it does not set current task priority |
+
+Ignored source material and workbooks are never committed. Their hashes,
+fingerprints, protected outcomes and reproduction procedures are the durable
+repository evidence; raw contents remain in the approved local storage only.
+
 ## The trap that destroys data silently
 
 Access "complex columns" (Attachment, Multi-Value) are not stored in the
 visible table. The visible column holds an internal pointer.
 
 Exporting `العملاء` to CSV gives a `logo` column that looks fully populated —
-all 313 rows have a value. The values are `136`, `42`, `1`. **Only 54 clients
-have a logo**, and the real image data lives in a hidden table.
+all 318 rows in the current source have a pointer-like value. The values look
+like `136`, `42`, `1`. **Only 54 clients have a logo**, and the real image data
+lives in a hidden table; 264 current clients therefore use the text fallback.
 
 | Column | CSV export gives | Reality |
 |---|---|---|
-| `العملاء.logo` | 313 integers | 54 image files |
+| `العملاء.logo` | 318 pointer-like values | 54 image files |
 | `خطابات الأتعاب.Matter` | 331 integers | 288 case-number strings across 195 parents |
 | `Contacts.Attachments` | looks populated | **empty** |
 

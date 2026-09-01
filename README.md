@@ -4,9 +4,13 @@ A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
 **Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
-authentication and server-side role permissions are complete through Task 3.2.
-The owner-readable migration result is in
-`docs/reconciliations/2026-08-30-gate-4.md`; current progress is in `TASKS.md`.
+authentication and server-side role permissions are complete through Task 3.2,
+closed at commit `553b3d1`. **Task 3.3 has not started and is the exact return
+point.** The owner-readable migration result is in
+[`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
+current progress and work order are in [`TASKS.md`](TASKS.md). The dated
+continuity evidence is preserved separately in
+[`docs/reviews/2026-09-01-project-continuity-recovery-audit.md`](docs/reviews/2026-09-01-project-continuity-recovery-audit.md).
 
 ---
 
@@ -30,23 +34,27 @@ at **35,638 rows**: 30,847 migration-source rows, 38 reference-only rows and
 The application is **Arabic only**, right-to-left, with English data retained
 in the database for a possible future bilingual version.
 
-## Documentation map
+## Documentation map and authority
 
-| File | What it covers |
+| Authority | What it owns |
 |---|---|
-| `docs/PRD.md` | What the system must do. Start here. |
-| `docs/DATA-MODEL.md` | Every table and column |
-| `docs/MIGRATION.md` | Moving the old data across without losing any — the technical detail |
-| `docs/STAGE-2-PLAN.md` | **The same thing in plain language, for the firm to check before it runs** |
-| `docs/REPORTS.md` | The 45 reports that must be reproduced |
-| `docs/REPORT-LAYOUTS.md` | House style for printed reports, from real samples |
-| `docs/PERMISSIONS.md` | The four user roles |
-| `docs/BRAND.md` | Colours, fonts, right-to-left rules |
-| `docs/VISUAL-DIRECTION.md` | Agreed look and feel from the mockups. **Direction, not a specification** |
-| `docs/DATABASE.md` | Running the database, and what to do when it complains |
-| `docs/DECISIONS.md` | Decisions already made, and why. **Do not re-open these.** |
-| `docs/GLOSSARY.md` | Arabic legal terms explained |
-| `TASKS.md` | The build order. Work through it top to bottom. |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Approved product and data decisions. Do not silently override or reopen them. |
+| [`TASKS.md`](TASKS.md) | Work order, completion status and the exact current return point. |
+| [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | Approved Arabic field meanings and terminology. |
+| [`docs/MIGRATION.md`](docs/MIGRATION.md) and [Gate 4](docs/reconciliations/2026-08-30-gate-4.md) | Migration identities, source accounting, reconciliation and reproducible evidence. |
+| [`docs/PERMISSIONS.md`](docs/PERMISSIONS.md) | Authorization and lifecycle policy for the four roles. |
+| [`docs/PRD.md`](docs/PRD.md) | What the system must do. |
+| [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) | Logical schema and field semantics. |
+| [`docs/REPORTS.md`](docs/REPORTS.md) and [`docs/REPORT-LAYOUTS.md`](docs/REPORT-LAYOUTS.md) | The 45-report inventory and authoritative printed layouts. |
+| [`docs/BRAND.md`](docs/BRAND.md) and [`docs/VISUAL-DIRECTION.md`](docs/VISUAL-DIRECTION.md) | Arabic/RTL design rules and agreed visual direction. |
+| [`docs/DATABASE.md`](docs/DATABASE.md) | Safe database operation and verification. |
+| [`docs/STAGE-2-PLAN.md`](docs/STAGE-2-PLAN.md) | Owner-approved historical Stage 2 plan and completion context. |
+
+Code, migrations and tests prove what is implemented, but cannot silently
+override an owner decision. Dated files under `docs/reviews/`,
+`docs/reconciliations/` and `docs/task-reports/` are evidence snapshots, not
+current task or decision authorities. `HANDOFF.md` is a superseded historical
+checkpoint; use this README and `TASKS.md` to resume work.
 
 ## Technology
 
@@ -101,9 +109,10 @@ are in `docs/DATABASE.md`.
 npm run check
 ```
 
-That runs four things in one go: the TypeScript type check, ESLint, the
-formatting check, and `check:rtl`. All four must pass. `npm run format` fixes
-formatting automatically; `npm run lint:fix` fixes what ESLint can fix.
+That runs seven checks in one sequence: TypeScript, ESLint, formatting,
+Arabic/RTL rules, authorization inventory, Git-ignore/storage rules and file
+encoding. All seven must pass. `npm run format` fixes formatting automatically;
+`npm run lint:fix` fixes what ESLint can fix.
 
 `check:rtl` catches the two mistakes that are invisible until someone opens
 the screen: a physical CSS direction (`margin-left` instead of

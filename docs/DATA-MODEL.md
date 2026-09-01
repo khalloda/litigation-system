@@ -1,14 +1,23 @@
 # Data model
 
-17 tables in scope: 14 active, 3 deferred. Ten more are archived, not built.
+“17 tables in scope” means the Dashboard-traced **Access business-source
+scope** in D1, not the complete PostgreSQL physical schema. Gate 1 names that
+extraction scope as 15 migration-source tables plus two reference-only tables.
+PostgreSQL also contains target, lookup, junction, staging, quarantine, review,
+authentication and evidence structures; do not use 17 as a physical-schema
+count. Ten other Access user tables are archive-only and are not application
+features.
 
 Naming: physical columns are **snake_case ASCII**. Arabic is the display label,
 held in `src/strings.ts` — not the column name. The Access data has 122 Arabic
 column names and 139 containing spaces (`الموقف الحالي`, `Cash/probono`,
 `Inv-No`), which are legal in Access and hostile to everything else.
 
-Every table carries: `id`, `created_at`, `created_by`, `updated_at`,
-`updated_by`.
+The application tables already carry the structural audit columns: `id`,
+`created_at`, `created_by`, `updated_at`, `updated_by`. **That structure does
+not complete Task 3.3.** Task 3.3 remains necessary to populate and
+consistently maintain the acting-user identities in `created_by` and
+`updated_by`; it has not started.
 
 ---
 
@@ -173,7 +182,7 @@ row exactly one durable outcome; none is discarded.
 | Column | Notes |
 |---|---|
 | `case_number_ar` | **Multi-line. 18% hold several case numbers. Do not split — see D9.** |
-| `case_number_ar_normalised` | Generated, for search |
+| `case_number_ar_normalised` | Trigger-maintained shadow, for search |
 | `case_number_en` | Original `matterEN`, retained for a future bilingual version |
 | `subject` | 98% filled |
 | `client_id` | FK |
@@ -660,11 +669,13 @@ contradicted `عدد النسخ` in every direction. It is migrated as
 `show_on_poa_report`, named for what it does, with `جرد` recorded as the
 Access source. See "A column can be a report setting" in `docs/MIGRATION.md`.
 
-**Two names still need the firm to confirm them:** `الصفة` against
-`صفة الموكل بالتوكيل` (two capacity fields, and which is which is not
-obvious), and `حرف`. They are not in `docs/GLOSSARY.md`, so they are
-translated literally and the Arabic source column is recorded against each one
-— the mapping is unambiguous whatever the English label turns out to be.
+**The three meanings are approved — D29, 1 September 2026.** `الصفة` is the
+principal's legal capacity/status and remains the maintained source field.
+`صفة الموكل بالتوكيل` is an abandoned duplicate of `الصفة`; its source value
+is preserved but must not become a second competing business meaning. `حرف` is
+the letter/series component of the power-of-attorney identifier. The Arabic
+source column remains recorded against each field, so the migration evidence
+stays reversible.
 
 ### `fee_letters` — 331 rows, 10 Access columns
 
@@ -779,6 +790,6 @@ These are **expected**. Load them; do not try to fix them silently.
 | Fee-letter → matter multi-value entries (`خطابات الأتعاب.Matter`) | 288 across 195 parents |
 | Orphan task actions | 36 |
 | Task actions with no parent id | 39 |
-| Matters with no lawyer recorded | 834 |
+| Transformed matters with no target lawyer relationship | **981 of 1,689** (the earlier 834 of 1,730 was the planning snapshot) |
 | Hearings with no matter | 4 |
 | Powers of attorney with no client | 1 |

@@ -136,15 +136,17 @@ Every line must read **PASS**:
 | Extension pg_trgm           | 1.6      | PASS |
 | Extension btree_gin         | 1.3      | PASS |
 | Extension unaccent          | 1.1      | PASS |
-| Migrations applied          | 7 applied, 1 rolled back | PASS |
+| Migrations applied          | 52 applied, 1 rolled back | PASS |
 ```
 
 ### About that last line
 
-"**7 applied, 1 rolled back**" is normal and it says **PASS**. A rolled-back
-migration is one that was attempted, refused, and cleanly undone — it left
-nothing behind and a later migration did the job properly. It is a record of
-something that happened, not a problem. This database has one, from 21 August
+At the 1 September 2026 continuity checkpoint, "**52 applied, 1 rolled back**"
+is normal and says **PASS**. The applied count will grow as later migrations
+are added, so trust the command's PASS/FAIL result rather than treating 52 as a
+permanent target. A rolled-back migration is one that was attempted, refused,
+and cleanly undone — it left nothing behind and a later migration did the job
+properly. This database has one approved historical rollback, from 21 August
 2026.
 
 The line only says **FAIL** when a migration **started and never finished**,

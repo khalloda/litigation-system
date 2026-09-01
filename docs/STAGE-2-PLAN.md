@@ -11,6 +11,13 @@ say so — it is much cheaper to change now.
 > returned five corrections; all five are applied here. Approval is recorded in
 > the document itself so it is not asked for a second time.
 
+> **Continuity note, 1 September 2026:** this is the approved historical plan
+> plus its completion record, not the current task authority. Use
+> [`../TASKS.md`](../TASKS.md) for work order and
+> [`MIGRATION.md`](MIGRATION.md) with the
+> [Gate 4 report](reconciliations/2026-08-30-gate-4.md) for current migration
+> identities and reconciliation.
+
 ---
 
 ## The one thing to know first
@@ -55,9 +62,11 @@ is interpreted yet; this step only gets the data out.
 Two kinds of thing need special care and are handled here:
 
 - **The 54 client logos.** In Access these are not stored the way they look.
-  A normal export produces a column that appears full for all 313 clients and
-  actually contains nothing usable. They have to be read a different way, and
-  the count of 54 is checked.
+  At the 19 August planning snapshot, a normal export produced a column that
+  appeared full for all 313 clients and actually contained nothing usable. The
+  completed extraction has 318 clients but still exactly 54 real logos, leaving
+  264 clients on the text fallback. The logos have to be read a different way,
+  and the count of 54 is checked.
 - **The 288 matter references on fee letters.** The same trap, the same
   handling.
 
@@ -161,11 +170,12 @@ nothing changed in between.
 **The figures from 19 August are a shape check, not the pass mark.** Your file
 changes by roughly 100 records a day, so a rehearsal copy taken today will not
 match a count taken in August — and it should not. What Gate 1 actually
-requires is that all **15 tables** are there, that each one's count is close
-enough to its August figure to show we are reading the right table, and that
-what came out matches what went in, exactly. A number that has drifted is
-expected. A table that is missing, or a count that does not match itself, is a
-stop.
+requires is all **17 named Access tables in two groups**: 15 migration-source
+tables and two reference-only tables. Each table must match its own manifest
+and read-back evidence exactly. The empty reference table
+`LawyerShare4Invoices` is required and must remain exactly zero; it is not
+silently skipped. A number that has drifted is expected. A table that is
+missing, or a count that does not match itself, is a stop.
 
 The two counts that are a hard pass mark: **54 logos** and **288 matter
 references**. If either comes back as zero, the read has failed silently —
