@@ -96,10 +96,9 @@ Task 3.2 decisions until its later capability is implemented and tested:
 - Litigation Assistants, Lawyers and Paralegals receive no audit-history access
   through their role.
 
-Secure actor attribution exists, but no audit event table, viewer, export or
-account capability exists yet. Task 3.3B establishes events; the contextual
-drawer, global Administrator page and export are the later Task 4.9 UI
-checkpoint.
+Secure actor attribution and append-only audit events exist, but no viewer,
+audit export or account capability exists yet. The contextual drawer, global
+Administrator page and export remain the later Task 4.9 UI checkpoint.
 
 ### Attribution enforcement
 
@@ -155,9 +154,10 @@ pages and ordinary 401/403 responses for handlers instead.
    project-owned server action must be added to the route inventory and use the
    statically enforced server-boundary pattern before it can pass the
    permission suite. Each exported HTTP method is checked separately.
-6. **Attribution is implemented; events are still Task 3.3B.** Task 3.2
-   decides whether an operation is allowed and Task 3.3A records its actor on
-   application rows. Neither creates chronological events nor implements
-   D31's audit-export capability.
+6. **Attribution and append-only events are implemented.** Task 3.2 decides
+   whether an operation is allowed, Task 3.3A records its actor on application
+   rows, and Task 3.3B writes bounded/redacted chronological events through
+   database-enforced append paths. D31's audit-export capability and viewer
+   remain later Task 4.9 work.
 7. **User management is still Task 3.4.** Administrator permission exists in
    the policy, but no user-management screen or mutation is built yet.

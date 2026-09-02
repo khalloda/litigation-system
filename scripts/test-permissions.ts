@@ -138,6 +138,7 @@ function session(role: unknown, mustChangePassword = false): Session {
       role: role as AuthRole,
       mustChangePassword,
       sessionVersion: 0,
+      auditSessionId: '00000000-0000-4000-8000-000000000001',
     },
   };
 }
@@ -357,6 +358,7 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
         sessionVersion: disabledState.sessionVersion,
         rememberSession: false,
         authenticatedAt: Date.now(),
+        auditSessionId: '00000000-0000-4000-8000-000000000002',
       } satisfies AuthenticatedUser);
       assert.equal(await validateSessionClaims(disabledClaims, { database }), null);
 
@@ -382,6 +384,7 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
         sessionVersion: inactiveState.sessionVersion,
         rememberSession: false,
         authenticatedAt: Date.now(),
+        auditSessionId: '00000000-0000-4000-8000-000000000003',
       } satisfies AuthenticatedUser);
       assert.equal(await validateSessionClaims(inactiveClaims, { database }), null);
     } finally {
@@ -1094,7 +1097,7 @@ export async function updateClient() {
 
   const tasks = readFileSync('TASKS.md', 'utf8');
   assert.match(tasks, /- \[x\] \*\*3\.3A Secure actor attribution\*\*/u);
-  assert.match(tasks, /- \[ \] \*\*3\.3B Append-only event foundation\*\*/u);
+  assert.match(tasks, /- \[x\] \*\*3\.3B Append-only event foundation\*\*/u);
   assert.match(tasks, /- \[ \] \*\*3\.4 User management\*\*/u);
 
   await proveDatabaseSessionAuthorization();
@@ -1117,7 +1120,7 @@ export async function updateClient() {
     'PASS static fixtures reject outside-app actions, shadowed/wrong guards, unawaited/late/conditional guards, dynamic or mismatched literals, partial methods and proxy-only enforcement',
   );
   console.log('PASS only the exact reviewed generated Prisma subtree is excluded from discovery');
-  console.log('PASS Task 3.3B events and Task 3.4 user management remain outstanding');
+  console.log('PASS Task 3.3B event foundation leaves Task 3.4 user management outstanding');
 }
 
 main().catch((error: unknown) => {

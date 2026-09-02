@@ -6,10 +6,11 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 2 September 2026:** the final fail-closed Task 3.3A
-gateway correction is implemented locally and awaits independent review and push.
-**Do not start Task 3.3B.** After this follow-up is independently accepted and
-pushed, Task 3.3B — Append-only event foundation is the exact place to resume.
+**Current checkpoint — 2 September 2026:** Task 3.3B's append-only event
+foundation is implemented locally and awaits independent review and
+owner-authorized push. **Do not start Task 3.4.** Task 3.4 — User management is
+the exact next return point only after this Task 3.3B commit is accepted and
+pushed.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1376,7 +1377,9 @@ only ever seen good data is not known to work.
       auth interrupts remain disabled; stable redirects and ordinary 401/403
       responses are used instead.
 
-      Task 3.3B events and Task 3.4 user management remain outstanding.
+      At this Task 3.2 checkpoint, Task 3.3B events and Task 3.4 user
+      management were both outstanding; the current checkpoint is recorded at
+      the top of this file.
 
 - [x] **3.3A Secure actor attribution** — approved 1 September 2026 and given
       its final acceptance correction on 2 September 2026 (**D30**, **D33**,
@@ -1474,8 +1477,9 @@ only ever seen good data is not known to work.
       delegate a successful `SET ROLE` path before correction, reject every
       corrected boundary, reject non-superuser migration execution before
       Prisma, terminate an active disposable runtime session under the
-      approved superuser path, and remove all fixtures. This follow-up does not
-      start Task 3.3B and remains at the independent-review/push checkpoint.
+      approved superuser path, and remove all fixtures. This follow-up did not
+      start Task 3.3B and, at that dated checkpoint, awaited independent review
+      and push.
 
       The final fail-closed correction supersedes the follow-up's remaining
       completeness claims. Runtime-computed member acquisition now fails at
@@ -1491,9 +1495,8 @@ only ever seen good data is not known to work.
       static boundary and the execution order. Migrations 53–56, the database,
       role policy and protected evidence remain unchanged.
 
-- [ ] **3.3B Append-only event foundation** — approved but not started; this is
-      the exact return point only after the final Task 3.3A correction is
-      independently reviewed and pushed (**D30**, **D32**).
+- [x] **3.3B Append-only event foundation** — implemented 2 September 2026
+      (**D30**, **D32**).
       Record create, update, archive and restore;
       field-level before/after values; relationship changes; user and role
       lifecycle; password-change facts without passwords or hashes; successful
@@ -1515,6 +1518,22 @@ only ever seen good data is not known to work.
       purge, and no application role may update, delete or truncate them.
       Disabling an account or archiving a record never removes its history.
       Audit UI remains later work and is not part of 3.3A or 3.3B.
+
+      Migration `20260902180000_append_only_audit_events` adds the immutable
+      event store, exact 38-table trigger boundary, 262-field explicit
+      allowlist, relationship semantics, trusted request context, current
+      authentication events and atomic typed contracts for the later archive,
+      restore, account, role, report, export and download workflows. Existing
+      history receives one aggregate `audit_baseline_established` event, never
+      fabricated row-by-row activity. Permanent checks protect the event and
+      allowlist digests, append-only grants, bounded/redacted payloads, fixed
+      function inventory and indexed keyset query paths. Acceptance evidence:
+      [`docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md`](docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md).
+
+      No viewer, drawer, audit export, archive/restore business workflow or
+      user-management feature was added. Task 3.4 is approved but not started
+      and remains blocked until this local Task 3.3B commit is independently
+      accepted and pushed.
 
 - [ ] **3.4 User management** — Administrator only. Removing access means
       disable/deactivate while retaining the user and staff rows (D25); do not

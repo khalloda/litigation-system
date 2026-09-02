@@ -1,8 +1,10 @@
 'use server';
 
 import { auth, signOut } from '@/auth';
+import { createServerActionAuditMetadata } from '@/lib/audit-metadata';
 import { changeOwnPassword } from '@/lib/auth/service';
 import { t } from '@/strings';
+import { headers } from 'next/headers';
 
 export type PasswordChangeState = { error: string };
 
@@ -17,12 +19,17 @@ export async function changePasswordAction(
   const confirmation = String(formData.get('confirmPassword') ?? '');
   if (newPassword !== confirmation) return { error: t.auth.passwordMismatch };
 
-  const result = await changeOwnPassword({
-    accountId: Number(session.user.id),
-    sessionVersion: session.user.sessionVersion,
-    currentPassword,
-    newPassword,
-  });
+  const result = await changeOwnPassword(
+    {
+      accountId: Number(session.user.id),
+      sessionVersion: session.user.sessionVersion,
+      currentPassword,
+      newPassword,
+    },
+    {
+      auditMetadata: createServerActionAuditMetadata(await headers(), session.user.auditSessionId),
+    },
+  );
   if (result === 'policy') return { error: t.auth.passwordTooShort };
   if (result === 'reused') return { error: t.auth.passwordReused };
   if (result !== 'changed') return { error: t.auth.passwordChangeFailed };

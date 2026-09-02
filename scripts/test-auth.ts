@@ -5,6 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Client } from 'pg';
 import { createDatabaseClient } from '../src/lib/db';
+import { createRequestAuditMetadata } from '../src/lib/audit-metadata';
 import { PrismaClient } from '../src/generated/prisma/client';
 import {
   authenticateCredentials,
@@ -26,6 +27,7 @@ import {
 import { NORMAL_SESSION_SECONDS, REMEMBERED_SESSION_SECONDS } from '../src/lib/auth/constants';
 import { authDataFailures, authStructureFailures } from './lib/auth-structure';
 import { createAuthConfig } from '../src/auth';
+import { auditEventDataFailures, auditEventStructureFailures } from './lib/audit-event-structure';
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
@@ -125,6 +127,8 @@ async function main(): Promise<void> {
       );
       assert.deepEqual(await authStructureFailures(catalog), []);
       assert.deepEqual(await authDataFailures(catalog), []);
+      assert.deepEqual(await auditEventStructureFailures(catalog), []);
+      assert.deepEqual(await auditEventDataFailures(catalog), []);
 
       const priorSecret = process.env['AUTH_SECRET'];
       delete process.env['AUTH_SECRET'];
@@ -304,6 +308,20 @@ async function main(): Promise<void> {
       assert.equal(initialized.updatedBy, 3);
       assert.ok(initialized.passwordHash);
       assert.equal(isApprovedArgon2idHash(initialized.passwordHash), true);
+      const initializedEvent = (
+        await catalog.query<{
+          actor_key: string;
+          target_actor_id: number;
+          action: string;
+        }>(`
+          SELECT actor_key_snapshot actor_key,target_actor_id,action FROM audit_events
+           WHERE action='password_initialized' ORDER BY id DESC LIMIT 1`)
+      ).rows[0];
+      assert.deepEqual(initializedEvent, {
+        actor_key: 'system_administration',
+        target_actor_id: 1000 + initialized.id,
+        action: 'password_initialized',
+      });
       await assert.rejects(
         migrationDatabase.userAccount.update({
           where: { id: initialized.id },
@@ -322,11 +340,25 @@ async function main(): Promise<void> {
       );
 
       let dummyCalls = 0;
+      const priorTrustProxy = process.env['AUDIT_TRUST_PROXY'];
+      process.env['AUDIT_TRUST_PROXY'] = 'false';
+      const untrustedProxyMetadata = createRequestAuditMetadata(
+        new Request('http://localhost/login', {
+          headers: {
+            authorization: 'Bearer task33b_auth_token_sentinel',
+            cookie: 'session=task33b_cookie_sentinel',
+            'x-forwarded-for': '198.51.100.77',
+            'user-agent': 'Cookie task33b_user_agent_cookie_sentinel',
+          },
+        }),
+      );
+      assert.equal(untrustedProxyMetadata.ipAddress, null);
       assert.equal(
         await authenticateCredentials(
           { username: 'does-not-exist', password: temporaryPassword },
           {
             database,
+            auditMetadata: untrustedProxyMetadata,
             dummyVerify: async () => {
               dummyCalls += 1;
             },
@@ -335,6 +367,56 @@ async function main(): Promise<void> {
         null,
       );
       assert.equal(dummyCalls, 1, 'nonexistent username did not take the dummy verification path');
+      const unknownEvent = (
+        await catalog.query<{
+          actor_key: string;
+          target_actor_id: number | null;
+          attempted_username: string;
+          ip_address: string | null;
+          user_agent: string;
+          user_agent_truncated: boolean;
+          audit_session_id: string;
+        }>(`
+          SELECT actor_key_snapshot actor_key,target_actor_id,attempted_username,
+                 ip_address::text,user_agent,user_agent_truncated,audit_session_id::text
+            FROM audit_events WHERE action='login_failed'
+              AND attempted_username='does-not-exist' ORDER BY id DESC LIMIT 1`)
+      ).rows[0];
+      assert.deepEqual(unknownEvent, {
+        actor_key: 'system_authentication',
+        target_actor_id: null,
+        attempted_username: 'does-not-exist',
+        ip_address: null,
+        user_agent: '[redacted]',
+        user_agent_truncated: true,
+        audit_session_id: untrustedProxyMetadata.auditSessionId,
+      });
+      process.env['AUDIT_TRUST_PROXY'] = 'true';
+      const trustedProxyMetadata = createRequestAuditMetadata(
+        new Request('http://localhost/login', {
+          headers: { 'x-forwarded-for': '198.51.100.77', 'user-agent': 'Task33B fixture' },
+        }),
+      );
+      assert.equal(trustedProxyMetadata.ipAddress, '198.51.100.77');
+      assert.equal(
+        await authenticateCredentials(
+          { username: 'postgresql://task33b_connection_sentinel', password: temporaryPassword },
+          { database, auditMetadata: trustedProxyMetadata, dummyVerify: async () => undefined },
+        ),
+        null,
+      );
+      const redactedAttempt = (
+        await catalog.query<{ attempted_username: string; ip_address: string }>(`
+          SELECT attempted_username,ip_address::text FROM audit_events
+           WHERE action='login_failed' AND ip_address='198.51.100.77'::inet
+           ORDER BY id DESC LIMIT 1`)
+      ).rows[0];
+      assert.deepEqual(redactedAttempt, {
+        attempted_username: '[redacted]',
+        ip_address: '198.51.100.77/32',
+      });
+      if (priorTrustProxy === undefined) delete process.env['AUDIT_TRUST_PROXY'];
+      else process.env['AUDIT_TRUST_PROXY'] = priorTrustProxy;
       assert.equal(
         await authenticateCredentials(
           { username: 'MHussien', password: temporaryPassword },
@@ -395,7 +477,7 @@ async function main(): Promise<void> {
       });
       assert.equal(state.failedLoginAttempts, 0);
       assert.equal(state.lockedUntil, null);
-      assert.equal(state.updatedBy, 2);
+      assert.equal(state.updatedBy, 1000 + state.id);
 
       await migrationDatabase.userAccount.update({
         where: { id: state.id },
@@ -453,6 +535,8 @@ async function main(): Promise<void> {
         rememberedClaims.absoluteExpiresAt - rememberedClaims.authenticatedAt,
         REMEMBERED_SESSION_SECONDS * 1_000,
       );
+      assert.equal(normalClaims.auditSessionId, normalUser.auditSessionId);
+      assert.notEqual(normalClaims.auditSessionId, rememberedClaims.auditSessionId);
       assert.ok(
         await validateSessionClaims(normalClaims, {
           database,
@@ -516,6 +600,22 @@ async function main(): Promise<void> {
           .updatedBy,
         1000 + Number(normalUser.id),
       );
+      const ownPasswordEvent = (
+        await catalog.query<{
+          actor_id: number;
+          target_actor_id: number;
+          actor_role: string;
+          action: string;
+        }>(`
+          SELECT actor_id,target_actor_id,actor_role_snapshot actor_role,action
+            FROM audit_events WHERE action='password_changed' ORDER BY id DESC LIMIT 1`)
+      ).rows[0];
+      assert.deepEqual(ownPasswordEvent, {
+        actor_id: 1000 + Number(normalUser.id),
+        target_actor_id: 1000 + Number(normalUser.id),
+        actor_role: 'Administrator',
+        action: 'password_changed',
+      });
       assert.equal(await validateSessionClaims(normalClaims, { database, now: clock }), null);
       const replacementLogin = await authenticateCredentials(
         { username: 'KHelmy', password: replacementPassword },
@@ -642,6 +742,36 @@ async function main(): Promise<void> {
 
       assert.deepEqual(await authStructureFailures(catalog), []);
       assert.deepEqual(await authDataFailures(catalog), []);
+      assert.deepEqual(await auditEventStructureFailures(catalog), []);
+      assert.deepEqual(await auditEventDataFailures(catalog), []);
+      const eventSummary = await catalog.query<{ action: string; count: string }>(`
+        SELECT action,count(*)::text count FROM audit_events
+         GROUP BY action ORDER BY action`);
+      for (const action of [
+        'account_locked',
+        'login_failed',
+        'login_succeeded',
+        'password_changed',
+        'password_initialized',
+        'password_reset',
+      ]) {
+        assert.ok(eventSummary.rows.some((row) => row.action === action && Number(row.count) > 0));
+      }
+      const completeTrail = (
+        await catalog.query<{ trail: string }>(`
+          SELECT string_agg(to_jsonb(e)::text,E'\\n' ORDER BY id) trail FROM audit_events e`)
+      ).rows[0]!.trail;
+      for (const forbidden of [
+        temporaryPassword,
+        replacementPassword,
+        initialized.passwordHash,
+        'task33b_auth_token_sentinel',
+        'task33b_cookie_sentinel',
+        'task33b_connection_sentinel',
+      ]) {
+        assert.ok(forbidden);
+        assert.equal(completeTrail.includes(forbidden), false);
+      }
       console.log('PASS Task 3.1 authentication fixture and negative tests');
       console.log('PASS exact four identities; two native people; Ihab person 4; Samy person 5');
       console.log(
@@ -649,6 +779,12 @@ async function main(): Promise<void> {
       );
       console.log('PASS authentication application operations use litigation_runtime');
       console.log('PASS exact PostgreSQL constraints, indexes, triggers and functions');
+      console.log(
+        'PASS login success/failure/unknown/lockout and password initialize/reset/change events',
+      );
+      console.log(
+        'PASS proxy trust defaults off and no password/hash/token/cookie/URL sentinel leaks',
+      );
     } finally {
       await runtimeProbe.end();
       await catalog.end();

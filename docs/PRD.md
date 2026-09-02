@@ -70,7 +70,7 @@ About 10 people, four roles. Full matrix in `docs/PERMISSIONS.md`.
 
 The old Access system cannot say who changed a record or reconstruct a sequence
 of changes. The owner-approved replacement contract is therefore two layers,
-of which the first is implemented:
+both of which are implemented at the storage and server boundary:
 
 1. **Secure actor attribution (Task 3.3A — implemented):** the exact 37 current four-column
    application tables plus `person_name_alias`; stable human/system actors;
@@ -81,17 +81,19 @@ of which the first is implemented:
    distinguish the four accounts from migration, authentication and controlled
    administration activity. The exact four historical account-update actors
    remain unknown rather than fabricated.
-2. **Append-only events (Task 3.3B — approved, not started):** create, update, archive, restore,
-   field-level before/after values, relationships, user/role lifecycle,
-   password-change facts, login success/failure/lockout, report execution,
-   exports and downloads.
+2. **Append-only events (Task 3.3B — implemented):** 38-table row and
+   relationship triggers record create/update/add/remove activity; current
+   authentication records login success/failure/lockout and password-change
+   facts; typed atomic contracts reserve archive, restore, user/role lifecycle,
+   report, export and download events for the later business features.
 
 Ordinary record views, searches, list loading and navigation are not logged.
 Passwords, hashes, tokens, cookies, credentials, keys, connection strings, raw
 binaries and other secrets never enter the trail. Events include the effective
 actor and role where available, IP address, bounded user-agent/device data,
 request/correlation identity and a separate non-secret audit-session identity.
-Unprovable historical events are not fabricated.
+Unprovable historical events are not fabricated. Deployment records one
+aggregate `audit_baseline_established` event with protected counts and digests.
 
 Audit events are retained indefinitely with no automatic purge. Application
 roles cannot update, delete or truncate them, and disabling an account or

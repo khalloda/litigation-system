@@ -65,6 +65,11 @@ import {
   TASK33A_ATTRIBUTION_DIGEST,
   TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
 } from './lib/audit-structure';
+import {
+  auditEventDataFailures,
+  auditEventDigest,
+  auditEventStructureFailures,
+} from './lib/audit-event-structure';
 
 type Check = { name: string; expected: string; actual: string; ok: boolean };
 
@@ -2666,6 +2671,26 @@ async function main() {
       TASK33A_ATTRIBUTION_DIGEST,
       attributionDigest,
       attributionDigest === TASK33A_ATTRIBUTION_DIGEST,
+    );
+    const auditEventStructure = await auditEventStructureFailures(relationshipDb);
+    record(
+      'Task 3.3B append-only event structure',
+      'exact tables, allowlists, triggers, keyset indexes, fixed-path functions and runtime grants',
+      auditEventStructure.length === 0
+        ? 'all event catalog, trigger, redaction and privilege definitions exact'
+        : auditEventStructure.join('; '),
+      auditEventStructure.length === 0,
+    );
+    const auditEventData = await auditEventDataFailures(relationshipDb, {
+      historicalLive: true,
+    });
+    record(
+      'Task 3.3B truthful baseline checkpoint',
+      'one first event; exact historical aggregates and independent immutable digests',
+      auditEventData.length === 0
+        ? `baseline and current event digest ${await auditEventDigest(relationshipDb)}`
+        : auditEventData.join('; '),
+      auditEventData.length === 0,
     );
   });
 

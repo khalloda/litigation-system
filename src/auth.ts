@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { REMEMBERED_SESSION_SECONDS } from '@/lib/auth/constants';
 import { authenticateCredentials, type AuthenticatedUser } from '@/lib/auth/service';
 import { createSessionClaims, readSessionClaims, validateSessionClaims } from '@/lib/auth/session';
+import { createRequestAuditMetadata } from '@/lib/audit-metadata';
 import { t } from '@/strings';
 
 function requireAuthSecret(override?: string): string {
@@ -33,7 +34,10 @@ export function createAuthConfig(
           password: { label: t.auth.password, type: 'password' },
           rememberMe: { label: t.auth.rememberMe, type: 'checkbox' },
         },
-        authorize: (credentials) => authenticateCredentials(credentials),
+        authorize: (credentials, request) =>
+          authenticateCredentials(credentials, {
+            auditMetadata: createRequestAuditMetadata(request),
+          }),
       }),
     ],
     pages: { signIn: '/login' },
@@ -78,6 +82,7 @@ export function createAuthConfig(
             role: claims.role,
             mustChangePassword: claims.mustChangePassword,
             sessionVersion: claims.sessionVersion,
+            auditSessionId: claims.auditSessionId,
           },
         };
       },

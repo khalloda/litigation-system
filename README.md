@@ -4,11 +4,11 @@ A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
 **Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
-authentication and server-side role permissions are complete. Task 3.3A secure
-actor attribution is implemented locally; its final fail-closed gateway
-correction awaits independent review and owner-authorized push. **Do not start
-Task 3.3B.** After that checkpoint, Task 3.3B — Append-only event foundation is
-the exact return point. The owner-readable
+authentication, server-side role permissions, secure actor attribution and the
+Task 3.3B append-only event foundation are implemented. Task 3.3B is local and
+awaits independent review and owner-authorized push. **Do not start Task 3.4.**
+After that checkpoint, Task 3.4 — User management is the exact return point.
+The owner-readable
 migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
 current progress and work order are in [`TASKS.md`](TASKS.md). The dated
@@ -16,6 +16,8 @@ continuity evidence is preserved separately in
 [`docs/reviews/2026-09-01-project-continuity-recovery-audit.md`](docs/reviews/2026-09-01-project-continuity-recovery-audit.md),
 and the approved Task 3.3 contract and its readiness evidence are in
 [`docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md).
+Task 3.3B's implementation and verification record is
+[`docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md`](docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md).
 
 ---
 

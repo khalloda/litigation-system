@@ -13,12 +13,12 @@ held in `src/strings.ts` — not the column name. The Access data has 122 Arabic
 column names and 139 containing spaces (`الموقف الحالي`, `Cash/probono`,
 `Inv-No`), which are legal in Access and hostile to everything else.
 
-Thirty-seven current application tables carry `created_at`, `created_by`,
-`updated_at` and `updated_by`; `person_name_alias` carries only `created_at`.
-**That structure does not complete Task 3.3.** The owner-approved Task 3.3A
-boundary is those 37 tables plus the alias table. It must add the missing alias
-columns and securely populate and maintain acting-user identities. Task 3.3A is
-approved but has not started.
+Thirty-seven current application tables plus `person_name_alias` carry
+`created_at`, `created_by`, `updated_at` and `updated_by`. This exact 38-table
+Task 3.3A boundary has secure actor attribution and now also feeds Task 3.3B's
+append-only row/relationship event store. Staging, quarantine, immutable
+migration evidence, infrastructure and audit-foundation tables keep their
+purpose-specific provenance instead.
 
 ---
 
@@ -79,16 +79,16 @@ constraint. Email is not a login identifier.
 
 Passwords use Argon2id v19 with 19,456 KiB memory, two iterations, parallelism
 one and a 32-byte result. Auth.js JWTs contain only account/person ids,
-username, Arabic display name, role, password-change state, session version
-and absolute timestamps; no password hash or email is placed in the session.
+username, Arabic display name, role, password-change state, session version, an
+independently generated non-secret audit-session UUID and absolute timestamps;
+no password hash or email is placed in the session.
 
 ---
 
 ## Task 3.3 audit foundation
 
-Task 3.3A actor attribution is implemented; Task 3.3B append-only events remain
-approved but not started. No audit-event table exists. The original readiness
-inventory and owner resolution are preserved in the
+Task 3.3A actor attribution and Task 3.3B append-only events are implemented.
+The original readiness inventory and owner resolution are preserved in the
 [`Task 3.3 readiness audit`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md).
 
 ### Alias baseline versus current population
@@ -162,9 +162,21 @@ custom settings remain a documented trust boundary for a fully compromised
 runtime process; this is database-enforced anti-spoofing for external
 application inputs, not cryptographic proof against that process.
 
-### Task 3.3B — append-only events
+### Task 3.3B — append-only events (implemented)
 
-The owner-approved event foundation (**D30**, **D32**) must cover:
+Migration `20260902180000_append_only_audit_events` implements the
+owner-approved event foundation (**D30**, **D32**) with four purpose-specific
+tables:
+
+- `audit_events` is the immutable chronological record;
+- `audit_event_table_rules` classifies all 38 tables as records or
+  relationships and fixes each structured key to `id`;
+- `audit_event_fields` holds 262 explicit field rules, including one
+  change-fact-only redacted rule for `user_accounts.password_hash`; and
+- `audit_event_checkpoints` protects the one-event deployment boundary plus
+  the event and allowlist digests.
+
+The action taxonomy covers:
 
 - create, update, archive and restore;
 - field-level before/after values and relationship changes;
@@ -173,20 +185,38 @@ The owner-approved event foundation (**D30**, **D32**) must cover:
 - successful and failed login attempts, including lockouts;
 - report execution, exports and downloads.
 
-Each event carries the stable actor when one exists, the role effective at the
-time, IP address, bounded user-agent/device information, a request/correlation
-identifier and a separate non-secret audit-session identifier. Field-level
-redaction and per-table allowlists prevent passwords, hashes, tokens, cookies,
-credentials, keys, connection strings, raw binaries and other secrets from
-entering the event record. Ordinary views, searches, list loading and
-navigation generate no event. Unprovable historical events are never
-fabricated.
+Every event has a bigint identity, microsecond timestamp, stable actor and
+immutable identity/role snapshots, optional target snapshots, action/outcome,
+optional structured entity key, changed fields, bounded before/after JSON,
+request/correlation and independent audit-session UUIDs, optional PostgreSQL
+`inet` address, and bounded request/resource metadata. User agents are limited
+to 512 characters with a truncation flag; attempted usernames to 64;
+resource identifiers to 256; field strings to 64–2,048 according to the
+allowlist; before/after documents to 64 KiB each; and flat semantic parameters
+and metadata to 32 primitive keys, 256 characters per string and 16 KiB each.
 
-Events are retained indefinitely. No application role may update, delete or
-truncate them, and account disablement or record archival never removes
-history. `audit_event` is the current recommended working name; its exact key,
-JSON, index and function design remains subject to Task 3.3B implementation
-review. The approved UI is later work and does not alter this storage boundary.
+Per-field allowlists exclude legacy/raw payloads, normalisation shadows,
+binary and structured operational data. Secret-shaped strings and structured
+values are replaced by explicit redaction markers; overlong strings keep a
+bounded prefix plus truncation and original-character metadata. SQL `NULL`, an
+empty string and an absent field remain distinct. Ordinary views, searches,
+list loading and navigation generate no event.
+
+Events and their rules/checkpoint are retained indefinitely. Update, delete
+and truncate triggers reject changes; the runtime has no direct table or
+sequence access and can execute only the reviewed context setter and semantic
+gateway. Row triggers append through internal fixed-search-path functions.
+Entity, actor, time, action/outcome, request and correlation indexes support
+microsecond-preserving `(occurred_at, id)` keyset retrieval without an
+unrestricted JSON GIN index.
+
+Deployment writes exactly one truthful `audit_baseline_established` event as
+`system_migration`, containing aggregate counts and existing protected digests.
+It creates no historical row, login, password, report, export or download
+events. Current authentication paths emit real events; later archive, restore,
+account, role, report, export and download workflows must use the typed atomic
+contract when those features are built. The approved viewer/export UI and D31
+capability remain Task 4.9 work.
 
 ---
 

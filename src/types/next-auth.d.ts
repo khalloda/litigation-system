@@ -10,6 +10,7 @@ declare module 'next-auth' {
     sessionVersion: number;
     rememberSession?: boolean;
     authenticatedAt?: number;
+    auditSessionId: string;
   }
 
   interface Session {
@@ -21,6 +22,7 @@ declare module 'next-auth' {
       role: AuthRole;
       mustChangePassword: boolean;
       sessionVersion: number;
+      auditSessionId: string;
     } & DefaultSession['user'];
   }
 }
@@ -37,6 +39,7 @@ declare module '@auth/core/jwt' {
     authenticatedAt?: number;
     absoluteExpiresAt?: number;
     remembered?: boolean;
+    auditSessionId?: string;
   }
 }
 

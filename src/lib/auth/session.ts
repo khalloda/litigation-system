@@ -19,6 +19,7 @@ export type SessionClaims = {
   authenticatedAt: number;
   absoluteExpiresAt: number;
   remembered: boolean;
+  auditSessionId: string;
 };
 
 export function createSessionClaims(user: AuthenticatedUser): SessionClaims {
@@ -34,6 +35,7 @@ export function createSessionClaims(user: AuthenticatedUser): SessionClaims {
     authenticatedAt: user.authenticatedAt,
     absoluteExpiresAt: user.authenticatedAt + duration * 1_000,
     remembered: user.rememberSession,
+    auditSessionId: user.auditSessionId,
   };
 }
 
@@ -50,6 +52,7 @@ export function readSessionClaims(value: Record<string, unknown>): SessionClaims
     authenticatedAt: Number(value['authenticatedAt']),
     absoluteExpiresAt: Number(value['absoluteExpiresAt']),
     remembered: value['remembered'] === true,
+    auditSessionId: typeof value['auditSessionId'] === 'string' ? value['auditSessionId'] : '',
   };
   const expectedDuration = claims.remembered
     ? REMEMBERED_SESSION_SECONDS * 1_000
@@ -63,6 +66,9 @@ export function readSessionClaims(value: Record<string, unknown>): SessionClaims
     claims.sessionVersion < 0 ||
     !Number.isSafeInteger(claims.authenticatedAt) ||
     !Number.isSafeInteger(claims.absoluteExpiresAt) ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+      claims.auditSessionId,
+    ) ||
     claims.username.length === 0 ||
     claims.displayName.length === 0 ||
     typeof role !== 'string' ||

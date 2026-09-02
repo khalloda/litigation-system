@@ -28,6 +28,7 @@ const TASK33A_MIGRATION = '20260901120000_secure_audit_actor_attribution';
 const TASK33A_CORRECTION_MIGRATION = '20260901170000_close_task33a_acceptance_gaps';
 const TASK33A_FINAL_ENFORCEMENT_MIGRATION = '20260901190000_complete_task33a_enforcement_inventory';
 const TASK33A_FINAL_ACCEPTANCE_MIGRATION = '20260902120000_finalize_task33a_enforcement';
+const TASK33B_MIGRATION = '20260902180000_append_only_audit_events';
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
@@ -135,6 +136,37 @@ async function reverseTask33AForHistoricalFixture(db: Client, fixtureName: strin
   );
   await db.query('BEGIN');
   try {
+    if (
+      (
+        await db.query<{ present: boolean }>(
+          `SELECT to_regclass('public.audit_events') IS NOT NULL present`,
+        )
+      ).rows[0]?.present
+    ) {
+      for (const table of AUDITED_TABLES) {
+        assert.match(table, /^[a-z_]+$/u);
+        await db.query(`DROP TRIGGER audit_event_capture ON public.${table}`);
+      }
+      await db.query(`
+        DROP TABLE public.audit_event_checkpoints;
+        DROP TABLE public.audit_events;
+        DROP TABLE public.audit_event_fields;
+        DROP TABLE public.audit_event_table_rules;
+        DROP FUNCTION public.audit_capture_row_event();
+        DROP FUNCTION public.audit_append_semantic_event(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb);
+        DROP FUNCTION public.audit_write_event(text,text,text,text,jsonb,text[],jsonb,jsonb,integer,text,text,jsonb,text,jsonb);
+        DROP FUNCTION public.audit_ensure_event_context();
+        DROP FUNCTION public.audit_set_event_context(uuid,uuid,uuid,inet,text,text);
+        DROP FUNCTION public.audit_safe_flat_object(jsonb);
+        DROP FUNCTION public.audit_bound_json_value(jsonb,integer,text);
+        DROP FUNCTION public.audit_contains_secret_pattern(text);
+        DROP FUNCTION public.refuse_audit_event_change()`);
+      const removedTask33b = await db.query(
+        `DELETE FROM _prisma_migrations WHERE migration_name=$1 RETURNING migration_name`,
+        [TASK33B_MIGRATION],
+      );
+      assert.equal(removedTask33b.rowCount, 1);
+    }
     await db.query(`
       ALTER DEFAULT PRIVILEGES
         GRANT EXECUTE ON FUNCTIONS TO PUBLIC`);
@@ -279,13 +311,14 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
           TASK33A_CORRECTION_MIGRATION,
           TASK33A_FINAL_ENFORCEMENT_MIGRATION,
           TASK33A_FINAL_ACCEPTANCE_MIGRATION,
+          TASK33B_MIGRATION,
         ],
       );
     } finally {
       await upgraded.end();
     }
     console.log(
-      'PASS historical-live clone: migrations 53/54/55/56 replay, protected digest and guard definitions unchanged',
+      'PASS historical-live clone: migrations 53/54/55/56/57 replay, protected digest and guard definitions unchanged',
     );
   } finally {
     if (created) {
@@ -332,6 +365,12 @@ async function grantProbeRuntimeBoundary(
   await owner.query(
     `GRANT EXECUTE ON FUNCTION public.audit_set_authentication_context() TO ${identifier(roleName)}`,
   );
+  await owner.query(
+    `GRANT EXECUTE ON FUNCTION public.audit_set_event_context(uuid,uuid,uuid,inet,text,text) TO ${identifier(roleName)}`,
+  );
+  await owner.query(
+    `GRANT EXECUTE ON FUNCTION public.audit_append_semantic_event(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb) TO ${identifier(roleName)}`,
+  );
 }
 
 async function proveRoleBoundaryAdversarial(
@@ -377,7 +416,17 @@ async function proveRoleBoundaryAdversarial(
         import.meta.url,
       ),
       'utf8',
-    ).replaceAll('litigation_runtime', probeRole);
+    )
+      .replaceAll('litigation_runtime', probeRole)
+      // Migration 56 is immutable historical evidence. Its disposable
+      // re-enforcement copy must nevertheless recognize the two later,
+      // reviewed Task 3.3B runtime SECURITY DEFINER gateways.
+      .replace(
+        "'public.audit_set_human_context(integer)'::regprocedure",
+        "'public.audit_set_human_context(integer)'::regprocedure,\n" +
+          "        'public.audit_set_event_context(uuid,uuid,uuid,inet,text,text)'::regprocedure,\n" +
+          "        'public.audit_append_semantic_event(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb)'::regprocedure",
+      );
 
     const activeRuntimeUrl = new URL(fixtureOwnerUrl);
     activeRuntimeUrl.username = probeRole;
@@ -846,6 +895,7 @@ async function proveRoleBoundaryAdversarial(
     );
   } finally {
     if (created) {
+      await owner.query('ROLLBACK').catch(() => undefined);
       await owner.query(`DROP TABLE IF EXISTS public.${identifier(ownedTable)}`);
       await owner.query(`DROP OWNED BY ${identifier(probeRole)}`);
       await grantProbeRuntimeBoundary(owner, fixtureName, 'litigation_runtime');
@@ -1097,6 +1147,7 @@ async function main(): Promise<void> {
           TASK33A_CORRECTION_MIGRATION,
           TASK33A_FINAL_ENFORCEMENT_MIGRATION,
           TASK33A_FINAL_ACCEPTANCE_MIGRATION,
+          TASK33B_MIGRATION,
         ],
       );
       assert.deepEqual(await auditStructureFailures(owner), []);
@@ -1391,7 +1442,7 @@ async function main(): Promise<void> {
       assert.deepEqual(await auditDataFailures(owner), []);
       assert.equal(AUDITED_TABLES.length, 38);
       console.log(
-        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54/55/56, exact 38 tables and immutable 7-actor registry',
+        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54/55/56/57, exact 38 tables and immutable 7-actor registry',
       );
       console.log(
         'PASS missing/invalid context, spoof overwrite and immutable creation attribution',

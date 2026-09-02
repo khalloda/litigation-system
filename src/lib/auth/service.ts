@@ -1,9 +1,15 @@
 import { Prisma, type PrismaClient } from '@/generated/prisma/client';
 import {
+  recordAccountLocked,
+  recordAdministrationPasswordChange,
+  recordLoginFailed,
+  recordLoginSucceeded,
+  recordOwnPasswordChanged,
   setAdministrationAuditContext,
   setAuthenticationAuditContext,
   setHumanAuditContext,
 } from '@/lib/audit';
+import { createMaintenanceAuditMetadata, type AuditRequestMetadata } from '@/lib/audit-metadata';
 import { db } from '@/lib/db';
 import {
   APPROVED_INITIAL_USERNAMES,
@@ -47,6 +53,7 @@ export type AuthenticatedUser = {
   sessionVersion: number;
   rememberSession: boolean;
   authenticatedAt: number;
+  auditSessionId: string;
 };
 
 type AuthenticationDependencies = {
@@ -54,6 +61,7 @@ type AuthenticationDependencies = {
   now?: Date;
   verify?: typeof verifyPassword;
   dummyVerify?: typeof performDummyPasswordVerification;
+  auditMetadata?: AuditRequestMetadata;
 };
 
 const approvedNormalizedUsernames = new Set(
@@ -126,22 +134,45 @@ export async function authenticateCredentials(
   const now = dependencies.now ?? new Date();
   const verify = dependencies.verify ?? verifyPassword;
   const dummyVerify = dependencies.dummyVerify ?? performDummyPasswordVerification;
+  const auditMetadata = dependencies.auditMetadata ?? createMaintenanceAuditMetadata();
   const username = typeof credentials?.username === 'string' ? credentials.username : '';
   const password = typeof credentials?.password === 'string' ? credentials.password : '';
   const usernameNormalized = normalizeUsername(username);
 
   if (usernameNormalized.length < 3 || usernameNormalized.length > 64) {
     await dummyVerify(password);
-    return null;
+    return withSerializableRetry(() =>
+      database.$transaction(
+        async (tx) => {
+          await setAuthenticationAuditContext(tx, auditMetadata);
+          await recordLoginFailed(tx, {
+            attemptedUsername: username,
+            outcome: 'failed',
+            reasonCode: 'username_invalid',
+          });
+          return null;
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          maxWait: 5_000,
+          timeout: 30_000,
+        },
+      ),
+    );
   }
 
   return withSerializableRetry(() =>
     database.$transaction(
       async (tx) => {
-        await setAuthenticationAuditContext(tx);
+        await setAuthenticationAuditContext(tx, auditMetadata);
         const account = await lockedAccount(tx, usernameNormalized);
         if (!account) {
           await dummyVerify(password);
+          await recordLoginFailed(tx, {
+            attemptedUsername: username,
+            outcome: 'failed',
+            reasonCode: 'username_unknown',
+          });
           return null;
         }
 
@@ -151,13 +182,44 @@ export async function authenticateCredentials(
           ? await verify(account.passwordHash!, password)
           : await dummyVerify(password).then(() => false);
 
-        if (account.lockedUntil && account.lockedUntil.getTime() > now.getTime()) return null;
+        if (account.lockedUntil && account.lockedUntil.getTime() > now.getTime()) {
+          await recordLoginFailed(tx, {
+            attemptedUsername: username,
+            targetAccountId: account.id,
+            outcome: 'blocked',
+            reasonCode: 'account_locked',
+          });
+          return null;
+        }
 
         const priorFailures = account.lockedUntil ? 0 : account.failedLoginAttempts;
-        if (!isAuthRole(account.roleCode)) return null;
+        if (!isAuthRole(account.roleCode)) {
+          await recordLoginFailed(tx, {
+            attemptedUsername: username,
+            targetAccountId: account.id,
+            outcome: 'failed',
+            reasonCode: 'role_invalid',
+          });
+          return null;
+        }
         const eligible =
           account.isEnabled && account.personActive && account.personCanLogin && hashUsable;
-        if (!eligible) return null;
+        if (!eligible) {
+          const reasonCode = !account.isEnabled
+            ? 'account_disabled'
+            : !account.personActive
+              ? 'person_inactive'
+              : !account.personCanLogin
+                ? 'login_not_allowed'
+                : 'password_uninitialized';
+          await recordLoginFailed(tx, {
+            attemptedUsername: username,
+            targetAccountId: account.id,
+            outcome: 'failed',
+            reasonCode,
+          });
+          return null;
+        }
 
         if (!passwordCorrect) {
           const failures = Math.min(priorFailures + 1, LOCKOUT_FAILURES);
@@ -172,13 +234,22 @@ export async function authenticateCredentials(
               updatedAt: now,
             },
           });
+          await recordLoginFailed(tx, {
+            attemptedUsername: username,
+            targetAccountId: account.id,
+            outcome: 'failed',
+            reasonCode: 'password_incorrect',
+          });
+          if (failures === LOCKOUT_FAILURES) await recordAccountLocked(tx, account.id);
           return null;
         }
 
+        await setHumanAuditContext(tx, account.id, auditMetadata);
         await tx.userAccount.update({
           where: { id: account.id },
           data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: now, updatedAt: now },
         });
+        await recordLoginSucceeded(tx, account.id);
         return {
           id: String(account.id),
           personId: account.personId,
@@ -189,6 +260,7 @@ export async function authenticateCredentials(
           sessionVersion: account.sessionVersion,
           rememberSession: rememberRequested(credentials?.rememberMe),
           authenticatedAt: now.getTime(),
+          auditSessionId: auditMetadata.auditSessionId,
         };
       },
       {
@@ -210,7 +282,10 @@ export async function changeOwnPassword(
     currentPassword: string;
     newPassword: string;
   },
-  dependencies: Pick<AuthenticationDependencies, 'database' | 'now' | 'verify'> = {},
+  dependencies: Pick<
+    AuthenticationDependencies,
+    'database' | 'now' | 'verify' | 'auditMetadata'
+  > = {},
 ): Promise<PasswordChangeResult> {
   if (!passwordMeetsPolicy(input.newPassword)) return 'policy';
   if (input.currentPassword === input.newPassword) return 'reused';
@@ -218,6 +293,7 @@ export async function changeOwnPassword(
   const database = dependencies.database ?? db;
   const now = dependencies.now ?? new Date();
   const verify = dependencies.verify ?? verifyPassword;
+  const auditMetadata = dependencies.auditMetadata ?? createMaintenanceAuditMetadata();
 
   return withSerializableRetry(() =>
     database.$transaction(
@@ -254,7 +330,7 @@ export async function changeOwnPassword(
         if (!(await verify(account.passwordHash, input.currentPassword))) return 'invalid-current';
 
         const passwordHash = await hashPassword(input.newPassword);
-        await setHumanAuditContext(tx, account.id);
+        await setHumanAuditContext(tx, account.id, auditMetadata);
         await tx.userAccount.update({
           where: { id: account.id },
           data: {
@@ -267,6 +343,7 @@ export async function changeOwnPassword(
             updatedAt: now,
           },
         });
+        await recordOwnPasswordChanged(tx, account.id);
         return 'changed';
       },
       {
@@ -281,7 +358,7 @@ export async function changeOwnPassword(
 export async function setApprovedAccountPassword(
   username: string,
   password: string,
-  dependencies: Pick<AuthenticationDependencies, 'database' | 'now'> = {},
+  dependencies: Pick<AuthenticationDependencies, 'database' | 'now' | 'auditMetadata'> = {},
 ): Promise<{ username: string; personName: string }> {
   const usernameNormalized = normalizeUsername(username);
   if (!approvedNormalizedUsernames.has(usernameNormalized))
@@ -290,6 +367,7 @@ export async function setApprovedAccountPassword(
 
   const database = dependencies.database ?? db;
   const now = dependencies.now ?? new Date();
+  const auditMetadata = dependencies.auditMetadata ?? createMaintenanceAuditMetadata();
   const passwordHash = await hashPassword(password);
 
   return withSerializableRetry(() =>
@@ -297,7 +375,8 @@ export async function setApprovedAccountPassword(
       async (tx) => {
         const account = await lockedAccount(tx, usernameNormalized);
         if (!account) throw new Error('approved-account-not-found');
-        await setAdministrationAuditContext(tx);
+        const semanticAction = account.passwordHash ? 'password_reset' : 'password_initialized';
+        await setAdministrationAuditContext(tx, auditMetadata);
         await tx.userAccount.update({
           where: { id: account.id },
           data: {
@@ -310,6 +389,7 @@ export async function setApprovedAccountPassword(
             updatedAt: now,
           },
         });
+        await recordAdministrationPasswordChange(tx, account.id, semanticAction);
         return { username: account.username, personName: account.displayName };
       },
       {

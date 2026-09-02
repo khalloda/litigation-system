@@ -351,6 +351,49 @@ gateway, role path, setting, schema, owned object, ACL, column/sequence grant,
 executable security-definer or parameter capability therefore requires an
 explicit reviewed inventory change.
 
+## Append-only audit events — Task 3.3B contract
+
+Migration `20260902180000_append_only_audit_events` is migration 57 and adds
+the event layer required by **D30** and **D32**. Its migration file and applied
+Prisma checksum are
+`81f42f19bcae73b38805391d0ad80b87d92e4270adbd9578db46016907e04ab0`.
+It creates `audit_events`, the exact 38-table rule inventory, a 262-field
+allowlist and an immutable baseline checkpoint. The existing 56 migration
+files and their checksums are unchanged.
+
+The runtime has no direct privilege on any of the four event-foundation tables
+or the event identity sequence. It may execute only
+`audit_set_event_context(...)` and `audit_append_semantic_event(...)`; the row
+capture, validation and write routines remain internal fixed-search-path
+`SECURITY DEFINER` functions. Append-only triggers reject update, delete and
+truncate against events, rules, fields and the checkpoint. This prevents the
+restricted application principal from rewriting history; the approved
+superuser migration/administration principal remains an explicit operational
+trust boundary.
+
+All 38 application tables have an `AFTER INSERT OR UPDATE` event trigger. The
+eight junction tables additionally capture delete as
+`relationship_removed`; ordinary record tables retain D25's no-physical-delete
+contract and the runtime still has no `DELETE`. Audited writes and their events
+share one database transaction. The request context is transaction-local, so a
+failed event rolls back the business write and pooled connections cannot carry
+metadata into another transaction.
+
+The database enforces bounded/redacted field and semantic payloads. It stores
+IP addresses as `inet`, user agents as at most 512 characters with a truncation
+flag, attempted usernames as at most 64, resource identifiers as at most 256,
+and flat semantic parameter/metadata objects as at most 32 primitive keys and
+16 KiB. Explicit allowlists exclude binary, JSON, legacy/raw and normalisation
+payloads; `password_hash` records only that a change occurred. Entity, actor,
+time, action/outcome, request and correlation indexes support later keyset
+history queries without a broad JSON GIN index.
+
+The deployment baseline is exactly one `audit_baseline_established` event by
+`system_migration`; it records aggregate protected evidence rather than
+inventing 45,463 historical row events. The complete contract and verification
+are in
+[`task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md`](task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md).
+
 ### Local setup and upgrade
 
 For an existing development `.env` that still has the old privileged
@@ -517,7 +560,15 @@ Argon2id v19 using 19,456 KiB memory, two iterations, parallelism one and a
 Five consecutive failures lock an account for 15 minutes. A normal login has
 an absolute eight-hour lifetime; selecting “Remember me” gives an absolute
 seven-day lifetime. Neither duration slides forward. Password changes and
-account disabling invalidate existing sessions.
+account disabling invalidate existing sessions. Each successful authentication
+creates a separate non-secret audit-session UUID; it is not derived from or a
+replacement for the Auth.js token.
+
+`AUDIT_TRUST_PROXY` defaults to `false`. Auth.js/Next.js does not expose the
+directly observed peer address on these request paths, so the audit IP remains
+null by default. Set this option to `true` only where a trusted reverse proxy
+replaces `X-Forwarded-For`; the first syntactically valid address is then
+recorded. Never enable it for an untrusted direct deployment.
 
 ---
 

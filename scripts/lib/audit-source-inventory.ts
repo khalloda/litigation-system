@@ -25,11 +25,21 @@ const CONTEXT_HELPERS = new Set([
   'setAuthenticationAuditContext',
   'setAdministrationAuditContext',
   'setMigrationAuditContext',
+  'recordLoginSucceeded',
+  'recordLoginFailed',
+  'recordAccountLocked',
+  'recordOwnPasswordChanged',
+  'recordAdministrationPasswordChange',
 ]);
 const AUTH_SERVICE_HELPERS = new Set([
   'setHumanAuditContext',
   'setAuthenticationAuditContext',
   'setAdministrationAuditContext',
+  'recordLoginSucceeded',
+  'recordLoginFailed',
+  'recordAccountLocked',
+  'recordOwnPasswordChanged',
+  'recordAdministrationPasswordChange',
 ]);
 const SYSTEM_ACTOR_KEYS = new Set([
   'system_migration',
@@ -39,7 +49,12 @@ const SYSTEM_ACTOR_KEYS = new Set([
 const CONTROLLED_LOCAL_ADMINISTRATION = 'setApprovedAccountPassword';
 const MIGRATION_DATABASE_ENV = 'MIGRATION_DATABASE_URL';
 const ALTERNATE_DATABASE_FACTORY = 'createDatabaseClient';
-const REVIEWED_RUNTIME_ENVIRONMENT_KEYS = new Set(['AUTH_SECRET', 'DATABASE_URL', 'NODE_ENV']);
+const REVIEWED_RUNTIME_ENVIRONMENT_KEYS = new Set([
+  'AUDIT_TRUST_PROXY',
+  'AUTH_SECRET',
+  'DATABASE_URL',
+  'NODE_ENV',
+]);
 const RAW_SQL_METHODS = new Set([
   '$queryRaw',
   '$queryRawTyped',
@@ -50,7 +65,7 @@ const RAW_SQL_METHODS = new Set([
 const DIRECT_POSTGRESQL_MODULES = new Set(['pg', 'postgres', 'postgresql']);
 const EXECUTION_ESCAPE_NAMES = new Set(['eval', 'Function', 'require', 'createRequire']);
 const LOW_LEVEL_PATTERN =
-  /audit_set_(?:human|authentication|administration|migration)_context|audit_current_actor_id|litigation\.audit_actor_id|set_config|\bset\s+(?:local|session)\b/iu;
+  /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
   [
@@ -72,6 +87,16 @@ const REVIEWED_RAW_SQL_CALLS = [
     AUDIT_GATEWAY,
     'setMigrationAuditContext',
     '18657522c9fd2fb759897528c531435fceed56f406836c4687b36e5760e7dfe8',
+  ],
+  [
+    AUDIT_GATEWAY,
+    'setEventContext',
+    '8cb6c0be44bafb1346ff0ac8bfa3419b087c8626a6b7b8c7898502a69e82b5fd',
+  ],
+  [
+    AUDIT_GATEWAY,
+    'appendSemanticEvent',
+    '5e9eef1358607ed07f383e4e4b5d082ce4c03927b243a2fca5d16590b36e1d95',
   ],
   [
     AUDIT_AUTH_SERVICE,
@@ -1535,7 +1560,15 @@ export function auditRuntimeSourceFailures(
         if (helper) {
           if (isGateway) {
             const declaration = ts.isFunctionDeclaration(node.parent) && node.parent.name === node;
-            if (!declaration)
+            const reviewedComposition =
+              helper === 'setHumanAuditContext' &&
+              ts.isCallExpression(node.parent) &&
+              node.parent.expression === node &&
+              containingFunctionName(node.parent, sourceFile) === 'runAuditedSemanticOperation' &&
+              node.parent.arguments
+                .map((argument) => argument.getText(sourceFile).replace(/\s+/gu, ''))
+                .join(',') === 'transaction,actorAccountId,metadata';
+            if (!declaration && !reviewedComposition)
               add(node, `${helper} gateway binding is exposed beyond its declaration`);
           } else {
             const importBinding = ts.isImportSpecifier(node.parent) && node.parent.name === node;
@@ -1734,26 +1767,73 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
-      ['setAuthenticationAuditContext', 'authenticateCredentials', 'tx'],
-      ['setHumanAuditContext', 'changeOwnPassword', 'tx,account.id'],
-      ['setAdministrationAuditContext', 'setApprovedAccountPassword', 'tx'],
+      ['setAuthenticationAuditContext', 'authenticateCredentials', 'tx,auditMetadata', 2],
+      ['setHumanAuditContext', 'authenticateCredentials', 'tx,account.id,auditMetadata', 1],
+      [
+        'recordLoginFailed',
+        'authenticateCredentials',
+        "tx,{attemptedUsername:username,outcome:'failed',reasonCode:'username_invalid',}",
+        1,
+      ],
+      [
+        'recordLoginFailed',
+        'authenticateCredentials',
+        "tx,{attemptedUsername:username,outcome:'failed',reasonCode:'username_unknown',}",
+        1,
+      ],
+      [
+        'recordLoginFailed',
+        'authenticateCredentials',
+        "tx,{attemptedUsername:username,targetAccountId:account.id,outcome:'blocked',reasonCode:'account_locked',}",
+        1,
+      ],
+      [
+        'recordLoginFailed',
+        'authenticateCredentials',
+        "tx,{attemptedUsername:username,targetAccountId:account.id,outcome:'failed',reasonCode:'role_invalid',}",
+        1,
+      ],
+      [
+        'recordLoginFailed',
+        'authenticateCredentials',
+        "tx,{attemptedUsername:username,targetAccountId:account.id,outcome:'failed',reasonCode,}",
+        1,
+      ],
+      [
+        'recordLoginFailed',
+        'authenticateCredentials',
+        "tx,{attemptedUsername:username,targetAccountId:account.id,outcome:'failed',reasonCode:'password_incorrect',}",
+        1,
+      ],
+      ['recordAccountLocked', 'authenticateCredentials', 'tx,account.id', 1],
+      ['recordLoginSucceeded', 'authenticateCredentials', 'tx,account.id', 1],
+      ['setHumanAuditContext', 'changeOwnPassword', 'tx,account.id,auditMetadata', 1],
+      ['recordOwnPasswordChanged', 'changeOwnPassword', 'tx,account.id', 1],
+      ['setAdministrationAuditContext', 'setApprovedAccountPassword', 'tx,auditMetadata', 1],
+      [
+        'recordAdministrationPasswordChange',
+        'setApprovedAccountPassword',
+        'tx,account.id,semanticAction',
+        1,
+      ],
     ] as const;
-    for (const [helper, functionName, argumentsText] of expectedCalls) {
+    for (const [helper, functionName, argumentsText, expectedCount] of expectedCalls) {
       const count = authCalls.filter(
         (call) =>
           call.helper === helper &&
           call.functionName === functionName &&
           call.argumentsText === argumentsText,
       ).length;
-      if (count !== 1) {
+      if (count !== expectedCount) {
         failures.add(
-          `${AUDIT_AUTH_SERVICE} expected exactly one ${helper}(${argumentsText}) in ${functionName}; found ${count}`,
+          `${AUDIT_AUTH_SERVICE} expected exactly ${expectedCount} ${helper}(${argumentsText}) in ${functionName}; found ${count}`,
         );
       }
     }
-    if (authCalls.length !== expectedCalls.length) {
+    const expectedCallCount = expectedCalls.reduce((sum, call) => sum + call[3], 0);
+    if (authCalls.length !== expectedCallCount) {
       failures.add(
-        `${AUDIT_AUTH_SERVICE} has ${authCalls.length}/${expectedCalls.length} reviewed audit context calls`,
+        `${AUDIT_AUTH_SERVICE} has ${authCalls.length}/${expectedCallCount} reviewed audit context/event calls`,
       );
     }
     for (const [file, functionName] of REVIEWED_RAW_SQL_CALLS) {

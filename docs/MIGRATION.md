@@ -60,6 +60,7 @@ reconciliation instead of duplicating its tables and report datasets.
 | Continuity audit | [`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md) | Tracked dated evidence | Governance and evidence snapshot at commit `553b3d1`; it does not set current task priority |
 | Task 3.3 readiness and approved contract | [`2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md) | Tracked dated evidence | Complete audit-column/event readiness matrix, owner decisions D30–D34, risk dispositions and exact Task 3.3A return point |
 | Task 3.3A acceptance | [`2026-09-01-task-3-3a-secure-actor-attribution.md`](task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md) | Tracked dated evidence | Migrations 53–56, D35, seven-actor taxonomy, 38-table attribution, 5,209-row protection, isolated database principals, verification and exact Task 3.3B return point |
+| Task 3.3B acceptance | [`2026-09-02-task-3-3b-append-only-event-foundation.md`](task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md) | Tracked dated evidence | Migration 57, immutable event store, 38-table/262-field contracts, truthful one-event baseline, authentication integration, adversarial proof and exact Task 3.4 return point |
 
 Ignored source material and workbooks are never committed. Their hashes,
 fingerprints, protected outcomes and reproduction procedures are the durable
@@ -2567,9 +2568,10 @@ owner-approved **D30**/**D33** contract. Its complete acceptance evidence is in
 The backfill records `system_migration` for all 45,463 existing creations and
 45,459 last updates. The exact four `user_accounts.updated_by` values remain
 null historical unknowns. `person_name_alias.updated_at` equals its existing
-`created_at`; every other historical timestamp is unchanged. Task 3.3B remains
-approved but not started, so no historic login, password, report, export,
-download or row-change event was fabricated.
+`created_at`; every other historical timestamp is unchanged. At the Task 3.3A
+checkpoint, no historic login, password, report, export, download or row-change
+event was fabricated; Task 3.3B later preserved that truthfulness with one
+aggregate deployment event.
 
 ### Protected 5,209-row safety gate
 
@@ -2781,6 +2783,55 @@ approved callback work runs after the connected principal is verified and that
 the same callback never runs for a connected non-superuser. Migrations 53–56,
 schema, rows, roles, authorization decisions and protected evidence are not
 changed by this source/tooling correction.
+
+## Task 3.3B append-only event migration gate — implemented 2 September 2026
+
+Migration `20260902180000_append_only_audit_events` is migration 57. Its file
+SHA-256 and applied Prisma checksum are
+`81f42f19bcae73b38805391d0ad80b87d92e4270adbd9578db46016907e04ab0`.
+Migrations 1–56 remain byte-identical at their recorded checksums.
+
+The migration is one transaction with fail-closed preconditions for D35's
+direct-superuser identity, the seven actors, the four truthful null update
+actors and the historical-live or clean-replay protected profile. It creates
+four immutable event-foundation tables, 38 row/relationship rules, 262 explicit
+field rules, fixed-search-path functions and triggers, exact runtime grants,
+one aggregate baseline event, and a checkpoint over that event and the
+allowlist. Any failure removes the whole foundation; a permanent disposable
+fixture proves this by creating a deliberate conflicting table before replay.
+
+Historical-live deployment has exactly one event:
+`audit_baseline_established`, outcome `succeeded`, actor
+`system_migration`. Its checkpoint event digest is
+`63bb6a28a88b29af10b60a82f14b7763d416df553aa01549e5e51942294e6173`
+and its field-allowlist digest is
+`9e271a6e23bc03e55223db3c0a9be1b0e34867da0af8c6f0acab5614506de11b`.
+The event records 45,463 creation attributions, 45,459 update attributions,
+four null update actors and the existing protected/reconciliation digests as
+bounded aggregate evidence. It does not claim a historical human action or
+create row-by-row history.
+
+Permanent `db:check` verification now has **91** invariants. It recomputes the
+event and allowlist digests; exact tables, columns, constraints, indexes,
+functions, triggers and grants; the one-event baseline; and unchanged protected
+state. Historical-live migration provenance is 51 required migrations + six
+later migrations + one approved rollback. The Stage 2 database profile remains
+`86eb32a96d97167d6bc699d3576f42c4a6916a53c0a37d557035abd79bd8447f`;
+the 57-file repository migration digest is
+`edc4da62f26b08e0f344471a133700541d9d96d65ca35e6ecfa2a40b30b94b33`.
+Two independent non-writing reconciliations, each including its own
+idempotency replay, are byte-identical at current report digest
+`ef4be031694a8d8c9458925d8f3c337559d77c5805e379a03069d5d1b7666477`.
+The pre-migration Task 3.3A checkpoint digest remains recorded separately as
+`c314cd64142cc2cef36b4dc8a35715db7660fed9d9aba2d06b383e86d2fa54ec`;
+only the repository migration inventory changed, while all six business report
+datasets and frozen evidence remain exact.
+
+The complete implementation, redaction limits, authentication behavior,
+adversarial cases, benchmark, protected values and trust boundaries are in
+[`2026-09-02-task-3-3b-append-only-event-foundation.md`](task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md).
+Task 3.4 is the exact next return point only after independent acceptance and
+owner-authorized push of the local Task 3.3B commit.
 
 ## Cutover
 

@@ -647,8 +647,106 @@ model AuditActor {
   attendanceUpdated               Attendance[]               @relation("AttendanceUpdatedBy")
   personNameAliasesCreated        PersonNameAlias[]          @relation("PersonNameAliasCreatedBy")
   personNameAliasesUpdated        PersonNameAlias[]          @relation("PersonNameAliasUpdatedBy")
+  auditEvents                     AuditEvent[]               @relation("AuditEventActor")
+  targetedAuditEvents             AuditEvent[]               @relation("AuditEventTargetActor")
 
   @@map("audit_actors")
+}
+
+/// Immutable chronological evidence introduced by Task 3.3B. Application
+/// principals cannot read or write this table directly; row triggers and the
+/// reviewed semantic gateway are its only runtime append paths.
+model AuditEvent {
+  id                         BigInt                 @id @default(autoincrement())
+  eventVersion               Int                    @default(1) @map("event_version") @db.SmallInt
+  occurredAt                 DateTime               @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actorId                    Int                    @map("actor_id")
+  actor                      AuditActor             @relation("AuditEventActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "audit_events_actor_fkey")
+  actorKeySnapshot           String                 @map("actor_key_snapshot")
+  actorUsernameSnapshot      String?                @map("actor_username_snapshot")
+  actorDisplayNameSnapshot   String                 @map("actor_display_name_snapshot")
+  actorRoleSnapshot          String?                @map("actor_role_snapshot")
+  targetActorId              Int?                   @map("target_actor_id")
+  targetActor                AuditActor?            @relation("AuditEventTargetActor", fields: [targetActorId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "audit_events_target_actor_fkey")
+  targetActorKeySnapshot     String?                @map("target_actor_key_snapshot")
+  targetUsernameSnapshot     String?                @map("target_username_snapshot")
+  targetDisplayNameSnapshot  String?                @map("target_display_name_snapshot")
+  targetRoleSnapshot         String?                @map("target_role_snapshot")
+  action                     String
+  outcome                    String
+  entitySchema               String?                @map("entity_schema")
+  entityTable                String?                @map("entity_table")
+  entityKey                  Json?                  @map("entity_key") @db.JsonB
+  changedFields              String[]               @default([]) @map("changed_fields")
+  beforeValues               Json                   @default("{}") @map("before_values") @db.JsonB
+  afterValues                Json                   @default("{}") @map("after_values") @db.JsonB
+  requestId                  String                 @map("request_id") @db.Uuid
+  correlationId              String                 @map("correlation_id") @db.Uuid
+  auditSessionId             String                 @map("audit_session_id") @db.Uuid
+  ipAddress                  String?                @map("ip_address") @db.Inet
+  userAgent                  String?                @map("user_agent") @db.VarChar(512)
+  userAgentTruncated         Boolean                @default(false) @map("user_agent_truncated")
+  deviceClass                String                 @map("device_class") @db.VarChar(32)
+  attemptedUsername          String?                @map("attempted_username") @db.VarChar(64)
+  attemptedUsernameTruncated Boolean                @default(false) @map("attempted_username_truncated")
+  resourceIdentifier         String?                @map("resource_identifier") @db.VarChar(256)
+  reasonCode                 String?                @map("reason_code") @db.VarChar(64)
+  parameters                 Json                   @default("{}") @db.JsonB
+  eventMetadata              Json                   @default("{}") @map("event_metadata") @db.JsonB
+  firstForCheckpoints        AuditEventCheckpoint[] @relation("AuditCheckpointFirstEvent")
+  throughForCheckpoints      AuditEventCheckpoint[] @relation("AuditCheckpointThroughEvent")
+
+  @@index([entitySchema, entityTable, entityKey, occurredAt(sort: Desc), id(sort: Desc)], map: "audit_events_entity_newest_idx")
+  @@index([actorId, occurredAt(sort: Desc), id(sort: Desc)], map: "audit_events_actor_newest_idx")
+  @@index([occurredAt(sort: Desc), id(sort: Desc)], map: "audit_events_time_newest_idx")
+  @@index([action, outcome, occurredAt(sort: Desc), id(sort: Desc)], map: "audit_events_action_outcome_newest_idx")
+  @@index([requestId, occurredAt, id], map: "audit_events_request_idx")
+  @@index([correlationId, occurredAt, id], map: "audit_events_correlation_idx")
+  @@map("audit_events")
+}
+
+/// Explicit per-table classification for row versus relationship events.
+model AuditEventTableRule {
+  entitySchema String            @map("entity_schema")
+  entityTable  String            @map("entity_table")
+  entityKind   String            @map("entity_kind")
+  keyFields    String[]          @map("key_fields")
+  fields       AuditEventField[]
+
+  @@id([entitySchema, entityTable], map: "audit_event_table_rules_pkey")
+  @@map("audit_event_table_rules")
+}
+
+/// Explicit field allowlist. `redacted` fields record only that the field
+/// changed; their value is never admitted to an event.
+model AuditEventField {
+  entitySchema      String              @map("entity_schema")
+  entityTable       String              @map("entity_table")
+  fieldName         String              @map("field_name")
+  maxTextCharacters Int                 @default(1024) @map("max_text_characters") @db.SmallInt
+  captureMode       String              @default("value") @map("capture_mode")
+  tableRule         AuditEventTableRule @relation(fields: [entitySchema, entityTable], references: [entitySchema, entityTable], onDelete: Restrict, onUpdate: Restrict, map: "audit_event_fields_table_fkey")
+
+  @@id([entitySchema, entityTable, fieldName], map: "audit_event_fields_pkey")
+  @@map("audit_event_fields")
+}
+
+/// Immutable deployment boundary for the first real event. Later permanent
+/// checks recompute both digests without changing this checkpoint.
+model AuditEventCheckpoint {
+  checkpointKey   String     @id @map("checkpoint_key")
+  migrationName   String     @map("migration_name")
+  baselineProfile String     @map("baseline_profile")
+  eventCount      BigInt     @map("event_count")
+  firstEventId    BigInt     @map("first_event_id")
+  firstEvent      AuditEvent @relation("AuditCheckpointFirstEvent", fields: [firstEventId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "audit_event_checkpoints_event_first_fkey")
+  throughEventId  BigInt     @map("through_event_id")
+  throughEvent    AuditEvent @relation("AuditCheckpointThroughEvent", fields: [throughEventId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "audit_event_checkpoints_event_through_fkey")
+  eventDigest     String     @map("event_digest") @db.Char(64)
+  allowlistDigest String     @map("allowlist_digest") @db.Char(64)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("audit_event_checkpoints")
 }
 
 /// A username/password login linked one-to-one to a person. Auth.js uses the

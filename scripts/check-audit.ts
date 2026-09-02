@@ -425,7 +425,7 @@ function selfTest(): void {
   assert.deepEqual(
     auditRuntimeSourceFailures(legitimateRuntime),
     [],
-    'the complete legitimate runtime source and six reviewed SQL calls failed',
+    'the complete legitimate runtime source and eight reviewed SQL calls failed',
   );
   const alteredReviewedSql = legitimateRuntime.map((runtimeSource) =>
     runtimeSource.path === 'src/lib/audit.ts'
@@ -1238,7 +1238,7 @@ export const run = () => withApprovedMigrationClient(async (database) => databas
     rmSync(d35Root, { force: true, recursive: true });
   }
   console.log(
-    `check:audit self-test — ${negative.length + 13} semantic/fingerprint/D35 bypass fixtures rejected; ${positive.length} focused legitimate fixtures plus the complete runtime, six fingerprinted SQL calls and the approved migration gateway accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
+    `check:audit self-test — ${negative.length + 13} semantic/fingerprint/D35 bypass fixtures rejected; ${positive.length} focused legitimate fixtures plus the complete runtime, eight fingerprinted SQL calls and the approved migration gateway accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
   );
 }
 
@@ -1273,6 +1273,8 @@ function main(): void {
   assert.equal((audit.match(/audit_set_authentication_context/gu) ?? []).length, 1);
   assert.equal((audit.match(/audit_set_administration_context/gu) ?? []).length, 1);
   assert.equal((audit.match(/audit_set_migration_context/gu) ?? []).length, 1);
+  assert.equal((audit.match(/audit_set_event_context/gu) ?? []).length, 1);
+  assert.equal((audit.match(/audit_append_semantic_event/gu) ?? []).length, 1);
   assert.doesNotMatch(audit, /actorKey|actorId:\s*number|systemActor/u);
   assert.doesNotMatch(audit, /set_config|litigation\.audit_actor_id|\bSET\s+(?:LOCAL|SESSION)\b/iu);
 
