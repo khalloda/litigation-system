@@ -4,9 +4,11 @@ A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
 **Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
-authentication, server-side role permissions and Task 3.3A secure actor
-attribution are complete. **Task 3.3B — Append-only event foundation is
-approved but not started, and is the exact return point.** The owner-readable
+authentication and server-side role permissions are complete. Task 3.3A secure
+actor attribution is implemented locally; its final review-gap follow-up awaits
+independent review and owner-authorized push. **Do not start Task 3.3B.** After
+that checkpoint, Task 3.3B — Append-only event foundation is the exact return
+point. The owner-readable
 migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
 current progress and work order are in [`TASKS.md`](TASKS.md). The dated

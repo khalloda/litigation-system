@@ -6,9 +6,9 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 2 September 2026:** the final Task 3.3A acceptance
-correction is implemented locally and awaits independent review and push.
-**Do not start Task 3.3B.** After that correction is independently accepted and
+**Current checkpoint — 2 September 2026:** the final Task 3.3A review-gap
+follow-up is implemented locally and awaits independent review and push.
+**Do not start Task 3.3B.** After this follow-up is independently accepted and
 pushed, Task 3.3B — Append-only event foundation is the exact place to resume.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
@@ -1457,17 +1457,25 @@ only ever seen good data is not known to work.
       combination while retaining the fail-closed runtime shutdown/restore
       sequence.
 
-      The runtime source gate now rejects raw SQL as a propagated callable
-      capability through computed keys, assignments, destructuring, returns,
-      parameters, wrappers, imports/exports, call/apply/bind, reflection,
-      optional access and erased types. Only the six complete fingerprinted
-      `$queryRaw(Prisma.sql tagged-template)` calls remain approved. Permanent
+      A final review-gap follow-up closes three source paths that the migration
+      56 checkpoint still accepted: structural-type laundering of a computed
+      callable, a mutable object-property selector and a constructed migration
+      environment key passed to the alternate database-client factory. Runtime
+      receiver proof now follows values rather than TypeScript annotations;
+      environment reads are direct and limited to the three reviewed runtime
+      keys; every supplied client URL is checked for `litigation_runtime`; and
+      runtime source outside `src/lib/db.ts` cannot expose the alternate-client
+      factory. Only the six complete fingerprinted
+      `$queryRaw(Prisma.sql tagged-template)` calls remain approved. The D35
+      script gate now inventories all eight executable JavaScript/TypeScript
+      extensions and classifies top-level tests identically for Windows and
+      POSIX paths. Permanent
       fixtures prove an `ADMIN TRUE, INHERIT FALSE, SET FALSE` member can
       delegate a successful `SET ROLE` path before correction, reject every
       corrected boundary, reject non-superuser migration execution before
       Prisma, terminate an active disposable runtime session under the
-      approved superuser path, and remove all fixtures. This correction does
-      not start Task 3.3B and remains at the independent-review/push checkpoint.
+      approved superuser path, and remove all fixtures. This follow-up does not
+      start Task 3.3B and remains at the independent-review/push checkpoint.
 
 - [ ] **3.3B Append-only event foundation** — approved but not started; this is
       the exact return point only after the final Task 3.3A correction is

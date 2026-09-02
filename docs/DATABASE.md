@@ -302,7 +302,11 @@ claims of a complete source and database-principal inventory are superseded by
 migration `20260901190000_complete_task33a_enforcement_inventory`. That
 migration's own “complete” claim is superseded by the 2 September correction:
 migration `20260902120000_finalize_task33a_enforcement`, the capability-flow
-source checker and D35.
+source checker and D35. A later review found that the source checker at that
+checkpoint still trusted a renamed structural type and an object property's
+initial value, and did not close computed runtime environment access or every
+alternate-client URL. The final review-gap follow-up corrects those source and
+factory controls without changing migrations 53–56 or D35's database boundary.
 
 Migration 55 commits runtime `NOLOGIN` and removal of its direct target-database
 `CONNECT` grant, then terminates only that principal's sessions in the target

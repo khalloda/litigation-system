@@ -2,8 +2,10 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { Client } from 'pg';
 import { createDatabaseClient } from '../src/lib/db';
+import { PrismaClient } from '../src/generated/prisma/client';
 import {
   authenticateCredentials,
   changeOwnPassword,
@@ -45,6 +47,18 @@ function migrate(databaseUrl: string): void {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 }
 
+function fixtureRuntimeUrl(fixtureOwnerUrl: URL): URL {
+  const configured = process.env['DATABASE_URL'];
+  assert.ok(configured, 'DATABASE_URL is required');
+  const runtime = new URL(configured);
+  assert.equal(runtime.username, 'litigation_runtime');
+  runtime.protocol = fixtureOwnerUrl.protocol;
+  runtime.hostname = fixtureOwnerUrl.hostname;
+  runtime.port = fixtureOwnerUrl.port;
+  runtime.pathname = fixtureOwnerUrl.pathname;
+  return runtime;
+}
+
 async function proveStructureMutation(
   db: Client,
   label: string,
@@ -75,6 +89,7 @@ async function main(): Promise<void> {
   const fixtureName = `litigation_auth_fixture_${process.pid}_${Date.now()}`;
   const fixtureUrl = new URL(parsed);
   fixtureUrl.pathname = `/${fixtureName}`;
+  const runtimeUrl = fixtureRuntimeUrl(fixtureUrl);
   const adminUrl = new URL(parsed);
   adminUrl.pathname = '/postgres';
 
@@ -91,10 +106,23 @@ async function main(): Promise<void> {
     created = true;
     migrate(fixtureUrl.toString());
 
-    const database = createDatabaseClient(fixtureUrl.toString());
+    const database = createDatabaseClient(runtimeUrl.toString());
+    const migrationDatabase = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: fixtureUrl.toString() }),
+    });
     const catalog = new Client({ connectionString: fixtureUrl.toString() });
+    const runtimeProbe = new Client({ connectionString: runtimeUrl.toString() });
     await catalog.connect();
+    await runtimeProbe.connect();
     try {
+      assert.deepEqual(
+        (
+          await runtimeProbe.query<{ current_user: string; session_user: string }>(
+            'SELECT current_user,session_user',
+          )
+        ).rows[0],
+        { current_user: 'litigation_runtime', session_user: 'litigation_runtime' },
+      );
       assert.deepEqual(await authStructureFailures(catalog), []);
       assert.deepEqual(await authDataFailures(catalog), []);
 
@@ -197,19 +225,24 @@ async function main(): Promise<void> {
       assert.equal(await database.person.count({ where: { isApplicationNative: false } }), 135);
       assert.equal(await database.person.count({ where: { isApplicationNative: true } }), 2);
       assert.equal(await database.personNameAlias.count(), 350);
-      const auditActors = await database.auditActor.findMany({
-        select: { actorKey: true, actorKind: true, userAccountId: true },
-        orderBy: { id: 'asc' },
-      });
+      const auditActors = (
+        await catalog.query<{
+          actor_key: string;
+          actor_kind: string;
+          user_account_id: number | null;
+        }>('SELECT actor_key,actor_kind,user_account_id FROM audit_actors ORDER BY id')
+      ).rows;
       assert.equal(auditActors.length, 7);
       assert.deepEqual(
-        auditActors.filter((actor) => actor.actorKind === 'system').map((actor) => actor.actorKey),
+        auditActors
+          .filter((actor) => actor.actor_kind === 'system')
+          .map((actor) => actor.actor_key),
         ['system_migration', 'system_authentication', 'system_administration'],
       );
       assert.deepEqual(
         auditActors
-          .filter((actor) => actor.actorKind === 'human')
-          .map((actor) => [actor.actorKey, actor.userAccountId]),
+          .filter((actor) => actor.actor_kind === 'human')
+          .map((actor) => [actor.actor_key, actor.user_account_id]),
         [
           ['user_account:1', 1],
           ['user_account:2', 2],
@@ -258,7 +291,9 @@ async function main(): Promise<void> {
 
       const temporaryPassword = `A ${randomBytes(18).toString('base64url')}`;
       const replacementPassword = `B ${randomBytes(18).toString('base64url')}`;
-      await setApprovedAccountPassword('kHeLmY', temporaryPassword, { database });
+      await setApprovedAccountPassword('kHeLmY', temporaryPassword, {
+        database: migrationDatabase,
+      });
       const initialized = await database.userAccount.findUniqueOrThrow({
         where: { usernameNormalized: 'khelmy' },
       });
@@ -270,7 +305,7 @@ async function main(): Promise<void> {
       assert.ok(initialized.passwordHash);
       assert.equal(isApprovedArgon2idHash(initialized.passwordHash), true);
       await assert.rejects(
-        database.userAccount.update({
+        migrationDatabase.userAccount.update({
           where: { id: initialized.id },
           data: {
             passwordHash: 'malformed',
@@ -280,7 +315,9 @@ async function main(): Promise<void> {
         }),
       );
       await assert.rejects(
-        setApprovedAccountPassword('not-approved', temporaryPassword, { database }),
+        setApprovedAccountPassword('not-approved', temporaryPassword, {
+          database: migrationDatabase,
+        }),
         /approved-account-required/u,
       );
 
@@ -360,7 +397,7 @@ async function main(): Promise<void> {
       assert.equal(state.lockedUntil, null);
       assert.equal(state.updatedBy, 2);
 
-      await database.userAccount.update({
+      await migrationDatabase.userAccount.update({
         where: { id: state.id },
         data: { failedLoginAttempts: 3, updatedAt: clock },
       });
@@ -376,7 +413,7 @@ async function main(): Promise<void> {
         0,
       );
 
-      await database.userAccount.update({
+      await migrationDatabase.userAccount.update({
         where: { id: state.id },
         data: { failedLoginAttempts: 0, lockedUntil: null, updatedAt: clock },
       });
@@ -392,7 +429,10 @@ async function main(): Promise<void> {
       assert.equal(state.failedLoginAttempts, 5);
       assert.ok(state.lockedUntil);
 
-      await setApprovedAccountPassword('KHelmy', temporaryPassword, { database, now: clock });
+      await setApprovedAccountPassword('KHelmy', temporaryPassword, {
+        database: migrationDatabase,
+        now: clock,
+      });
       const normalUser = await authenticateCredentials(
         { username: 'KHelmy', password: temporaryPassword },
         { database, now: clock },
@@ -488,7 +528,7 @@ async function main(): Promise<void> {
       const beforeDisable = await database.userAccount.findUniqueOrThrow({
         where: { id: Number(replacementLogin.id) },
       });
-      await database.userAccount.update({
+      await migrationDatabase.userAccount.update({
         where: { id: beforeDisable.id },
         data: {
           isEnabled: false,
@@ -511,11 +551,11 @@ async function main(): Promise<void> {
           .canLogin,
         false,
       );
-      await database.userAccount.update({
+      await migrationDatabase.userAccount.update({
         where: { id: beforeDisable.id },
         data: { isEnabled: true, updatedAt: clock },
       });
-      await database.person.update({
+      await migrationDatabase.person.update({
         where: { id: beforeDisable.personId },
         data: { isActive: false, updatedAt: clock },
       });
@@ -526,7 +566,7 @@ async function main(): Promise<void> {
         ),
         null,
       );
-      await database.person.update({
+      await migrationDatabase.person.update({
         where: { id: beforeDisable.personId },
         data: { isActive: true, updatedAt: clock },
       });
@@ -607,9 +647,12 @@ async function main(): Promise<void> {
       console.log(
         'PASS Argon2id, lockout concurrency, forced change, absolute sessions, invalidation',
       );
+      console.log('PASS authentication application operations use litigation_runtime');
       console.log('PASS exact PostgreSQL constraints, indexes, triggers and functions');
     } finally {
+      await runtimeProbe.end();
       await catalog.end();
+      await migrationDatabase.$disconnect();
       await database.$disconnect();
     }
   } finally {

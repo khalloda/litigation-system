@@ -20,9 +20,9 @@
   export its review patch and stop without pushing or starting Task 3.3B.
 - Exact next return point: Task 3.3B — Append-only event foundation, approved
   but not started.
-- Current status, 2 September 2026: the D35 final acceptance correction is
-  implemented locally and awaits independent review and push. Task 3.3B remains
-  blocked and not started.
+- Current status, 2 September 2026: the final Task 3.3A review-gap follow-up is
+  implemented locally and awaits independent review and owner-authorized push.
+  Task 3.3B remains blocked and not started.
 
 ## Run configuration and cost rationale
 
@@ -456,14 +456,14 @@ followed by `.call`, and `Reflect.get` followed by `Reflect.apply`. The same
 baseline also proved that unrelated inventory failures did not mask either
 result.
 
-The source checker now performs fail-closed TypeScript Program, TypeChecker and
-symbol-alias analysis. It propagates Prisma raw-SQL capabilities across
-assignments, destructuring, parameters, returns, wrapper factories, imports and
-exports; unwraps type-erasing syntax; and rejects uncertain callable selection
-on Prisma-derived or unknown receivers. It covers direct invocation, optional
-access, `.call`, `.apply`, `.bind`, reflection and property descriptors. Method
-strings remain defence in depth rather than the primary proof. Runtime source
-cannot import migration database helpers or read `MIGRATION_DATABASE_URL`.
+At that checkpoint the source checker used a TypeScript Program, TypeChecker and
+symbol-alias analysis. It closed the two reproduced paths and many related
+assignment, parameter, return, wrapper, import/export, invocation and reflection
+forms. A later independent review nevertheless proved that a renamed structural
+callable type and a mutable object-property selector could still make an
+unproved receiver look harmless. The final review-gap follow-up below supersedes
+the overbroad completeness claim; migration 56 and its database-principal proof
+remain unchanged.
 
 The only raw SQL accepted in runtime source remains the exact six reviewed
 direct `$queryRaw(Prisma.sql\`…\`)` calls. Each approved call is bound to a
@@ -475,7 +475,8 @@ type-erasing casts, actor/GUC selection, direct PostgreSQL clients and dynamic
 or CommonJS loading. Positive fixtures preserve normal Prisma CRUD, harmless
 typed non-Prisma reflection, all eight supported JavaScript/TypeScript
 extensions, the exact generated-Prisma exclusion, the full runtime closure and
-all six reviewed calls. The two original reproductions no longer succeed.
+all six reviewed calls. The two original reproductions no longer succeeded at
+that checkpoint; the later bypasses are recorded and closed below.
 
 ### Migration 56 and principal preflight
 
@@ -561,3 +562,72 @@ this report enters the focused commit.
 The exact return point remains **independent review and owner-authorized push of
 the final Task 3.3A correction**. Only after that may work return to **Task 3.3B
 — Append-only event foundation**, which remains approved but not started.
+
+## Final review-gap follow-up — 2 September 2026
+
+The independent review of `217ff7de842d6c752483fbaed52ce2046067ec80`
+identified three remaining source-boundary bypass classes and one portable
+tooling defect. Before editing, disposable in-memory sources proved that the
+type-laundered callable map, mutated property selector and computed migration
+credential passed with zero failures while all 25 legitimate runtime sources
+also passed. A platform probe separately proved that the D35 test-file
+exclusion accepted the native Windows form but rejected the equivalent POSIX
+form, and that its inventory ignored `.js`, `.jsx`, `.tsx`, `.mjs` and `.cjs`.
+No environment value was read or displayed and no connection was made through
+the computed credential.
+
+The corrected source analysis now proves runtime value origin rather than
+trusting TypeScript annotations or structural types. It carries provenance
+through casts, aliases, assignments, parameters, returns and cross-module
+flows; treats mutable or escaped local values conservatively; rejects an
+unproved computed callable when it can flow to invocation; and prohibits raw
+SQL method-name literals outside the exact six fingerprinted reviewed calls.
+It preserves ordinary Prisma CRUD and harmless reflection only where a local
+runtime value is genuinely proved harmless. Runtime environment access is
+limited to direct literal access to `AUTH_SECRET`, `DATABASE_URL` and
+`NODE_ENV`; computed keys, constructed migration names and process/environment
+aliases fail. Runtime source outside `src/lib/db.ts` cannot obtain the alternate
+client factory, and the factory validates every supplied URL as exactly the
+`litigation_runtime` username without returning the URL in an error.
+
+The permanent checker rejects all 35 previous negative cases and 13 new or
+equivalent cases, for 48 semantic/fingerprint fixtures in total. These include
+renamed callable types, wrapper returns, mutated and externally mutable
+selectors, a locally closed-over unproved capability, joined and concatenated
+environment keys, computed direct keys, process/environment aliases, nested
+global-process destructuring, namespace factory access and a standalone
+raw-method literal. All three focused positive fixtures, all 25 legitimate
+runtime sources and all six fingerprinted calls pass. The D35 inventory now
+includes all eight approved executable extensions, classifies native Windows
+and POSIX `scripts/test-*` paths identically, and rejects an unguarded aliased
+`pg.Client` `.mjs` entry point.
+
+Authentication and permission fixtures continue to use the D35 migration
+principal only for disposable migration and administrative setup. Their
+application behavior runs through a restricted fixture URL and independently
+asserts both `current_user` and `session_user` are `litigation_runtime`.
+`test:audit`, `test:auth` and `test:permissions` all pass, including the existing
+runtime ownership, DDL, actor, administration and migration-bypass denials.
+
+Final verification passes Prisma format, validate and generate; TypeScript;
+lint, formatting, RTL, authentication inventory, audit inventory, ignore and
+encoding gates; production build; migration status; database verification;
+all 60 Gate 4 adversarial fixtures; historical-live migration provenance; the
+non-writing idempotent Gate 4 reconciliation; and all 89 database invariants.
+Migration 56 remains byte-identical at
+`ed77a4c7c74413f90e8e15a0681a1d99b455773b5d9e25134673b046ac82a20d`;
+migrations 53–55 retain the hashes recorded above. The migration profile and
+repository digests remain `86eb32a96d97167d6bc699d3576f42c4a6916a53c0a37d557035abd79bd8447f`
+and `ba2909703684ed077fc6ad213dd718175d01a672a83511f4daabf3642b4c65f7`.
+The protected 5,209-row digest remains
+`b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab`,
+the attribution digest remains
+`edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`,
+and the current reconciliation digest remains
+`c314cd64142cc2cef36b4dc8a35715db7660fed9d9aba2d06b383e86d2fa54ec`.
+
+This follow-up changes no migration, schema, dependency, lockfile,
+authorization decision, protected row or governance decision. Task 3.3B and
+the Graphify pilot remain not started. The exact return point remains
+**independent review and owner-authorized push of this final Task 3.3A
+follow-up**.

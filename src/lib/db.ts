@@ -16,13 +16,20 @@ import { PrismaClient } from '@/generated/prisma/client';
 
 const connectionString = process.env['DATABASE_URL'];
 
-if (!connectionString) {
-  throw new Error('DATABASE_URL is not set. Copy .env.example to .env — see docs/DATABASE.md.');
-}
-
-const runtimeIdentity = new URL(connectionString);
-if (runtimeIdentity.username !== 'litigation_runtime') {
-  throw new Error('DATABASE_URL must use the restricted litigation_runtime principal.');
+function approvedRuntimeDatabaseUrl(url: string | undefined): string {
+  if (!url) {
+    throw new Error('DATABASE_URL is not set. Copy .env.example to .env — see docs/DATABASE.md.');
+  }
+  let runtimeIdentity: URL;
+  try {
+    runtimeIdentity = new URL(url);
+  } catch {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL URL.');
+  }
+  if (runtimeIdentity.username !== 'litigation_runtime') {
+    throw new Error('DATABASE_URL must use the restricted litigation_runtime principal.');
+  }
+  return url;
 }
 
 const globalForPrisma = globalThis as unknown as {
@@ -30,11 +37,9 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 export function createDatabaseClient(url = connectionString): PrismaClient {
-  if (!url) {
-    throw new Error('DATABASE_URL is not set. Copy .env.example to .env — see docs/DATABASE.md.');
-  }
+  const approvedUrl = approvedRuntimeDatabaseUrl(url);
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString: url }),
+    adapter: new PrismaPg({ connectionString: approvedUrl }),
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
 }

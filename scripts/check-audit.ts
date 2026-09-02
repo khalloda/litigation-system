@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path, { resolve } from 'node:path';
 import ts from 'typescript';
 import {
+  AUDIT_RUNTIME_SOURCE_EXTENSIONS,
   auditRuntimeSourceFailures,
   discoverAuditRuntimeSources,
   type AuditRuntimeSource,
@@ -17,14 +18,149 @@ function parsed(filePath: string): ts.SourceFile {
   return ts.createSourceFile(filePath, source(filePath), ts.ScriptTarget.Latest, true);
 }
 
-function scriptSources(directory = resolve('scripts')): string[] {
+function normalizedPath(filePath: string): string {
+  return filePath.replaceAll('\\', '/').replace(/\/+$/u, '').toLowerCase();
+}
+
+export function isD35TestScriptPath(scriptPath: string, scriptsRoot = resolve('scripts')): boolean {
+  const root = normalizedPath(scriptsRoot);
+  const candidate = normalizedPath(scriptPath);
+  if (!candidate.startsWith(`${root}/`)) return false;
+  const relative = candidate.slice(root.length + 1);
+  return !relative.includes('/') && relative.startsWith('test-');
+}
+
+export function d35ScriptSources(directory = resolve('scripts')): string[] {
   const files: string[] = [];
+  const extensions = new Set(AUDIT_RUNTIME_SOURCE_EXTENSIONS);
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const target = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...scriptSources(target));
-    else if (entry.isFile() && /\.(?:cts|mts|ts)$/u.test(entry.name)) files.push(target);
+    if (entry.isDirectory()) files.push(...d35ScriptSources(target));
+    else if (entry.isFile() && extensions.has(path.extname(entry.name).toLowerCase())) {
+      files.push(target);
+    }
   }
   return files;
+}
+
+function d35ScriptKind(filePath: string): ts.ScriptKind {
+  switch (path.extname(filePath).toLowerCase()) {
+    case '.js':
+    case '.mjs':
+    case '.cjs':
+      return ts.ScriptKind.JS;
+    case '.jsx':
+      return ts.ScriptKind.JSX;
+    case '.tsx':
+      return ts.ScriptKind.TSX;
+    default:
+      return ts.ScriptKind.TS;
+  }
+}
+
+export function d35ScriptSourceFailures(
+  scriptPath: string,
+  scriptSource: string,
+  scriptsRoot = resolve('scripts'),
+): string[] {
+  const failures: string[] = [];
+  const sourceFile = ts.createSourceFile(
+    scriptPath,
+    scriptSource,
+    ts.ScriptTarget.Latest,
+    true,
+    d35ScriptKind(scriptPath),
+  );
+  let migrationEnvironmentReferences = 0;
+  let clientConstructions = 0;
+  let principalSessionChecks = 0;
+  let migrationDatabaseReferences = 0;
+  let awaitedMigrationPrincipal = 0;
+  const postgresqlClientBindings = new Set(['Client']);
+  const principalSessionBindings = new Set(['assertApprovedMigrationPrincipalSession']);
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteralLike(node.moduleSpecifier) &&
+      node.importClause?.namedBindings &&
+      ts.isNamedImports(node.importClause.namedBindings)
+    ) {
+      for (const element of node.importClause.namedBindings.elements) {
+        const imported = element.propertyName?.text ?? element.name.text;
+        if (node.moduleSpecifier.text === 'pg' && imported === 'Client') {
+          postgresqlClientBindings.add(element.name.text);
+        }
+        if (
+          /(?:^|[/\\])lib[/\\]migration-principal$/u.test(node.moduleSpecifier.text) &&
+          imported === 'assertApprovedMigrationPrincipalSession'
+        ) {
+          principalSessionBindings.add(element.name.text);
+        }
+      }
+    }
+    if (
+      (ts.isIdentifier(node) || ts.isStringLiteralLike(node)) &&
+      node.text === 'MIGRATION_DATABASE_URL'
+    ) {
+      migrationEnvironmentReferences += 1;
+    }
+    if (
+      ts.isNewExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      postgresqlClientBindings.has(node.expression.text)
+    ) {
+      clientConstructions += 1;
+    }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      principalSessionBindings.has(node.expression.text)
+    ) {
+      principalSessionChecks += 1;
+    }
+    if (ts.isIdentifier(node) && node.text === 'migrationDb') {
+      migrationDatabaseReferences += 1;
+    }
+    if (
+      ts.isAwaitExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === 'migrationPrincipalReady'
+    ) {
+      awaitedMigrationPrincipal += 1;
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+
+  if (
+    /node_modules[/\\]prisma[/\\]build[/\\]index\.js[\s\S]{0,120}['"]migrate['"]/u.test(
+      scriptSource,
+    )
+  ) {
+    failures.push(`${scriptPath} bypasses the D35 migration-principal runner`);
+  }
+  if (
+    !isD35TestScriptPath(scriptPath, scriptsRoot) &&
+    normalizedPath(scriptPath) !== normalizedPath(resolve('scripts/check-audit.ts')) &&
+    normalizedPath(scriptPath) !== normalizedPath(resolve('scripts/lib/migration-principal.ts')) &&
+    migrationEnvironmentReferences > 0 &&
+    clientConstructions > 0 &&
+    principalSessionChecks < 1
+  ) {
+    failures.push(
+      `${scriptPath} connects controlled PostgreSQL tooling without the D35 principal preflight`,
+    );
+  }
+  if (
+    normalizedPath(scriptPath) !== normalizedPath(resolve('scripts/lib/migration-db.ts')) &&
+    migrationDatabaseReferences > 0 &&
+    awaitedMigrationPrincipal === 0
+  ) {
+    failures.push(
+      `${scriptPath} can use the migration Prisma client before the D35 principal preflight`,
+    );
+  }
+  return failures;
 }
 
 function formDataKeys(sourceFile: ts.SourceFile): string[] {
@@ -437,6 +573,75 @@ export function unsafe(tx: any, selected: string, sql: string) {
       ],
     ],
     [
+      'type-laundered structural callable map',
+      [
+        {
+          path: 'src/lib/type-laundered-sql.ts',
+          text: `type HarmlessCallableMap = Record<string, (...args: any[]) => unknown>;
+export function unsafe(tx: unknown, selected: string, sql: string) {
+  const disguised = tx as HarmlessCallableMap;
+  const execute = disguised[selected];
+  return execute.call(tx, sql);
+}`,
+        },
+      ],
+    ],
+    [
+      'type-laundered wrapper return',
+      [
+        {
+          path: 'src/lib/returned-type-launder.ts',
+          text: `type Innocent = Record<string, (...args: unknown[]) => unknown>;
+function disguise(value: unknown): Innocent { return value as Innocent; }
+export function unsafe(tx: unknown, selected: string, sql: string) {
+  const execute = disguise(tx)[selected];
+  return execute.apply(tx, [sql]);
+}`,
+        },
+      ],
+    ],
+    [
+      'mutated property selector raw method',
+      [
+        {
+          path: 'src/lib/mutated-selector-sql.ts',
+          text: `const selector = { value: 'findMany' };
+selector.value = '$executeRawUnsafe';
+export function unsafe(tx: any, sql: string) {
+  const execute = tx[selector.value];
+  return execute.call(tx, sql);
+}`,
+        },
+      ],
+    ],
+    [
+      'externally mutable property selector',
+      [
+        {
+          path: 'src/lib/external-selector-sql.ts',
+          text: `const selector = { value: 'findMany' };
+export function select(value: string) { selector.value = value; }
+export function unsafe(tx: any, sql: string) {
+  const execute = tx[selector.value];
+  return execute.call(tx, sql);
+}`,
+        },
+      ],
+    ],
+    [
+      'local wrapper closes over an unproved capability',
+      [
+        {
+          path: 'src/lib/closed-over-capability.ts',
+          text: `type CallableMap = Record<string, (...args: any[]) => unknown>;
+export function unsafe(tx: unknown, selected: string, wrapperKey: string, sql: string) {
+  const wrapper = { capability: () => (tx as CallableMap)[selected] };
+  return wrapper[wrapperKey]().call(tx, sql);
+}`,
+        },
+      ],
+    ],
+    [
       'computed invocation selects audit actor',
       [
         {
@@ -454,6 +659,87 @@ export function unsafe(tx: any, selected: string, sql: string) {
         {
           path: 'src/lib/migration-secret.ts',
           text: `export const unsafe = process.env.MIGRATION_DATABASE_URL;`,
+        },
+      ],
+    ],
+    [
+      'computed migration credential and alternate runtime client',
+      [
+        {
+          path: 'src/lib/computed-migration-client.ts',
+          text: `import { createDatabaseClient } from '@/lib/db';
+const migrationKey = ['MIGRATION', 'DATABASE', 'URL'].join('_');
+export const unsafe = createDatabaseClient(process.env[migrationKey]!);`,
+        },
+      ],
+    ],
+    [
+      'concatenated runtime environment key',
+      [
+        {
+          path: 'src/lib/concatenated-environment.ts',
+          text: `const key = 'MIGRATION_' + 'DATABASE_URL';
+export const unsafe = process.env[key];`,
+        },
+      ],
+    ],
+    [
+      'namespace access to alternate runtime database factory',
+      [
+        {
+          path: 'src/lib/namespace-database-client.ts',
+          text: `import * as databaseModule from '@/lib/db';
+export const unsafe = databaseModule['createDatabaseClient'];`,
+        },
+      ],
+    ],
+    [
+      'aliased runtime environment object',
+      [
+        {
+          path: 'src/lib/aliased-environment.ts',
+          text: `const environment = process.env;
+export const unsafe = environment['DATABASE_URL'];`,
+        },
+      ],
+    ],
+    [
+      'computed reviewed runtime environment key',
+      [
+        {
+          path: 'src/lib/computed-environment.ts',
+          text: `const key = 'DATABASE_URL';
+export const unsafe = process.env[key];`,
+        },
+      ],
+    ],
+    [
+      'aliased process object environment access',
+      [
+        {
+          path: 'src/lib/aliased-process.ts',
+          text: `const runtimeProcess = process;
+export const unsafe = runtimeProcess.env.DATABASE_URL;`,
+        },
+      ],
+    ],
+    [
+      'nested destructuring from the global process object',
+      [
+        {
+          path: 'src/lib/destructured-process.ts',
+          text: `const { env: { DATABASE_URL: runtimeUrl } } = process;
+export const unsafe = runtimeUrl;`,
+        },
+      ],
+    ],
+    [
+      'standalone raw SQL method literal',
+      [
+        {
+          path: 'src/lib/raw-method-label.ts',
+          text: `const local = { label: '$queryRawUnsafe' };
+export function inspect() { return local.label; }`,
         },
       ],
     ],
@@ -499,8 +785,55 @@ export function unsafe(tx: any, selected: string, sql: string) {
   } finally {
     rmSync(root, { force: true, recursive: true });
   }
+
+  const d35Root = mkdtempSync(path.join(tmpdir(), 'litigation-d35-script-source-'));
+  try {
+    for (const extension of AUDIT_RUNTIME_SOURCE_EXTENSIONS) {
+      writeFileSync(path.join(d35Root, `controlled${extension}`), 'export {};', 'utf8');
+    }
+    assert.deepEqual(
+      d35ScriptSources(d35Root)
+        .map((filePath) => path.extname(filePath).toLowerCase())
+        .sort(),
+      [...AUDIT_RUNTIME_SOURCE_EXTENSIONS].sort(),
+    );
+    const unguardedControlledSource = `import { Client as Connection } from 'pg';
+const url = process.env.MIGRATION_DATABASE_URL;
+export const database = new Connection({ connectionString: url });`;
+    assert.equal(
+      isD35TestScriptPath('C:\\repo\\scripts\\test-audit.ts', 'C:\\repo\\scripts'),
+      true,
+    );
+    assert.equal(isD35TestScriptPath('/repo/scripts/test-audit.ts', '/repo/scripts'), true);
+    assert.equal(
+      d35ScriptSourceFailures(
+        'C:\\repo\\scripts\\test-audit.ts',
+        unguardedControlledSource,
+        'C:\\repo\\scripts',
+      ).length,
+      0,
+    );
+    assert.equal(
+      d35ScriptSourceFailures(
+        '/repo/scripts/test-audit.ts',
+        unguardedControlledSource,
+        '/repo/scripts',
+      ).length,
+      0,
+    );
+    assert.match(
+      d35ScriptSourceFailures(
+        path.join(d35Root, 'controlled.mjs'),
+        unguardedControlledSource,
+        d35Root,
+      ).join('; '),
+      /without the D35 principal preflight/u,
+    );
+  } finally {
+    rmSync(d35Root, { force: true, recursive: true });
+  }
   console.log(
-    `check:audit self-test — ${negative.length + 2} semantic/fingerprint bypass fixtures rejected; ${positive.length} focused legitimate fixtures plus the complete runtime and six fingerprinted SQL calls accepted; all 8 runtime extensions discovered and the exact generated-Prisma subtree excluded; all disposable files removed.`,
+    `check:audit self-test — ${negative.length + 2} semantic/fingerprint bypass fixtures rejected; ${positive.length} focused legitimate fixtures plus the complete runtime and six fingerprinted SQL calls accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
   );
 }
 
@@ -562,36 +895,10 @@ function main(): void {
     packageJson.scripts?.['db:migrate:status'],
     'tsx scripts/run-prisma-migration.ts status',
   );
-  for (const scriptPath of scriptSources()) {
+  for (const scriptPath of d35ScriptSources()) {
     if (scriptPath === resolve('scripts/run-prisma-migration.ts')) continue;
     const scriptSource = source(scriptPath);
-    assert.doesNotMatch(
-      scriptSource,
-      /node_modules[/\\]prisma[/\\]build[/\\]index\.js[\s\S]{0,120}['"]migrate['"]/u,
-      `${scriptPath} bypasses the D35 migration-principal runner`,
-    );
-    if (
-      !scriptPath.includes(`${resolve('scripts')}\\test-`) &&
-      scriptPath !== resolve('scripts/check-audit.ts') &&
-      scriptPath !== resolve('scripts/lib/migration-principal.ts') &&
-      /MIGRATION_DATABASE_URL/u.test(scriptSource) &&
-      /new Client\s*\(/u.test(scriptSource)
-    ) {
-      assert.ok(
-        (scriptSource.match(/assertApprovedMigrationPrincipalSession/gu) ?? []).length >= 2,
-        `${scriptPath} connects controlled PostgreSQL tooling without the D35 principal preflight`,
-      );
-    }
-    if (
-      scriptPath !== resolve('scripts/lib/migration-db.ts') &&
-      /\bmigrationDb\b/u.test(scriptSource)
-    ) {
-      assert.match(
-        scriptSource,
-        /await migrationPrincipalReady/u,
-        `${scriptPath} can use the migration Prisma client before the D35 principal preflight`,
-      );
-    }
+    assert.deepEqual(d35ScriptSourceFailures(scriptPath, scriptSource), []);
   }
   assert.match(packageJson.scripts?.['check'] ?? '', /npm run check:audit/u);
   console.log(

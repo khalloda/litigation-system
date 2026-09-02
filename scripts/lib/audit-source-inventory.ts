@@ -16,6 +16,7 @@ export const AUDIT_RUNTIME_SOURCE_EXTENSIONS = Object.freeze([
 
 export const AUDIT_GATEWAY = 'src/lib/audit.ts';
 export const AUDIT_AUTH_SERVICE = 'src/lib/auth/service.ts';
+export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 
 const GENERATED_EXCLUSION = 'src/generated/prisma/';
 const REVIEWED_NON_CODE_EXTENSIONS = new Set(['.css', '.png']);
@@ -37,6 +38,8 @@ const SYSTEM_ACTOR_KEYS = new Set([
 ]);
 const CONTROLLED_LOCAL_ADMINISTRATION = 'setApprovedAccountPassword';
 const MIGRATION_DATABASE_ENV = 'MIGRATION_DATABASE_URL';
+const ALTERNATE_DATABASE_FACTORY = 'createDatabaseClient';
+const REVIEWED_RUNTIME_ENVIRONMENT_KEYS = new Set(['AUTH_SECRET', 'DATABASE_URL', 'NODE_ENV']);
 const RAW_SQL_METHODS = new Set([
   '$queryRaw',
   '$queryRawTyped',
@@ -202,10 +205,6 @@ function staticString(
           const value = staticString(checker, declaration.initializer, nextVisited);
           if (value !== null) return value;
         }
-        if (ts.isPropertyAssignment(declaration)) {
-          const value = staticString(checker, declaration.initializer, nextVisited);
-          if (value !== null) return value;
-        }
       }
     }
   }
@@ -348,44 +347,6 @@ function isReviewedRawCall(
   );
 }
 
-function isProvenNonPrismaReceiver(checker: ts.TypeChecker, expression: ts.Expression): boolean {
-  const inner = transparentExpression(expression);
-  const type = checker.getTypeAtLocation(inner);
-  const inspect = (candidate: ts.Type): boolean => {
-    if (
-      candidate.flags &
-      (ts.TypeFlags.Any |
-        ts.TypeFlags.Unknown |
-        ts.TypeFlags.TypeParameter |
-        ts.TypeFlags.Index |
-        ts.TypeFlags.Conditional |
-        ts.TypeFlags.Substitution)
-    ) {
-      return false;
-    }
-    if (candidate.isUnion()) return candidate.types.every(inspect);
-    if (candidate.isIntersection() && !candidate.types.every(inspect)) return false;
-    if ([...RAW_SQL_METHODS, '$transaction'].some((property) => candidate.getProperty(property))) {
-      return false;
-    }
-    const description = checker.typeToString(candidate);
-    if (/\b(?:PrismaClient|TransactionClient|DefaultPrismaClient)\b/u.test(description)) {
-      return false;
-    }
-    const declarations = candidate.getSymbol()?.declarations ?? [];
-    if (
-      declarations.some((declaration) =>
-        normalized(declaration.getSourceFile().fileName).includes('/src/generated/prisma/'),
-      )
-    ) {
-      return false;
-    }
-    if (description === '{}' || description === 'object') return false;
-    return true;
-  };
-  return inspect(type);
-}
-
 function directBuiltinCall(
   checker: ts.TypeChecker,
   node: ts.CallExpression,
@@ -440,6 +401,198 @@ function semanticRawCapabilityFailures(
   const taintedFunctions = new Set<ts.Symbol>();
 
   const symbolAt = (node: ts.Node): ts.Symbol | undefined => resolvedSymbol(checker, node);
+  const localRoot = (
+    expression: ts.Expression,
+    visited = new Set<ts.Symbol>(),
+  ): ts.Symbol | undefined => {
+    const node = transparentExpression(expression);
+    if (!ts.isIdentifier(node)) return undefined;
+    const symbol = symbolAt(node);
+    if (!symbol || visited.has(symbol)) return undefined;
+    const nextVisited = new Set(visited).add(symbol);
+    for (const declaration of symbol.declarations ?? []) {
+      if (
+        !ts.isVariableDeclaration(declaration) ||
+        !declaration.initializer ||
+        !ts.isVariableDeclarationList(declaration.parent) ||
+        (declaration.parent.flags & ts.NodeFlags.Const) === 0
+      ) {
+        continue;
+      }
+      const initializer = transparentExpression(declaration.initializer);
+      const aliasRoot = localRoot(initializer, nextVisited);
+      if (aliasRoot) return aliasRoot;
+      if (
+        ts.isObjectLiteralExpression(initializer) ||
+        ts.isArrayLiteralExpression(initializer) ||
+        ts.isArrowFunction(initializer) ||
+        ts.isFunctionExpression(initializer)
+      ) {
+        return symbol;
+      }
+    }
+    return undefined;
+  };
+  const unsafeLocalRoots = new Set<ts.Symbol>();
+  const markLocalValueUnsafe = (expression: ts.Expression | undefined): void => {
+    if (!expression) return;
+    const node = transparentExpression(expression);
+    const root = localRoot(node);
+    if (root) unsafeLocalRoots.add(root);
+    if (ts.isArrayLiteralExpression(node)) {
+      for (const element of node.elements) {
+        if (!ts.isOmittedExpression(element)) {
+          markLocalValueUnsafe(ts.isSpreadElement(element) ? element.expression : element);
+        }
+      }
+    }
+    if (ts.isObjectLiteralExpression(node)) {
+      for (const property of node.properties) {
+        if (ts.isPropertyAssignment(property)) markLocalValueUnsafe(property.initializer);
+        if (ts.isShorthandPropertyAssignment(property)) markLocalValueUnsafe(property.name);
+        if (ts.isSpreadAssignment(property)) markLocalValueUnsafe(property.expression);
+      }
+    }
+    if (ts.isConditionalExpression(node)) {
+      markLocalValueUnsafe(node.whenTrue);
+      markLocalValueUnsafe(node.whenFalse);
+    }
+  };
+  const isReadOnlyReflectionArgument = (node: ts.CallExpression, index: number): boolean =>
+    index === 0 &&
+    (directBuiltinCall(checker, node, 'Reflect', 'get') ||
+      directBuiltinCall(checker, node, 'Reflect', 'getOwnPropertyDescriptor') ||
+      directBuiltinCall(checker, node, 'Object', 'getOwnPropertyDescriptor'));
+
+  for (const node of nodes) {
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      const left = transparentExpression(node.left);
+      if (ts.isPropertyAccessExpression(left) || ts.isElementAccessExpression(left)) {
+        markLocalValueUnsafe(left.expression);
+      }
+    }
+    if (
+      (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+      (node.operator === ts.SyntaxKind.PlusPlusToken ||
+        node.operator === ts.SyntaxKind.MinusMinusToken)
+    ) {
+      const operand = transparentExpression(node.operand);
+      if (ts.isPropertyAccessExpression(operand) || ts.isElementAccessExpression(operand)) {
+        markLocalValueUnsafe(operand.expression);
+      }
+    }
+    if (ts.isDeleteExpression(node)) {
+      const expression = transparentExpression(node.expression);
+      if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+        markLocalValueUnsafe(expression.expression);
+      }
+    }
+    if (ts.isCallExpression(node)) {
+      node.arguments.forEach((argument, index) => {
+        if (!isReadOnlyReflectionArgument(node, index)) markLocalValueUnsafe(argument);
+      });
+    }
+    if (ts.isReturnStatement(node)) markLocalValueUnsafe(node.expression);
+    if (ts.isExportAssignment(node)) markLocalValueUnsafe(node.expression);
+    if (
+      ts.isVariableStatement(node) &&
+      node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)
+    ) {
+      for (const declaration of node.declarationList.declarations) {
+        markLocalValueUnsafe(declaration.initializer);
+      }
+    }
+    if (ts.isExportSpecifier(node)) {
+      const symbol = symbolAt(node.propertyName ?? node.name);
+      if (symbol) {
+        for (const declaration of symbol.declarations ?? []) {
+          if (ts.isVariableDeclaration(declaration)) markLocalValueUnsafe(declaration.initializer);
+        }
+      }
+    }
+  }
+
+  const isLocallyClosedFunctionValue = (
+    node: ts.ArrowFunction | ts.FunctionExpression,
+  ): boolean => {
+    let unsafe = false;
+    const visit = (current: ts.Node): void => {
+      if (
+        ts.isCallExpression(current) ||
+        ts.isNewExpression(current) ||
+        ts.isTaggedTemplateExpression(current) ||
+        ts.isElementAccessExpression(current)
+      ) {
+        unsafe = true;
+        return;
+      }
+      current.forEachChild(visit);
+    };
+    visit(node.body);
+    return !unsafe;
+  };
+
+  const isProvenLocalNonPrismaReceiver = (
+    expression: ts.Expression,
+    visited = new Set<ts.Symbol>(),
+  ): boolean => {
+    const node = transparentExpression(expression);
+    if (
+      ts.isStringLiteralLike(node) ||
+      ts.isNumericLiteral(node) ||
+      node.kind === ts.SyntaxKind.TrueKeyword ||
+      node.kind === ts.SyntaxKind.FalseKeyword ||
+      node.kind === ts.SyntaxKind.NullKeyword
+    ) {
+      return true;
+    }
+    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+      return isLocallyClosedFunctionValue(node);
+    }
+    if (ts.isObjectLiteralExpression(node)) {
+      return node.properties.every((property) => {
+        if (ts.isPropertyAssignment(property)) {
+          return isProvenLocalNonPrismaReceiver(property.initializer, visited);
+        }
+        if (ts.isShorthandPropertyAssignment(property)) {
+          return isProvenLocalNonPrismaReceiver(property.name, visited);
+        }
+        if (ts.isSpreadAssignment(property)) {
+          return isProvenLocalNonPrismaReceiver(property.expression, visited);
+        }
+        return false;
+      });
+    }
+    if (ts.isArrayLiteralExpression(node)) {
+      return node.elements.every(
+        (element) =>
+          ts.isOmittedExpression(element) ||
+          (ts.isSpreadElement(element)
+            ? isProvenLocalNonPrismaReceiver(element.expression, visited)
+            : isProvenLocalNonPrismaReceiver(element, visited)),
+      );
+    }
+    if (ts.isConditionalExpression(node)) {
+      return (
+        isProvenLocalNonPrismaReceiver(node.whenTrue, visited) &&
+        isProvenLocalNonPrismaReceiver(node.whenFalse, visited)
+      );
+    }
+    if (!ts.isIdentifier(node)) return false;
+    const symbol = symbolAt(node);
+    if (!symbol || visited.has(symbol)) return false;
+    const root = localRoot(node);
+    if (!root || unsafeLocalRoots.has(root)) return false;
+    const nextVisited = new Set(visited).add(symbol);
+    return (symbol.declarations ?? []).some(
+      (declaration) =>
+        ts.isVariableDeclaration(declaration) &&
+        declaration.initializer !== undefined &&
+        ts.isVariableDeclarationList(declaration.parent) &&
+        (declaration.parent.flags & ts.NodeFlags.Const) !== 0 &&
+        isProvenLocalNonPrismaReceiver(declaration.initializer, nextVisited),
+    );
+  };
   const markBinding = (name: ts.BindingName): boolean => {
     let changed = false;
     if (ts.isIdentifier(name)) {
@@ -455,6 +608,114 @@ function semanticRawCapabilityFailures(
     }
     return changed;
   };
+  const isStaticallyCallable = (node: ts.Expression): boolean => {
+    const inspect = (type: ts.Type): boolean =>
+      type.getCallSignatures().length > 0 ||
+      (type.isUnionOrIntersection() && type.types.some(inspect));
+    return inspect(checker.getTypeAtLocation(node));
+  };
+  function bindingFlowsToInvocation(name: ts.BindingName, visited: Set<ts.Node>): boolean {
+    if (!ts.isIdentifier(name)) return false;
+    const symbol = symbolAt(name);
+    if (!symbol) return false;
+    return nodes.some(
+      (candidate) =>
+        ts.isIdentifier(candidate) &&
+        candidate !== name &&
+        symbolAt(candidate) === symbol &&
+        valueFlowsToInvocation(candidate, visited),
+    );
+  }
+  function valueFlowsToInvocation(node: ts.Node, visited = new Set<ts.Node>()): boolean {
+    if (visited.has(node)) return false;
+    const nextVisited = new Set(visited).add(node);
+    const parent = node.parent;
+    if (!parent) return false;
+    if (
+      ts.isParenthesizedExpression(parent) ||
+      ts.isAsExpression(parent) ||
+      ts.isTypeAssertionExpression(parent) ||
+      ts.isNonNullExpression(parent) ||
+      ts.isSatisfiesExpression(parent) ||
+      ts.isAwaitExpression(parent)
+    ) {
+      return valueFlowsToInvocation(parent, nextVisited);
+    }
+    if (ts.isCallExpression(parent)) {
+      if (parent.expression === node) return true;
+      if (directBuiltinCall(checker, parent, 'Reflect', 'apply') && parent.arguments[0] === node) {
+        return true;
+      }
+      const index = parent.arguments.findIndex((argument) => argument === node);
+      if (index >= 0) {
+        const declaration = checker.getResolvedSignature(parent)?.declaration;
+        if (
+          declaration &&
+          sourceFiles.has(declaration.getSourceFile()) &&
+          ts.isFunctionLike(declaration)
+        ) {
+          const parameter = declaration.parameters[index] ?? declaration.parameters.at(-1);
+          if (parameter && bindingFlowsToInvocation(parameter.name, nextVisited)) return true;
+        }
+      }
+      return false;
+    }
+    if (ts.isNewExpression(parent) && parent.expression === node) return true;
+    if (ts.isTaggedTemplateExpression(parent) && parent.tag === node) return true;
+    if (
+      (ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) &&
+      parent.expression === node
+    ) {
+      const property = ts.isPropertyAccessExpression(parent)
+        ? parent.name.text
+        : parent.argumentExpression
+          ? staticString(checker, parent.argumentExpression)
+          : null;
+      if (
+        property !== null &&
+        ['call', 'apply', 'bind'].includes(property) &&
+        ts.isCallExpression(parent.parent) &&
+        parent.parent.expression === parent
+      ) {
+        return true;
+      }
+      return false;
+    }
+    if (ts.isVariableDeclaration(parent) && parent.initializer === node) {
+      return bindingFlowsToInvocation(parent.name, nextVisited);
+    }
+    if (
+      ts.isBinaryExpression(parent) &&
+      parent.right === node &&
+      parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
+    ) {
+      const left = transparentExpression(parent.left);
+      return ts.isIdentifier(left) && bindingFlowsToInvocation(left, nextVisited);
+    }
+    if (ts.isReturnStatement(parent)) {
+      const owner = (() => {
+        for (let current = parent.parent; current; current = current.parent) {
+          if (ts.isFunctionLike(current)) return current;
+        }
+        return undefined;
+      })();
+      const ownerSymbol = owner
+        ? 'name' in owner && owner.name && ts.isIdentifier(owner.name)
+          ? symbolAt(owner.name)
+          : ts.isVariableDeclaration(owner.parent) && ts.isIdentifier(owner.parent.name)
+            ? symbolAt(owner.parent.name)
+            : undefined
+        : undefined;
+      if (!ownerSymbol) return false;
+      return nodes.some(
+        (candidate) =>
+          ts.isCallExpression(candidate) &&
+          symbolAt(transparentExpression(candidate.expression)) === ownerSymbol &&
+          valueFlowsToInvocation(candidate, nextVisited),
+      );
+    }
+    return false;
+  }
   const functionSymbolFor = (node: ts.SignatureDeclaration): ts.Symbol | undefined => {
     if ('name' in node && node.name && ts.isIdentifier(node.name)) return symbolAt(node.name);
     if (ts.isVariableDeclaration(node.parent) && ts.isIdentifier(node.parent.name)) {
@@ -480,7 +741,7 @@ function semanticRawCapabilityFailures(
     if (!receiver || !propertyNode) return true;
     const property = staticString(checker, propertyNode);
     if (property && RAW_SQL_METHODS.has(property)) return true;
-    return property === null && !isProvenNonPrismaReceiver(checker, receiver);
+    return property === null && !isProvenLocalNonPrismaReceiver(receiver);
   };
   const expressionTainted = (expression: ts.Expression): boolean => {
     const node = transparentExpression(expression);
@@ -519,14 +780,18 @@ function semanticRawCapabilityFailures(
       const property = node.argumentExpression
         ? staticString(checker, node.argumentExpression)
         : null;
-      return property === null && !isProvenNonPrismaReceiver(checker, node.expression);
+      return (
+        property === null &&
+        !isProvenLocalNonPrismaReceiver(node.expression) &&
+        (isStaticallyCallable(node) || valueFlowsToInvocation(node))
+      );
     }
     if (ts.isAwaitExpression(node)) return expressionTainted(node.expression);
     if (ts.isCallExpression(node)) {
       if (reflectiveCapability(node)) return true;
       if (directBuiltinCall(checker, node, 'Object', 'getOwnPropertyDescriptors')) {
         const receiver = node.arguments[0];
-        return !receiver || !isProvenNonPrismaReceiver(checker, receiver);
+        return !receiver || !isProvenLocalNonPrismaReceiver(receiver);
       }
       const callee = transparentExpression(node.expression);
       if (
@@ -583,7 +848,7 @@ function semanticRawCapabilityFailures(
           const property = bindingProperty(element);
           if (
             (property !== null && RAW_SQL_METHODS.has(property)) ||
-            (property === null && !isProvenNonPrismaReceiver(checker, node.initializer))
+            (property === null && !isProvenLocalNonPrismaReceiver(node.initializer))
           ) {
             changed = markBinding(element.name) || changed;
           }
@@ -666,7 +931,7 @@ function semanticRawCapabilityFailures(
       }
       if (directBuiltinCall(checker, node, 'Object', 'getOwnPropertyDescriptors')) {
         const receiver = node.arguments[0];
-        if (!receiver || !isProvenNonPrismaReceiver(checker, receiver)) {
+        if (!receiver || !isProvenLocalNonPrismaReceiver(receiver)) {
           add(node, 'bulk property-descriptor extraction from an unproved receiver is prohibited');
         }
       }
@@ -767,6 +1032,208 @@ function semanticRawCapabilityFailures(
   return [...failures];
 }
 
+function runtimeEnvironmentFailures(
+  sources: readonly AuditRuntimeSource[],
+  program: ts.Program,
+  checker: ts.TypeChecker,
+): string[] {
+  type EnvironmentKind = 'process' | 'environment';
+  const failures = new Set<string>();
+  const sourceByFile = new Map<string, AuditRuntimeSource>();
+  const sourceFiles = new Set<ts.SourceFile>();
+  const nodes: ts.Node[] = [];
+  for (const source of sources) {
+    const sourceFile = program.getSourceFile(path.join(process.cwd(), source.path));
+    if (!sourceFile) continue;
+    sourceByFile.set(canonical(sourceFile.fileName), source);
+    sourceFiles.add(sourceFile);
+    const visit = (node: ts.Node): void => {
+      nodes.push(node);
+      node.forEachChild(visit);
+    };
+    visit(sourceFile);
+  }
+  const add = (node: ts.Node, message: string): void => {
+    const sourceFile = node.getSourceFile();
+    const source = sourceByFile.get(canonical(sourceFile.fileName));
+    if (source) failures.add(`${source.path}:${sourceLocation(sourceFile, node)} ${message}`);
+  };
+  const processSymbols = new Set<ts.Symbol>();
+  const environmentSymbols = new Set<ts.Symbol>();
+  const processFunctions = new Set<ts.Symbol>();
+  const environmentFunctions = new Set<ts.Symbol>();
+  const symbolAt = (node: ts.Node): ts.Symbol | undefined => resolvedSymbol(checker, node);
+  const isGlobalProcessIdentifier = (node: ts.Identifier): boolean => {
+    if (node.text !== 'process') return false;
+    const symbol = symbolAt(node);
+    return !symbol?.declarations?.some((declaration) =>
+      sourceFiles.has(declaration.getSourceFile()),
+    );
+  };
+  const functionSymbolFor = (node: ts.SignatureDeclaration): ts.Symbol | undefined => {
+    if ('name' in node && node.name && ts.isIdentifier(node.name)) return symbolAt(node.name);
+    if (ts.isVariableDeclaration(node.parent) && ts.isIdentifier(node.parent.name)) {
+      return symbolAt(node.parent.name);
+    }
+    return undefined;
+  };
+  const containingFunction = (node: ts.Node): ts.SignatureDeclaration | undefined => {
+    for (let current = node.parent; current; current = current.parent) {
+      if (ts.isFunctionLike(current)) return current;
+    }
+    return undefined;
+  };
+  const kindOf = (expression: ts.Expression): EnvironmentKind | null => {
+    const node = transparentExpression(expression);
+    if (ts.isIdentifier(node)) {
+      if (isGlobalProcessIdentifier(node)) return 'process';
+      const symbol = symbolAt(node);
+      if (symbol && environmentSymbols.has(symbol)) return 'environment';
+      if (symbol && processSymbols.has(symbol)) return 'process';
+      return null;
+    }
+    if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+      const receiverKind = kindOf(node.expression);
+      const property = ts.isPropertyAccessExpression(node)
+        ? node.name.text
+        : node.argumentExpression
+          ? staticString(checker, node.argumentExpression)
+          : null;
+      if (receiverKind === 'process' && property === 'env') return 'environment';
+      return null;
+    }
+    if (ts.isCallExpression(node)) {
+      const symbol = symbolAt(transparentExpression(node.expression));
+      if (symbol && environmentFunctions.has(symbol)) return 'environment';
+      if (symbol && processFunctions.has(symbol)) return 'process';
+      return null;
+    }
+    if (ts.isAwaitExpression(node)) return kindOf(node.expression);
+    if (ts.isConditionalExpression(node)) {
+      const whenTrue = kindOf(node.whenTrue);
+      return whenTrue !== null && whenTrue === kindOf(node.whenFalse) ? whenTrue : null;
+    }
+    return null;
+  };
+  const markBinding = (name: ts.BindingName, kind: EnvironmentKind): boolean => {
+    if (!ts.isIdentifier(name)) return false;
+    const symbol = symbolAt(name);
+    const target = kind === 'process' ? processSymbols : environmentSymbols;
+    if (!symbol || target.has(symbol)) return false;
+    target.add(symbol);
+    return true;
+  };
+  const localParameters = (node: ts.CallExpression): readonly ts.ParameterDeclaration[] | null => {
+    const declaration = checker.getResolvedSignature(node)?.declaration;
+    return declaration &&
+      sourceFiles.has(declaration.getSourceFile()) &&
+      ts.isFunctionLike(declaration)
+      ? (declaration.parameters as readonly ts.ParameterDeclaration[])
+      : null;
+  };
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const node of nodes) {
+      if (ts.isVariableDeclaration(node) && node.initializer) {
+        const kind = kindOf(node.initializer);
+        if (kind) changed = markBinding(node.name, kind) || changed;
+        if (kind === 'process' && ts.isObjectBindingPattern(node.name)) {
+          for (const element of node.name.elements) {
+            const property = element.propertyName ?? element.name;
+            if (
+              (ts.isIdentifier(property) || ts.isStringLiteralLike(property)) &&
+              property.text === 'env'
+            ) {
+              changed = markBinding(element.name, 'environment') || changed;
+            }
+          }
+        }
+      }
+      if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+        const left = transparentExpression(node.left);
+        const kind = kindOf(node.right);
+        if (kind && ts.isIdentifier(left)) changed = markBinding(left, kind) || changed;
+      }
+      if (ts.isReturnStatement(node) && node.expression) {
+        const kind = kindOf(node.expression);
+        const owner = containingFunction(node);
+        const symbol = owner ? functionSymbolFor(owner) : undefined;
+        const target = kind === 'process' ? processFunctions : environmentFunctions;
+        if (kind && symbol && !target.has(symbol)) {
+          target.add(symbol);
+          changed = true;
+        }
+      }
+      if (ts.isCallExpression(node)) {
+        const parameters = localParameters(node);
+        node.arguments.forEach((argument, index) => {
+          const kind = kindOf(argument);
+          const parameter = parameters?.[index] ?? parameters?.at(-1);
+          if (kind && parameter) changed = markBinding(parameter.name, kind) || changed;
+        });
+      }
+    }
+  }
+
+  const isDirectEnvironmentObject = (expression: ts.Expression): boolean => {
+    const node = transparentExpression(expression);
+    if (!ts.isPropertyAccessExpression(node)) return false;
+    const receiver = transparentExpression(node.expression);
+    return ts.isIdentifier(receiver) && receiver.text === 'process' && node.name.text === 'env';
+  };
+  const directEnvironmentKey = (
+    node: ts.PropertyAccessExpression | ts.ElementAccessExpression,
+  ): string | null => {
+    if (ts.isPropertyAccessExpression(node)) return node.name.text;
+    return node.argumentExpression && ts.isStringLiteralLike(node.argumentExpression)
+      ? node.argumentExpression.text
+      : null;
+  };
+
+  for (const node of nodes) {
+    if (ts.isIdentifier(node) && isGlobalProcessIdentifier(node)) {
+      const environmentObject =
+        ts.isPropertyAccessExpression(node.parent) &&
+        node.parent.expression === node &&
+        node.parent.name.text === 'env'
+          ? node.parent
+          : null;
+      const directKeyRead =
+        environmentObject !== null &&
+        (ts.isPropertyAccessExpression(environmentObject.parent) ||
+          ts.isElementAccessExpression(environmentObject.parent)) &&
+        environmentObject.parent.expression === environmentObject;
+      if (!directKeyRead) {
+        add(node, 'global process access is limited to one direct reviewed process.env key');
+      }
+    }
+    if (
+      (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) &&
+      kindOf(node.expression) === 'environment'
+    ) {
+      const key = directEnvironmentKey(node);
+      if (!isDirectEnvironmentObject(node.expression) || key === null) {
+        add(node, 'runtime environment access must use one direct reviewed process.env key');
+      } else if (!REVIEWED_RUNTIME_ENVIRONMENT_KEYS.has(key)) {
+        add(node, `runtime environment key ${key} is not approved`);
+      }
+    }
+    if (
+      (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) &&
+      kindOf(node) === 'environment'
+    ) {
+      const parent = node.parent;
+      const directRead =
+        (ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) &&
+        parent.expression === node;
+      if (!directRead) add(node, 'process.env cannot be aliased, passed, returned or exposed');
+    }
+  }
+  return [...failures];
+}
+
 function moduleRequests(sourceFile: ts.SourceFile, add: (node: ts.Node, message: string) => void) {
   const requests: ModuleRequest[] = [];
   const visit = (node: ts.Node): void => {
@@ -833,20 +1300,30 @@ export function auditRuntimeSourceFailures(
   const generatedRoot = path.join(root, GENERATED_EXCLUSION);
   const gatewayAbsolute = canonical(path.join(root, AUDIT_GATEWAY));
   const serviceAbsolute = canonical(path.join(root, AUDIT_AUTH_SERVICE));
+  const databaseAbsolute = canonical(path.join(root, AUDIT_DATABASE_MODULE));
   const failures = new Set<string>();
   const sourcePaths = new Set(sources.map((source) => normalized(source.path)));
   const { program, checker, options: tsOptions, host } = semanticProgram(root, sources);
   for (const failure of semanticRawCapabilityFailures(sources, program, checker)) {
     failures.add(failure);
   }
+  for (const failure of runtimeEnvironmentFailures(sources, program, checker)) {
+    failures.add(failure);
+  }
   const gatewayFile = program.getSourceFile(path.join(root, AUDIT_GATEWAY));
   const serviceFile = program.getSourceFile(path.join(root, AUDIT_AUTH_SERVICE));
+  const databaseFile = program.getSourceFile(path.join(root, AUDIT_DATABASE_MODULE));
   const helperSymbols = new Map<ts.Symbol, string>();
   for (const helper of CONTEXT_HELPERS) {
     const symbol = functionSymbol(checker, gatewayFile, helper);
     if (symbol) helperSymbols.set(symbol, helper);
   }
   const controlledSymbol = functionSymbol(checker, serviceFile, CONTROLLED_LOCAL_ADMINISTRATION);
+  const alternateDatabaseFactorySymbol = functionSymbol(
+    checker,
+    databaseFile,
+    ALTERNATE_DATABASE_FACTORY,
+  );
   const authImports = new Set<string>();
   const authCalls: Array<ReviewedCall & { helper: string; argumentsText: string }> = [];
   const rawCalls: ReviewedCall[] = [];
@@ -872,6 +1349,7 @@ export function auditRuntimeSourceFailures(
     }
     const isGateway = absolute === gatewayAbsolute;
     const isAuthService = absolute === serviceAbsolute;
+    const isDatabaseModule = absolute === databaseAbsolute;
     const add = (node: ts.Node, message: string): void => {
       failures.add(`${source.path}:${sourceLocation(sourceFile, node)} ${message}`);
     };
@@ -940,6 +1418,22 @@ export function auditRuntimeSourceFailures(
           !ts.isNamedImports(request.node.importClause.namedBindings)
         ) {
           add(request.node, 'runtime auth-service access must use direct named imports');
+        }
+      }
+      if (target === databaseAbsolute && !isDatabaseModule) {
+        const reviewedNamedImport =
+          request.kind === 'static' &&
+          ts.isImportDeclaration(request.node) &&
+          request.node.importClause?.namedBindings &&
+          ts.isNamedImports(request.node.importClause.namedBindings) &&
+          request.node.importClause.namedBindings.elements.every(
+            (element) => !element.propertyName && element.name.text !== ALTERNATE_DATABASE_FACTORY,
+          );
+        if (!reviewedNamedImport) {
+          add(
+            request.node,
+            'runtime database access must use static named imports and cannot expose createDatabaseClient',
+          );
         }
       }
 
@@ -1030,6 +1524,13 @@ export function auditRuntimeSourceFailures(
           }
         }
         const symbol = resolvedSymbol(checker, node);
+        if (
+          alternateDatabaseFactorySymbol &&
+          symbol === alternateDatabaseFactorySymbol &&
+          !isDatabaseModule
+        ) {
+          add(node, 'createDatabaseClient is private to src/lib/db.ts at runtime');
+        }
         if (controlledSymbol && symbol === controlledSymbol && !isAuthService) {
           add(node, 'controlled local password administration is outside its reviewed service');
         }
@@ -1149,6 +1650,9 @@ export function auditRuntimeSourceFailures(
 
       const literal = literalText(node);
       if (literal !== null) {
+        if (RAW_SQL_METHODS.has(literal)) {
+          add(node, `standalone raw-SQL method literal ${literal} is prohibited`);
+        }
         if (EXECUTION_ESCAPE_NAMES.has(literal)) {
           add(node, `${literal} execution-escape selection is prohibited`);
         }

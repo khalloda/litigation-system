@@ -2720,17 +2720,25 @@ can then assume the runtime role. The migration never repairs such an edge: a
 failure leaves runtime `NOLOGIN` without direct target-database `CONNECT`; a
 clean result restores both only after the whole boundary passes.
 
-The runtime-source gate now treats raw SQL as a semantic callable capability,
-not a method-name spelling. Constant/computed keys, assignment and destructuring
+The final review-gap follow-up makes the runtime-source gate treat raw SQL as a
+value-provenance capability rather than trusting a method spelling or a
+TypeScript annotation. Constant/computed keys, assignment and destructuring
 aliases, parameters, returns, wrappers, imports/exports, call/apply/bind,
-optional and parenthesized access, `Reflect`, property descriptors and erased
-`any`/`unknown` casts are covered. Request-selected callables on Prisma-derived
-or unproved receivers fail closed. Only six direct
+optional and parenthesized access, `Reflect`, property descriptors, structural
+type laundering and erased `any`/`unknown` casts are covered. Mutable or aliased
+object-property selectors are not treated as constants. Request-selected
+callables on Prisma-derived or unproved receivers fail closed. Only six direct
 `$queryRaw(Prisma.sql tagged-template)` call expressions are allowed, each
 bound to a token-level SHA-256 of its complete call, SQL template and
 interpolation expressions. Direct PostgreSQL clients and dynamic/CommonJS
 loading remain prohibited, as do runtime access to migration-only helpers or
-`MIGRATION_DATABASE_URL`.
+`MIGRATION_DATABASE_URL`. Runtime environment access is limited to direct reads
+of `AUTH_SECRET`, `DATABASE_URL` and `NODE_ENV`; computed keys and environment
+aliases fail closed. Every URL passed to `createDatabaseClient` must name
+`litigation_runtime`, and runtime source outside `src/lib/db.ts` cannot expose
+that alternate-client factory. The D35 tool inventory covers all eight approved
+JavaScript/TypeScript extensions with OS-independent top-level test
+classification.
 
 Local development may keep both ignored URLs in its access-restricted `.env`.
 Production migration, fresh-install and disaster-recovery shells receive the

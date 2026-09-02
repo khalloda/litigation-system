@@ -1021,6 +1021,27 @@ async function main(): Promise<void> {
     // Import only after both replay migrations finish: evaluating db.ts creates
     // its global runtime pool, which fail-closed deployment must terminate.
     const { createDatabaseClient } = await import('../src/lib/db');
+    const rejectedMarker = `task33a-rejected-url-${process.pid}`;
+    const rejectedRuntimeUrls = ['litigation', 'litigation_runtime_extra', ''].map((username) => {
+      const rejected = new URL(runtimeUrl);
+      rejected.username = username;
+      rejected.password = rejectedMarker;
+      return rejected.toString();
+    });
+    rejectedRuntimeUrls.push(`not-a-postgresql-url-${rejectedMarker}`);
+    for (const rejectedUrl of rejectedRuntimeUrls) {
+      let unexpectedClient: ReturnType<typeof createDatabaseClient> | undefined;
+      try {
+        unexpectedClient = createDatabaseClient(rejectedUrl);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        assert.doesNotMatch(message, new RegExp(rejectedMarker, 'u'));
+        assert.match(message, /valid PostgreSQL URL|restricted litigation_runtime/u);
+        continue;
+      }
+      await unexpectedClient.$disconnect();
+      assert.fail('createDatabaseClient accepted a non-litigation_runtime URL');
+    }
     const prismaRuntime = createDatabaseClient(runtimeUrl.toString());
     await owner.connect();
     try {
@@ -1340,6 +1361,9 @@ async function main(): Promise<void> {
       console.log('PASS commit/rollback pool isolation and concurrent human actor separation');
       console.log('PASS Prisma, direct SQL, multi-row, junction and nested-trigger attribution');
       console.log('PASS runtime ownership/DDL/actor/admin/migration bypass attempts are refused');
+      console.log(
+        'PASS every supplied Prisma client URL requires litigation_runtime without URL disclosure',
+      );
       console.log(
         'PASS residual compromised-process GUC boundary is reproduced and not overstated',
       );

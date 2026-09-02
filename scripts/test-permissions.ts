@@ -5,9 +5,11 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { PrismaPg } from '@prisma/adapter-pg';
 import type { Session } from 'next-auth';
 import { Client } from 'pg';
 import { createDatabaseClient } from '../src/lib/db';
+import { PrismaClient } from '../src/generated/prisma/client';
 import {
   AuthorizationError,
   decideAuthorization,
@@ -226,6 +228,18 @@ function migrate(databaseUrl: string): void {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 }
 
+function fixtureRuntimeUrl(fixtureOwnerUrl: URL): URL {
+  const configured = process.env['DATABASE_URL'];
+  assert.ok(configured, 'DATABASE_URL is required');
+  const runtime = new URL(configured);
+  assert.equal(runtime.username, 'litigation_runtime');
+  runtime.protocol = fixtureOwnerUrl.protocol;
+  runtime.hostname = fixtureOwnerUrl.hostname;
+  runtime.port = fixtureOwnerUrl.port;
+  runtime.pathname = fixtureOwnerUrl.pathname;
+  return runtime;
+}
+
 async function proveDatabaseSessionAuthorization(): Promise<void> {
   const sourceUrl = process.env['MIGRATION_DATABASE_URL'];
   assert.ok(sourceUrl, 'MIGRATION_DATABASE_URL is required');
@@ -235,6 +249,7 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
   const fixtureName = `litigation_permissions_fixture_${process.pid}_${Date.now()}`;
   const fixtureUrl = new URL(parsed);
   fixtureUrl.pathname = `/${fixtureName}`;
+  const runtimeUrl = fixtureRuntimeUrl(fixtureUrl);
   const adminUrl = new URL(parsed);
   adminUrl.pathname = '/postgres';
   const admin = new Client({ connectionString: adminUrl.toString() });
@@ -253,11 +268,26 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
     await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
     created = true;
     migrate(fixtureUrl.toString());
-    const database = createDatabaseClient(fixtureUrl.toString());
+    const database = createDatabaseClient(runtimeUrl.toString());
+    const migrationDatabase = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: fixtureUrl.toString() }),
+    });
+    const runtimeProbe = new Client({ connectionString: runtimeUrl.toString() });
+    await runtimeProbe.connect();
     try {
+      assert.deepEqual(
+        (
+          await runtimeProbe.query<{ current_user: string; session_user: string }>(
+            'SELECT current_user,session_user',
+          )
+        ).rows[0],
+        { current_user: 'litigation_runtime', session_user: 'litigation_runtime' },
+      );
       const temporaryPassword = `P ${randomBytes(18).toString('base64url')}`;
       const permanentPassword = `Q ${randomBytes(18).toString('base64url')}`;
-      await setApprovedAccountPassword('KHelmy', temporaryPassword, { database });
+      await setApprovedAccountPassword('KHelmy', temporaryPassword, {
+        database: migrationDatabase,
+      });
       const forcedUser = await authenticateCredentials(
         { username: 'KHelmy', password: temporaryPassword },
         { database },
@@ -289,7 +319,7 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
       );
       assert.ok(administrator);
       const staleAdministratorClaims = createSessionClaims(administrator);
-      await database.userAccount.update({
+      await migrationDatabase.userAccount.update({
         where: { id: Number(administrator.id) },
         data: { roleCode: 'Lawyer', updatedAt: new Date() },
       });
@@ -309,7 +339,7 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
           person: { select: { nameAr: true } },
         },
       });
-      await database.userAccount.update({
+      await migrationDatabase.userAccount.update({
         where: { id: account.id },
         data: { isEnabled: false, sessionVersion: { increment: 1 }, updatedAt: new Date() },
       });
@@ -330,11 +360,11 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
       } satisfies AuthenticatedUser);
       assert.equal(await validateSessionClaims(disabledClaims, { database }), null);
 
-      await database.userAccount.update({
+      await migrationDatabase.userAccount.update({
         where: { id: account.id },
         data: { isEnabled: true, sessionVersion: { increment: 1 }, updatedAt: new Date() },
       });
-      await database.person.update({
+      await migrationDatabase.person.update({
         where: { id: account.personId },
         data: { isActive: false, updatedAt: new Date() },
       });
@@ -355,6 +385,8 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
       } satisfies AuthenticatedUser);
       assert.equal(await validateSessionClaims(inactiveClaims, { database }), null);
     } finally {
+      await runtimeProbe.end();
+      await migrationDatabase.$disconnect();
       await database.$disconnect();
     }
   } finally {
@@ -1074,6 +1106,7 @@ export async function updateClient() {
   console.log('PASS direct route/action 401 and 403 denials ignore client-supplied roles');
   console.log('PASS permission wrappers authorize before any protected route/action work');
   console.log('PASS database role refresh, forced-password, disabled and inactive denials');
+  console.log('PASS permission application operations use litigation_runtime');
   console.log(
     'PASS canonical App Router entries and project-owned JS/TS server actions are inventoried',
   );
