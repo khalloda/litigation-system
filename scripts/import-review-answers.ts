@@ -18,7 +18,7 @@
 
 import 'dotenv/config';
 import ExcelJS from 'exceljs';
-import { migrationDb as db, migrationPrincipalReady } from './lib/migration-db';
+import { disconnectMigrationDb, migrationDbReady } from './lib/migration-db';
 import {
   parseReviewWorkbook,
   workbookSha256,
@@ -31,7 +31,7 @@ function stop(message: string): never {
 }
 
 async function main() {
-  await migrationPrincipalReady;
+  const db = await migrationDbReady;
   const path = process.argv[2];
   if (path === undefined || path.startsWith('--')) {
     stop('no workbook given.\n  npm run review:import -- <workbook.xlsx> [--by "name"]');
@@ -82,4 +82,4 @@ main()
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
   })
-  .finally(() => db.$disconnect());
+  .finally(() => disconnectMigrationDb());

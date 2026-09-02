@@ -13,9 +13,8 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Client } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
-import { migrationDb as db, migrationPrincipalReady } from './lib/migration-db';
+import { disconnectMigrationDb, migrationDbReady } from './lib/migration-db';
+import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   asBigInt,
   MATTER_RECONCILIATION_SQL,
@@ -96,7 +95,7 @@ function sqlLiteral(value: string): string {
 }
 
 async function main() {
-  await migrationPrincipalReady;
+  const db = await migrationDbReady;
   // 1. Can we connect at all?
   const { version } = one(
     await db.$queryRaw<{ version: string }[]>`
@@ -2289,12 +2288,7 @@ async function main() {
   // every expected lawyer, party, role, exclusion and quarantine row from
   // staging plus the reviewed database tables. It does not import or call the
   // transform's TypeScript planner/parser.
-  const databaseUrl = process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(databaseUrl, 'MIGRATION_DATABASE_URL is required for relationship reconciliation');
-  const relationshipDb = new Client({ connectionString: databaseUrl });
-  await relationshipDb.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(relationshipDb);
+  await withApprovedMigrationClient(async (relationshipDb) => {
     const relationshipResult = await reconcileMatterRelationships(relationshipDb);
     record(
       'Matter lawyers and parties reconcile to source',
@@ -2673,9 +2667,7 @@ async function main() {
       attributionDigest,
       attributionDigest === TASK33A_ATTRIBUTION_DIGEST,
     );
-  } finally {
-    await relationshipDb.end();
-  }
+  });
 
   // ---- report --------------------------------------------------------------
   const width = Math.max(...checks.map((c) => c.name.length));
@@ -2702,5 +2694,5 @@ main()
     process.exitCode = 1;
   })
   .finally(() => {
-    void db.$disconnect();
+    void disconnectMigrationDb();
   });

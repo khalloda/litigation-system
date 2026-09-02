@@ -8,8 +8,8 @@
 
 import 'dotenv/config';
 import assert from 'node:assert/strict';
-import { Client } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import type { Client } from 'pg';
+import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   type AttendeeAuditReconciliationBaseline,
   attendeeAuditStructureFailures,
@@ -154,82 +154,78 @@ async function insertAttendees(db: Client, rows: readonly HearingAttendeePlan[])
 }
 
 export async function runHearingTransform(options: RunOptions = {}) {
-  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
-  const db = new Client({ connectionString });
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    const audit = await reconcileAttendeeAudit(db, options.attendeeAuditBaseline);
-    assert.deepEqual(audit.defects, [], 'Correction B attendee audit is not reconciled');
-    assert.deepEqual(
-      await attendeeAuditStructureFailures(db),
-      [],
-      'Correction B attendee safeguards differ from their reviewed definitions',
-    );
-    const proposed = await buildHearingTransformPlan(db);
-    const independentPlan = await reconcileHearings(db);
-    assert.deepEqual(
-      {
-        source: independentPlan.sourceHearings,
-        targets: independentPlan.expectedTransformedHearings,
-        quarantine: independentPlan.expectedQuarantinedHearings,
-        attendees: independentPlan.expectedAttendees,
-      },
-      {
-        source: proposed.sourceCount,
-        targets: proposed.targets.length,
-        quarantine: proposed.quarantine.length,
-        attendees: proposed.attendees.length,
-      },
-      'independent hearing oracle disagrees with the write plan',
-    );
-    if (options.dryRun === true) {
-      return { plan: proposed, reconciliation: null, digest: null };
-    }
-
-    const beforeProtected = await protectedState(db);
-    await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    try {
-      await db.query("SELECT pg_advisory_xact_lock(hashtext('task-2.8-hearings'))");
-      const plan = await buildHearingTransformPlan(db);
-      assert.deepEqual(plan, proposed, 'hearing source or reviewed rules changed after dry run');
-      await insertHearings(db, plan.targets);
-      await insertQuarantine(db, plan.quarantine);
-      await insertAttendees(db, plan.attendees);
-      if (options.forceFailure === true) {
-        throw new Error('fixture forced late hearing-transform failure');
+  return withApprovedMigrationClient(
+    async (db) => {
+      const audit = await reconcileAttendeeAudit(db, options.attendeeAuditBaseline);
+      assert.deepEqual(audit.defects, [], 'Correction B attendee audit is not reconciled');
+      assert.deepEqual(
+        await attendeeAuditStructureFailures(db),
+        [],
+        'Correction B attendee safeguards differ from their reviewed definitions',
+      );
+      const proposed = await buildHearingTransformPlan(db);
+      const independentPlan = await reconcileHearings(db);
+      assert.deepEqual(
+        {
+          source: independentPlan.sourceHearings,
+          targets: independentPlan.expectedTransformedHearings,
+          quarantine: independentPlan.expectedQuarantinedHearings,
+          attendees: independentPlan.expectedAttendees,
+        },
+        {
+          source: proposed.sourceCount,
+          targets: proposed.targets.length,
+          quarantine: proposed.quarantine.length,
+          attendees: proposed.attendees.length,
+        },
+        'independent hearing oracle disagrees with the write plan',
+      );
+      if (options.dryRun === true) {
+        return { plan: proposed, reconciliation: null, digest: null };
       }
 
-      const reconciliation = await reconcileHearings(db);
-      assert.deepEqual(
-        reconciliation.defects,
-        [],
-        `permanent hearing reconciliation failed:\n${reconciliation.defects.join('\n')}`,
-      );
-      assert.deepEqual(
-        await hearingStructureFailures(db),
-        [],
-        'Task 2.8 database safeguards differ from their reviewed definitions',
-      );
-      assert.equal(
-        await protectedState(db),
-        beforeProtected,
-        'Task 2.8 changed staging, review answers, prior transforms or attendee audit evidence',
-      );
-      await db.query('COMMIT');
-      return {
-        plan,
-        reconciliation,
-        digest: await hearingResultDigest(db),
-      };
-    } catch (error) {
-      await db.query('ROLLBACK');
-      throw error;
-    }
-  } finally {
-    await db.end();
-  }
+      const beforeProtected = await protectedState(db);
+      await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        await db.query("SELECT pg_advisory_xact_lock(hashtext('task-2.8-hearings'))");
+        const plan = await buildHearingTransformPlan(db);
+        assert.deepEqual(plan, proposed, 'hearing source or reviewed rules changed after dry run');
+        await insertHearings(db, plan.targets);
+        await insertQuarantine(db, plan.quarantine);
+        await insertAttendees(db, plan.attendees);
+        if (options.forceFailure === true) {
+          throw new Error('fixture forced late hearing-transform failure');
+        }
+
+        const reconciliation = await reconcileHearings(db);
+        assert.deepEqual(
+          reconciliation.defects,
+          [],
+          `permanent hearing reconciliation failed:\n${reconciliation.defects.join('\n')}`,
+        );
+        assert.deepEqual(
+          await hearingStructureFailures(db),
+          [],
+          'Task 2.8 database safeguards differ from their reviewed definitions',
+        );
+        assert.equal(
+          await protectedState(db),
+          beforeProtected,
+          'Task 2.8 changed staging, review answers, prior transforms or attendee audit evidence',
+        );
+        await db.query('COMMIT');
+        return {
+          plan,
+          reconciliation,
+          digest: await hearingResultDigest(db),
+        };
+      } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
+      }
+    },
+    { databaseUrl: options.databaseUrl },
+  );
 }
 
 async function main() {

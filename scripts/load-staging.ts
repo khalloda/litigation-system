@@ -46,7 +46,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { migrationDb as db, migrationPrincipalReady } from './lib/migration-db';
+import { disconnectMigrationDb, migrationDbReady } from './lib/migration-db';
 import { sourceRecordKeys } from './lib/source-identity';
 
 const META = '_migration/meta';
@@ -58,7 +58,7 @@ const LF = '\n';
 
 function fail(message: string): never {
   console.error(`\nload:staging — STOPPED\n\n  ${message}\n`);
-  void db.$disconnect();
+  void disconnectMigrationDb();
   process.exit(1);
 }
 
@@ -209,7 +209,7 @@ function readManifest(): Record<string, string>[] {
 }
 
 async function main() {
-  await migrationPrincipalReady;
+  const db = await migrationDbReady;
   /* ---- 1. the extraction ------------------------------------------- */
 
   if (!existsSync(`${META}/manifest.csv`)) {
@@ -709,5 +709,5 @@ main().catch((error: unknown) => {
   console.error('\nload:staging — could not run.\n');
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
-  void db.$disconnect();
+  void disconnectMigrationDb();
 });

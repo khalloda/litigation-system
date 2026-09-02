@@ -8,14 +8,14 @@
  * never disagree about what a link is.
  */
 
-import { migrationDb as db, migrationPrincipalReady } from './migration-db';
+import { migrationDbReady } from './migration-db';
 import type { AliasLink, CrosswalkLink } from './reviewed-links';
 
 export async function readLinksFromDatabase(): Promise<{
   aliases: AliasLink[];
   crosswalk: CrosswalkLink[];
 }> {
-  await migrationPrincipalReady;
+  const db = await migrationDbReady;
   const aliasRows = await db.personNameAlias.findMany({
     select: { aliasAr: true, person: { select: { nameAr: true } } },
   });

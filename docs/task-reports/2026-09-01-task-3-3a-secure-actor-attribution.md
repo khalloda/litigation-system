@@ -631,3 +631,130 @@ authorization decision, protected row or governance decision. Task 3.3B and
 the Graphify pilot remain not started. The exact return point remains
 **independent review and owner-authorized push of this final Task 3.3A
 follow-up**.
+
+## Final fail-closed gateway correction — 2 September 2026
+
+This correction starts directly from
+`2d598a70592f6b1e312aa30c4ecf6e06cb5fa6f1`, preserves its five local Task
+3.3A commits, and uses the focused message
+`fix: make Task 3.3A gates fail closed`. It does not amend or rewrite history.
+
+### Pre-edit reproductions
+
+Disposable in-memory/source fixtures produced the following exact baseline:
+
+- all 25 legitimate runtime sources: 0 failures;
+- object-stored computed callable: 0 failures;
+- array/callback-stored computed callable: 0 failures;
+- imported `node:process` plus constructed migration key: 0 failures;
+- computed `globalThis` process plus constructed migration key: 0 failures;
+- namespace `pg.Client`: 0 D35 failures;
+- CommonJS-aliased `pg.Client`: 0 D35 failures;
+- `pg.Pool`: 0 D35 failures;
+- connected client plus unreachable cosmetic preflight: 0 D35 failures; and
+- `createDatabaseClient` accepted an `https:` URL whose username was
+  `litigation_runtime`.
+
+The source reproductions did not read or print an environment value. The URL
+reproduction constructed a Prisma client but did not connect it.
+
+### Correction and permanent proof
+
+The raw-capability rule now rejects runtime-computed member acquisition from an
+unproved receiver at the acquisition site. Safety does not come from `any`,
+`unknown`, a structural callable type, an object/array/promise container, a
+callback or an external callee. Local immutable structures remain accepted only
+when their values are demonstrably harmless; all 25 real runtime sources still
+pass after the few legitimate dynamic lookups were rewritten without computed
+member acquisition.
+
+Runtime code can read only direct literal forms of `AUTH_SECRET`,
+`DATABASE_URL` and `NODE_ENV`. ES, namespace and CommonJS process-module loads,
+process/environment aliases, and computed process access through `global` or
+`globalThis` fail closed. Therefore a constructed spelling of
+`MIGRATION_DATABASE_URL` cannot be read, returned, logged, exported or passed
+to the alternate application client factory.
+
+The reviewed migration gateway is now the sole non-test controlled source that
+value-loads or constructs `Client`, `Pool`, `PrismaPg`, `PrismaClient` or reads
+the privileged migration environment value. PostgreSQL work is a callback:
+the gateway constructs and connects the client, awaits the direct-superuser
+session assertion, and invokes the callback only afterward. Privileged Prisma
+is returned only after `$connect` and the same identity assertion. Both paths
+disconnect safely on connection or verification failure. All existing
+controlled scripts now consume that gateway, and harmless PostgreSQL type-only
+imports are the only direct imports left outside it.
+
+The D35 inventory rejects value client modules regardless of named, namespace,
+default, CommonJS, ImportEquals or dynamic syntax across `.js`, `.jsx`, `.ts`,
+`.tsx`, `.mjs`, `.mts`, `.cjs` and `.cts`, with the same top-level test
+classification on Windows and POSIX paths. Permanent fixtures cover namespace
+and CommonJS clients, `Pool`, dynamic and ImportEquals loads, and dead,
+unawaited and post-query preflights. The combined checker self-test rejects 67
+semantic, fingerprint and D35 bypass fixtures while accepting all 25 runtime
+sources, the six exact raw-SQL calls, three focused harmless fixtures and the
+approved gateway.
+
+The audit integration fixture proves runtime order against connected sessions:
+work executes for the approved superuser only after the identity query succeeds,
+while the same callback remains uncalled for a connected non-superuser. Runtime
+URL tests accept both exact PostgreSQL protocol spellings and reject malformed,
+`http:`, `https:` and `file:` forms plus every non-exact username without
+including supplied URL material in an error.
+
+This correction changes no migration, schema, database row, dependency,
+lockfile, business role, authorization decision or governance rule. Task 3.3B,
+the Graphify pilot and all later work remain not started. The exact return point
+remains **independent review and owner-authorized push of this final fail-closed
+Task 3.3A correction**.
+
+### Final verification evidence
+
+- Prisma format, validation and client generation pass; the production Next.js
+  build passes.
+- The complete static gate passes with no lint warning: 25/25 runtime sources,
+  all six fingerprinted raw-SQL calls, the exact reviewed migration gateway,
+  67/67 combined negative fixtures, all eight executable extensions, and
+  Windows/POSIX test-path equivalence.
+- `test:audit`, `test:auth` and `test:permissions` pass. The permission result is
+  exactly 4 roles × 14 areas × 8 actions = 448/448 decisions.
+- Every controlled-script regression suite affected by the gateway migration
+  passes: attendee decomposition/audit, matter relationships, hearings,
+  administration and its date backfill, powers of attorney, documents, fee
+  letters, billing, attendance and client logos. Their rollback, immutable
+  evidence, idempotency and disposable-resource checks remain green.
+- Migration status is 56/56 and the database schema is up to date. `db:verify`
+  passes all 15 displayed platform/actor checks; `db:check` passes 89/89
+  permanent invariants. Historical-live provenance passes with profile digest
+  `86eb32a96d97167d6bc699d3576f42c4a6916a53c0a37d557035abd79bd8447f`
+  and repository digest
+  `ba2909703684ed077fc6ad213dd718175d01a672a83511f4daabf3642b4c65f7`.
+- Gate 4 adversarial fixtures pass 60/60. Two separately invoked non-writing
+  reconciliations, each including its internal idempotency replay, are
+  byte-identical at
+  `c314cd64142cc2cef36b4dc8a35715db7660fed9d9aba2d06b383e86d2fa54ec`.
+- The non-destructive reset-guard suite passes 12 parser cases and 9/10 fully
+  isolated guard cases; the one documented reduced case reaches and passes its
+  first six checks, then correctly refuses because the protected project volume
+  is non-empty. Nothing is destroyed.
+- The 5,209 protected business/timestamp rows retain digest
+  `b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab`.
+  Attribution remains 7 actors, 45,463 creation values, 45,459 update values and
+  4 historical null update actors, with digest
+  `edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`.
+- Billing remains 543 invoices, 597 payments and 47 allocations; attendance
+  remains 4,022 rows; migrated client logos remain 54 files and 1,541,428 bytes;
+  all associated source/result and workbook-answer digests remain exact under
+  the 89-invariant check.
+- Migrations 53–56 remain byte-identical at SHA-256 values `40de7e27f840805f627e4e75467182c0c9e0bcf974824871ce03bf01e3049ca2`,
+  `80133981c148edc6daec81474b4c86e470e3aab7bb5c64404cb26e661f16cb4d6`,
+  `0c16867c5ef57b87aac57b929134e90b450cbf4339eeb78c02afd0c748d6c4b4`
+  and `ed77a4c7c74413f90e8e15a0681a1d99b455773b5d9e25134673b046ac82a20d`.
+- Focused and cumulative review from `origin/main` pass, as does
+  `git diff --check`. Added-content scans find no private key, real credential,
+  likely secret assignment, raw-data path, binary or absolute workstation path.
+  The three cumulative credential-shaped examples are two explicitly marked
+  replacement values in `.env.example` and one dummy guard-test URL.
+- Every disposable fixture created by this correction was removed. Zero
+  matching disposable database, role, repository file or repository directory
+  remains.

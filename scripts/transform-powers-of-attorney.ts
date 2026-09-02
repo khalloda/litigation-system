@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-import { Client, type ClientBase } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import type { ClientBase } from 'pg';
+import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   buildPoaTransformPlan,
   type PoaLawyerPlan,
@@ -124,45 +124,41 @@ export async function poaResultDigest(db: ClientBase): Promise<string> {
 }
 
 export async function runPoaTransform(options: RunOptions = {}) {
-  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
-  const db = new Client({ connectionString });
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    const expectedOccurrences =
-      options.expectedCorrectedOccurrences ??
-      (options.databaseUrl === undefined ? [8, 0, 1] : undefined);
-    const preview = await buildPoaTransformPlan(db, expectedOccurrences);
-    if (options.apply !== true) return { plan: preview, digest: null };
-    const protectedBefore = await task29bProtectedState(db);
-    await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    try {
-      await assertPoaStructure(db);
-      const plan = await buildPoaTransformPlan(db, expectedOccurrences);
-      assert.equal(plan.sourceCount, preview.sourceCount);
-      await insertTargets(db, plan.targets);
-      await insertTransformQuarantine(db, plan.transformQuarantine);
-      await insertLawyers(db, plan.lawyers);
-      await insertRelationshipEvidence(db, plan.relationshipEvidence);
-      if (options.forceFailure === true) throw new Error('forced late Task 2.9B failure');
-      const reconciliation = await reconcilePowersOfAttorney(db, plan.correctedOccurrences);
-      assert.deepEqual(reconciliation.defects, [], reconciliation.defects.join('\n'));
-      assert.equal(
-        await task29bProtectedState(db),
-        protectedBefore,
-        'prior protected state changed',
-      );
-      await assertPoaStructure(db);
-      await db.query('COMMIT');
-      return { plan, digest: await poaResultDigest(db) };
-    } catch (error) {
-      await db.query('ROLLBACK');
-      throw error;
-    }
-  } finally {
-    await db.end();
-  }
+  return withApprovedMigrationClient(
+    async (db) => {
+      const expectedOccurrences =
+        options.expectedCorrectedOccurrences ??
+        (options.databaseUrl === undefined ? [8, 0, 1] : undefined);
+      const preview = await buildPoaTransformPlan(db, expectedOccurrences);
+      if (options.apply !== true) return { plan: preview, digest: null };
+      const protectedBefore = await task29bProtectedState(db);
+      await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        await assertPoaStructure(db);
+        const plan = await buildPoaTransformPlan(db, expectedOccurrences);
+        assert.equal(plan.sourceCount, preview.sourceCount);
+        await insertTargets(db, plan.targets);
+        await insertTransformQuarantine(db, plan.transformQuarantine);
+        await insertLawyers(db, plan.lawyers);
+        await insertRelationshipEvidence(db, plan.relationshipEvidence);
+        if (options.forceFailure === true) throw new Error('forced late Task 2.9B failure');
+        const reconciliation = await reconcilePowersOfAttorney(db, plan.correctedOccurrences);
+        assert.deepEqual(reconciliation.defects, [], reconciliation.defects.join('\n'));
+        assert.equal(
+          await task29bProtectedState(db),
+          protectedBefore,
+          'prior protected state changed',
+        );
+        await assertPoaStructure(db);
+        await db.query('COMMIT');
+        return { plan, digest: await poaResultDigest(db) };
+      } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
+      }
+    },
+    { databaseUrl: options.databaseUrl },
+  );
 }
 
 function breakdown(rows: readonly PoaRelationshipEvidencePlan[]): Record<string, number> {

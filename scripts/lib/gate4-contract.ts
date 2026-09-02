@@ -209,6 +209,24 @@ export function assertGate4DatabaseUrl(raw: string | undefined): URL {
   return parsed;
 }
 
+export function assertGate4DatabaseTarget(target: {
+  protocol: string;
+  hostname: string;
+  port: number;
+  database: string;
+}): void {
+  if (target.protocol !== 'postgresql:' && target.protocol !== 'postgres:')
+    throw new Error('Gate 4 requires PostgreSQL');
+  if (
+    target.hostname !== GATE4_HOST ||
+    target.port !== GATE4_PORT ||
+    target.database !== GATE4_DATABASE
+  )
+    throw new Error(
+      `Gate 4 refuses ${target.hostname}:${target.port}/${target.database}; expected ${GATE4_HOST}:${GATE4_PORT}/${GATE4_DATABASE}`,
+    );
+}
+
 export function assertReadOnlySnapshot(settings: {
   database: string;
   readOnly: string;

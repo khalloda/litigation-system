@@ -37,7 +37,7 @@ import 'dotenv/config';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import ExcelJS from 'exceljs';
-import { migrationDb as db, migrationPrincipalReady } from './lib/migration-db';
+import { disconnectMigrationDb, migrationDbReady } from './lib/migration-db';
 import {
   CONTRACT_SHEET,
   contractSha256,
@@ -170,7 +170,7 @@ function styleAnswerCells(row: ExcelJS.Row, from: number, to: number) {
 }
 
 async function main() {
-  await migrationPrincipalReady;
+  const db = await migrationDbReady;
   const reviews = await db.$queryRaw<ReviewRow[]>`
     SELECT id, topic, value, occurrences, years, matters, clients, nearest, confidence, kind,
            extraction_sha256
@@ -557,5 +557,5 @@ main().catch((error: unknown) => {
   console.error('\nreview:workbook — could not run.\n');
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
-  void db.$disconnect();
+  void disconnectMigrationDb();
 });

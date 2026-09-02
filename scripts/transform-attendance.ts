@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-import { Client, type ClientBase } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import type { ClientBase } from 'pg';
+import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   ATTENDANCE_SOURCE_BASELINE,
   attendanceSourceBaselineFailures,
@@ -122,61 +122,57 @@ async function lockAttendanceDomain(db: ClientBase): Promise<void> {
 }
 
 export async function runAttendanceTransform(options: Options = {}) {
-  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
   const enforceLive = options.enforceLiveBaselines ?? options.databaseUrl === undefined;
   const expected =
     options.expectedCounts ??
     (options.databaseUrl === undefined ? LIVE_ATTENDANCE_COUNTS : undefined);
-  const db = new Client({ connectionString });
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    if (enforceLive) {
-      await assertBillingBaseline(db);
-      await assertAttendanceSourceBaseline(db);
-    }
-    const preview = await buildAttendancePlan(db);
-    if (expected) assertPlanCounts(preview, expected);
-    if (options.apply !== true) return { plan: preview, reconciliation: null };
+  return withApprovedMigrationClient(
+    async (db) => {
+      if (enforceLive) {
+        await assertBillingBaseline(db);
+        await assertAttendanceSourceBaseline(db);
+      }
+      const preview = await buildAttendancePlan(db);
+      if (expected) assertPlanCounts(preview, expected);
+      if (options.apply !== true) return { plan: preview, reconciliation: null };
 
-    const protectedBefore = await task210bProtectedState(db);
-    await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    try {
-      await lockAttendanceDomain(db);
-      await assertAttendanceStructure(db);
-      if (enforceLive) {
-        await assertBillingBaseline(db);
-        await assertAttendanceSourceBaseline(db);
+      const protectedBefore = await task210bProtectedState(db);
+      await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        await lockAttendanceDomain(db);
+        await assertAttendanceStructure(db);
+        if (enforceLive) {
+          await assertBillingBaseline(db);
+          await assertAttendanceSourceBaseline(db);
+        }
+        const plan = await buildAttendancePlan(db);
+        if (expected) assertPlanCounts(plan, expected);
+        await insertAttendance(db, plan.targets);
+        await insertQuarantine(db, plan.quarantine);
+        if (options.forceFailure) throw new Error('forced late Task 2.10B failure');
+        const reconciliation = await reconcileAttendance(db, enforceLive);
+        assert.deepEqual(reconciliation.defects, [], reconciliation.defects.join('\n'));
+        if (expected) {
+          assert.equal(reconciliation.sourceCount, expected.source);
+          assert.equal(reconciliation.targetCount, expected.target);
+          assert.equal(reconciliation.quarantineCount, expected.quarantine);
+          assert.equal(reconciliation.distinctPeople, expected.distinctPeople);
+        }
+        assert.equal(await task210bProtectedState(db), protectedBefore);
+        await assertAttendanceStructure(db);
+        if (enforceLive) {
+          await assertBillingBaseline(db);
+          await assertAttendanceSourceBaseline(db);
+        }
+        await db.query('COMMIT');
+        return { plan, reconciliation };
+      } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
       }
-      const plan = await buildAttendancePlan(db);
-      if (expected) assertPlanCounts(plan, expected);
-      await insertAttendance(db, plan.targets);
-      await insertQuarantine(db, plan.quarantine);
-      if (options.forceFailure) throw new Error('forced late Task 2.10B failure');
-      const reconciliation = await reconcileAttendance(db, enforceLive);
-      assert.deepEqual(reconciliation.defects, [], reconciliation.defects.join('\n'));
-      if (expected) {
-        assert.equal(reconciliation.sourceCount, expected.source);
-        assert.equal(reconciliation.targetCount, expected.target);
-        assert.equal(reconciliation.quarantineCount, expected.quarantine);
-        assert.equal(reconciliation.distinctPeople, expected.distinctPeople);
-      }
-      assert.equal(await task210bProtectedState(db), protectedBefore);
-      await assertAttendanceStructure(db);
-      if (enforceLive) {
-        await assertBillingBaseline(db);
-        await assertAttendanceSourceBaseline(db);
-      }
-      await db.query('COMMIT');
-      return { plan, reconciliation };
-    } catch (error) {
-      await db.query('ROLLBACK');
-      throw error;
-    }
-  } finally {
-    await db.end();
-  }
+    },
+    { databaseUrl: options.databaseUrl },
+  );
 }
 
 function reasonBreakdown(rows: readonly AttendanceQuarantine[]): Record<string, number> {

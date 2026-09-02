@@ -2749,6 +2749,39 @@ credential enters Git or command output. Historical-live and clean-replay
 fixtures prove the full 53–56 chain, while the existing protected business,
 timestamp, attribution, workbook and Gate 4 evidence remains unchanged.
 
+### Final fail-closed Task 3.3A gateway correction — 2 September 2026
+
+Disposable source reproductions showed that the preceding completeness claim
+still had four gaps. Object-stored and array/callback-stored computed callables
+each returned zero runtime-source findings. Imported `node:process` access and
+computed `globalThis` process access each returned zero findings. Namespace
+`pg.Client`, CommonJS-aliased `Client`, `pg.Pool`, and a dead cosmetic principal
+check each returned zero D35 failures. The application factory also accepted an
+`https:` URL carrying the expected username. No reproduction connected through
+the rejected runtime URL or printed an environment value.
+
+The correction rejects an unproved runtime-computed member at acquisition,
+before any later container or callback flow matters. Runtime environment access
+is limited to direct literal `process.env` reads of the three approved keys;
+process-module loading and computed global-object process access are rejected.
+One reviewed migration gateway is now the sole non-test controlled location
+that value-loads or constructs PostgreSQL/Prisma clients or reads the privileged
+connection environment value. It connects, awaits the direct-superuser check,
+and only then invokes controlled work or exposes a verified Prisma client;
+failed verification disconnects and cannot run the callback. The D35 inventory
+enforces that reduced trusted surface across all eight executable extensions
+and both Windows/POSIX paths. The runtime factory accepts exactly `postgres:`
+or `postgresql:` plus the existing exact `litigation_runtime` username.
+
+Permanent negative fixtures cover object, array/callback and promise flow;
+ES/namespace/CommonJS process loading; `global` and `globalThis`; credential
+return/logging; namespace/CommonJS/`Pool`/dynamic/ImportEquals clients; and
+dead, unawaited and post-query preflights. A disposable database test proves
+approved callback work runs after the connected principal is verified and that
+the same callback never runs for a connected non-superuser. Migrations 53–56,
+schema, rows, roles, authorization decisions and protected evidence are not
+changed by this source/tooling correction.
+
 ## Cutover
 
 The Access file is in daily use. A stale copy drifted **325 rows in a few days**.

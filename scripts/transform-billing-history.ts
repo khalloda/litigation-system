@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-import { Client, type ClientBase } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import type { ClientBase } from 'pg';
+import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   buildBillingPlan,
   type AllocationTarget,
@@ -294,60 +294,56 @@ export async function billingResultDigest(db: ClientBase): Promise<string> {
 }
 
 export async function runBillingTransform(options: Options = {}) {
-  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
   const expected =
     options.expectedCounts ?? (options.databaseUrl === undefined ? LIVE_BILLING_COUNTS : undefined);
-  const db = new Client({ connectionString });
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    const preview = await buildBillingPlan(db);
-    if (expected) assertPlanCounts(preview, expected);
-    if (options.apply !== true) return { plan: preview, reconciliation: null, digest: null };
+  return withApprovedMigrationClient(
+    async (db) => {
+      const preview = await buildBillingPlan(db);
+      if (expected) assertPlanCounts(preview, expected);
+      if (options.apply !== true) return { plan: preview, reconciliation: null, digest: null };
 
-    const protectedBefore = await task210aProtectedState(db);
-    await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    try {
-      await lockBillingDomain(db);
-      await assertBillingStructure(db);
-      const plan = await buildBillingPlan(db);
-      if (expected) assertPlanCounts(plan, expected);
-      await insertInvoices(db, plan.invoices);
-      await insertQuarantine(db, 'invoice', plan.invoiceQuarantine);
-      await insertPayments(db, plan.payments);
-      await insertQuarantine(db, 'payment', plan.paymentQuarantine);
-      await insertAllocations(db, plan.allocations);
-      await insertQuarantine(db, 'allocation', plan.allocationQuarantine);
-      if (options.forceFailure) throw new Error('forced late Task 2.10A failure');
-      const reconciliation = await reconcileBillingHistory(db, options.databaseUrl === undefined);
-      assert.deepEqual(reconciliation.defects, [], reconciliation.defects.join('\n'));
-      if (expected) {
-        assert.equal(reconciliation.invoiceSourceCount, expected.invoiceSource);
-        assert.equal(reconciliation.invoiceTargetCount, expected.invoiceTarget);
-        assert.equal(reconciliation.invoiceQuarantineCount, expected.invoiceQuarantine);
-        assert.equal(reconciliation.paymentSourceCount, expected.paymentSource);
-        assert.equal(reconciliation.paymentTargetCount, expected.paymentTarget);
-        assert.equal(reconciliation.paymentQuarantineCount, expected.paymentQuarantine);
-        assert.equal(reconciliation.allocationSourceCount, expected.allocationSource);
-        assert.equal(reconciliation.allocationTargetCount, expected.allocationTarget);
-        assert.equal(reconciliation.allocationQuarantineCount, expected.allocationQuarantine);
-        assert.equal(reconciliation.allocationGroupCount, expected.allocationGroups);
-        assert.equal(reconciliation.distinctAllocationPeople, expected.allocationPeople);
-        assert.equal(reconciliation.referenceOnlyCount, expected.referenceOnly);
+      const protectedBefore = await task210aProtectedState(db);
+      await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        await lockBillingDomain(db);
+        await assertBillingStructure(db);
+        const plan = await buildBillingPlan(db);
+        if (expected) assertPlanCounts(plan, expected);
+        await insertInvoices(db, plan.invoices);
+        await insertQuarantine(db, 'invoice', plan.invoiceQuarantine);
+        await insertPayments(db, plan.payments);
+        await insertQuarantine(db, 'payment', plan.paymentQuarantine);
+        await insertAllocations(db, plan.allocations);
+        await insertQuarantine(db, 'allocation', plan.allocationQuarantine);
+        if (options.forceFailure) throw new Error('forced late Task 2.10A failure');
+        const reconciliation = await reconcileBillingHistory(db, options.databaseUrl === undefined);
+        assert.deepEqual(reconciliation.defects, [], reconciliation.defects.join('\n'));
+        if (expected) {
+          assert.equal(reconciliation.invoiceSourceCount, expected.invoiceSource);
+          assert.equal(reconciliation.invoiceTargetCount, expected.invoiceTarget);
+          assert.equal(reconciliation.invoiceQuarantineCount, expected.invoiceQuarantine);
+          assert.equal(reconciliation.paymentSourceCount, expected.paymentSource);
+          assert.equal(reconciliation.paymentTargetCount, expected.paymentTarget);
+          assert.equal(reconciliation.paymentQuarantineCount, expected.paymentQuarantine);
+          assert.equal(reconciliation.allocationSourceCount, expected.allocationSource);
+          assert.equal(reconciliation.allocationTargetCount, expected.allocationTarget);
+          assert.equal(reconciliation.allocationQuarantineCount, expected.allocationQuarantine);
+          assert.equal(reconciliation.allocationGroupCount, expected.allocationGroups);
+          assert.equal(reconciliation.distinctAllocationPeople, expected.allocationPeople);
+          assert.equal(reconciliation.referenceOnlyCount, expected.referenceOnly);
+        }
+        assert.equal(await task210aProtectedState(db), protectedBefore);
+        await assertBillingStructure(db);
+        const digest = await billingResultDigest(db);
+        await db.query('COMMIT');
+        return { plan, reconciliation, digest };
+      } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
       }
-      assert.equal(await task210aProtectedState(db), protectedBefore);
-      await assertBillingStructure(db);
-      const digest = await billingResultDigest(db);
-      await db.query('COMMIT');
-      return { plan, reconciliation, digest };
-    } catch (error) {
-      await db.query('ROLLBACK');
-      throw error;
-    }
-  } finally {
-    await db.end();
-  }
+    },
+    { databaseUrl: options.databaseUrl },
+  );
 }
 
 function reasonBreakdown(rows: readonly BillingQuarantine[]): Record<string, number> {

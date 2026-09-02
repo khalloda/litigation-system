@@ -180,6 +180,7 @@ function staticString(
   node: ts.Node,
   visited = new Set<ts.Symbol>(),
 ): string | null {
+  if (ts.isNumericLiteral(node)) return node.text;
   const literal = literalText(node);
   if (literal !== null && !ts.isTemplateHead(node) && !ts.isTemplateMiddle(node)) return literal;
   if (ts.isParenthesizedExpression(node)) return staticString(checker, node.expression, visited);
@@ -921,6 +922,13 @@ function semanticRawCapabilityFailures(
           );
         }
       }
+      if (
+        ts.isElementAccessExpression(node) &&
+        (!node.argumentExpression || staticString(checker, node.argumentExpression) === null) &&
+        !isProvenLocalNonPrismaReceiver(node.expression)
+      ) {
+        add(node, 'runtime-selected member is acquired from an unproved receiver');
+      }
     }
     if (ts.isCallExpression(node)) {
       if (reflectiveCapability(node)) {
@@ -1037,7 +1045,7 @@ function runtimeEnvironmentFailures(
   program: ts.Program,
   checker: ts.TypeChecker,
 ): string[] {
-  type EnvironmentKind = 'process' | 'environment';
+  type EnvironmentKind = 'global' | 'process' | 'environment';
   const failures = new Set<string>();
   const sourceByFile = new Map<string, AuditRuntimeSource>();
   const sourceFiles = new Set<ts.SourceFile>();
@@ -1060,11 +1068,19 @@ function runtimeEnvironmentFailures(
   };
   const processSymbols = new Set<ts.Symbol>();
   const environmentSymbols = new Set<ts.Symbol>();
+  const globalSymbols = new Set<ts.Symbol>();
   const processFunctions = new Set<ts.Symbol>();
   const environmentFunctions = new Set<ts.Symbol>();
   const symbolAt = (node: ts.Node): ts.Symbol | undefined => resolvedSymbol(checker, node);
   const isGlobalProcessIdentifier = (node: ts.Identifier): boolean => {
     if (node.text !== 'process') return false;
+    const symbol = symbolAt(node);
+    return !symbol?.declarations?.some((declaration) =>
+      sourceFiles.has(declaration.getSourceFile()),
+    );
+  };
+  const isGlobalObjectIdentifier = (node: ts.Identifier): boolean => {
+    if (node.text !== 'global' && node.text !== 'globalThis') return false;
     const symbol = symbolAt(node);
     return !symbol?.declarations?.some((declaration) =>
       sourceFiles.has(declaration.getSourceFile()),
@@ -1086,8 +1102,10 @@ function runtimeEnvironmentFailures(
   const kindOf = (expression: ts.Expression): EnvironmentKind | null => {
     const node = transparentExpression(expression);
     if (ts.isIdentifier(node)) {
+      if (isGlobalObjectIdentifier(node)) return 'global';
       if (isGlobalProcessIdentifier(node)) return 'process';
       const symbol = symbolAt(node);
+      if (symbol && globalSymbols.has(symbol)) return 'global';
       if (symbol && environmentSymbols.has(symbol)) return 'environment';
       if (symbol && processSymbols.has(symbol)) return 'process';
       return null;
@@ -1118,7 +1136,8 @@ function runtimeEnvironmentFailures(
   const markBinding = (name: ts.BindingName, kind: EnvironmentKind): boolean => {
     if (!ts.isIdentifier(name)) return false;
     const symbol = symbolAt(name);
-    const target = kind === 'process' ? processSymbols : environmentSymbols;
+    const target =
+      kind === 'global' ? globalSymbols : kind === 'process' ? processSymbols : environmentSymbols;
     if (!symbol || target.has(symbol)) return false;
     target.add(symbol);
     return true;
@@ -1161,7 +1180,7 @@ function runtimeEnvironmentFailures(
         const owner = containingFunction(node);
         const symbol = owner ? functionSymbolFor(owner) : undefined;
         const target = kind === 'process' ? processFunctions : environmentFunctions;
-        if (kind && symbol && !target.has(symbol)) {
+        if (kind !== 'global' && kind && symbol && !target.has(symbol)) {
           target.add(symbol);
           changed = true;
         }
@@ -1193,6 +1212,15 @@ function runtimeEnvironmentFailures(
   };
 
   for (const node of nodes) {
+    if (
+      (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) &&
+      kindOf(node.expression) === 'global'
+    ) {
+      const property = directEnvironmentKey(node);
+      if (ts.isElementAccessExpression(node) || property === 'process' || property === 'env') {
+        add(node, 'runtime process/environment access through the global object is prohibited');
+      }
+    }
     if (ts.isIdentifier(node) && isGlobalProcessIdentifier(node)) {
       const environmentObject =
         ts.isPropertyAccessExpression(node.parent) &&
@@ -1355,6 +1383,9 @@ export function auditRuntimeSourceFailures(
     };
 
     for (const request of moduleRequests(sourceFile, add)) {
+      if (request.specifier === 'process' || request.specifier === 'node:process') {
+        add(request.node, 'runtime source cannot import or require the process module');
+      }
       const target = resolveModule(sourceFile, request.specifier);
       const internal = request.specifier.startsWith('.') || request.specifier.startsWith('@/');
       const harmless = REVIEWED_NON_CODE_EXTENSIONS.has(

@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-import { Client, type ClientBase } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import type { ClientBase } from 'pg';
+import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   buildDocumentTransformPlan,
   type DocumentEvidencePlan,
@@ -75,41 +75,37 @@ export async function documentResultDigest(db: ClientBase): Promise<string> {
   );
 }
 export async function runDocumentTransform(options: Options = {}) {
-  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
-  const db = new Client({ connectionString });
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    const preview = await buildDocumentTransformPlan(db);
-    if (options.apply !== true) return { plan: preview, digest: null };
-    const protectedBefore = await task29cProtectedState(db);
-    await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    try {
-      await assertDocumentStructure(db);
-      const plan = await buildDocumentTransformPlan(db);
-      assert.equal(plan.sourceCount, preview.sourceCount);
-      await insertTargets(db, plan.targets);
-      await insertQuarantine(db, plan.quarantine);
-      await insertEvidence(db, plan.evidence);
-      if (options.forceFailure) throw new Error('forced late Task 2.9C failure');
-      const reconciliation = await reconcileDocuments(db);
-      assert.deepEqual(reconciliation.defects, [], reconciliation.defects.join('\n'));
-      assert.equal(
-        await task29cProtectedState(db),
-        protectedBefore,
-        'prior protected state changed',
-      );
-      await assertDocumentStructure(db);
-      await db.query('COMMIT');
-      return { plan, digest: await documentResultDigest(db) };
-    } catch (error) {
-      await db.query('ROLLBACK');
-      throw error;
-    }
-  } finally {
-    await db.end();
-  }
+  return withApprovedMigrationClient(
+    async (db) => {
+      const preview = await buildDocumentTransformPlan(db);
+      if (options.apply !== true) return { plan: preview, digest: null };
+      const protectedBefore = await task29cProtectedState(db);
+      await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        await assertDocumentStructure(db);
+        const plan = await buildDocumentTransformPlan(db);
+        assert.equal(plan.sourceCount, preview.sourceCount);
+        await insertTargets(db, plan.targets);
+        await insertQuarantine(db, plan.quarantine);
+        await insertEvidence(db, plan.evidence);
+        if (options.forceFailure) throw new Error('forced late Task 2.9C failure');
+        const reconciliation = await reconcileDocuments(db);
+        assert.deepEqual(reconciliation.defects, [], reconciliation.defects.join('\n'));
+        assert.equal(
+          await task29cProtectedState(db),
+          protectedBefore,
+          'prior protected state changed',
+        );
+        await assertDocumentStructure(db);
+        await db.query('COMMIT');
+        return { plan, digest: await documentResultDigest(db) };
+      } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
+      }
+    },
+    { databaseUrl: options.databaseUrl },
+  );
 }
 function breakdown(rows: readonly DocumentEvidencePlan[]) {
   const out: Record<string, number> = {};

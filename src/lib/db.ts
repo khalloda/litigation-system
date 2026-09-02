@@ -26,6 +26,9 @@ function approvedRuntimeDatabaseUrl(url: string | undefined): string {
   } catch {
     throw new Error('DATABASE_URL must be a valid PostgreSQL URL.');
   }
+  if (runtimeIdentity.protocol !== 'postgres:' && runtimeIdentity.protocol !== 'postgresql:') {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL URL.');
+  }
   if (runtimeIdentity.username !== 'litigation_runtime') {
     throw new Error('DATABASE_URL must use the restricted litigation_runtime principal.');
   }

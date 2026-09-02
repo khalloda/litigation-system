@@ -19,7 +19,7 @@ async function main(): Promise<void> {
   const prismaArguments = commands.get(command as 'dev' | 'deploy' | 'resolve-task33a' | 'status');
   assert.ok(prismaArguments, 'use dev, deploy, resolve-task33a or status');
 
-  await assertApprovedMigrationPrincipalUrl(process.env['MIGRATION_DATABASE_URL']);
+  await assertApprovedMigrationPrincipalUrl();
   const result = spawnSync(
     process.execPath,
     ['node_modules/prisma/build/index.js', ...prismaArguments],

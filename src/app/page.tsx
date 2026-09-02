@@ -6,6 +6,7 @@ import styles from './auth.module.css';
 
 export default async function HomePage() {
   const session = await requireAuthenticatedPage();
+  const roleLabel = Object.entries(t.auth.roles).find(([role]) => role === session.user.role)?.[1];
 
   async function logoutAction() {
     'use server';
@@ -19,7 +20,7 @@ export default async function HomePage() {
           <strong>{t.auth.signedInAs}:</strong> {session.user.name}
         </p>
         <p>
-          <strong>{t.auth.role}:</strong> {t.auth.roles[session.user.role]}
+          <strong>{t.auth.role}:</strong> {roleLabel}
         </p>
       </div>
       <form action={logoutAction}>

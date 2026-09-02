@@ -133,27 +133,31 @@ export function isPermissionAction(value: unknown): value is PermissionAction {
   return typeof value === 'string' && PERMISSION_ACTIONS.some((action) => action === value);
 }
 
+function ownValue(record: Record<string, unknown>, key: string): unknown {
+  return Object.entries(record).find(([candidate]) => candidate === key)?.[1];
+}
+
 export function permissionPolicyStructureFailures(policy: unknown): string[] {
   const failures: string[] = [];
   if (typeof policy !== 'object' || policy === null) return ['policy is not an object'];
   const candidate = policy as Record<string, unknown>;
 
   for (const role of AUTH_ROLES) {
-    const rolePolicy = candidate[role];
+    const rolePolicy = ownValue(candidate, role);
     if (typeof rolePolicy !== 'object' || rolePolicy === null) {
       failures.push(`missing role: ${role}`);
       continue;
     }
     const areas = rolePolicy as Record<string, unknown>;
     for (const area of PERMISSION_AREAS) {
-      const areaPolicy = areas[area];
+      const areaPolicy = ownValue(areas, area);
       if (typeof areaPolicy !== 'object' || areaPolicy === null) {
         failures.push(`missing area: ${role}/${area}`);
         continue;
       }
       const actions = areaPolicy as Record<string, unknown>;
       for (const action of PERMISSION_ACTIONS) {
-        if (typeof actions[action] !== 'boolean') {
+        if (typeof ownValue(actions, action) !== 'boolean') {
           failures.push(`missing action: ${role}/${area}/${action}`);
         }
       }
@@ -186,11 +190,11 @@ export function hasPermissionInPolicy(
     return false;
   }
   if (typeof policy !== 'object' || policy === null) return false;
-  const rolePolicy = (policy as Record<string, unknown>)[role];
+  const rolePolicy = ownValue(policy as Record<string, unknown>, role);
   if (typeof rolePolicy !== 'object' || rolePolicy === null) return false;
-  const areaPolicy = (rolePolicy as Record<string, unknown>)[area];
+  const areaPolicy = ownValue(rolePolicy as Record<string, unknown>, area);
   if (typeof areaPolicy !== 'object' || areaPolicy === null) return false;
-  return (areaPolicy as Record<string, unknown>)[action] === true;
+  return ownValue(areaPolicy as Record<string, unknown>, action) === true;
 }
 
 export function hasPermission(role: unknown, area: unknown, action: unknown): boolean {

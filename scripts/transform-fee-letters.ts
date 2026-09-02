@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-import { Client, type ClientBase } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import type { ClientBase } from 'pg';
+import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   buildFeeLetterPlan,
   type FeeTarget,
@@ -85,48 +85,44 @@ export async function feeResultDigest(db: ClientBase): Promise<string> {
   );
 }
 export async function runFeeLetterTransform(options: Options = {}) {
-  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(connectionString);
-  const db = new Client({ connectionString });
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    const expected =
-      options.expectedReferenceCounts ??
-      (options.databaseUrl === undefined
-        ? { contract: 289, mfiles: 123, both: 0, neither: 0 }
-        : undefined);
-    const preview = await buildFeeLetterPlan(db, expected);
-    if (options.apply !== true) return { plan: preview, digest: null };
-    const before = await task29dProtectedState(db);
-    await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    try {
-      await assertFeeLetterStructure(db);
-      const plan = await buildFeeLetterPlan(db, expected);
-      await insertFees(db, plan.fees);
-      await insertQ(db, 'fee_letter_transform', plan.feeQuarantine);
-      await insertForward(db, plan.forward);
-      await insertQ(db, 'fee_letter_matter_transform', plan.forwardQuarantine);
-      await insertReverse(db, plan.reverse);
-      await insertQ(db, 'matter_fee_letter_reference', plan.reverseQuarantine);
-      if (options.forceFailure) throw new Error('forced late Task 2.9D failure');
-      const r = await reconcileFeeLetters(db, {
-        ...plan.referenceCounts,
-        collisions: options.databaseUrl === undefined ? 2 : undefined,
-        collisionRefs: 0,
-      });
-      assert.deepEqual(r.defects, [], r.defects.join('\n'));
-      assert.equal(await task29dProtectedState(db), before);
-      await assertFeeLetterStructure(db);
-      await db.query('COMMIT');
-      return { plan, digest: await feeResultDigest(db) };
-    } catch (e) {
-      await db.query('ROLLBACK');
-      throw e;
-    }
-  } finally {
-    await db.end();
-  }
+  return withApprovedMigrationClient(
+    async (db) => {
+      const expected =
+        options.expectedReferenceCounts ??
+        (options.databaseUrl === undefined
+          ? { contract: 289, mfiles: 123, both: 0, neither: 0 }
+          : undefined);
+      const preview = await buildFeeLetterPlan(db, expected);
+      if (options.apply !== true) return { plan: preview, digest: null };
+      const before = await task29dProtectedState(db);
+      await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        await assertFeeLetterStructure(db);
+        const plan = await buildFeeLetterPlan(db, expected);
+        await insertFees(db, plan.fees);
+        await insertQ(db, 'fee_letter_transform', plan.feeQuarantine);
+        await insertForward(db, plan.forward);
+        await insertQ(db, 'fee_letter_matter_transform', plan.forwardQuarantine);
+        await insertReverse(db, plan.reverse);
+        await insertQ(db, 'matter_fee_letter_reference', plan.reverseQuarantine);
+        if (options.forceFailure) throw new Error('forced late Task 2.9D failure');
+        const r = await reconcileFeeLetters(db, {
+          ...plan.referenceCounts,
+          collisions: options.databaseUrl === undefined ? 2 : undefined,
+          collisionRefs: 0,
+        });
+        assert.deepEqual(r.defects, [], r.defects.join('\n'));
+        assert.equal(await task29dProtectedState(db), before);
+        await assertFeeLetterStructure(db);
+        await db.query('COMMIT');
+        return { plan, digest: await feeResultDigest(db) };
+      } catch (e) {
+        await db.query('ROLLBACK');
+        throw e;
+      }
+    },
+    { databaseUrl: options.databaseUrl },
+  );
 }
 function breakdown(rows: readonly Q[]) {
   const x: Record<string, number> = {};

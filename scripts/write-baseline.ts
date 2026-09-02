@@ -18,7 +18,7 @@
 import 'dotenv/config';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { migrationDb as db, migrationPrincipalReady } from './lib/migration-db';
+import { disconnectMigrationDb } from './lib/migration-db';
 import { readLinksFromDatabase } from './lib/read-links';
 import {
   BASELINE_PATH,
@@ -31,7 +31,6 @@ import {
 } from './lib/reviewed-links';
 
 async function main() {
-  await migrationPrincipalReady;
   const accept = process.argv.includes('--accept-changes');
   const current = await readLinksFromDatabase();
 
@@ -117,5 +116,5 @@ main()
     process.exitCode = 1;
   })
   .finally(() => {
-    void db.$disconnect();
+    void disconnectMigrationDb();
   });

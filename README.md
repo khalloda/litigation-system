@@ -5,10 +5,10 @@ litigation practice since 2010.
 
 **Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
 authentication and server-side role permissions are complete. Task 3.3A secure
-actor attribution is implemented locally; its final review-gap follow-up awaits
-independent review and owner-authorized push. **Do not start Task 3.3B.** After
-that checkpoint, Task 3.3B — Append-only event foundation is the exact return
-point. The owner-readable
+actor attribution is implemented locally; its final fail-closed gateway
+correction awaits independent review and owner-authorized push. **Do not start
+Task 3.3B.** After that checkpoint, Task 3.3B — Append-only event foundation is
+the exact return point. The owner-readable
 migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
 current progress and work order are in [`TASKS.md`](TASKS.md). The dated
@@ -92,7 +92,11 @@ npm run dev               # http://localhost:3000
 `MIGRATION_DATABASE_URL` is D35's isolated superuser migration/administration
 connection; it must be absent from the production web process. The web
 application uses only the separate restricted `DATABASE_URL` as
-`litigation_runtime`. The application accepts usernames, not email addresses. The four initial
+`litigation_runtime`. Every controlled non-test database script now obtains its
+connection through the reviewed migration gateway: the gateway connects and
+verifies the direct superuser identity before it exposes Prisma or invokes a
+PostgreSQL work callback. Application database URLs accept only `postgres:` or
+`postgresql:`. The application accepts usernames, not email addresses. The four initial
 accounts have no password in Git or in their migration; the owner initializes
 each one locally with `auth:set-password`, which hides input and forces a
 change at first login. See `docs/DATABASE.md` for the complete procedure.

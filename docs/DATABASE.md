@@ -308,6 +308,21 @@ initial value, and did not close computed runtime environment access or every
 alternate-client URL. The final review-gap follow-up corrects those source and
 factory controls without changing migrations 53–56 or D35's database boundary.
 
+A final fail-closed correction found four paths that this statement had not yet
+covered: container-laundered computed callables, alternate process/global
+environment access, namespace/CommonJS/`Pool` controlled clients, and
+non-PostgreSQL URLs accepted by the runtime factory. The corrected D35 boundary
+has one value-construction gateway for privileged PostgreSQL and Prisma
+clients. It connects first, awaits the direct-superuser identity assertion, and
+only then invokes controlled work or returns the verified Prisma client. On a
+connection or verification failure it disconnects without invoking the work
+callback. Outside that gateway, controlled non-test scripts may retain
+type-only PostgreSQL imports but cannot read the privileged environment value,
+value-load or construct a database client, or use a cosmetic preflight. The web
+factory accepts only `postgres:` and `postgresql:` URLs and still requires the
+exact `litigation_runtime` username; every rejection message omits the supplied
+URL and its userinfo/query components.
+
 Migration 55 commits runtime `NOLOGIN` and removal of its direct target-database
 `CONNECT` grant, then terminates only that principal's sessions in the target
 database. A second transaction checks the exact `_migration`, `public`,
@@ -378,7 +393,8 @@ Prisma 7 schema/migration commands read `MIGRATION_DATABASE_URL` from
 `prisma.config.ts`. `db:migrate`, `db:migrate:deploy`, migration status and the
 narrow migration-56 recovery command all run the authenticated D35 preflight
 before starting Prisma. Application code rejects a `DATABASE_URL` whose
-username is not exactly `litigation_runtime`; configuration validation also
+protocol is not exactly PostgreSQL or whose username is not exactly
+`litigation_runtime`; configuration validation also
 rejects equal migration/runtime usernames, and provisioning rejects different
 database targets.
 

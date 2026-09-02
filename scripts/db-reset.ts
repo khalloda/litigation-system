@@ -51,8 +51,11 @@
 
 import 'dotenv/config';
 import { execFileSync } from 'node:child_process';
-import { Client } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import {
+  migrationDatabaseTarget,
+  type MigrationDatabaseTarget,
+  withApprovedMigrationClient,
+} from './lib/migration-principal';
 import { parseDatabaseList, parseTableCounts, type TableCount } from './lib/inventory';
 
 const OVERRIDE_FLAG = '--force-i-know';
@@ -146,18 +149,9 @@ if (nodeEnv === 'production') {
 // ---------------------------------------------------------------------------
 //  2 and 3. Where does MIGRATION_DATABASE_URL point, and does it name the right thing?
 // ---------------------------------------------------------------------------
-const rawUrl = process.env['MIGRATION_DATABASE_URL'];
-if (!rawUrl) {
-  refuse(
-    'MIGRATION_DATABASE_URL is not set.',
-    ['Copy .env.example to .env — see docs/DATABASE.md.'],
-    false,
-  );
-}
-
-let url: URL;
+let target: MigrationDatabaseTarget;
 try {
-  url = new URL(rawUrl);
+  target = migrationDatabaseTarget();
 } catch {
   refuse(
     'MIGRATION_DATABASE_URL could not be read as an address.',
@@ -166,7 +160,7 @@ try {
   );
 }
 
-const host = url.hostname;
+const host = target.hostname;
 if (!LOCAL_HOSTS.includes(host)) {
   refuse(
     'The database is not on this machine.',
@@ -175,7 +169,7 @@ if (!LOCAL_HOSTS.includes(host)) {
   );
 }
 
-const namedDatabase = decodeURIComponent(url.pathname.replace(/^\//, ''));
+const namedDatabase = target.database;
 if (namedDatabase !== EXPECTED_DATABASE) {
   refuse(
     `MIGRATION_DATABASE_URL names the database "${namedDatabase}", not "${EXPECTED_DATABASE}".`,
@@ -268,22 +262,17 @@ function clusterIdentifier(): string {
 
 /* What MIGRATION_DATABASE_URL actually reaches, for the agreement check. */
 async function identifierViaUrl(): Promise<string> {
-  const client = new Client({ connectionString: rawUrl });
-  await client.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(client);
+  return withApprovedMigrationClient(async (client) => {
     const { rows } = await client.query<{ id: string }>(
       'SELECT system_identifier::text AS id FROM pg_control_system()',
     );
     return rows[0]?.id ?? '';
-  } finally {
-    await client.end();
-  }
+  });
 }
 
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log(`Target: the volume behind the "db" container (${host}:${url.port || '5432'})`);
+  console.log(`Target: the volume behind the "db" container (${host}:${target.port})`);
 
   // -------------------------------------------------------------------------
   //  4. Enumerate everything in the volume. Failure here is not permission.

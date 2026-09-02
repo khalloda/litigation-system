@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-import { Client, type ClientBase } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import type { ClientBase } from 'pg';
+import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   buildAdminTransformPlan,
   type AdminQuarantinePlan,
@@ -137,57 +137,53 @@ export async function adminWorkResultDigest(db: ClientBase): Promise<string> {
 }
 
 export async function runAdminWorkTransform(options: RunOptions = {}) {
-  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
-  const db = new Client({ connectionString });
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    const preview = await buildAdminTransformPlan(db);
-    if (options.apply !== true) return { plan: preview, digest: null };
+  return withApprovedMigrationClient(
+    async (db) => {
+      const preview = await buildAdminTransformPlan(db);
+      if (options.apply !== true) return { plan: preview, digest: null };
 
-    const protectedBefore = await task29ProtectedState(db);
-    await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    try {
-      await assertAdminWorkStructure(db);
-      const plan = await buildAdminTransformPlan(db);
-      assert.equal(plan.taskSourceCount, preview.taskSourceCount);
-      assert.equal(plan.actionSourceCount, preview.actionSourceCount);
-      await insertTasks(db, plan.tasks);
-      await insertTaskQuarantine(db, 'admin_task_transform', plan.taskQuarantine);
-      await insertActions(db, plan.actions);
-      await insertTaskQuarantine(db, 'task_action_transform', plan.actionQuarantine);
-      if (options.forceFailure === true) throw new Error('forced late Task 2.9A failure');
-      const reconciliation = await reconcileAdminWorks(db);
-      assert.deepEqual(
-        reconciliation.defects,
-        [],
-        `Task 2.9A reconciliation failed:\n${reconciliation.defects.join('\n')}`,
-      );
-      assert.equal(
-        await task29ProtectedState(db),
-        protectedBefore,
-        'prior protected state changed',
-      );
-      if (options.fixtureOnlyWeakenStructureBeforeCommit === true) {
-        assert.ok(
-          options.databaseUrl,
-          'fixture-only safeguard mutation requires an explicit database',
+      const protectedBefore = await task29ProtectedState(db);
+      await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        await assertAdminWorkStructure(db);
+        const plan = await buildAdminTransformPlan(db);
+        assert.equal(plan.taskSourceCount, preview.taskSourceCount);
+        assert.equal(plan.actionSourceCount, preview.actionSourceCount);
+        await insertTasks(db, plan.tasks);
+        await insertTaskQuarantine(db, 'admin_task_transform', plan.taskQuarantine);
+        await insertActions(db, plan.actions);
+        await insertTaskQuarantine(db, 'task_action_transform', plan.actionQuarantine);
+        if (options.forceFailure === true) throw new Error('forced late Task 2.9A failure');
+        const reconciliation = await reconcileAdminWorks(db);
+        assert.deepEqual(
+          reconciliation.defects,
+          [],
+          `Task 2.9A reconciliation failed:\n${reconciliation.defects.join('\n')}`,
         );
-        await db.query(
-          'ALTER FUNCTION quarantine.refuse_admin_work_evidence_change() SET search_path=public',
+        assert.equal(
+          await task29ProtectedState(db),
+          protectedBefore,
+          'prior protected state changed',
         );
+        if (options.fixtureOnlyWeakenStructureBeforeCommit === true) {
+          assert.ok(
+            options.databaseUrl,
+            'fixture-only safeguard mutation requires an explicit database',
+          );
+          await db.query(
+            'ALTER FUNCTION quarantine.refuse_admin_work_evidence_change() SET search_path=public',
+          );
+        }
+        await assertAdminWorkStructure(db);
+        await db.query('COMMIT');
+        return { plan, digest: await adminWorkResultDigest(db) };
+      } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
       }
-      await assertAdminWorkStructure(db);
-      await db.query('COMMIT');
-      return { plan, digest: await adminWorkResultDigest(db) };
-    } catch (error) {
-      await db.query('ROLLBACK');
-      throw error;
-    }
-  } finally {
-    await db.end();
-  }
+    },
+    { databaseUrl: options.databaseUrl },
+  );
 }
 
 function breakdown(rows: readonly AdminQuarantinePlan[]): Record<string, number> {

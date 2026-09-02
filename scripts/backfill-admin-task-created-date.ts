@@ -2,8 +2,12 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { Client, type ClientBase } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import type { ClientBase } from 'pg';
+import {
+  migrationDatabaseTarget,
+  type MigrationDatabaseTarget,
+  withApprovedMigrationClient,
+} from './lib/migration-principal';
 import {
   ADMIN_TASK_CREATION_DATE_BASELINE,
   type AdminTaskCreationDateBaseline,
@@ -27,16 +31,15 @@ type RunOptions = {
 
 type DateSummary = AdminTaskCreationDateBaseline & { digest: string };
 
-function assertProjectDatabaseUrl(connectionString: string): void {
-  const url = new URL(connectionString);
+function assertProjectDatabaseTarget(target: MigrationDatabaseTarget): void {
   assert.ok(
-    url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1',
-    `administrative date backfill refuses non-local host ${url.hostname}`,
+    target.hostname === 'localhost' || target.hostname === '127.0.0.1' || target.hostname === '::1',
+    `administrative date backfill refuses non-local host ${target.hostname}`,
   );
-  assert.equal(url.port, '5433', 'administrative date backfill requires PostgreSQL port 5433');
+  assert.equal(target.port, 5433, 'administrative date backfill requires PostgreSQL port 5433');
   assert.equal(
-    decodeURIComponent(url.pathname),
-    '/litigation',
+    target.database,
+    'litigation',
     'administrative date backfill requires the litigation database',
   );
 }
@@ -106,51 +109,48 @@ export async function runAdminTaskCreatedDateBackfill(options: RunOptions = {}):
   summary: DateSummary;
   changedRows: number | null;
 }> {
-  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
-  if (options.fixtureOnly !== true) assertProjectDatabaseUrl(connectionString);
+  if (options.fixtureOnly !== true)
+    assertProjectDatabaseTarget(migrationDatabaseTarget(options.databaseUrl));
   const expected = options.expectedBaseline ?? ADMIN_TASK_CREATION_DATE_BASELINE;
-  const db = new Client({ connectionString });
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    await assertStructure(db);
-    const preview = await buildAdminTransformPlan(db);
-    const previewSummary = dateSummary(preview.tasks);
-    assertBaseline(previewSummary, expected);
-    if (options.fixtureOnly !== true) {
-      assert.equal(preview.taskSourceCount, 4_238, 'administrative source task baseline');
-      assert.equal(preview.taskQuarantine.length, 544, 'administrative task quarantine baseline');
-    }
-    if (options.apply !== true) return { summary: previewSummary, changedRows: null };
+  return withApprovedMigrationClient(
+    async (db) => {
+      await assertStructure(db);
+      const preview = await buildAdminTransformPlan(db);
+      const previewSummary = dateSummary(preview.tasks);
+      assertBaseline(previewSummary, expected);
+      if (options.fixtureOnly !== true) {
+        assert.equal(preview.taskSourceCount, 4_238, 'administrative source task baseline');
+        assert.equal(preview.taskQuarantine.length, 544, 'administrative task quarantine baseline');
+      }
+      if (options.apply !== true) return { summary: previewSummary, changedRows: null };
 
-    const priorBefore = await task29ProtectedState(db);
-    const adminBefore = await adminStateIgnoringTaskCreatedDate(db);
-    await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    try {
-      await db.query(`
+      const priorBefore = await task29ProtectedState(db);
+      const adminBefore = await adminStateIgnoringTaskCreatedDate(db);
+      await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        await db.query(`
         LOCK TABLE staging."admin work table",public.matters,
                    quarantine.matter_transform,public.lookup_court,
                    public.lookup_matter_destination,public.migration_crosswalk,
                    public.person_name_alias,quarantine.review_value IN SHARE MODE;
         LOCK TABLE public.admin_tasks IN SHARE ROW EXCLUSIVE MODE`);
-      await assertStructure(db);
-      const plan = await buildAdminTransformPlan(db);
-      const summary = dateSummary(plan.tasks);
-      assertBaseline(summary, expected);
-      assert.equal(
-        summary.digest,
-        previewSummary.digest,
-        'creation-date plan changed before write',
-      );
+        await assertStructure(db);
+        const plan = await buildAdminTransformPlan(db);
+        const summary = dateSummary(plan.tasks);
+        assertBaseline(summary, expected);
+        assert.equal(
+          summary.digest,
+          previewSummary.digest,
+          'creation-date plan changed before write',
+        );
 
-      const mapping = await db.query<{
-        planned: string;
-        matched: string;
-        distinct_targets: string;
-        native_targets: string;
-      }>(
-        `WITH planned AS (
+        const mapping = await db.query<{
+          planned: string;
+          matched: string;
+          distinct_targets: string;
+          native_targets: string;
+        }>(
+          `WITH planned AS (
            SELECT * FROM jsonb_to_recordset($1::jsonb)
              AS x("srcRecordKey" text,"taskCreatedDate" text)
          )
@@ -159,22 +159,22 @@ export async function runAdminTaskCreatedDateBackfill(options: RunOptions = {}):
                 count(*) FILTER (WHERE t.legacy_source_record_key IS NULL)::text native_targets
            FROM planned p LEFT JOIN admin_tasks t
              ON t.legacy_source_record_key=p."srcRecordKey"`,
-        [
-          JSON.stringify(
-            plan.tasks.map((row) => ({
-              srcRecordKey: row.srcRecordKey,
-              taskCreatedDate: row.taskCreatedDate,
-            })),
-          ),
-        ],
-      );
-      assert.equal(mapping.rows[0]?.planned, String(expected.transformedTasks));
-      assert.equal(mapping.rows[0]?.matched, String(expected.transformedTasks));
-      assert.equal(mapping.rows[0]?.distinct_targets, String(expected.transformedTasks));
-      assert.equal(mapping.rows[0]?.native_targets, '0');
+          [
+            JSON.stringify(
+              plan.tasks.map((row) => ({
+                srcRecordKey: row.srcRecordKey,
+                taskCreatedDate: row.taskCreatedDate,
+              })),
+            ),
+          ],
+        );
+        assert.equal(mapping.rows[0]?.planned, String(expected.transformedTasks));
+        assert.equal(mapping.rows[0]?.matched, String(expected.transformedTasks));
+        assert.equal(mapping.rows[0]?.distinct_targets, String(expected.transformedTasks));
+        assert.equal(mapping.rows[0]?.native_targets, '0');
 
-      const update = await db.query<{ changed: string }>(
-        `WITH planned AS (
+        const update = await db.query<{ changed: string }>(
+          `WITH planned AS (
            SELECT * FROM jsonb_to_recordset($1::jsonb)
              AS x("srcRecordKey" text,"taskCreatedDate" text)
          ),changed AS (
@@ -186,46 +186,46 @@ export async function runAdminTaskCreatedDateBackfill(options: RunOptions = {}):
               AND t.task_created_date IS DISTINCT FROM p."taskCreatedDate"::date
            RETURNING t.id
          ) SELECT count(*)::text changed FROM changed`,
-        [
-          JSON.stringify(
-            plan.tasks.map((row) => ({
-              srcRecordKey: row.srcRecordKey,
-              taskCreatedDate: row.taskCreatedDate,
-            })),
-          ),
-        ],
-      );
-      if (options.forceFailure === true)
-        throw new Error('forced late administrative creation-date backfill failure');
-
-      const reconciliation = await reconcileAdminWorks(db, { creationDateBaseline: expected });
-      assert.deepEqual(
-        reconciliation.defects,
-        [],
-        `administrative creation-date reconciliation failed:\n${reconciliation.defects.join('\n')}`,
-      );
-      assert.equal(await task29ProtectedState(db), priorBefore, 'prior migration state changed');
-      assert.equal(
-        await adminStateIgnoringTaskCreatedDate(db),
-        adminBefore,
-        'an administrative value other than task_created_date changed',
-      );
-      if (options.fixtureOnly !== true)
-        assert.equal(
-          await adminWorkResultDigest(db),
-          ADMIN_WORK_EXISTING_RESULT_DIGEST,
-          'existing Task 2.9A result digest changed',
+          [
+            JSON.stringify(
+              plan.tasks.map((row) => ({
+                srcRecordKey: row.srcRecordKey,
+                taskCreatedDate: row.taskCreatedDate,
+              })),
+            ),
+          ],
         );
-      await assertStructure(db);
-      await db.query('COMMIT');
-      return { summary, changedRows: Number(update.rows[0]?.changed ?? '0') };
-    } catch (error) {
-      await db.query('ROLLBACK');
-      throw error;
-    }
-  } finally {
-    await db.end();
-  }
+        if (options.forceFailure === true)
+          throw new Error('forced late administrative creation-date backfill failure');
+
+        const reconciliation = await reconcileAdminWorks(db, { creationDateBaseline: expected });
+        assert.deepEqual(
+          reconciliation.defects,
+          [],
+          `administrative creation-date reconciliation failed:\n${reconciliation.defects.join('\n')}`,
+        );
+        assert.equal(await task29ProtectedState(db), priorBefore, 'prior migration state changed');
+        assert.equal(
+          await adminStateIgnoringTaskCreatedDate(db),
+          adminBefore,
+          'an administrative value other than task_created_date changed',
+        );
+        if (options.fixtureOnly !== true)
+          assert.equal(
+            await adminWorkResultDigest(db),
+            ADMIN_WORK_EXISTING_RESULT_DIGEST,
+            'existing Task 2.9A result digest changed',
+          );
+        await assertStructure(db);
+        await db.query('COMMIT');
+        return { summary, changedRows: Number(update.rows[0]?.changed ?? '0') };
+      } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
+      }
+    },
+    { databaseUrl: options.databaseUrl },
+  );
 }
 
 async function main(): Promise<void> {

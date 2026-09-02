@@ -9,7 +9,7 @@
 
 import 'dotenv/config';
 import ExcelJS from 'exceljs';
-import { migrationDb as db, migrationPrincipalReady } from './lib/migration-db';
+import { disconnectMigrationDb, migrationDbReady } from './lib/migration-db';
 import {
   buildLegacyIdentityAttachmentPlan,
   type LegacyFindingRow,
@@ -27,7 +27,7 @@ function stop(message: string): never {
 }
 
 async function main() {
-  await migrationPrincipalReady;
+  const db = await migrationDbReady;
   const path = process.argv[2];
   if (path === undefined || path.startsWith('--')) {
     stop(
@@ -106,4 +106,4 @@ main()
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
   })
-  .finally(() => db.$disconnect());
+  .finally(() => disconnectMigrationDb());

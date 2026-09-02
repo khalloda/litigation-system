@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { Client } from 'pg';
 import { runtimeRoleBoundaryFailures } from './lib/audit-structure';
 import { decodeUrlPassword, postgresqlStringLiteral } from './lib/database-principal';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import {
+  migrationDatabaseTarget,
+  withApprovedMigrationClient,
+  withRestrictedRuntimeClient,
+} from './lib/migration-principal';
 
 const RUNTIME_ROLE = 'litigation_runtime';
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
@@ -18,7 +21,10 @@ function databaseIdentity(url: URL): string {
 function checkedUrl(raw: string | undefined, variable: string): URL {
   assert.ok(raw, `${variable} is required`);
   const url = new URL(raw);
-  assert.equal(url.protocol, 'postgresql:', `${variable} must use PostgreSQL`);
+  assert.ok(
+    url.protocol === 'postgres:' || url.protocol === 'postgresql:',
+    `${variable} must use PostgreSQL`,
+  );
   assert.ok(url.username, `${variable} requires a username`);
   assert.ok(url.password, `${variable} requires a password`);
   return url;
@@ -76,18 +82,17 @@ async function prepareLocalEnvironment(): Promise<void> {
 }
 
 async function provisionRuntimePrincipal(): Promise<void> {
-  const migrationUrl = checkedUrl(process.env['MIGRATION_DATABASE_URL'], 'MIGRATION_DATABASE_URL');
+  const migrationTarget = migrationDatabaseTarget();
   const runtimeUrl = checkedUrl(process.env['DATABASE_URL'], 'DATABASE_URL');
   assert.equal(runtimeUrl.username, RUNTIME_ROLE, 'DATABASE_URL must use litigation_runtime');
-  assert.notEqual(migrationUrl.username, runtimeUrl.username, 'database principals must differ');
-  assert.equal(databaseIdentity(migrationUrl), databaseIdentity(runtimeUrl));
+  assert.equal(
+    `${migrationTarget.hostname}:${migrationTarget.port}/${migrationTarget.database}`,
+    `${runtimeUrl.hostname}:${runtimeUrl.port || '5432'}${runtimeUrl.pathname}`,
+  );
   const runtimePassword = decodeUrlPassword(runtimeUrl, 'DATABASE_URL');
   assert.equal(runtimePassword.startsWith('replace_'), false, 'runtime password is a placeholder');
 
-  const owner = new Client({ connectionString: migrationUrl.toString() });
-  await owner.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(owner);
+  await withApprovedMigrationClient(async (owner) => {
     const boundaryFailures = await runtimeRoleBoundaryFailures(owner);
     assert.deepEqual(
       boundaryFailures,
@@ -97,13 +102,9 @@ async function provisionRuntimePrincipal(): Promise<void> {
     await owner.query(
       `ALTER ROLE litigation_runtime PASSWORD ${postgresqlStringLiteral(runtimePassword)}`,
     );
-  } finally {
-    await owner.end();
-  }
+  });
 
-  const runtime = new Client({ connectionString: runtimeUrl.toString() });
-  await runtime.connect();
-  try {
+  await withRestrictedRuntimeClient(runtimeUrl.toString(), async (runtime) => {
     const identity = await runtime.query<{ current_user: string; session_user: string }>(
       'SELECT current_user,session_user',
     );
@@ -111,9 +112,7 @@ async function provisionRuntimePrincipal(): Promise<void> {
       current_user: RUNTIME_ROLE,
       session_user: RUNTIME_ROLE,
     });
-  } finally {
-    await runtime.end();
-  }
+  });
   console.log(
     'PASS provisioned litigation_runtime from ignored DATABASE_URL without displaying it',
   );

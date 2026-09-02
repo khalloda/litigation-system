@@ -6,8 +6,8 @@
 
 import 'dotenv/config';
 import assert from 'node:assert/strict';
-import { Client, type ClientConfig } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import type { Client } from 'pg';
+import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   attendeeAuditResultDigest,
   attendeeAuditStructureFailures,
@@ -169,77 +169,72 @@ async function insertAmbiguousEvidence(db: Client, plan: AttendeeAuditPlan): Pro
 }
 
 export async function runAttendeeAudit(options: RunOptions = {}) {
-  const connectionString = options.databaseUrl ?? process.env['MIGRATION_DATABASE_URL'];
-  assert.ok(connectionString, 'MIGRATION_DATABASE_URL is required');
-  const config: ClientConfig = { connectionString };
-  const db = new Client(config);
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    const plan = await buildAttendeeAuditPlan(db, options.expectations);
-    if (options.apply !== true) {
-      return { plan, reconciliation: null, digest: null };
-    }
-
-    const protectedBefore = await protectedState(db);
-    await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    try {
-      await db.query("SELECT pg_advisory_xact_lock(hashtext('correction-b-attendee-audit'))");
-      const transactionalReviewSnapshot = await readReviewSnapshot(db);
-      assert.deepEqual(
-        transactionalReviewSnapshot,
-        plan.reviewSnapshot,
-        'Review answers changed after the dry-run plan was built.',
-      );
-      assertReviewSnapshot(
-        transactionalReviewSnapshot,
-        options.expectations?.review ?? REVIEW_ANSWER_BASELINE,
-      );
-      const transactionalSourceSnapshot = await readAttendeeSourceSnapshot(db);
-      assert.deepEqual(
-        transactionalSourceSnapshot,
-        plan.sourceSnapshot,
-        'Attendee source cells changed after the dry-run plan was built.',
-      );
-      assertAttendeeSourceSnapshot(
-        transactionalSourceSnapshot,
-        options.expectations?.source ?? ATTENDEE_SOURCE_BASELINE,
-      );
-      await insertAuditCells(db, plan);
-      await insertAuditSpans(db, plan);
-      await insertAmbiguousEvidence(db, plan);
-      if (options.forceFailure === true) {
-        throw new Error('fixture forced late attendee-audit failure');
+  return withApprovedMigrationClient(
+    async (db) => {
+      const plan = await buildAttendeeAuditPlan(db, options.expectations);
+      if (options.apply !== true) {
+        return { plan, reconciliation: null, digest: null };
       }
-      const reconciliation = await reconcileAttendeeAudit(db, options.reconciliationBaseline);
-      assert.deepEqual(
-        reconciliation.defects,
-        [],
-        `Permanent attendee-audit reconciliation failed:\n${reconciliation.defects.join('\n')}`,
-      );
-      assert.deepEqual(
-        await attendeeAuditStructureFailures(db),
-        [],
-        'Attendee audit database safeguards differ from their reviewed definitions.',
-      );
-      assert.equal(
-        await protectedState(db),
-        protectedBefore,
-        'Correction B changed staging answers or a previously transformed row.',
-      );
-      await db.query('COMMIT');
-      return {
-        plan,
-        reconciliation,
-        digest: await attendeeAuditResultDigest(db),
-      };
-    } catch (error) {
-      await db.query('ROLLBACK');
-      throw error;
-    }
-  } finally {
-    await db.end();
-  }
+
+      const protectedBefore = await protectedState(db);
+      await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        await db.query("SELECT pg_advisory_xact_lock(hashtext('correction-b-attendee-audit'))");
+        const transactionalReviewSnapshot = await readReviewSnapshot(db);
+        assert.deepEqual(
+          transactionalReviewSnapshot,
+          plan.reviewSnapshot,
+          'Review answers changed after the dry-run plan was built.',
+        );
+        assertReviewSnapshot(
+          transactionalReviewSnapshot,
+          options.expectations?.review ?? REVIEW_ANSWER_BASELINE,
+        );
+        const transactionalSourceSnapshot = await readAttendeeSourceSnapshot(db);
+        assert.deepEqual(
+          transactionalSourceSnapshot,
+          plan.sourceSnapshot,
+          'Attendee source cells changed after the dry-run plan was built.',
+        );
+        assertAttendeeSourceSnapshot(
+          transactionalSourceSnapshot,
+          options.expectations?.source ?? ATTENDEE_SOURCE_BASELINE,
+        );
+        await insertAuditCells(db, plan);
+        await insertAuditSpans(db, plan);
+        await insertAmbiguousEvidence(db, plan);
+        if (options.forceFailure === true) {
+          throw new Error('fixture forced late attendee-audit failure');
+        }
+        const reconciliation = await reconcileAttendeeAudit(db, options.reconciliationBaseline);
+        assert.deepEqual(
+          reconciliation.defects,
+          [],
+          `Permanent attendee-audit reconciliation failed:\n${reconciliation.defects.join('\n')}`,
+        );
+        assert.deepEqual(
+          await attendeeAuditStructureFailures(db),
+          [],
+          'Attendee audit database safeguards differ from their reviewed definitions.',
+        );
+        assert.equal(
+          await protectedState(db),
+          protectedBefore,
+          'Correction B changed staging answers or a previously transformed row.',
+        );
+        await db.query('COMMIT');
+        return {
+          plan,
+          reconciliation,
+          digest: await attendeeAuditResultDigest(db),
+        };
+      } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
+      }
+    },
+    { databaseUrl: options.databaseUrl },
+  );
 }
 
 async function main() {

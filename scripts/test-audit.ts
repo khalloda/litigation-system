@@ -14,7 +14,10 @@ import {
   TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
 } from './lib/audit-structure';
 import { decodeUrlPassword, postgresqlStringLiteral } from './lib/database-principal';
-import { assertApprovedMigrationPrincipalUrl } from './lib/migration-principal';
+import {
+  assertApprovedMigrationPrincipalUrl,
+  withApprovedMigrationClient,
+} from './lib/migration-principal';
 import {
   readGate4RepositoryMigrationInventory,
   reconcileGate4Migrations,
@@ -915,6 +918,18 @@ async function proveMigrationPrincipalPreflight(admin: Client, source: URL): Pro
   let databaseCreated = false;
   try {
     await assertApprovedMigrationPrincipalUrl(source.toString());
+    let approvedWorkRan = false;
+    await withApprovedMigrationClient(
+      async (database) => {
+        const identity = await database.query<{ approved: boolean }>(
+          `SELECT rolsuper approved FROM pg_roles WHERE rolname=current_user`,
+        );
+        assert.equal(identity.rows[0]?.approved, true);
+        approvedWorkRan = true;
+      },
+      { databaseUrl: source.toString() },
+    );
+    assert.equal(approvedWorkRan, true);
     await admin.query(
       `CREATE ROLE ${identifier(roleName)} LOGIN NOSUPERUSER NOCREATEDB CREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD ${postgresqlStringLiteral(password)}`,
     );
@@ -926,6 +941,18 @@ async function proveMigrationPrincipalPreflight(admin: Client, source: URL): Pro
     unapprovedUrl.username = roleName;
     unapprovedUrl.password = password;
     unapprovedUrl.pathname = `/${databaseName}`;
+    let rejectedWorkRan = false;
+    await assert.rejects(
+      () =>
+        withApprovedMigrationClient(
+          async () => {
+            rejectedWorkRan = true;
+          },
+          { databaseUrl: unapprovedUrl.toString() },
+        ),
+      /approved PostgreSQL superuser migration\/administration principal/u,
+    );
+    assert.equal(rejectedWorkRan, false);
     const result = spawnSync(
       process.execPath,
       ['node_modules/tsx/dist/cli.mjs', 'scripts/run-prisma-migration.ts', 'deploy'],
@@ -961,7 +988,7 @@ async function proveMigrationPrincipalPreflight(admin: Client, source: URL): Pro
       await evidence.end();
     }
     console.log(
-      'PASS non-superuser CREATEROLE migration principal is rejected before Prisma starts; approved superuser preflight succeeds without credential output',
+      'PASS approved migration work runs only after verified superuser identity; rejected-principal work never runs; Prisma does not start and no credential is output',
     );
   } finally {
     if (databaseCreated) {
@@ -1029,6 +1056,14 @@ async function main(): Promise<void> {
       return rejected.toString();
     });
     rejectedRuntimeUrls.push(`not-a-postgresql-url-${rejectedMarker}`);
+    for (const protocol of ['https:', 'http:', 'file:']) {
+      rejectedRuntimeUrls.push(
+        runtimeUrl
+          .toString()
+          .replace(/^postgresql:/u, protocol)
+          .replace(/(?:\?|$)/u, `?marker=${rejectedMarker}`),
+      );
+    }
     for (const rejectedUrl of rejectedRuntimeUrls) {
       let unexpectedClient: ReturnType<typeof createDatabaseClient> | undefined;
       try {
@@ -1042,6 +1077,9 @@ async function main(): Promise<void> {
       await unexpectedClient.$disconnect();
       assert.fail('createDatabaseClient accepted a non-litigation_runtime URL');
     }
+    const postgresProtocolUrl = new URL(runtimeUrl);
+    postgresProtocolUrl.protocol = 'postgres:';
+    await createDatabaseClient(postgresProtocolUrl.toString()).$disconnect();
     const prismaRuntime = createDatabaseClient(runtimeUrl.toString());
     await owner.connect();
     try {

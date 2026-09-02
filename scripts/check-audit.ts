@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path, { resolve } from 'node:path';
@@ -9,6 +10,9 @@ import {
   discoverAuditRuntimeSources,
   type AuditRuntimeSource,
 } from './lib/audit-source-inventory';
+
+const D35_MIGRATION_GATEWAY_SHA256 =
+  '367d66befd52abc7a30afb7462b43d4d6ffd6900b3872956aaef035447d8b3f3';
 
 function source(filePath: string): string {
   return readFileSync(resolve(filePath), 'utf8');
@@ -63,7 +67,7 @@ export function d35ScriptSourceFailures(
   scriptSource: string,
   scriptsRoot = resolve('scripts'),
 ): string[] {
-  const failures: string[] = [];
+  const failures = new Set<string>();
   const sourceFile = ts.createSourceFile(
     scriptPath,
     scriptSource,
@@ -71,96 +75,313 @@ export function d35ScriptSourceFailures(
     true,
     d35ScriptKind(scriptPath),
   );
-  let migrationEnvironmentReferences = 0;
-  let clientConstructions = 0;
-  let principalSessionChecks = 0;
-  let migrationDatabaseReferences = 0;
-  let awaitedMigrationPrincipal = 0;
-  const postgresqlClientBindings = new Set(['Client']);
-  const principalSessionBindings = new Set(['assertApprovedMigrationPrincipalSession']);
+  const normalized = normalizedPath(scriptPath);
+  const exempt =
+    isD35TestScriptPath(scriptPath, scriptsRoot) ||
+    normalized === normalizedPath(resolve(scriptsRoot, 'check-audit.ts')) ||
+    normalized === normalizedPath(resolve(scriptsRoot, 'lib/migration-principal.ts'));
+  const nodes: ts.Node[] = [];
+  const constInitializers = new Map<string, ts.Expression>();
   const visit = (node: ts.Node): void => {
+    nodes.push(node);
     if (
-      ts.isImportDeclaration(node) &&
-      ts.isStringLiteralLike(node.moduleSpecifier) &&
-      node.importClause?.namedBindings &&
-      ts.isNamedImports(node.importClause.namedBindings)
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      ts.isVariableDeclarationList(node.parent) &&
+      (node.parent.flags & ts.NodeFlags.Const) !== 0
     ) {
-      for (const element of node.importClause.namedBindings.elements) {
-        const imported = element.propertyName?.text ?? element.name.text;
-        if (node.moduleSpecifier.text === 'pg' && imported === 'Client') {
-          postgresqlClientBindings.add(element.name.text);
-        }
-        if (
-          /(?:^|[/\\])lib[/\\]migration-principal$/u.test(node.moduleSpecifier.text) &&
-          imported === 'assertApprovedMigrationPrincipalSession'
-        ) {
-          principalSessionBindings.add(element.name.text);
-        }
-      }
-    }
-    if (
-      (ts.isIdentifier(node) || ts.isStringLiteralLike(node)) &&
-      node.text === 'MIGRATION_DATABASE_URL'
-    ) {
-      migrationEnvironmentReferences += 1;
-    }
-    if (
-      ts.isNewExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      postgresqlClientBindings.has(node.expression.text)
-    ) {
-      clientConstructions += 1;
-    }
-    if (
-      ts.isCallExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      principalSessionBindings.has(node.expression.text)
-    ) {
-      principalSessionChecks += 1;
-    }
-    if (ts.isIdentifier(node) && node.text === 'migrationDb') {
-      migrationDatabaseReferences += 1;
-    }
-    if (
-      ts.isAwaitExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === 'migrationPrincipalReady'
-    ) {
-      awaitedMigrationPrincipal += 1;
+      constInitializers.set(node.name.text, node.initializer);
     }
     node.forEachChild(visit);
   };
   visit(sourceFile);
 
+  const staticText = (node: ts.Node, visited = new Set<string>()): string | null => {
+    if (ts.isStringLiteralLike(node)) return node.text;
+    if (
+      ts.isParenthesizedExpression(node) ||
+      ts.isAsExpression(node) ||
+      ts.isTypeAssertionExpression(node) ||
+      ts.isNonNullExpression(node) ||
+      ts.isSatisfiesExpression(node)
+    )
+      return staticText(node.expression, visited);
+    if (ts.isIdentifier(node)) {
+      if (visited.has(node.text)) return null;
+      const initializer = constInitializers.get(node.text);
+      return initializer ? staticText(initializer, new Set(visited).add(node.text)) : null;
+    }
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+      const left = staticText(node.left, visited);
+      const right = staticText(node.right, visited);
+      return left === null || right === null ? null : left + right;
+    }
+    if (ts.isTemplateExpression(node)) {
+      let value = node.head.text;
+      for (const span of node.templateSpans) {
+        const part = staticText(span.expression, visited);
+        if (part === null) return null;
+        value += part + span.literal.text;
+      }
+      return value;
+    }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === 'join' &&
+      ts.isArrayLiteralExpression(node.expression.expression) &&
+      node.arguments.length <= 1
+    ) {
+      const separator = node.arguments[0] ? staticText(node.arguments[0], visited) : ',';
+      const parts = node.expression.expression.elements.map((part) => staticText(part, visited));
+      return separator === null || parts.some((part) => part === null)
+        ? null
+        : (parts as string[]).join(separator);
+    }
+    return null;
+  };
+  const moduleRequest = (node: ts.Node): { specifier: string; typeOnly: boolean } | null => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteralLike(node.moduleSpecifier)) {
+      const clause = node.importClause;
+      const typeOnly =
+        clause?.isTypeOnly === true ||
+        (clause?.namedBindings !== undefined &&
+          ts.isNamedImports(clause.namedBindings) &&
+          clause.namedBindings.elements.length > 0 &&
+          clause.namedBindings.elements.every((element) => element.isTypeOnly));
+      return { specifier: node.moduleSpecifier.text, typeOnly };
+    }
+    if (
+      ts.isExportDeclaration(node) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteralLike(node.moduleSpecifier)
+    )
+      return { specifier: node.moduleSpecifier.text, typeOnly: node.isTypeOnly };
+    if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+      const value = node.moduleReference.expression;
+      return value && ts.isStringLiteralLike(value)
+        ? { specifier: value.text, typeOnly: false }
+        : null;
+    }
+    if (ts.isCallExpression(node) && node.arguments.length === 1) {
+      const dynamic = node.expression.kind === ts.SyntaxKind.ImportKeyword;
+      const commonJs = ts.isIdentifier(node.expression) && node.expression.text === 'require';
+      const value = node.arguments[0];
+      if ((dynamic || commonJs) && value && ts.isStringLiteralLike(value))
+        return { specifier: value.text, typeOnly: false };
+    }
+    return null;
+  };
+  const dangerousClientModule = (specifier: string): boolean =>
+    specifier === 'pg' ||
+    specifier.startsWith('pg/') ||
+    specifier === 'postgres' ||
+    specifier === 'postgresql' ||
+    specifier === '@prisma/adapter-pg' ||
+    specifier === '@prisma/client' ||
+    specifier === '@/lib/db' ||
+    /(?:^|[/\\])generated[/\\]prisma[/\\]client(?:\.[cm]?[jt]sx?)?$/u.test(specifier) ||
+    /(?:^|[/\\])src[/\\]lib[/\\]db(?:\.[cm]?[jt]sx?)?$/u.test(specifier);
+
+  const processBindings = new Set(['process']);
+  const environmentBindings = new Set<string>();
+  for (const node of nodes) {
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteralLike(node.moduleSpecifier) &&
+      (node.moduleSpecifier.text === 'process' || node.moduleSpecifier.text === 'node:process')
+    ) {
+      const clause = node.importClause;
+      if (clause?.name) processBindings.add(clause.name.text);
+      if (clause?.namedBindings && ts.isNamespaceImport(clause.namedBindings))
+        processBindings.add(clause.namedBindings.name.text);
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      ts.isCallExpression(node.initializer) &&
+      ts.isIdentifier(node.initializer.expression) &&
+      node.initializer.expression.text === 'require' &&
+      node.initializer.arguments.length === 1 &&
+      ts.isStringLiteralLike(node.initializer.arguments[0]!) &&
+      ['process', 'node:process'].includes(node.initializer.arguments[0]!.text)
+    ) {
+      processBindings.add(node.name.text);
+    }
+  }
+  let environmentChanged = true;
+  while (environmentChanged) {
+    environmentChanged = false;
+    for (const node of nodes) {
+      if (!ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || !node.initializer) {
+        if (
+          ts.isVariableDeclaration(node) &&
+          ts.isObjectBindingPattern(node.name) &&
+          node.initializer &&
+          ts.isIdentifier(node.initializer) &&
+          processBindings.has(node.initializer.text)
+        ) {
+          for (const element of node.name.elements) {
+            const property = element.propertyName ?? element.name;
+            if (
+              (ts.isIdentifier(property) || ts.isStringLiteralLike(property)) &&
+              property.text === 'env' &&
+              ts.isIdentifier(element.name) &&
+              !environmentBindings.has(element.name.text)
+            ) {
+              environmentBindings.add(element.name.text);
+              environmentChanged = true;
+            }
+          }
+        }
+        continue;
+      }
+      const value = node.initializer;
+      if (ts.isIdentifier(value) && processBindings.has(value.text)) {
+        if (!processBindings.has(node.name.text)) {
+          processBindings.add(node.name.text);
+          environmentChanged = true;
+        }
+        continue;
+      }
+      if (ts.isIdentifier(value) && environmentBindings.has(value.text)) {
+        if (!environmentBindings.has(node.name.text)) {
+          environmentBindings.add(node.name.text);
+          environmentChanged = true;
+        }
+        continue;
+      }
+      if (
+        (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value)) &&
+        ts.isIdentifier(value.expression) &&
+        processBindings.has(value.expression.text)
+      ) {
+        const key = ts.isPropertyAccessExpression(value)
+          ? value.name.text
+          : value.argumentExpression
+            ? staticText(value.argumentExpression)
+            : null;
+        if (key === 'env' && !environmentBindings.has(node.name.text)) {
+          environmentBindings.add(node.name.text);
+          environmentChanged = true;
+        }
+      }
+    }
+    for (const node of nodes) {
+      if (
+        !ts.isBinaryExpression(node) ||
+        node.operatorToken.kind !== ts.SyntaxKind.EqualsToken ||
+        !ts.isIdentifier(node.left)
+      )
+        continue;
+      const value = node.right;
+      if (ts.isIdentifier(value) && processBindings.has(value.text)) {
+        if (!processBindings.has(node.left.text)) {
+          processBindings.add(node.left.text);
+          environmentChanged = true;
+        }
+      } else if (ts.isIdentifier(value) && environmentBindings.has(value.text)) {
+        if (!environmentBindings.has(node.left.text)) {
+          environmentBindings.add(node.left.text);
+          environmentChanged = true;
+        }
+      } else if (
+        (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value)) &&
+        ts.isIdentifier(value.expression) &&
+        processBindings.has(value.expression.text) &&
+        (ts.isPropertyAccessExpression(value)
+          ? value.name.text
+          : value.argumentExpression
+            ? staticText(value.argumentExpression)
+            : null) === 'env' &&
+        !environmentBindings.has(node.left.text)
+      ) {
+        environmentBindings.add(node.left.text);
+        environmentChanged = true;
+      }
+    }
+  }
+
+  if (!exempt) {
+    for (const node of nodes) {
+      const request = moduleRequest(node);
+      if (request && dangerousClientModule(request.specifier) && !request.typeOnly) {
+        failures.add(
+          `${scriptPath} value-loads database client module ${request.specifier} outside the D35 gateway`,
+        );
+      }
+      if (
+        ts.isCallExpression(node) &&
+        node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+        (node.arguments.length !== 1 || !ts.isStringLiteralLike(node.arguments[0]!))
+      ) {
+        failures.add(
+          `${scriptPath} uses a non-literal dynamic module load outside the D35 gateway`,
+        );
+      }
+      if (ts.isIdentifier(node) && node.text === 'require') {
+        const directLiteral =
+          ts.isCallExpression(node.parent) &&
+          node.parent.expression === node &&
+          node.parent.arguments.length === 1 &&
+          ts.isStringLiteralLike(node.parent.arguments[0]!);
+        if (!directLiteral)
+          failures.add(
+            `${scriptPath} aliases or indirectly invokes CommonJS loading outside the D35 gateway`,
+          );
+      }
+      if (
+        request &&
+        /(?:^|[/\\])lib[/\\]migration-principal$/u.test(request.specifier) &&
+        ts.isImportDeclaration(node) &&
+        node.importClause?.namedBindings &&
+        ts.isNamedImports(node.importClause.namedBindings) &&
+        node.importClause.namedBindings.elements.some(
+          (element) =>
+            (element.propertyName?.text ?? element.name.text) ===
+            'assertApprovedMigrationPrincipalSession',
+        )
+      ) {
+        failures.add(
+          `${scriptPath} imports the low-level principal assertion outside the D35 gateway`,
+        );
+      }
+      if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+        const receiver = node.expression;
+        const directEnvironment =
+          (ts.isPropertyAccessExpression(receiver) || ts.isElementAccessExpression(receiver)) &&
+          ts.isIdentifier(receiver.expression) &&
+          processBindings.has(receiver.expression.text) &&
+          (ts.isPropertyAccessExpression(receiver)
+            ? receiver.name.text
+            : receiver.argumentExpression
+              ? staticText(receiver.argumentExpression)
+              : null) === 'env';
+        const aliasedEnvironment =
+          ts.isIdentifier(receiver) && environmentBindings.has(receiver.text);
+        const key = ts.isPropertyAccessExpression(node)
+          ? node.name.text
+          : node.argumentExpression
+            ? staticText(node.argumentExpression)
+            : null;
+        if ((directEnvironment || aliasedEnvironment) && key === 'MIGRATION_DATABASE_URL') {
+          failures.add(`${scriptPath} reads MIGRATION_DATABASE_URL outside the D35 gateway`);
+        }
+      }
+    }
+  }
+
   if (
     /node_modules[/\\]prisma[/\\]build[/\\]index\.js[\s\S]{0,120}['"]migrate['"]/u.test(
       scriptSource,
-    )
+    ) &&
+    normalized !== normalizedPath(resolve(scriptsRoot, 'run-prisma-migration.ts'))
   ) {
-    failures.push(`${scriptPath} bypasses the D35 migration-principal runner`);
+    failures.add(`${scriptPath} bypasses the D35 migration-principal runner`);
   }
-  if (
-    !isD35TestScriptPath(scriptPath, scriptsRoot) &&
-    normalizedPath(scriptPath) !== normalizedPath(resolve('scripts/check-audit.ts')) &&
-    normalizedPath(scriptPath) !== normalizedPath(resolve('scripts/lib/migration-principal.ts')) &&
-    migrationEnvironmentReferences > 0 &&
-    clientConstructions > 0 &&
-    principalSessionChecks < 1
-  ) {
-    failures.push(
-      `${scriptPath} connects controlled PostgreSQL tooling without the D35 principal preflight`,
-    );
-  }
-  if (
-    normalizedPath(scriptPath) !== normalizedPath(resolve('scripts/lib/migration-db.ts')) &&
-    migrationDatabaseReferences > 0 &&
-    awaitedMigrationPrincipal === 0
-  ) {
-    failures.push(
-      `${scriptPath} can use the migration Prisma client before the D35 principal preflight`,
-    );
-  }
-  return failures;
+  return [...failures];
 }
 
 function formDataKeys(sourceFile: ts.SourceFile): string[] {
@@ -642,6 +863,43 @@ export function unsafe(tx: unknown, selected: string, wrapperKey: string, sql: s
       ],
     ],
     [
+      'object-stored runtime-selected capability',
+      [
+        {
+          path: 'src/lib/object-stored-sql.ts',
+          text: `export function unsafe(tx: any, selected: string, sql: string) {
+  const execute = tx[selected];
+  const holder = { execute };
+  return holder.execute.call(tx, sql);
+}`,
+        },
+      ],
+    ],
+    [
+      'array-callback runtime-selected capability',
+      [
+        {
+          path: 'src/lib/array-callback-sql.ts',
+          text: `export function unsafe(tx: any, selected: string, sql: string) {
+  const execute = tx[selected];
+  return [execute].map((fn) => fn.call(tx, sql))[0];
+}`,
+        },
+      ],
+    ],
+    [
+      'promise-flow runtime-selected capability',
+      [
+        {
+          path: 'src/lib/promise-sql.ts',
+          text: `export async function unsafe(tx: any, selected: string, sql: string) {
+  const execute = tx[selected];
+  return Promise.resolve(execute).then((fn) => fn.call(tx, sql));
+}`,
+        },
+      ],
+    ],
+    [
       'computed invocation selects audit actor',
       [
         {
@@ -659,6 +917,61 @@ export function unsafe(tx: unknown, selected: string, wrapperKey: string, sql: s
         {
           path: 'src/lib/migration-secret.ts',
           text: `export const unsafe = process.env.MIGRATION_DATABASE_URL;`,
+        },
+      ],
+    ],
+    [
+      'ES process-module credential access',
+      [
+        {
+          path: 'src/lib/imported-process.ts',
+          text: `import nodeProcess from 'node:process';
+const key = ['MIGRATION', 'DATABASE', 'URL'].join('_');
+export const unsafe = nodeProcess.env[key];`,
+        },
+      ],
+    ],
+    [
+      'namespace process-module credential access',
+      [
+        {
+          path: 'src/lib/namespace-process.ts',
+          text: `import * as nodeProcess from 'process';
+export const unsafe = nodeProcess.env['MIGRATION_DATABASE_URL'];`,
+        },
+      ],
+    ],
+    [
+      'CommonJS process-module credential disclosure',
+      [
+        {
+          path: 'src/lib/commonjs-process.cjs',
+          text: `const nodeProcess = require('node:process');
+const key = ['MIGRATION', 'DATABASE', 'URL'].join('_');
+module.exports = () => console.log(nodeProcess.env[key]);`,
+        },
+      ],
+    ],
+    [
+      'computed globalThis process credential access',
+      [
+        {
+          path: 'src/lib/globalthis-process.ts',
+          text: `const processKey = ['pro', 'cess'].join('');
+const migrationKey = ['MIGRATION', 'DATABASE', 'URL'].join('_');
+const nodeProcess = globalThis[processKey as 'process'];
+export const unsafe = nodeProcess.env[migrationKey];`,
+        },
+      ],
+    ],
+    [
+      'computed global process credential return',
+      [
+        {
+          path: 'src/lib/global-process.ts',
+          text: `const key = 'process';
+const credential = global[key].env[['MIGRATION', 'DATABASE', 'URL'].join('_')];
+export function unsafe() { return credential; }`,
         },
       ],
     ],
@@ -797,9 +1110,90 @@ export function inspect() { return local.label; }`,
         .sort(),
       [...AUDIT_RUNTIME_SOURCE_EXTENSIONS].sort(),
     );
-    const unguardedControlledSource = `import { Client as Connection } from 'pg';
+    const d35Bypasses = [
+      {
+        name: 'namespace Client',
+        extension: '.ts',
+        text: `import * as pg from 'pg';
 const url = process.env.MIGRATION_DATABASE_URL;
-export const database = new Connection({ connectionString: url });`;
+export const client = new pg.Client({ connectionString: url });`,
+      },
+      {
+        name: 'default Client module',
+        extension: '.jsx',
+        text: `import pg from 'pg';
+export const client = new pg.Client({ connectionString: process.env.MIGRATION_DATABASE_URL });`,
+      },
+      {
+        name: 'CommonJS aliased Client',
+        extension: '.cjs',
+        text: `const { Client: Connection } = require('pg');
+const url = process.env.MIGRATION_DATABASE_URL;
+exports.client = new Connection({ connectionString: url });`,
+      },
+      {
+        name: 'Pool',
+        extension: '.js',
+        text: `import { Pool } from 'pg';
+export const pool = new Pool({ connectionString: process.env.MIGRATION_DATABASE_URL });`,
+      },
+      {
+        name: 'dynamic client loading',
+        extension: '.mjs',
+        text: `const pg = await import('pg');
+export const client = new pg.Client({ connectionString: process.env.MIGRATION_DATABASE_URL });`,
+      },
+      {
+        name: 'ImportEquals client loading',
+        extension: '.cts',
+        text: `import pg = require('pg');
+export const client = new pg.Client({ connectionString: process.env.MIGRATION_DATABASE_URL });`,
+      },
+      {
+        name: 'dead preflight',
+        extension: '.tsx',
+        text: `import { Client } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+const client = new Client({ connectionString: process.env.MIGRATION_DATABASE_URL });
+void client.connect();
+if (false) void assertApprovedMigrationPrincipalSession(client);`,
+      },
+      {
+        name: 'unawaited preflight',
+        extension: '.mts',
+        text: `import { Client } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+const client = new Client({ connectionString: process.env.MIGRATION_DATABASE_URL });
+void client.connect();
+void assertApprovedMigrationPrincipalSession(client);`,
+      },
+      {
+        name: 'post-query preflight',
+        extension: '.ts',
+        text: `import { Client } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+const client = new Client({ connectionString: process.env.MIGRATION_DATABASE_URL });
+await client.connect();
+await client.query('SELECT 1');
+await assertApprovedMigrationPrincipalSession(client);`,
+      },
+      {
+        name: 'aliased migration environment read',
+        extension: '.ts',
+        text: `import nodeProcess from 'node:process';
+const environment = nodeProcess.env;
+const key = ['MIGRATION', 'DATABASE', 'URL'].join('_');
+export const credential = environment[key];`,
+      },
+      {
+        name: 'destructured migration environment read',
+        extension: '.tsx',
+        text: `const { env: environment } = process;
+const key = ['MIGRATION', 'DATABASE', 'URL'].join('_');
+export const credential = environment[key];`,
+      },
+    ] as const;
+    const unguardedControlledSource = d35Bypasses[0].text;
     assert.equal(
       isD35TestScriptPath('C:\\repo\\scripts\\test-audit.ts', 'C:\\repo\\scripts'),
       true,
@@ -821,19 +1215,30 @@ export const database = new Connection({ connectionString: url });`;
       ).length,
       0,
     );
-    assert.match(
+    for (const [index, bypass] of d35Bypasses.entries()) {
+      assert.ok(
+        d35ScriptSourceFailures(
+          path.join(d35Root, `bypass-${index}${bypass.extension}`),
+          bypass.text,
+          d35Root,
+        ).length > 0,
+        `${bypass.name} bypass was not rejected`,
+      );
+    }
+    assert.deepEqual(
       d35ScriptSourceFailures(
-        path.join(d35Root, 'controlled.mjs'),
-        unguardedControlledSource,
+        path.join(d35Root, 'approved.ts'),
+        `import { withApprovedMigrationClient } from './lib/migration-principal';
+export const run = () => withApprovedMigrationClient(async (database) => database.query('SELECT 1'));`,
         d35Root,
-      ).join('; '),
-      /without the D35 principal preflight/u,
+      ),
+      [],
     );
   } finally {
     rmSync(d35Root, { force: true, recursive: true });
   }
   console.log(
-    `check:audit self-test — ${negative.length + 2} semantic/fingerprint bypass fixtures rejected; ${positive.length} focused legitimate fixtures plus the complete runtime and six fingerprinted SQL calls accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
+    `check:audit self-test — ${negative.length + 13} semantic/fingerprint/D35 bypass fixtures rejected; ${positive.length} focused legitimate fixtures plus the complete runtime, six fingerprinted SQL calls and the approved migration gateway accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
   );
 }
 
@@ -846,15 +1251,23 @@ function main(): void {
   const prisma = source('prisma.config.ts');
   const migrationCommand = source('scripts/run-prisma-migration.ts');
   const migrationDatabase = source('scripts/lib/migration-db.ts');
+  const migrationGateway = source('scripts/lib/migration-principal.ts');
   const passwordCommand = source('scripts/auth-set-password.ts');
   const packageJson = JSON.parse(source('package.json')) as { scripts?: Record<string, string> };
 
   assert.match(database, /runtimeIdentity\.username !== 'litigation_runtime'/u);
+  assert.match(database, /runtimeIdentity\.protocol !== 'postgres:'/u);
+  assert.match(database, /runtimeIdentity\.protocol !== 'postgresql:'/u);
   assert.match(prisma, /process\.env\['MIGRATION_DATABASE_URL'\]/u);
   assert.doesNotMatch(prisma, /process\.env\['MIGRATION_DATABASE_URL'\]\s*\?\?/u);
   assert.match(prisma, /must use separate principals/u);
-  assert.match(migrationCommand, /assertApprovedMigrationPrincipalUrl/u);
-  assert.match(migrationDatabase, /migrationPrincipalReady = assertApprovedMigrationPrincipalUrl/u);
+  assert.match(migrationCommand, /await assertApprovedMigrationPrincipalUrl\(\)/u);
+  assert.match(migrationDatabase, /migrationDbReady = createApprovedMigrationPrismaClient\(\)/u);
+  assert.equal(
+    createHash('sha256').update(migrationGateway, 'utf8').digest('hex'),
+    D35_MIGRATION_GATEWAY_SHA256,
+    'the reviewed D35 migration-client gateway changed without an inventory update',
+  );
 
   assert.equal((audit.match(/audit_set_human_context/gu) ?? []).length, 1);
   assert.equal((audit.match(/audit_set_authentication_context/gu) ?? []).length, 1);

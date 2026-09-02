@@ -6,8 +6,8 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 2 September 2026:** the final Task 3.3A review-gap
-follow-up is implemented locally and awaits independent review and push.
+**Current checkpoint — 2 September 2026:** the final fail-closed Task 3.3A
+gateway correction is implemented locally and awaits independent review and push.
 **Do not start Task 3.3B.** After this follow-up is independently accepted and
 pushed, Task 3.3B — Append-only event foundation is the exact place to resume.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
@@ -1476,6 +1476,20 @@ only ever seen good data is not known to work.
       Prisma, terminate an active disposable runtime session under the
       approved superuser path, and remove all fixtures. This follow-up does not
       start Task 3.3B and remains at the independent-review/push checkpoint.
+
+      The final fail-closed correction supersedes the follow-up's remaining
+      completeness claims. Runtime-computed member acquisition now fails at
+      acquisition whenever the receiver's runtime origin is not positively
+      proved harmless, including later object, array/callback and promise
+      laundering. Imported/CommonJS process objects and computed access through
+      `global` or `globalThis` fail closed. D35 now permits value construction
+      of `pg`, `Pool`, `PrismaPg` and Prisma clients only inside one reviewed
+      gateway; non-test controlled scripts cannot read the privileged URL or
+      obtain a client before an awaited direct-superuser verification. Runtime
+      database factories also require an exact PostgreSQL protocol. Permanent
+      source fixtures and a disposable connected-principal test prove both the
+      static boundary and the execution order. Migrations 53–56, the database,
+      role policy and protected evidence remain unchanged.
 
 - [ ] **3.3B Append-only event foundation** — approved but not started; this is
       the exact return point only after the final Task 3.3A correction is

@@ -2,10 +2,10 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import { Client, type ClientBase } from 'pg';
-import { assertApprovedMigrationPrincipalSession } from './migration-principal';
+import type { Client, ClientBase } from 'pg';
+import { migrationDatabaseTarget, withApprovedMigrationClient } from './migration-principal';
 import {
-  assertGate4DatabaseUrl,
+  assertGate4DatabaseTarget,
   assertReadOnlySnapshot,
   gate4CodePoint,
   type Gate4Dataset,
@@ -558,21 +558,18 @@ export async function loadGate4DatabaseSnapshot(db: Client): Promise<Gate4Databa
 }
 
 export async function withGate4ReadOnlyDatabase<T>(run: (db: Client) => Promise<T>): Promise<T> {
-  const url = assertGate4DatabaseUrl(process.env.MIGRATION_DATABASE_URL);
-  const db = new Client({ connectionString: url.toString() });
-  await db.connect();
-  try {
-    await assertApprovedMigrationPrincipalSession(db);
-    await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const result = await run(db);
-    await db.query('COMMIT');
-    return result;
-  } catch (error) {
-    await db.query('ROLLBACK').catch(() => undefined);
-    throw error;
-  } finally {
-    await db.end();
-  }
+  assertGate4DatabaseTarget(migrationDatabaseTarget());
+  return withApprovedMigrationClient(async (db) => {
+    try {
+      await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      const result = await run(db);
+      await db.query('COMMIT');
+      return result;
+    } catch (error) {
+      await db.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    }
+  });
 }
 
 export function buildGate4Accounting(

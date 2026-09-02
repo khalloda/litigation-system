@@ -3,7 +3,7 @@ import { stdin, stdout } from 'node:process';
 import { setApprovedAccountPassword } from '../src/lib/auth/service';
 import { passwordMeetsPolicy } from '../src/lib/auth/password';
 import { t } from '../src/strings';
-import { migrationDb, migrationPrincipalReady } from './lib/migration-db';
+import { disconnectMigrationDb, migrationDbReady } from './lib/migration-db';
 
 async function readHidden(prompt: string): Promise<string> {
   if (!stdin.isTTY || !stdout.isTTY || typeof stdin.setRawMode !== 'function') {
@@ -46,7 +46,7 @@ async function readHidden(prompt: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
-  await migrationPrincipalReady;
+  const migrationDb = await migrationDbReady;
   const username = process.argv[2];
   if (!username || process.argv.length !== 3) throw new Error('usage');
   if (!stdin.isTTY || !stdout.isTTY) throw new Error('tty-required');
@@ -76,4 +76,4 @@ main()
     console.error(message);
     process.exitCode = 1;
   })
-  .finally(() => void migrationDb.$disconnect());
+  .finally(() => void disconnectMigrationDb());
