@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { Client } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   readGate4RepositoryMigrationInventory,
   reconcileGate4Migrations,
@@ -26,6 +27,7 @@ async function main(): Promise<void> {
   const client = new Client({ connectionString: url.toString() });
   await client.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(client);
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     const target = await client.query<{ database: string; port: number }>(
       `SELECT current_database() database,current_setting('port')::int port`,

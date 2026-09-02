@@ -9,6 +9,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { Client } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   type AttendeeAuditReconciliationBaseline,
   attendeeAuditStructureFailures,
@@ -158,6 +159,7 @@ export async function runHearingTransform(options: RunOptions = {}) {
   const db = new Client({ connectionString });
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     const audit = await reconcileAttendeeAudit(db, options.attendeeAuditBaseline);
     assert.deepEqual(audit.defects, [], 'Correction B attendee audit is not reconciled');
     assert.deepEqual(

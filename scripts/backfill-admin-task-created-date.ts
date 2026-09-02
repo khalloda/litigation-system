@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { Client, type ClientBase } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   ADMIN_TASK_CREATION_DATE_BASELINE,
   type AdminTaskCreationDateBaseline,
@@ -112,6 +113,7 @@ export async function runAdminTaskCreatedDateBackfill(options: RunOptions = {}):
   const db = new Client({ connectionString });
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     await assertStructure(db);
     const preview = await buildAdminTransformPlan(db);
     const previewSummary = dateSummary(preview.tasks);

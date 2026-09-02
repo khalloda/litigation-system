@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { Client, type ClientBase } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './migration-principal';
 import {
   assertGate4DatabaseUrl,
   assertReadOnlySnapshot,
@@ -561,6 +562,7 @@ export async function withGate4ReadOnlyDatabase<T>(run: (db: Client) => Promise<
   const db = new Client({ connectionString: url.toString() });
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     const result = await run(db);
     await db.query('COMMIT');

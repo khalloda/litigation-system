@@ -5,6 +5,7 @@ import { copyFile, mkdir, mkdtemp, readdir, rename, rm, rmdir, stat } from 'node
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Client, type ClientBase } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   CLIENT_LOGO_RESULT_BASELINE,
   CLIENT_LOGO_SOURCE_BASELINE,
@@ -229,6 +230,7 @@ export async function runClientLogoTransform(options: Options = {}): Promise<Run
   await db.connect();
   let published: { createdRoot: boolean; restoreEmptyRoot: boolean } | null = null;
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     const protectedBefore = enforceLive ? await task211ProtectedState(db) : null;
     const preview = await buildClientLogoPlan(db, paths, enforceLive);
     if (enforceLive) assert.equal(preview.rows.length, 54);

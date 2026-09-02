@@ -14,7 +14,8 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Client } from 'pg';
-import { migrationDb as db } from './lib/migration-db';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
+import { migrationDb as db, migrationPrincipalReady } from './lib/migration-db';
 import {
   asBigInt,
   MATTER_RECONCILIATION_SQL,
@@ -95,6 +96,7 @@ function sqlLiteral(value: string): string {
 }
 
 async function main() {
+  await migrationPrincipalReady;
   // 1. Can we connect at all?
   const { version } = one(
     await db.$queryRaw<{ version: string }[]>`
@@ -2292,6 +2294,7 @@ async function main() {
   const relationshipDb = new Client({ connectionString: databaseUrl });
   await relationshipDb.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(relationshipDb);
     const relationshipResult = await reconcileMatterRelationships(relationshipDb);
     record(
       'Matter lawyers and parties reconcile to source',
@@ -2641,7 +2644,7 @@ async function main() {
     const runtimeBoundary = await runtimeRoleBoundaryFailures(relationshipDb);
     record(
       'Task 3.3A complete runtime principal and ACL boundary',
-      'exact schemas, bidirectional memberships, ACL provenance, columns, sequences, functions, MAINTAIN and session_replication_role refusal',
+      'exact schemas, zero explicit inbound/outbound memberships, ACL provenance, columns, sequences, functions, MAINTAIN and session_replication_role refusal',
       runtimeBoundary.length === 0
         ? 'all role, ownership, effective privilege, direct ACL and parameter boundaries exact'
         : runtimeBoundary.join('; '),

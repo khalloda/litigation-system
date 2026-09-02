@@ -71,6 +71,22 @@ UNION ALL SELECT
       THEN 'PASS' ELSE 'run migration 53 and npm run db:provision-runtime' END
 
 UNION ALL SELECT
+    'Approved migration principal',
+    session_user,
+    CASE WHEN session_user=current_user
+           AND coalesce((SELECT rolsuper FROM pg_roles WHERE rolname=session_user),false)
+         THEN 'PASS' ELSE 'FAIL — D35 requires a direct superuser migration session' END
+
+UNION ALL SELECT
+    'Runtime inbound role memberships',
+    (SELECT count(*)::text FROM pg_auth_members
+      WHERE roleid=(SELECT oid FROM pg_roles WHERE rolname='litigation_runtime')),
+    CASE WHEN NOT EXISTS (
+        SELECT 1 FROM pg_auth_members
+         WHERE roleid=(SELECT oid FROM pg_roles WHERE rolname='litigation_runtime'))
+      THEN 'PASS' ELSE 'FAIL — explicit inbound runtime membership exists' END
+
+UNION ALL SELECT
     'Migrations applied',
     /*
      * _prisma_migrations does not exist until the first migration runs, and

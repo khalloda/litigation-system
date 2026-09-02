@@ -386,6 +386,34 @@ export async function runtimeRoleBoundaryFailures(
     );
   }
 
+  const explicitInboundMemberships = await db.query<{
+    member_name: string;
+    grantor_name: string;
+    admin_option: boolean;
+    inherit_option: boolean;
+    set_option: boolean;
+  }>(
+    `SELECT member.rolname member_name,grantor.rolname grantor_name,
+            membership.admin_option,membership.inherit_option,membership.set_option
+       FROM pg_auth_members membership
+       JOIN pg_roles granted ON granted.oid=membership.roleid
+       JOIN pg_roles member ON member.oid=membership.member
+       JOIN pg_roles grantor ON grantor.oid=membership.grantor
+      WHERE granted.rolname=$1
+      ORDER BY member.rolname,grantor.rolname`,
+    [roleName],
+  );
+  if (explicitInboundMemberships.rows.length > 0) {
+    failures.push(
+      `runtime role has explicit inbound memberships: ${explicitInboundMemberships.rows
+        .map(
+          (row) =>
+            `${row.member_name}[grantor=${row.grantor_name},admin=${String(row.admin_option)},inherit=${String(row.inherit_option)},set=${String(row.set_option)}]`,
+        )
+        .join(', ')}`,
+    );
+  }
+
   const inboundMemberships = await db.query<{
     role_name: string;
     inherits_runtime: boolean;

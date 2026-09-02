@@ -52,6 +52,7 @@
 import 'dotenv/config';
 import { execFileSync } from 'node:child_process';
 import { Client } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import { parseDatabaseList, parseTableCounts, type TableCount } from './lib/inventory';
 
 const OVERRIDE_FLAG = '--force-i-know';
@@ -270,6 +271,7 @@ async function identifierViaUrl(): Promise<string> {
   const client = new Client({ connectionString: rawUrl });
   await client.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(client);
     const { rows } = await client.query<{ id: string }>(
       'SELECT system_identifier::text AS id FROM pg_control_system()',
     );

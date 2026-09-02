@@ -678,3 +678,47 @@ explicit implementation prompt. It is not part of Task 3.3A or 3.3B. Particular
 dimensions and component choices in the recovered Figma artifact describe that
 artifact; they are not automatically universal product requirements. Revisit
 screen-specific details with real data when the later UI task begins.
+
+## D35 — Migrations require an isolated superuser administration principal
+
+**Approved by Khaled Helmy on 2 September 2026.** Evidence: the final Task
+3.3A acceptance-correction mandate and the Task 3.3A report linked in D30.
+
+Preserve applied migrations 53–55 byte-for-byte. Every canonical Prisma
+migration command must authenticate through `MIGRATION_DATABASE_URL` as a
+separate, directly connected PostgreSQL superuser migration/administration
+principal before Prisma starts and before the runtime role is made unavailable.
+`session_user` proves the real connection identity; `current_user` must be the
+same superuser rather than a role assumed after connecting.
+
+The running web application continues to use only the restricted,
+non-superuser `litigation_runtime` principal through `DATABASE_URL`. The
+superuser credential is for migrations and controlled database administration
+only. It must remain outside Git and logs, be access-restricted and securely
+stored, be rotated after suspected exposure, and never be present in the
+production web process environment.
+
+**Context and operational risk:** PostgreSQL 17 permits an inbound role grant
+with `ADMIN TRUE, INHERIT FALSE, SET FALSE`. That member cannot immediately
+assume the runtime role, but its `ADMIN` option can delegate a new `SET TRUE`
+membership to another role, which can then execute `SET ROLE
+litigation_runtime`. The prior effective-membership check therefore missed a
+real delegation path. A non-superuser `CREATEROLE` migration principal also
+cannot reliably terminate an already connected runtime session, so the
+fail-closed deployment sequence could not be completed under the narrower
+credential.
+
+**Rationale:** migration 53 has a valid isolated historical ownership
+precondition, but the complete forward chain through migrations 54 and 55 uses
+cluster-level role and session controls. The approved superuser contract makes
+those existing immutable migrations deployable and lets forward migration 56
+enforce zero explicit inbound runtime membership regardless of member,
+grantor, `ADMIN`, `INHERIT` or `SET` options. The early authenticated-principal
+preflight prevents a partial deployment under an incapable credential.
+
+**Rejected for now:** a separate least-privilege fresh-install baseline;
+rewriting any applied migration; changing a recorded migration checksum; a
+compensating `pg_signal_backend`, membership, `SET` or similar grant to a
+non-superuser; and accepting either confirmed enforcement gap. D35 completes
+the operational detail required by D33 and preserves D30's attribution scope;
+it does not authorize Task 3.3B or alter the four application roles.

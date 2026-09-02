@@ -28,3 +28,7 @@
 *.otf   binary
 *.accdb binary
 *.mdb   binary
+
+# This applied migration's checksum includes its terminal separator line.
+# Preserve those immutable bytes while retaining every other whitespace check.
+prisma/migrations/20260902120000_finalize_task33a_enforcement/migration.sql whitespace=-blank-at-eof

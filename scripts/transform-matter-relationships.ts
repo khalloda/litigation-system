@@ -9,6 +9,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { Client, type ClientConfig } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import { buildMatterRelationshipPlan } from './lib/matter-relationship-plan';
 import {
   reconcileMatterRelationships,
@@ -48,6 +49,7 @@ export async function runMatterRelationshipTransform(options: RunOptions = {}) {
   const db = new Client(config);
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     const plan = await buildMatterRelationshipPlan(db);
     assert.deepEqual(
       plan.ruleFailures,

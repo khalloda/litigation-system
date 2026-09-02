@@ -37,7 +37,7 @@ import 'dotenv/config';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import ExcelJS from 'exceljs';
-import { migrationDb as db } from './lib/migration-db';
+import { migrationDb as db, migrationPrincipalReady } from './lib/migration-db';
 import {
   CONTRACT_SHEET,
   contractSha256,
@@ -170,6 +170,7 @@ function styleAnswerCells(row: ExcelJS.Row, from: number, to: number) {
 }
 
 async function main() {
+  await migrationPrincipalReady;
   const reviews = await db.$queryRaw<ReviewRow[]>`
     SELECT id, topic, value, occurrences, years, matters, clients, nearest, confidence, kind,
            extraction_sha256

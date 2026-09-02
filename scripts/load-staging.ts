@@ -46,7 +46,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { migrationDb as db } from './lib/migration-db';
+import { migrationDb as db, migrationPrincipalReady } from './lib/migration-db';
 import { sourceRecordKeys } from './lib/source-identity';
 
 const META = '_migration/meta';
@@ -209,6 +209,7 @@ function readManifest(): Record<string, string>[] {
 }
 
 async function main() {
+  await migrationPrincipalReady;
   /* ---- 1. the extraction ------------------------------------------- */
 
   if (!existsSync(`${META}/manifest.csv`)) {

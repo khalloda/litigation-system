@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { Client, type ClientBase } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   buildDocumentTransformPlan,
   type DocumentEvidencePlan,
@@ -79,6 +80,7 @@ export async function runDocumentTransform(options: Options = {}) {
   const db = new Client({ connectionString });
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     const preview = await buildDocumentTransformPlan(db);
     if (options.apply !== true) return { plan: preview, digest: null };
     const protectedBefore = await task29cProtectedState(db);

@@ -150,11 +150,17 @@ actor registry and the event table retain their purpose-specific provenance
 models. They do not receive the application four-column pattern.
 
 The web runtime connects as restricted `litigation_runtime`; migration and
-controlled administration use the owning principal through
-`MIGRATION_DATABASE_URL`. The application exposes no request-controlled actor
-selector. PostgreSQL custom settings remain a documented trust boundary for a
-fully compromised runtime process; this is database-enforced anti-spoofing for
-external application inputs, not cryptographic proof against that process.
+controlled administration use D35's isolated, directly authenticated
+PostgreSQL superuser through `MIGRATION_DATABASE_URL`. The superuser secret is
+absent from the production web process. The runtime has no explicit inbound or
+outbound role-membership edge, and no path to `SET ROLE` elsewhere. The
+application exposes no request-controlled actor selector. A semantic
+capability-flow check allows raw SQL only in the six fingerprinted direct
+`$queryRaw` calls with `Prisma.sql` tagged templates; aliases, wrappers, reflection,
+request-selected callables and migration-only imports fail closed. PostgreSQL
+custom settings remain a documented trust boundary for a fully compromised
+runtime process; this is database-enforced anti-spoofing for external
+application inputs, not cryptographic proof against that process.
 
 ### Task 3.3B — append-only events
 

@@ -6,11 +6,12 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current return point — 1 September 2026:** Task 3.3A — Secure actor
-attribution is complete. **Task 3.3B — Append-only event foundation is approved
-but not started, and is the exact place to resume.** `docs/DECISIONS.md` owns
-approved decisions; this file owns status and work order. Dated reviews and
-task reports are evidence, not priority authorities.
+**Current checkpoint — 2 September 2026:** the final Task 3.3A acceptance
+correction is implemented locally and awaits independent review and push.
+**Do not start Task 3.3B.** After that correction is independently accepted and
+pushed, Task 3.3B — Append-only event foundation is the exact place to resume.
+`docs/DECISIONS.md` owns approved decisions; this file owns status and work
+order. Dated reviews and task reports are evidence, not priority authorities.
 
 ---
 
@@ -1377,8 +1378,9 @@ only ever seen good data is not known to work.
 
       Task 3.3B events and Task 3.4 user management remain outstanding.
 
-- [x] **3.3A Secure actor attribution** — approved and completed 1 September
-      2026 (**D30**, **D33**). Covers the **37 current four-column
+- [x] **3.3A Secure actor attribution** — approved 1 September 2026 and given
+      its final acceptance correction on 2 September 2026 (**D30**, **D33**,
+      **D35**). Covers the **37 current four-column
       application tables plus `person_name_alias`**. Add the alias table's
       missing audit columns; establish a stable audit-actor registry and the
       approved `system_migration` actor; and backfill only attribution the
@@ -1430,7 +1432,7 @@ only ever seen good data is not known to work.
 
       Forward migration
       `20260901190000_complete_task33a_enforcement_inventory` and the semantic
-      source checker complete acceptance. TypeScript resolver and symbol
+      source checker formed the second acceptance checkpoint. TypeScript resolver and symbol
       provenance now fix the exact helper/module/call-site closure, reject
       aliases, re-exports, wrappers, computed loading/execution and runtime
       source outside the canonical `src` root, and inventory every raw-SQL and
@@ -1441,10 +1443,35 @@ only ever seen good data is not known to work.
       `session_replication_role`, with an actual runtime refusal. Migration 55
       fails closed before validation and never repairs an unexpected grant.
       Migrations 53/54 and every protected row, timestamp and digest remain
-      unchanged. This correction does not start Task 3.3B.
+      unchanged. Its “complete” source and inbound-role claims are superseded
+      by the final correction below.
+
+      Final forward migration
+      `20260902120000_finalize_task33a_enforcement` is migration 56. D35
+      preserves migrations 53–55 byte-for-byte and requires every canonical
+      migration command to authenticate directly as the isolated PostgreSQL
+      superuser migration/administration principal before Prisma starts. The
+      web process remains restricted `litigation_runtime` and never receives
+      the superuser secret. Migration 56 adds the zero-explicit-inbound-edge
+      invariant for every member, grantor and `ADMIN`/`INHERIT`/`SET`
+      combination while retaining the fail-closed runtime shutdown/restore
+      sequence.
+
+      The runtime source gate now rejects raw SQL as a propagated callable
+      capability through computed keys, assignments, destructuring, returns,
+      parameters, wrappers, imports/exports, call/apply/bind, reflection,
+      optional access and erased types. Only the six complete fingerprinted
+      `$queryRaw(Prisma.sql tagged-template)` calls remain approved. Permanent
+      fixtures prove an `ADMIN TRUE, INHERIT FALSE, SET FALSE` member can
+      delegate a successful `SET ROLE` path before correction, reject every
+      corrected boundary, reject non-superuser migration execution before
+      Prisma, terminate an active disposable runtime session under the
+      approved superuser path, and remove all fixtures. This correction does
+      not start Task 3.3B and remains at the independent-review/push checkpoint.
 
 - [ ] **3.3B Append-only event foundation** — approved but not started; this is
-      the exact return point after accepted Task 3.3A (**D30**, **D32**).
+      the exact return point only after the final Task 3.3A correction is
+      independently reviewed and pushed (**D30**, **D32**).
       Record create, update, archive and restore;
       field-level before/after values; relationship changes; user and role
       lifecycle; password-change facts without passwords or hashes; successful

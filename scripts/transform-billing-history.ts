@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { Client, type ClientBase } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   buildBillingPlan,
   type AllocationTarget,
@@ -300,6 +301,7 @@ export async function runBillingTransform(options: Options = {}) {
   const db = new Client({ connectionString });
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     const preview = await buildBillingPlan(db);
     if (expected) assertPlanCounts(preview, expected);
     if (options.apply !== true) return { plan: preview, reconciliation: null, digest: null };

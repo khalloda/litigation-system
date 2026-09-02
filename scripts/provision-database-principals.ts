@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { Client } from 'pg';
 import { runtimeRoleBoundaryFailures } from './lib/audit-structure';
 import { decodeUrlPassword, postgresqlStringLiteral } from './lib/database-principal';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 
 const RUNTIME_ROLE = 'litigation_runtime';
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
@@ -86,6 +87,7 @@ async function provisionRuntimePrincipal(): Promise<void> {
   const owner = new Client({ connectionString: migrationUrl.toString() });
   await owner.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(owner);
     const boundaryFailures = await runtimeRoleBoundaryFailures(owner);
     assert.deepEqual(
       boundaryFailures,

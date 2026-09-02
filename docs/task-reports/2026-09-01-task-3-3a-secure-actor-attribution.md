@@ -20,6 +20,9 @@
   export its review patch and stop without pushing or starting Task 3.3B.
 - Exact next return point: Task 3.3B — Append-only event foundation, approved
   but not started.
+- Current status, 2 September 2026: the D35 final acceptance correction is
+  implemented locally and awaits independent review and push. Task 3.3B remains
+  blocked and not started.
 
 ## Run configuration and cost rationale
 
@@ -416,3 +419,145 @@ and no subagent or browser was used.
 
 The exact next return point remains **Task 3.3B — Append-only event foundation,
 approved but not started**.
+
+## D35 final acceptance correction — 2 September 2026
+
+This correction starts directly from
+`368307cc6584f917f307ea72194383c14c91b96c`, preserves the three earlier local
+Task 3.3A commits and migrations 53–55 byte-for-byte, and is committed as
+`fix: finalize Task 3.3A enforcement`. It remains local pending independent
+review and owner-authorized push. Task 3.3B is not started.
+
+### Owner decision and operational contract
+
+Owner decision **D35**, approved by Khaled on 2 September 2026, requires a
+separate, tightly controlled PostgreSQL superuser migration/administration
+principal through ignored `MIGRATION_DATABASE_URL`. The running web application
+continues to authenticate only as the restricted, non-superuser
+`litigation_runtime` principal through ignored `DATABASE_URL`. The migration
+credential is limited to migrations and controlled database administration,
+must be absent from the production web process, must never enter Git or logs,
+and must be access-restricted, securely stored and rotated after suspected
+exposure. D35 rejects a separate least-privilege fresh-install baseline,
+rewriting applied migrations, changing recorded checksums and accepting the
+confirmed gaps.
+
+Migration 53's isolated historical owner precondition remains evidence of that
+single migration's original contract. The full chain through migrations 54–56
+now requires D35's superuser principal. Earlier statements that migrations 54
+or 55 completed the enforcement inventory are historical; migration 56 is the
+current completion boundary.
+
+### Reproduced source bypass and semantic closure
+
+Before editing, both approved reproductions passed the previous checker against
+the complete legitimate 25-file runtime baseline: constant bracket extraction
+followed by `.call`, and `Reflect.get` followed by `Reflect.apply`. The same
+baseline also proved that unrelated inventory failures did not mask either
+result.
+
+The source checker now performs fail-closed TypeScript Program, TypeChecker and
+symbol-alias analysis. It propagates Prisma raw-SQL capabilities across
+assignments, destructuring, parameters, returns, wrapper factories, imports and
+exports; unwraps type-erasing syntax; and rejects uncertain callable selection
+on Prisma-derived or unknown receivers. It covers direct invocation, optional
+access, `.call`, `.apply`, `.bind`, reflection and property descriptors. Method
+strings remain defence in depth rather than the primary proof. Runtime source
+cannot import migration database helpers or read `MIGRATION_DATABASE_URL`.
+
+The only raw SQL accepted in runtime source remains the exact six reviewed
+direct `$queryRaw(Prisma.sql\`…\`)` calls. Each approved call is bound to a
+token-level SHA-256 fingerprint of the complete call expression, including its
+SQL template and interpolation shapes; a content-only SQL mutation is a
+permanent failing fixture. Permanent fixtures also cover aliases, computed and
+request-selected keys, cross-module wrappers, reflection, descriptors,
+type-erasing casts, actor/GUC selection, direct PostgreSQL clients and dynamic
+or CommonJS loading. Positive fixtures preserve normal Prisma CRUD, harmless
+typed non-Prisma reflection, all eight supported JavaScript/TypeScript
+extensions, the exact generated-Prisma exclusion, the full runtime closure and
+all six reviewed calls. The two original reproductions no longer succeed.
+
+### Migration 56 and principal preflight
+
+Forward migration
+`20260902120000_finalize_task33a_enforcement` is the 56th repository migration.
+Its file and applied checksum are
+`ed77a4c7c74413f90e8e15a0681a1d99b455773b5d9e25134673b046ac82a20d`.
+A path-specific Git whitespace attribute preserves the applied file's terminal
+separator line without relaxing any other whitespace check or any future
+migration.
+Before changing runtime availability it verifies that `session_user` and
+`current_user` are the same approved superuser session. It then follows the
+existing fail-closed sequence: commit `NOLOGIN` and removal of the runtime's
+direct target-database `CONNECT`, terminate only that role's sessions in the
+target database, validate the complete boundary, and restore availability only
+after every assertion passes.
+
+The final boundary separately inventories every explicit inbound
+`pg_auth_members` edge whose `roleid` is `litigation_runtime`, including member,
+grantor and `ADMIN`/`INHERIT`/`SET` options, and requires exactly zero. It also
+retains the outbound, indirect-assumption, `SET ROLE`, settings, ownership,
+effective privilege, ACL and security-definer boundaries. It never repairs an
+unexpected membership.
+
+Every canonical Prisma migration command now runs through a preflight wrapper
+that authenticates the real session using `session_user`, accounts for
+`current_user`, and rejects a non-superuser before Prisma starts. Controlled
+database administration and provisioning use the same D35 check. Disposable
+fixtures prove early rejection of a non-superuser `CREATEROLE` connection with
+no migration-history table, success of the approved superuser path, safe output
+without a credential or URL, and termination of an active disposable runtime
+session. Role fixtures prove `ADMIN TRUE, INHERIT FALSE, SET FALSE` can delegate
+a `SET TRUE` membership whose recipient successfully executes `SET ROLE`; all
+corrected boundaries reject the original and delegated edges with exact
+member/grantor/options evidence. Other `ADMIN`/`INHERIT`/`SET` combinations are
+also rejected, and every disposable database, role, session and file is
+removed.
+
+### Final protected evidence
+
+The project database has 56 successfully applied migration files and one
+separate historical rollback record. Historical-live migration provenance is
+51 required, five later and one rollback; its database-profile digest is
+`86eb32a96d97167d6bc699d3576f42c4a6916a53c0a37d557035abd79bd8447f`
+and canonical repository digest is
+`ba2909703684ed077fc6ad213dd718175d01a672a83511f4daabf3642b4c65f7`.
+Migrations 53–55 retain their recorded SHA-256 values
+`40de7e27f840805f627e4e75467182c0c9e0bcf974824871ce03bf01e3049ca2`,
+`80133981c148edc6daec81474b4c86e470e3aab7bb5c64404cb26e661f16cb4d`
+and `0c16867c5ef57b87aac57b929134e90b450cbf4339eeb78c02afd0c748d6c4b4`.
+
+All 89 permanent database checks pass. The protected population remains 543
+invoices, 597 payments, 47 allocations and 4,022 attendance rows: 5,209 rows
+with protected digest
+`b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab`.
+The audit population remains seven actors, 45,463 creation attributions, 45,459
+update attributions and four historical nulls, with digest
+`edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`.
+Billing, attendance and workbook digests remain the owner-approved values.
+All four business roles and all 448 authorization decisions are unchanged.
+D30–D34 are unchanged; D35 is the only new decision.
+
+Two independent non-writing Gate 4 commands, each with its own idempotency
+replay, produced the byte-identical current report digest
+`c314cd64142cc2cef36b4dc8a35715db7660fed9d9aba2d06b383e86d2fa54ec`.
+The frozen Gate 4 report remains the exact Git blob
+`eb4e44b2c9b3727b16bbe6a492503cbfb386a272` and raw SHA-256
+`515d035ead67553105af26eeb0d0546e15651d7d2066f0e2919846e98d4803c6`.
+
+### Verification and exact return point
+
+Prisma formatting, validation and generation; the complete static check and
+source-checker self-tests; Task 3.3A audit fixtures; authentication; all 448
+permission decisions; the non-destructive project reset guard; every affected
+staging, review, attendee and transformation suite; Gate 4's 60 fixtures;
+historical-live upgrade; canonical clean replay; both migration-principal
+paths; migration deployment/status; runtime provisioning; database verification
+and all 89 permanent checks; the production build; and both current Gate 4
+reconciliations pass. Final repository/content scans, focused and cumulative
+diff review, commit identity and patch identity are reported externally after
+this report enters the focused commit.
+
+The exact return point remains **independent review and owner-authorized push of
+the final Task 3.3A correction**. Only after that may work return to **Task 3.3B
+— Append-only event foundation**, which remains approved but not started.

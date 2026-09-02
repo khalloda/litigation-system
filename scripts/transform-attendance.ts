@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { Client, type ClientBase } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   ATTENDANCE_SOURCE_BASELINE,
   attendanceSourceBaselineFailures,
@@ -130,6 +131,7 @@ export async function runAttendanceTransform(options: Options = {}) {
   const db = new Client({ connectionString });
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     if (enforceLive) {
       await assertBillingBaseline(db);
       await assertAttendanceSourceBaseline(db);

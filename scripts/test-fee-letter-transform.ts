@@ -15,7 +15,7 @@ function ident(v: string) {
 function migrate(url: string) {
   const r = spawnSync(
     process.execPath,
-    ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
+    ['node_modules/tsx/dist/cli.mjs', 'scripts/run-prisma-migration.ts', 'deploy'],
     {
       cwd: process.cwd(),
       env: { ...process.env, MIGRATION_DATABASE_URL: url },

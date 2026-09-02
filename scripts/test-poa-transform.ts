@@ -17,7 +17,7 @@ function sourceKey(sequence: number): string {
 function migrateFixture(databaseUrl: string): void {
   const result = spawnSync(
     process.execPath,
-    ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
+    ['node_modules/tsx/dist/cli.mjs', 'scripts/run-prisma-migration.ts', 'deploy'],
     {
       cwd: process.cwd(),
       env: { ...process.env, MIGRATION_DATABASE_URL: databaseUrl },

@@ -14,6 +14,7 @@ import {
   TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
 } from './lib/audit-structure';
 import { decodeUrlPassword, postgresqlStringLiteral } from './lib/database-principal';
+import { assertApprovedMigrationPrincipalUrl } from './lib/migration-principal';
 import {
   readGate4RepositoryMigrationInventory,
   reconcileGate4Migrations,
@@ -23,6 +24,7 @@ import {
 const TASK33A_MIGRATION = '20260901120000_secure_audit_actor_attribution';
 const TASK33A_CORRECTION_MIGRATION = '20260901170000_close_task33a_acceptance_gaps';
 const TASK33A_FINAL_ENFORCEMENT_MIGRATION = '20260901190000_complete_task33a_enforcement_inventory';
+const TASK33A_FINAL_ACCEPTANCE_MIGRATION = '20260902120000_finalize_task33a_enforcement';
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
@@ -32,7 +34,7 @@ function identifier(value: string): string {
 async function migrate(databaseUrl: string): Promise<void> {
   const result = spawnSync(
     process.execPath,
-    ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
+    ['node_modules/tsx/dist/cli.mjs', 'scripts/run-prisma-migration.ts', 'deploy'],
     {
       cwd: process.cwd(),
       env: { ...process.env, MIGRATION_DATABASE_URL: databaseUrl },
@@ -186,11 +188,16 @@ async function reverseTask33AForHistoricalFixture(db: Client, fixtureName: strin
       DROP FUNCTION public.enforce_audit_actor_columns()`);
     const removed = await db.query(
       `DELETE FROM _prisma_migrations
-        WHERE migration_name IN ($1,$2,$3)
+        WHERE migration_name IN ($1,$2,$3,$4)
         RETURNING migration_name`,
-      [TASK33A_MIGRATION, TASK33A_CORRECTION_MIGRATION, TASK33A_FINAL_ENFORCEMENT_MIGRATION],
+      [
+        TASK33A_MIGRATION,
+        TASK33A_CORRECTION_MIGRATION,
+        TASK33A_FINAL_ENFORCEMENT_MIGRATION,
+        TASK33A_FINAL_ACCEPTANCE_MIGRATION,
+      ],
     );
-    assert.ok(removed.rowCount !== null && removed.rowCount >= 1 && removed.rowCount <= 3);
+    assert.ok(removed.rowCount !== null && removed.rowCount >= 1 && removed.rowCount <= 4);
     assert.ok(removed.rows.some((row) => row['migration_name'] === TASK33A_MIGRATION));
     await db.query('COMMIT');
   } catch (error) {
@@ -268,13 +275,14 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
           TASK33A_MIGRATION,
           TASK33A_CORRECTION_MIGRATION,
           TASK33A_FINAL_ENFORCEMENT_MIGRATION,
+          TASK33A_FINAL_ACCEPTANCE_MIGRATION,
         ],
       );
     } finally {
       await upgraded.end();
     }
     console.log(
-      'PASS historical-live clone: migrations 53/54/55 replay, protected digest and guard definitions unchanged',
+      'PASS historical-live clone: migrations 53/54/55/56 replay, protected digest and guard definitions unchanged',
     );
   } finally {
     if (created) {
@@ -333,6 +341,7 @@ async function proveRoleBoundaryAdversarial(
   const probeRole = `litigation_task33a_probe_${suffix}`;
   const bridgeRole = `litigation_task33a_bridge_${suffix}`;
   const targetRole = `litigation_task33a_target_${suffix}`;
+  const probePassword = randomBytes(36).toString('base64url');
   const ownedTable = `task33a_role_owned_${process.pid}`;
   for (const role of [probeRole, bridgeRole, targetRole]) assert.match(role, /^[a-z0-9_]+$/u);
   let created = false;
@@ -343,7 +352,7 @@ async function proveRoleBoundaryAdversarial(
     );
     assert.equal(existing.rows[0]?.count, '0');
     await admin.query(
-      `CREATE ROLE ${identifier(probeRole)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS`,
+      `CREATE ROLE ${identifier(probeRole)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD ${postgresqlStringLiteral(probePassword)}`,
     );
     await admin.query(`CREATE ROLE ${identifier(bridgeRole)} NOLOGIN`);
     await admin.query(`CREATE ROLE ${identifier(targetRole)} NOLOGIN`);
@@ -359,17 +368,52 @@ async function proveRoleBoundaryAdversarial(
     // identifier substituted for this disposable probe. An unexpected PUBLIC
     // grant must leave the probe NOLOGIN and without CONNECT after validation
     // fails, proving that the committed first transaction fails closed.
-    const migration55 = readFileSync(
+    const migration56 = readFileSync(
       new URL(
-        '../prisma/migrations/20260901190000_complete_task33a_enforcement_inventory/migration.sql',
+        '../prisma/migrations/20260902120000_finalize_task33a_enforcement/migration.sql',
         import.meta.url,
       ),
       'utf8',
     ).replaceAll('litigation_runtime', probeRole);
+
+    const activeRuntimeUrl = new URL(fixtureOwnerUrl);
+    activeRuntimeUrl.username = probeRole;
+    activeRuntimeUrl.password = probePassword;
+    const activeRuntime = new Client({ connectionString: activeRuntimeUrl.toString() });
+    let terminationError: Error | undefined;
+    activeRuntime.on('error', (error) => {
+      terminationError = error;
+    });
+    await activeRuntime.connect();
+    try {
+      assert.equal(
+        (
+          await owner.query<{ sessions: string }>(
+            `SELECT count(*)::text sessions FROM pg_stat_activity
+              WHERE datname=current_database() AND usename=$1`,
+            [probeRole],
+          )
+        ).rows[0]?.sessions,
+        '1',
+      );
+      await owner.query(migration56);
+      await assert.rejects(
+        activeRuntime.query('SELECT 1'),
+        /terminating connection|Connection terminated|connection is closed|connection error|not queryable/u,
+      );
+      assert.match(terminationError?.message ?? '', /terminat/u);
+    } finally {
+      await activeRuntime.end().catch(() => undefined);
+    }
+    assert.deepEqual(await runtimeRoleBoundaryFailures(owner, probeRole), []);
+    console.log(
+      'PASS migration 56 superuser path terminates only the active disposable runtime session and restores the approved boundary',
+    );
+
     await owner.query('GRANT SELECT ON public.lookup_importance TO PUBLIC');
     try {
       await assert.rejects(
-        owner.query(migration55),
+        owner.query(migration56),
         /project relation has a PUBLIC or unapproved-grantee ACL/u,
       );
       await owner.query('ROLLBACK');
@@ -404,7 +448,7 @@ async function proveRoleBoundaryAdversarial(
       );
     }
     assert.deepEqual(await runtimeRoleBoundaryFailures(owner, probeRole), []);
-    console.log('PASS migration 55 validation failure leaves the disposable runtime unavailable');
+    console.log('PASS migration 56 validation failure leaves the disposable runtime unavailable');
 
     await admin.query(`ALTER ROLE ${identifier(probeRole)} INHERIT`);
     assert.ok(
@@ -587,27 +631,87 @@ async function proveRoleBoundaryAdversarial(
     );
     await owner.query('ROLLBACK');
 
+    const grantor = (await admin.query<{ session_user: string }>('SELECT session_user')).rows[0]!
+      .session_user;
     await admin.query(
-      `GRANT ${identifier(probeRole)} TO ${identifier(targetRole)} WITH INHERIT TRUE, SET TRUE`,
+      `GRANT ${identifier(probeRole)} TO ${identifier(targetRole)} WITH ADMIN TRUE, INHERIT FALSE, SET FALSE`,
     );
-    const inboundMembership = await runtimeRoleBoundaryFailures(owner, probeRole);
-    assert.ok(inboundMembership.some((failure) => failure.includes('inherit or assume runtime')));
-    const inboundSession = new Client({ connectionString: fixtureOwnerUrl.toString() });
-    await inboundSession.connect();
+    const adminOnlyInbound = await runtimeRoleBoundaryFailures(owner, probeRole);
+    assert.ok(
+      adminOnlyInbound.some((failure) =>
+        failure.includes(`${targetRole}[grantor=${grantor},admin=true,inherit=false,set=false]`),
+      ),
+    );
+
+    const delegator = new Client({ connectionString: fixtureOwnerUrl.toString() });
+    await delegator.connect();
     try {
-      await inboundSession.query(`SET SESSION AUTHORIZATION ${identifier(targetRole)}`);
-      await inboundSession.query(`SET ROLE ${identifier(probeRole)}`);
-      assert.equal(
-        (await inboundSession.query<{ current_user: string }>('SELECT current_user')).rows[0]
-          ?.current_user,
-        probeRole,
+      await delegator.query(`SET SESSION AUTHORIZATION ${identifier(targetRole)}`);
+      await delegator.query(
+        `GRANT ${identifier(probeRole)} TO ${identifier(bridgeRole)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
       );
-      await inboundSession.query('RESET ROLE');
-      await inboundSession.query('RESET SESSION AUTHORIZATION');
+      const delegatedInbound = await runtimeRoleBoundaryFailures(owner, probeRole);
+      assert.ok(
+        delegatedInbound.some((failure) =>
+          failure.includes(
+            `${bridgeRole}[grantor=${targetRole},admin=false,inherit=false,set=true]`,
+          ),
+        ),
+      );
+
+      const delegatedRecipient = new Client({ connectionString: fixtureOwnerUrl.toString() });
+      await delegatedRecipient.connect();
+      try {
+        await delegatedRecipient.query(`SET SESSION AUTHORIZATION ${identifier(bridgeRole)}`);
+        await delegatedRecipient.query(`SET ROLE ${identifier(probeRole)}`);
+        assert.equal(
+          (await delegatedRecipient.query<{ current_user: string }>('SELECT current_user')).rows[0]
+            ?.current_user,
+          probeRole,
+        );
+      } finally {
+        await delegatedRecipient.end();
+      }
+
+      await assert.rejects(owner.query(migration56), /explicit inbound membership/u);
+      await owner.query('ROLLBACK');
+      assert.equal(
+        (
+          await admin.query<{ rolcanlogin: boolean }>(
+            'SELECT rolcanlogin FROM pg_roles WHERE rolname=$1',
+            [probeRole],
+          )
+        ).rows[0]?.rolcanlogin,
+        false,
+      );
+      await delegator.query(`REVOKE ${identifier(probeRole)} FROM ${identifier(bridgeRole)}`);
+      await delegator.query('RESET SESSION AUTHORIZATION');
     } finally {
-      await inboundSession.end();
+      await delegator.end();
     }
     await admin.query(`REVOKE ${identifier(probeRole)} FROM ${identifier(targetRole)}`);
+    await admin.query(`ALTER ROLE ${identifier(probeRole)} LOGIN`);
+    await owner.query(
+      `GRANT CONNECT ON DATABASE ${identifier(fixtureName)} TO ${identifier(probeRole)}`,
+    );
+
+    for (const options of [
+      'ADMIN FALSE, INHERIT TRUE, SET FALSE',
+      'ADMIN FALSE, INHERIT FALSE, SET TRUE',
+      'ADMIN FALSE, INHERIT FALSE, SET FALSE',
+    ]) {
+      await admin.query(
+        `GRANT ${identifier(probeRole)} TO ${identifier(targetRole)} WITH ${options}`,
+      );
+      const inbound = await runtimeRoleBoundaryFailures(owner, probeRole);
+      assert.ok(inbound.some((failure) => failure.includes('explicit inbound memberships')));
+      assert.ok(inbound.some((failure) => failure.includes(`grantor=${grantor}`)));
+      await admin.query(`REVOKE ${identifier(probeRole)} FROM ${identifier(targetRole)}`);
+    }
+    assert.deepEqual(await runtimeRoleBoundaryFailures(owner, probeRole), []);
+    console.log(
+      'PASS every inbound ADMIN/INHERIT/SET combination and exact member/grantor provenance is rejected; ADMIN-only delegation and recipient SET ROLE were proved then removed',
+    );
 
     await owner.query('BEGIN');
     await owner.query('GRANT SELECT ON public.lookup_importance TO PUBLIC');
@@ -802,6 +906,76 @@ async function provePasswordProvisioning(admin: Client, source: URL): Promise<vo
   }
 }
 
+async function proveMigrationPrincipalPreflight(admin: Client, source: URL): Promise<void> {
+  const suffix = `${process.pid}_${Date.now()}`;
+  const roleName = `litigation_task33a_migrator_${suffix}`;
+  const databaseName = `litigation_task33a_preflight_${suffix}`;
+  const password = randomBytes(36).toString('base64url');
+  let roleCreated = false;
+  let databaseCreated = false;
+  try {
+    await assertApprovedMigrationPrincipalUrl(source.toString());
+    await admin.query(
+      `CREATE ROLE ${identifier(roleName)} LOGIN NOSUPERUSER NOCREATEDB CREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD ${postgresqlStringLiteral(password)}`,
+    );
+    roleCreated = true;
+    await admin.query(`CREATE DATABASE ${identifier(databaseName)}`);
+    databaseCreated = true;
+
+    const unapprovedUrl = new URL(source);
+    unapprovedUrl.username = roleName;
+    unapprovedUrl.password = password;
+    unapprovedUrl.pathname = `/${databaseName}`;
+    const result = spawnSync(
+      process.execPath,
+      ['node_modules/tsx/dist/cli.mjs', 'scripts/run-prisma-migration.ts', 'deploy'],
+      {
+        cwd: process.cwd(),
+        env: { ...process.env, MIGRATION_DATABASE_URL: unapprovedUrl.toString() },
+        encoding: 'utf8',
+        maxBuffer: 4 * 1024 * 1024,
+      },
+    );
+    if (result.error) throw result.error;
+    assert.notEqual(result.status, 0);
+    const output = `${result.stdout}\n${result.stderr}`;
+    assert.match(output, /approved PostgreSQL superuser migration\/administration principal/u);
+    assert.equal(output.includes(password), false);
+    assert.equal(output.includes(unapprovedUrl.toString()), false);
+    assert.doesNotMatch(output, /postgresql:\/\//u);
+
+    const evidenceUrl = new URL(source);
+    evidenceUrl.pathname = `/${databaseName}`;
+    const evidence = new Client({ connectionString: evidenceUrl.toString() });
+    await evidence.connect();
+    try {
+      assert.equal(
+        (
+          await evidence.query<{ migration_table: string | null }>(
+            `SELECT to_regclass('public._prisma_migrations')::text migration_table`,
+          )
+        ).rows[0]?.migration_table,
+        null,
+      );
+    } finally {
+      await evidence.end();
+    }
+    console.log(
+      'PASS non-superuser CREATEROLE migration principal is rejected before Prisma starts; approved superuser preflight succeeds without credential output',
+    );
+  } finally {
+    if (databaseCreated) {
+      await admin.query(
+        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+          WHERE datname=$1 AND pid<>pg_backend_pid()`,
+        [databaseName],
+      );
+      await admin.query(`DROP DATABASE ${identifier(databaseName)}`);
+    }
+    if (roleCreated) await admin.query(`DROP ROLE ${identifier(roleName)}`);
+  }
+}
+
 async function main(): Promise<void> {
   const sourceUrl = process.env['MIGRATION_DATABASE_URL'];
   assert.ok(sourceUrl, 'MIGRATION_DATABASE_URL is required');
@@ -825,6 +999,7 @@ async function main(): Promise<void> {
   ).rows[0]?.rolcanlogin;
   assert.equal(typeof runtimeLoginBefore, 'boolean');
   try {
+    await proveMigrationPrincipalPreflight(admin, source);
     await provePasswordProvisioning(admin, source);
     await proveHistoricalUpgrade(admin, source);
     assert.equal(
@@ -862,6 +1037,7 @@ async function main(): Promise<void> {
           TASK33A_MIGRATION,
           TASK33A_CORRECTION_MIGRATION,
           TASK33A_FINAL_ENFORCEMENT_MIGRATION,
+          TASK33A_FINAL_ACCEPTANCE_MIGRATION,
         ],
       );
       assert.deepEqual(await auditStructureFailures(owner), []);
@@ -1156,7 +1332,7 @@ async function main(): Promise<void> {
       assert.deepEqual(await auditDataFailures(owner), []);
       assert.equal(AUDITED_TABLES.length, 38);
       console.log(
-        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54/55, exact 38 tables and immutable 7-actor registry',
+        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54/55/56, exact 38 tables and immutable 7-actor registry',
       );
       console.log(
         'PASS missing/invalid context, spoof overwrite and immutable creation attribution',

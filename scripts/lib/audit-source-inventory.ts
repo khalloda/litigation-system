@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -35,6 +36,7 @@ const SYSTEM_ACTOR_KEYS = new Set([
   'system_administration',
 ]);
 const CONTROLLED_LOCAL_ADMINISTRATION = 'setApprovedAccountPassword';
+const MIGRATION_DATABASE_ENV = 'MIGRATION_DATABASE_URL';
 const RAW_SQL_METHODS = new Set([
   '$queryRaw',
   '$queryRawTyped',
@@ -48,12 +50,36 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration)_context|audit_current_actor_id|litigation\.audit_actor_id|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
-  [AUDIT_GATEWAY, 'setHumanAuditContext'],
-  [AUDIT_GATEWAY, 'setAuthenticationAuditContext'],
-  [AUDIT_GATEWAY, 'setAdministrationAuditContext'],
-  [AUDIT_GATEWAY, 'setMigrationAuditContext'],
-  [AUDIT_AUTH_SERVICE, 'lockedAccount'],
-  [AUDIT_AUTH_SERVICE, 'changeOwnPassword'],
+  [
+    AUDIT_GATEWAY,
+    'setHumanAuditContext',
+    '8f64c1ed5d461c4a25fbc0d6bb929850f53ee55ef991dfc9903e4998b883eea8',
+  ],
+  [
+    AUDIT_GATEWAY,
+    'setAuthenticationAuditContext',
+    '8165a04922dc9d73130815857454533e6e21432aa7d2c0d7d593025c569fbd7d',
+  ],
+  [
+    AUDIT_GATEWAY,
+    'setAdministrationAuditContext',
+    '88762800707ab6ec65dd6889c3bb6809fcb27617158d21195497e33465654190',
+  ],
+  [
+    AUDIT_GATEWAY,
+    'setMigrationAuditContext',
+    '18657522c9fd2fb759897528c531435fceed56f406836c4687b36e5760e7dfe8',
+  ],
+  [
+    AUDIT_AUTH_SERVICE,
+    'lockedAccount',
+    '1e16f9db148a62bc3e22921740c70430596eca908516ec093e38cafe580096bb',
+  ],
+  [
+    AUDIT_AUTH_SERVICE,
+    'changeOwnPassword',
+    '94b602038781824c995eaaac3bc353a08f07c58ec002d9298d0d5c6f4172a858',
+  ],
 ] as const;
 
 export type AuditRuntimeSource = Readonly<{ path: string; text: string }>;
@@ -131,27 +157,67 @@ function literalText(node: ts.Node): string | null {
     : null;
 }
 
-function staticString(node: ts.Node): string | null {
+function transparentExpression(node: ts.Expression): ts.Expression {
+  let current = node;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isTypeAssertionExpression(current) ||
+    ts.isNonNullExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isPartiallyEmittedExpression(current)
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function staticString(
+  checker: ts.TypeChecker,
+  node: ts.Node,
+  visited = new Set<ts.Symbol>(),
+): string | null {
   const literal = literalText(node);
   if (literal !== null && !ts.isTemplateHead(node) && !ts.isTemplateMiddle(node)) return literal;
-  if (ts.isParenthesizedExpression(node)) return staticString(node.expression);
+  if (ts.isParenthesizedExpression(node)) return staticString(checker, node.expression, visited);
   if (
     ts.isAsExpression(node) ||
     ts.isTypeAssertionExpression(node) ||
     ts.isNonNullExpression(node) ||
     ts.isSatisfiesExpression(node)
   ) {
-    return staticString(node.expression);
+    return staticString(checker, node.expression, visited);
+  }
+  if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) {
+    const symbol = resolvedSymbol(checker, node);
+    if (symbol && !visited.has(symbol)) {
+      const nextVisited = new Set(visited).add(symbol);
+      for (const declaration of symbol.declarations ?? []) {
+        if (
+          ts.isVariableDeclaration(declaration) &&
+          declaration.initializer &&
+          ts.isVariableDeclarationList(declaration.parent) &&
+          (declaration.parent.flags & ts.NodeFlags.Const) !== 0
+        ) {
+          const value = staticString(checker, declaration.initializer, nextVisited);
+          if (value !== null) return value;
+        }
+        if (ts.isPropertyAssignment(declaration)) {
+          const value = staticString(checker, declaration.initializer, nextVisited);
+          if (value !== null) return value;
+        }
+      }
+    }
   }
   if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-    const left = staticString(node.left);
-    const right = staticString(node.right);
+    const left = staticString(checker, node.left, visited);
+    const right = staticString(checker, node.right, visited);
     return left === null || right === null ? null : left + right;
   }
   if (ts.isTemplateExpression(node)) {
     let result = node.head.text;
     for (const span of node.templateSpans) {
-      const expression = staticString(span.expression);
+      const expression = staticString(checker, span.expression, visited);
       if (expression === null) return null;
       result += expression + span.literal.text;
     }
@@ -171,12 +237,13 @@ function joinedLiteralFragments(node: ts.Node): string {
   return fragments.join('');
 }
 
-function rawSqlMethod(node: ts.Expression): string | null {
+function rawSqlMethod(checker: ts.TypeChecker, node: ts.Expression): string | null {
+  node = transparentExpression(node);
   if (ts.isPropertyAccessExpression(node) && RAW_SQL_METHODS.has(node.name.text)) {
     return node.name.text;
   }
   if (ts.isElementAccessExpression(node) && node.argumentExpression) {
-    const property = staticString(node.argumentExpression);
+    const property = staticString(checker, node.argumentExpression);
     return property && RAW_SQL_METHODS.has(property) ? property : null;
   }
   return null;
@@ -193,7 +260,7 @@ function elementSymbol(
   checker: ts.TypeChecker,
   node: ts.ElementAccessExpression,
 ): ts.Symbol | undefined {
-  const property = node.argumentExpression ? staticString(node.argumentExpression) : null;
+  const property = node.argumentExpression ? staticString(checker, node.argumentExpression) : null;
   let symbol = property
     ? checker.getTypeAtLocation(node.expression).getProperty(property)
     : undefined;
@@ -250,6 +317,454 @@ function semanticProgram(root: string, sources: readonly AuditRuntimeSource[]) {
     host,
   });
   return { program, checker: program.getTypeChecker(), options, host };
+}
+
+function rawCallFingerprint(node: ts.CallExpression, sourceFile: ts.SourceFile): string {
+  const scanner = ts.createScanner(
+    ts.ScriptTarget.Latest,
+    true,
+    sourceFile.languageVariant,
+    node.getText(sourceFile),
+  );
+  const tokens: string[] = [];
+  for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
+    tokens.push(`${ts.SyntaxKind[kind]}:${scanner.getTokenText()}`);
+  }
+  return createHash('sha256').update(tokens.join('\n'), 'utf8').digest('hex');
+}
+
+function isReviewedRawCall(
+  sourcePath: string,
+  sourceFile: ts.SourceFile,
+  node: ts.CallExpression,
+): boolean {
+  const functionName = containingFunctionName(node, sourceFile);
+  const fingerprint = rawCallFingerprint(node, sourceFile);
+  return REVIEWED_RAW_SQL_CALLS.some(
+    ([file, reviewedFunction, reviewedFingerprint]) =>
+      file === sourcePath &&
+      reviewedFunction === functionName &&
+      reviewedFingerprint === fingerprint,
+  );
+}
+
+function isProvenNonPrismaReceiver(checker: ts.TypeChecker, expression: ts.Expression): boolean {
+  const inner = transparentExpression(expression);
+  const type = checker.getTypeAtLocation(inner);
+  const inspect = (candidate: ts.Type): boolean => {
+    if (
+      candidate.flags &
+      (ts.TypeFlags.Any |
+        ts.TypeFlags.Unknown |
+        ts.TypeFlags.TypeParameter |
+        ts.TypeFlags.Index |
+        ts.TypeFlags.Conditional |
+        ts.TypeFlags.Substitution)
+    ) {
+      return false;
+    }
+    if (candidate.isUnion()) return candidate.types.every(inspect);
+    if (candidate.isIntersection() && !candidate.types.every(inspect)) return false;
+    if ([...RAW_SQL_METHODS, '$transaction'].some((property) => candidate.getProperty(property))) {
+      return false;
+    }
+    const description = checker.typeToString(candidate);
+    if (/\b(?:PrismaClient|TransactionClient|DefaultPrismaClient)\b/u.test(description)) {
+      return false;
+    }
+    const declarations = candidate.getSymbol()?.declarations ?? [];
+    if (
+      declarations.some((declaration) =>
+        normalized(declaration.getSourceFile().fileName).includes('/src/generated/prisma/'),
+      )
+    ) {
+      return false;
+    }
+    if (description === '{}' || description === 'object') return false;
+    return true;
+  };
+  return inspect(type);
+}
+
+function directBuiltinCall(
+  checker: ts.TypeChecker,
+  node: ts.CallExpression,
+  owner: 'Object' | 'Reflect',
+  method: string,
+): boolean {
+  const expression = transparentExpression(node.expression);
+  const receiver =
+    ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)
+      ? transparentExpression(expression.expression)
+      : undefined;
+  const selectedMethod = ts.isPropertyAccessExpression(expression)
+    ? expression.name.text
+    : ts.isElementAccessExpression(expression) && expression.argumentExpression
+      ? staticString(checker, expression.argumentExpression)
+      : null;
+  return (
+    receiver !== undefined &&
+    ts.isIdentifier(receiver) &&
+    receiver.text === owner &&
+    selectedMethod === method
+  );
+}
+
+function semanticRawCapabilityFailures(
+  sources: readonly AuditRuntimeSource[],
+  program: ts.Program,
+  checker: ts.TypeChecker,
+): string[] {
+  const failures = new Set<string>();
+  const sourceByFile = new Map<string, AuditRuntimeSource>();
+  const nodes: ts.Node[] = [];
+  const sourceFiles = new Set<ts.SourceFile>();
+  for (const source of sources) {
+    const sourceFile = program.getSourceFile(path.join(process.cwd(), source.path));
+    if (!sourceFile) continue;
+    sourceByFile.set(canonical(sourceFile.fileName), source);
+    sourceFiles.add(sourceFile);
+    const visit = (node: ts.Node): void => {
+      nodes.push(node);
+      node.forEachChild(visit);
+    };
+    visit(sourceFile);
+  }
+
+  const add = (node: ts.Node, message: string): void => {
+    const sourceFile = node.getSourceFile();
+    const source = sourceByFile.get(canonical(sourceFile.fileName));
+    if (source) failures.add(`${source.path}:${sourceLocation(sourceFile, node)} ${message}`);
+  };
+  const taintedSymbols = new Set<ts.Symbol>();
+  const taintedFunctions = new Set<ts.Symbol>();
+
+  const symbolAt = (node: ts.Node): ts.Symbol | undefined => resolvedSymbol(checker, node);
+  const markBinding = (name: ts.BindingName): boolean => {
+    let changed = false;
+    if (ts.isIdentifier(name)) {
+      const symbol = symbolAt(name);
+      if (symbol && !taintedSymbols.has(symbol)) {
+        taintedSymbols.add(symbol);
+        changed = true;
+      }
+    } else {
+      for (const element of name.elements) {
+        if (ts.isBindingElement(element)) changed = markBinding(element.name) || changed;
+      }
+    }
+    return changed;
+  };
+  const functionSymbolFor = (node: ts.SignatureDeclaration): ts.Symbol | undefined => {
+    if ('name' in node && node.name && ts.isIdentifier(node.name)) return symbolAt(node.name);
+    if (ts.isVariableDeclaration(node.parent) && ts.isIdentifier(node.parent.name)) {
+      return symbolAt(node.parent.name);
+    }
+    if (ts.isPropertyAssignment(node.parent)) return symbolAt(node.parent.name);
+    return undefined;
+  };
+  const containingFunction = (node: ts.Node): ts.SignatureDeclaration | undefined => {
+    for (let current = node.parent; current; current = current.parent) {
+      if (ts.isFunctionLike(current)) return current;
+    }
+    return undefined;
+  };
+  const reflectiveCapability = (node: ts.CallExpression): boolean => {
+    const reflectGet = directBuiltinCall(checker, node, 'Reflect', 'get');
+    const descriptor =
+      directBuiltinCall(checker, node, 'Object', 'getOwnPropertyDescriptor') ||
+      directBuiltinCall(checker, node, 'Reflect', 'getOwnPropertyDescriptor');
+    if (!reflectGet && !descriptor) return false;
+    const receiver = node.arguments[0];
+    const propertyNode = node.arguments[1];
+    if (!receiver || !propertyNode) return true;
+    const property = staticString(checker, propertyNode);
+    if (property && RAW_SQL_METHODS.has(property)) return true;
+    return property === null && !isProvenNonPrismaReceiver(checker, receiver);
+  };
+  const expressionTainted = (expression: ts.Expression): boolean => {
+    const node = transparentExpression(expression);
+    if (ts.isIdentifier(node)) {
+      const symbol = symbolAt(node);
+      return symbol !== undefined && taintedSymbols.has(symbol);
+    }
+    if (ts.isPropertyAccessExpression(node)) {
+      const method = rawSqlMethod(checker, node);
+      if (method) {
+        return !(
+          ts.isCallExpression(node.parent) &&
+          node.parent.expression === node &&
+          isReviewedRawCall(
+            sourceByFile.get(canonical(node.getSourceFile().fileName))?.path ?? '',
+            node.getSourceFile(),
+            node.parent,
+          )
+        );
+      }
+      return expressionTainted(node.expression);
+    }
+    if (ts.isElementAccessExpression(node)) {
+      const method = rawSqlMethod(checker, node);
+      if (method) {
+        return !(
+          ts.isCallExpression(node.parent) &&
+          node.parent.expression === node &&
+          isReviewedRawCall(
+            sourceByFile.get(canonical(node.getSourceFile().fileName))?.path ?? '',
+            node.getSourceFile(),
+            node.parent,
+          )
+        );
+      }
+      const property = node.argumentExpression
+        ? staticString(checker, node.argumentExpression)
+        : null;
+      return property === null && !isProvenNonPrismaReceiver(checker, node.expression);
+    }
+    if (ts.isAwaitExpression(node)) return expressionTainted(node.expression);
+    if (ts.isCallExpression(node)) {
+      if (reflectiveCapability(node)) return true;
+      if (directBuiltinCall(checker, node, 'Object', 'getOwnPropertyDescriptors')) {
+        const receiver = node.arguments[0];
+        return !receiver || !isProvenNonPrismaReceiver(checker, receiver);
+      }
+      const callee = transparentExpression(node.expression);
+      if (
+        ts.isPropertyAccessExpression(callee) &&
+        callee.name.text === 'bind' &&
+        expressionTainted(callee.expression)
+      ) {
+        return true;
+      }
+      const symbol = symbolAt(callee);
+      return symbol !== undefined && taintedFunctions.has(symbol);
+    }
+    if (ts.isConditionalExpression(node)) {
+      return expressionTainted(node.whenTrue) || expressionTainted(node.whenFalse);
+    }
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.CommaToken) {
+      return expressionTainted(node.right);
+    }
+    return false;
+  };
+
+  const localParameters = (node: ts.CallExpression): readonly ts.ParameterDeclaration[] | null => {
+    const declaration = checker.getResolvedSignature(node)?.declaration;
+    return declaration &&
+      sourceFiles.has(declaration.getSourceFile()) &&
+      ts.isFunctionLike(declaration)
+      ? (declaration.parameters as readonly ts.ParameterDeclaration[])
+      : null;
+  };
+  const bindingProperty = (element: ts.BindingElement): string | null => {
+    const property = element.propertyName;
+    if (!property) return ts.isIdentifier(element.name) ? element.name.text : null;
+    if (ts.isIdentifier(property) || ts.isStringLiteralLike(property)) return property.text;
+    return ts.isComputedPropertyName(property) ? staticString(checker, property.expression) : null;
+  };
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const node of nodes) {
+      if (
+        ts.isVariableDeclaration(node) &&
+        node.initializer &&
+        expressionTainted(node.initializer)
+      ) {
+        changed = markBinding(node.name) || changed;
+      }
+      if (
+        ts.isVariableDeclaration(node) &&
+        node.initializer &&
+        ts.isObjectBindingPattern(node.name)
+      ) {
+        for (const element of node.name.elements) {
+          const property = bindingProperty(element);
+          if (
+            (property !== null && RAW_SQL_METHODS.has(property)) ||
+            (property === null && !isProvenNonPrismaReceiver(checker, node.initializer))
+          ) {
+            changed = markBinding(element.name) || changed;
+          }
+        }
+      }
+      if (
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        expressionTainted(node.right)
+      ) {
+        if (ts.isIdentifier(node.left)) {
+          const symbol = symbolAt(node.left);
+          if (symbol && !taintedSymbols.has(symbol)) {
+            taintedSymbols.add(symbol);
+            changed = true;
+          }
+        }
+      }
+      if (ts.isReturnStatement(node) && node.expression && expressionTainted(node.expression)) {
+        const owner = containingFunction(node);
+        const symbol = owner ? functionSymbolFor(owner) : undefined;
+        if (symbol && !taintedFunctions.has(symbol)) {
+          taintedFunctions.add(symbol);
+          changed = true;
+        }
+      }
+      if (ts.isCallExpression(node)) {
+        const parameters = localParameters(node);
+        node.arguments.forEach((argument, index) => {
+          if (!expressionTainted(argument)) return;
+          const parameter = parameters?.[index] ?? parameters?.at(-1);
+          if (parameter) changed = markBinding(parameter.name) || changed;
+        });
+      }
+    }
+  }
+
+  for (const node of nodes) {
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.initializer &&
+      ts.isObjectBindingPattern(node.name)
+    ) {
+      for (const element of node.name.elements) {
+        const property = bindingProperty(element);
+        if (property !== null && RAW_SQL_METHODS.has(property)) {
+          add(element, `${property} raw-SQL capability is extracted by destructuring`);
+        }
+      }
+    }
+    if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+      const method = rawSqlMethod(checker, node);
+      if (method) {
+        const directCall =
+          ts.isCallExpression(node.parent) &&
+          node.parent.expression === node &&
+          isReviewedRawCall(
+            sourceByFile.get(canonical(node.getSourceFile().fileName))?.path ?? '',
+            node.getSourceFile(),
+            node.parent,
+          );
+        if (!directCall) {
+          const callEvidence =
+            ts.isCallExpression(node.parent) && node.parent.expression === node
+              ? `; call fingerprint ${rawCallFingerprint(node.parent, node.getSourceFile())}`
+              : '';
+          add(
+            node,
+            `${method} raw-SQL capability is acquired outside an exact reviewed call${callEvidence}`,
+          );
+        }
+      }
+    }
+    if (ts.isCallExpression(node)) {
+      if (reflectiveCapability(node)) {
+        const property = node.arguments[1]
+          ? (staticString(checker, node.arguments[1]) ?? 'runtime-selected member')
+          : 'missing member';
+        add(node, `reflective raw-SQL capability acquisition is prohibited (${property})`);
+      }
+      if (directBuiltinCall(checker, node, 'Object', 'getOwnPropertyDescriptors')) {
+        const receiver = node.arguments[0];
+        if (!receiver || !isProvenNonPrismaReceiver(checker, receiver)) {
+          add(node, 'bulk property-descriptor extraction from an unproved receiver is prohibited');
+        }
+      }
+      if (
+        directBuiltinCall(checker, node, 'Reflect', 'apply') &&
+        (!node.arguments[0] || expressionTainted(node.arguments[0]))
+      ) {
+        add(node, 'Reflect.apply cannot invoke an unproved raw-SQL capability');
+      }
+      const callee = transparentExpression(node.expression);
+      const taintedInvocation = expressionTainted(callee);
+      const reviewed =
+        (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) &&
+        rawSqlMethod(checker, callee) !== null &&
+        isReviewedRawCall(
+          sourceByFile.get(canonical(node.getSourceFile().fileName))?.path ?? '',
+          node.getSourceFile(),
+          node,
+        );
+      if (taintedInvocation && !reviewed) {
+        add(node, 'unproved or propagated raw-SQL callable capability is invoked');
+      }
+      const parameters = localParameters(node);
+      node.arguments.forEach((argument, index) => {
+        if (expressionTainted(argument) && !parameters?.[index] && !parameters?.at(-1)) {
+          add(argument, 'raw-SQL callable capability escapes to an unproved callee');
+        }
+      });
+    }
+    if (ts.isNewExpression(node) && expressionTainted(node.expression)) {
+      add(node, 'unproved raw-SQL callable capability is constructed');
+    }
+    if (ts.isTaggedTemplateExpression(node) && expressionTainted(node.tag)) {
+      add(node, 'unproved raw-SQL callable capability is used as a tag');
+    }
+    if (ts.isReturnStatement(node) && node.expression && expressionTainted(node.expression)) {
+      add(node, 'raw-SQL callable capability is returned from its defining boundary');
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      expressionTainted(node.right) &&
+      !ts.isIdentifier(node.left)
+    ) {
+      add(node, 'raw-SQL callable capability is stored through an unproved assignment');
+    }
+    if (
+      ts.isVariableStatement(node) &&
+      node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+    ) {
+      for (const declaration of node.declarationList.declarations) {
+        if (declaration.initializer && expressionTainted(declaration.initializer)) {
+          add(declaration, 'raw-SQL callable capability is exported');
+        }
+      }
+    }
+    if (ts.isExportAssignment(node) && expressionTainted(node.expression)) {
+      add(node, 'raw-SQL callable capability is exported');
+    }
+    if (ts.isIdentifier(node) && node.text === 'Reflect') {
+      const parent = node.parent;
+      const selectedMethod = ts.isPropertyAccessExpression(parent)
+        ? parent.name.text
+        : ts.isElementAccessExpression(parent) && parent.argumentExpression
+          ? staticString(checker, parent.argumentExpression)
+          : null;
+      const approvedDirectReceiver =
+        (ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) &&
+        parent.expression === node &&
+        selectedMethod !== null &&
+        ['get', 'apply', 'getOwnPropertyDescriptor'].includes(selectedMethod) &&
+        ts.isCallExpression(parent.parent) &&
+        parent.parent.expression === parent;
+      if (!approvedDirectReceiver) add(node, 'Reflect cannot be aliased or exposed');
+    }
+    if (
+      (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) &&
+      (() => {
+        const receiver = transparentExpression(node.expression);
+        return ts.isIdentifier(receiver) && receiver.text === 'Object';
+      })() &&
+      (() => {
+        const method = ts.isPropertyAccessExpression(node)
+          ? node.name.text
+          : node.argumentExpression
+            ? staticString(checker, node.argumentExpression)
+            : null;
+        return (
+          method !== null &&
+          ['getOwnPropertyDescriptor', 'getOwnPropertyDescriptors'].includes(method)
+        );
+      })() &&
+      !(ts.isCallExpression(node.parent) && node.parent.expression === node)
+    ) {
+      add(node, 'property-descriptor reflection cannot be aliased or exposed');
+    }
+  }
+  return [...failures];
 }
 
 function moduleRequests(sourceFile: ts.SourceFile, add: (node: ts.Node, message: string) => void) {
@@ -321,6 +836,9 @@ export function auditRuntimeSourceFailures(
   const failures = new Set<string>();
   const sourcePaths = new Set(sources.map((source) => normalized(source.path)));
   const { program, checker, options: tsOptions, host } = semanticProgram(root, sources);
+  for (const failure of semanticRawCapabilityFailures(sources, program, checker)) {
+    failures.add(failure);
+  }
   const gatewayFile = program.getSourceFile(path.join(root, AUDIT_GATEWAY));
   const serviceFile = program.getSourceFile(path.join(root, AUDIT_AUTH_SERVICE));
   const helperSymbols = new Map<ts.Symbol, string>();
@@ -530,6 +1048,9 @@ export function auditRuntimeSourceFailures(
         if (node.text === 'createRequire') {
           add(node, 'createRequire can escape the reviewed module closure');
         }
+        if (node.text === MIGRATION_DATABASE_ENV) {
+          add(node, 'runtime source cannot access the migration-only database credential');
+        }
         if (
           RAW_SQL_METHODS.has(node.text) &&
           !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)
@@ -541,7 +1062,9 @@ export function auditRuntimeSourceFailures(
       if (ts.isElementAccessExpression(node)) {
         const helper = helperFor(node);
         if (helper && !isGateway) add(node, `${helper} computed binding access is prohibited`);
-        const property = node.argumentExpression ? staticString(node.argumentExpression) : null;
+        const property = node.argumentExpression
+          ? staticString(checker, node.argumentExpression)
+          : null;
         if (property && EXECUTION_ESCAPE_NAMES.has(property)) {
           add(node, `${property} computed access is prohibited`);
         }
@@ -555,7 +1078,7 @@ export function auditRuntimeSourceFailures(
       }
 
       if (ts.isCallExpression(node)) {
-        const method = rawSqlMethod(node.expression);
+        const method = rawSqlMethod(checker, node.expression);
         if (method) {
           const argument = node.arguments[0];
           const reviewedSql =
@@ -597,7 +1120,7 @@ export function auditRuntimeSourceFailures(
       }
 
       if (ts.isTaggedTemplateExpression(node)) {
-        const method = rawSqlMethod(node.tag);
+        const method = rawSqlMethod(checker, node.tag);
         if (method) add(node, `${method} tagged execution is not a reviewed call shape`);
         if (!isGateway && LOW_LEVEL_PATTERN.test(joinedLiteralFragments(node.template))) {
           add(node, 'low-level audit SQL is allowed only in the audit gateway');
@@ -618,7 +1141,7 @@ export function auditRuntimeSourceFailures(
       }
 
       if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
-        const method = rawSqlMethod(node);
+        const method = rawSqlMethod(checker, node);
         if (method && !(ts.isCallExpression(node.parent) && node.parent.expression === node)) {
           add(node, `${method} cannot be aliased, exported or wrapped`);
         }
@@ -632,12 +1155,15 @@ export function auditRuntimeSourceFailures(
         if (SYSTEM_ACTOR_KEYS.has(literal)) {
           add(node, `direct system actor selection ${literal} is prohibited in runtime source`);
         }
+        if (literal === MIGRATION_DATABASE_ENV) {
+          add(node, 'runtime source cannot access the migration-only database credential');
+        }
         if (!isGateway && LOW_LEVEL_PATTERN.test(literal)) {
           add(node, 'low-level audit token is allowed only in the audit gateway');
         }
       }
       if (ts.isBinaryExpression(node) || ts.isTemplateExpression(node)) {
-        const computed = staticString(node);
+        const computed = staticString(checker, node);
         if (computed !== null) {
           if (SYSTEM_ACTOR_KEYS.has(computed)) {
             add(node, `computed system actor selection ${computed} is prohibited`);

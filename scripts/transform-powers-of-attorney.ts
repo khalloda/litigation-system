@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { Client, type ClientBase } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   buildPoaTransformPlan,
   type PoaLawyerPlan,
@@ -128,6 +129,7 @@ export async function runPoaTransform(options: RunOptions = {}) {
   const db = new Client({ connectionString });
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     const expectedOccurrences =
       options.expectedCorrectedOccurrences ??
       (options.databaseUrl === undefined ? [8, 0, 1] : undefined);

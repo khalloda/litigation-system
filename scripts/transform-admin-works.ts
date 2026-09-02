@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { Client, type ClientBase } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   buildAdminTransformPlan,
   type AdminQuarantinePlan,
@@ -141,6 +142,7 @@ export async function runAdminWorkTransform(options: RunOptions = {}) {
   const db = new Client({ connectionString });
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     const preview = await buildAdminTransformPlan(db);
     if (options.apply !== true) return { plan: preview, digest: null };
 

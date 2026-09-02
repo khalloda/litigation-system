@@ -7,6 +7,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { Client, type ClientConfig } from 'pg';
+import { assertApprovedMigrationPrincipalSession } from './lib/migration-principal';
 import {
   attendeeAuditResultDigest,
   attendeeAuditStructureFailures,
@@ -174,6 +175,7 @@ export async function runAttendeeAudit(options: RunOptions = {}) {
   const db = new Client(config);
   await db.connect();
   try {
+    await assertApprovedMigrationPrincipalSession(db);
     const plan = await buildAttendeeAuditPlan(db, options.expectations);
     if (options.apply !== true) {
       return { plan, reconciliation: null, digest: null };

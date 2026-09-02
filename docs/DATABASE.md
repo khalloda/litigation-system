@@ -272,12 +272,14 @@ one.
 
 ---
 
-## Separate database principals — implemented by Task 3.3A
+## Separate database principals — final Task 3.3A contract
 
-Decision **D33** is operational:
+Decisions **D33** and **D35** are operational:
 
-- `MIGRATION_DATABASE_URL` uses the privileged `litigation` owner for Prisma
-  migrations, controlled imports, checks and local administration.
+- `MIGRATION_DATABASE_URL` authenticates directly as the isolated PostgreSQL
+  superuser used only for Prisma migrations and controlled database
+  administration. The local default name is `litigation`; the URL, rather
+  than that name, is the credential contract.
 - `DATABASE_URL` uses `litigation_runtime` for the running web application.
   It is a login but is not a superuser, owner, role creator, database creator,
   inheriting role, replication role or row-security bypass role.
@@ -287,16 +289,20 @@ The runtime receives `CONNECT`, public-schema `USAGE`, and only
 application tables. It has no physical `DELETE`, actor-registry or migration
 evidence access, staging/quarantine access, schema `CREATE`, object ownership,
 trigger/function replacement or administration/migration context. It has no
-outbound membership, cannot `SET ROLE` to **any** other role, and no
-non-superuser role may inherit or assume it. It has no stored role-level or
-database-specific setting and cannot `SET` or `ALTER SYSTEM` for
+outbound membership, cannot `SET ROLE` to **any** other role, and has no
+explicit inbound `pg_auth_members` edge at all—regardless of member, grantor or
+`ADMIN`/`INHERIT`/`SET` options. Inherent superuser authority is inventoried
+separately and is not a reason to retain an explicit edge. It has no stored
+role-level or database-specific setting and cannot `SET` or `ALTER SYSTEM` for
 `session_replication_role`. The migration owner retains schema ownership.
 
 Migration `20260901170000_close_task33a_acceptance_gaps` established the first
 forward-only fail-closed deployment and safe future-function defaults. Its
 claims of a complete source and database-principal inventory are superseded by
-migration `20260901190000_complete_task33a_enforcement_inventory` and the
-permanent semantic checker.
+migration `20260901190000_complete_task33a_enforcement_inventory`. That
+migration's own “complete” claim is superseded by the 2 September correction:
+migration `20260902120000_finalize_task33a_enforcement`, the capability-flow
+source checker and D35.
 
 Migration 55 commits runtime `NOLOGIN` and removal of its direct target-database
 `CONNECT` grant, then terminates only that principal's sessions in the target
@@ -312,8 +318,16 @@ Login and direct target-database `CONNECT` return only after every assertion
 passes. A failure leaves the web role unavailable and never silently removes an
 unexpected external ownership, membership, ACL or parameter grant.
 
-The same complete boundary runs in migration/deployment preflight,
-`db:provision-runtime`, `db:check` and disposable adversarial fixtures. A new
+Migration 56 preserves migrations 53–55 byte-for-byte. Before changing runtime
+availability it verifies that `session_user` is a superuser and equals the
+superuser `current_user`. It then repeats migration 55's fail-closed sequence
+and complete boundary with one stricter invariant: **zero explicit inbound
+runtime-role memberships**, including an `ADMIN TRUE, INHERIT FALSE, SET
+FALSE` edge that can delegate a later `SET TRUE` path.
+
+The same complete boundary runs in migration pre/postconditions,
+`db:provision-runtime`, `db:check`, `db:verify` and disposable adversarial
+fixtures. A new
 gateway, role path, setting, schema, owned object, ACL, column/sequence grant,
 executable security-definer or parameter capability therefore requires an
 explicit reviewed inventory change.
@@ -331,6 +345,13 @@ It preserves the old URL as `MIGRATION_DATABASE_URL`, generates a new local
 runtime password, and writes the restricted `DATABASE_URL` through the ignored
 `.env` file without displaying either value. If the two variables are already
 separate, it validates them and changes nothing.
+
+Migration 53's ownership check is an **isolated historical precondition**: at
+that exact entry point, the connected principal must own the application
+tables. It is not proof that a merely owning or `CREATEROLE` principal can run
+the whole chain. The complete chain through migrations 54–56 requires D35's
+direct superuser migration connection, and the canonical commands below reject
+anything else before Prisma begins.
 
 After applying migrations, provision the cluster login from the ignored URL:
 
@@ -350,10 +371,41 @@ approved secret mechanism; never reuse a local credential or place either
 value in Git, documentation or command arguments.
 
 Prisma 7 schema/migration commands read `MIGRATION_DATABASE_URL` from
-`prisma.config.ts`. Application code rejects a `DATABASE_URL` whose username is
-not exactly `litigation_runtime`; configuration validation also rejects equal
-migration/runtime usernames, and provisioning rejects different database
-targets.
+`prisma.config.ts`. `db:migrate`, `db:migrate:deploy`, migration status and the
+narrow migration-56 recovery command all run the authenticated D35 preflight
+before starting Prisma. Application code rejects a `DATABASE_URL` whose
+username is not exactly `litigation_runtime`; configuration validation also
+rejects equal migration/runtime usernames, and provisioning rejects different
+database targets.
+
+### Fresh install, upgrade and disaster recovery
+
+For a fresh install, create or obtain the isolated superuser credential through
+the approved host secret mechanism, expose it only to the administration shell
+as `MIGRATION_DATABASE_URL`, run `npm run db:migrate:deploy`, then run
+`npm run db:provision-runtime`. Start the web service with only its restricted
+`DATABASE_URL` after both commands pass.
+
+For an upgrade, stop or drain web traffic, inject `MIGRATION_DATABASE_URL` only
+into the controlled migration command, deploy, provision/verify the runtime
+credential, remove the superuser secret from that shell and then start the web
+service. Do not source one shared production environment file into both the
+migration shell and the web service: the production web process must not have
+`MIGRATION_DATABASE_URL` at all.
+
+For disaster recovery, restore the database and logo storage together as D16
+requires, supply the recovered or rotated administration superuser secret only
+to the recovery shell, run migration status/deploy and both database checks,
+then provision the separate runtime login. The restored web service again
+receives only `DATABASE_URL`. Never place either secret in Git, service logs,
+documentation, command arguments or exported review evidence.
+
+If migration 56 finds an unexpected membership or ACL, it intentionally leaves
+`litigation_runtime` as `NOLOGIN` without direct target-database `CONNECT`.
+Correct the external condition under owner review, run
+`npm run db:migrate:resolve-task33a` to mark only that failed attempt as rolled
+back through Prisma, and rerun `npm run db:migrate:deploy`. Both commands
+authenticate D35's superuser first; never edit `_prisma_migrations` manually.
 
 The runtime may technically call PostgreSQL's general `set_config` primitive
 if the application process itself is fully compromised. External request data

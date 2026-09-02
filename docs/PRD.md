@@ -75,7 +75,9 @@ of which the first is implemented:
 1. **Secure actor attribution (Task 3.3A — implemented):** the exact 37 current four-column
    application tables plus `person_name_alias`; stable human/system actors;
    truthful historical attribution; database-enforced anti-spoofing; and a
-   restricted non-superuser web database connection. Seven immutable actors
+   restricted non-superuser web database connection with no role-membership
+   path, plus an isolated superuser used only for migrations/administration and
+   never exposed to the production web process. Seven immutable actors
    distinguish the four accounts from migration, authentication and controlled
    administration activity. The exact four historical account-update actors
    remain unknown rather than fabricated.
@@ -99,7 +101,7 @@ only by `KHelmy`, without adding an Owner role or hard-coding a username.
 
 The approved Arabic/RTL contextual history drawer and global Administrator
 audit page are later UI work. They are not part of Task 3.3A or 3.3B. See
-decisions D30–D34 and
+decisions D30–D35 and
 [`VISUAL-DIRECTION.md`](VISUAL-DIRECTION.md).
 
 ## 4. Language

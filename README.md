@@ -87,8 +87,9 @@ npm run auth:set-password -- KHelmy  # interactive; repeat for each approved use
 npm run dev               # http://localhost:3000
 ```
 
-`MIGRATION_DATABASE_URL` is the privileged schema/administration connection;
-the web application uses the separate restricted `DATABASE_URL` as
+`MIGRATION_DATABASE_URL` is D35's isolated superuser migration/administration
+connection; it must be absent from the production web process. The web
+application uses only the separate restricted `DATABASE_URL` as
 `litigation_runtime`. The application accepts usernames, not email addresses. The four initial
 accounts have no password in Git or in their migration; the owner initializes
 each one locally with `auth:set-password`, which hides input and forces a

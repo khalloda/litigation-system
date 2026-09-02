@@ -59,7 +59,7 @@ reconciliation instead of duplicating its tables and report datasets.
 | Gate 4 reconciliation | [`2026-08-30-gate-4.md`](reconciliations/2026-08-30-gate-4.md); stable generated-report digest `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b` | Tracked and reproducible | Complete 27-table accounting, logical equivalence, six report-category datasets, source/runtime/logo evidence and the 52-file migration inventory |
 | Continuity audit | [`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md) | Tracked dated evidence | Governance and evidence snapshot at commit `553b3d1`; it does not set current task priority |
 | Task 3.3 readiness and approved contract | [`2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md) | Tracked dated evidence | Complete audit-column/event readiness matrix, owner decisions D30–D34, risk dispositions and exact Task 3.3A return point |
-| Task 3.3A acceptance | [`2026-09-01-task-3-3a-secure-actor-attribution.md`](task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md) | Tracked dated evidence | Migration 53, seven-actor taxonomy, 38-table attribution, 5,209-row protection, database-principal split, verification and exact Task 3.3B return point |
+| Task 3.3A acceptance | [`2026-09-01-task-3-3a-secure-actor-attribution.md`](task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md) | Tracked dated evidence | Migrations 53–56, D35, seven-actor taxonomy, 38-table attribution, 5,209-row protection, isolated database principals, verification and exact Task 3.3B return point |
 
 Ignored source material and workbooks are never committed. Their hashes,
 fingerprints, protected outcomes and reproduction procedures are the durable
@@ -2624,7 +2624,7 @@ The historical billing complete-row digest remains
 and its identity/timestamp digest remains
 `a4e35c491255067d824aff6085a095d92d02bcf0946490c72c081632d4b200f2`.
 Historical-live upgrade and canonical clean replay fixtures both apply
-migrations 53–55, preserve exact guard definitions and remove their disposable
+migrations 53–56, preserve exact guard definitions and remove their disposable
 databases afterward.
 
 ### Initial Task 3.3A acceptance correction — 1 September 2026
@@ -2652,6 +2652,10 @@ unexpected external condition aborts without being silently repaired and
 leaves the application role unusable for investigation.
 
 ### Task 3.3A enforcement-inventory completion — 1 September 2026
+
+The “complete” source and role-inventory claims in this checkpoint are
+superseded by the 2 September final acceptance correction below. Its ACL,
+schema, parameter and fail-closed controls remain part of the final boundary.
 
 Forward migration
 `20260901190000_complete_task33a_enforcement_inventory` is migration 55. Its
@@ -2683,13 +2687,59 @@ The dated [Gate 4 report](reconciliations/2026-08-30-gate-4.md) is restored
 exactly to its commit `443227f` evidence: 52 migration files, stable generated
 digest
 `dbad78347cd092395349f921dd309b1fc4e05eead24add76aef1a3cb9ccf047b`.
-It is not rewritten by current verification. The current repository contains
-55 migrations with canonical inventory digest
+It is not rewritten by current verification. At that checkpoint the repository
+contained 55 migrations with canonical inventory digest
 `73eee24f92e92c1c211d46013fd1a88349301861beb2c2fa6e49b33a0128e504`;
 two separate non-writing reconciliations, each with its own internal idempotency
 replay, were byte-identical at transient digest
 `3b6d584128e6d022abc9b10fbe98a6845e611322b56c350ca8695d6b4e791297`.
 Both approved Stage 2 database profiles remain unchanged.
+
+### Final Task 3.3A acceptance correction — 2 September 2026
+
+Owner decision **D35** preserves migrations 53–55 byte-for-byte and requires
+the complete migration chain to run through a separate, directly authenticated
+PostgreSQL superuser supplied only as `MIGRATION_DATABASE_URL`. Migration 53's
+table-ownership assertion remains valid for its isolated historical starting
+state; it was never evidence that an owner or `CREATEROLE` principal could
+complete migrations 54 and 55. Every canonical migrate, deploy, status and
+narrow migration-56 recovery command now authenticates `session_user`, requires
+the same superuser `current_user`, and refuses before Prisma starts if that
+contract is absent.
+
+Forward migration `20260902120000_finalize_task33a_enforcement` is migration
+56. Its SHA-256 and applied checksum are
+`ed77a4c7c74413f90e8e15a0681a1d99b455773b5d9e25134673b046ac82a20d`.
+It first checks the direct superuser session without changing runtime state,
+then repeats migration 55's fail-closed boundary and adds a catalog-exact
+assertion that no `pg_auth_members` row has `litigation_runtime` as its granted
+role. This includes every member and grantor and every `ADMIN`, `INHERIT` and
+`SET` combination. An `ADMIN TRUE, INHERIT FALSE, SET FALSE` fixture proves the
+otherwise non-effective member can delegate `SET TRUE` to a recipient, which
+can then assume the runtime role. The migration never repairs such an edge: a
+failure leaves runtime `NOLOGIN` without direct target-database `CONNECT`; a
+clean result restores both only after the whole boundary passes.
+
+The runtime-source gate now treats raw SQL as a semantic callable capability,
+not a method-name spelling. Constant/computed keys, assignment and destructuring
+aliases, parameters, returns, wrappers, imports/exports, call/apply/bind,
+optional and parenthesized access, `Reflect`, property descriptors and erased
+`any`/`unknown` casts are covered. Request-selected callables on Prisma-derived
+or unproved receivers fail closed. Only six direct
+`$queryRaw(Prisma.sql tagged-template)` call expressions are allowed, each
+bound to a token-level SHA-256 of its complete call, SQL template and
+interpolation expressions. Direct PostgreSQL clients and dynamic/CommonJS
+loading remain prohibited, as do runtime access to migration-only helpers or
+`MIGRATION_DATABASE_URL`.
+
+Local development may keep both ignored URLs in its access-restricted `.env`.
+Production migration, fresh-install and disaster-recovery shells receive the
+superuser secret only for controlled administration and remove it afterward;
+the web service environment receives only restricted `DATABASE_URL`. Suspected
+exposure requires rotation. No secret, connection string or migration
+credential enters Git or command output. Historical-live and clean-replay
+fixtures prove the full 53–56 chain, while the existing protected business,
+timestamp, attribution, workbook and Gate 4 evidence remains unchanged.
 
 ## Cutover
 
