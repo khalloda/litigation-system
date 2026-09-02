@@ -84,8 +84,12 @@ both of which are implemented at the storage and server boundary:
 2. **Append-only events (Task 3.3B — implemented):** 38-table row and
    relationship triggers record create/update/add/remove activity; current
    authentication records login success/failure/lockout and password-change
-   facts; typed atomic contracts reserve archive, restore, user/role lifecycle,
-   report, export and download events for the later business features.
+   facts; exhaustive per-column classification fails closed; and stable account
+   targets resolve through the actor/account relationship. Atomic contracts are
+   limited to database-reversible archive, restore and user/role lifecycle
+   work. Later report, export and download events are server-observed facts;
+   they do not make filesystem or network delivery atomic with PostgreSQL, and
+   a download event cannot prove client receipt.
 
 Ordinary record views, searches, list loading and navigation are not logged.
 Passwords, hashes, tokens, cookies, credentials, keys, connection strings, raw

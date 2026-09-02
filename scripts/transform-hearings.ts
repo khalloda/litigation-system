@@ -9,6 +9,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import type { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   type AttendeeAuditReconciliationBaseline,
@@ -187,6 +188,7 @@ export async function runHearingTransform(options: RunOptions = {}) {
       const beforeProtected = await protectedState(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {
+        await setMaintenanceAuditContext(db, 'task-2-8-hearings');
         await db.query("SELECT pg_advisory_xact_lock(hashtext('task-2.8-hearings'))");
         const plan = await buildHearingTransformPlan(db);
         assert.deepEqual(plan, proposed, 'hearing source or reviewed rules changed after dry run');

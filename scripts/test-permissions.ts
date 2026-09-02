@@ -9,7 +9,12 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import type { Session } from 'next-auth';
 import { Client } from 'pg';
 import { createDatabaseClient } from '../src/lib/db';
-import { PrismaClient } from '../src/generated/prisma/client';
+import { setMigrationAuditContext } from '../src/lib/audit';
+import {
+  createMaintenanceAuditMetadata,
+  createRequestAuditMetadata,
+} from '../src/lib/audit-metadata';
+import { Prisma, PrismaClient } from '../src/generated/prisma/client';
 import {
   AuthorizationError,
   decideAuthorization,
@@ -50,6 +55,16 @@ import {
 } from './lib/authorization-route-inventory';
 
 type MutablePolicy = Record<string, Record<string, Record<string, boolean>>>;
+
+async function withMaintenanceContext<T>(
+  database: PrismaClient,
+  operation: (transaction: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  return database.$transaction(async (transaction) => {
+    await setMigrationAuditContext(transaction, createMaintenanceAuditMetadata());
+    return operation(transaction);
+  });
+}
 
 const OPERATIONAL_AREAS = [
   'clients',
@@ -286,12 +301,15 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
       );
       const temporaryPassword = `P ${randomBytes(18).toString('base64url')}`;
       const permanentPassword = `Q ${randomBytes(18).toString('base64url')}`;
+      const fixtureRequestMetadata = () =>
+        createRequestAuditMetadata(new Request('http://localhost/permissions-fixture'));
       await setApprovedAccountPassword('KHelmy', temporaryPassword, {
         database: migrationDatabase,
+        auditMetadata: createMaintenanceAuditMetadata(),
       });
       const forcedUser = await authenticateCredentials(
         { username: 'KHelmy', password: temporaryPassword },
-        { database },
+        { database, auditMetadata: fixtureRequestMetadata() },
       );
       assert.ok(forcedUser);
       const forcedClaims = createSessionClaims(forcedUser);
@@ -310,20 +328,22 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
             currentPassword: temporaryPassword,
             newPassword: permanentPassword,
           },
-          { database },
+          { database, auditMetadata: fixtureRequestMetadata() },
         ),
         'changed',
       );
       const administrator = await authenticateCredentials(
         { username: 'KHelmy', password: permanentPassword },
-        { database },
+        { database, auditMetadata: fixtureRequestMetadata() },
       );
       assert.ok(administrator);
       const staleAdministratorClaims = createSessionClaims(administrator);
-      await migrationDatabase.userAccount.update({
-        where: { id: Number(administrator.id) },
-        data: { roleCode: 'Lawyer', updatedAt: new Date() },
-      });
+      await withMaintenanceContext(migrationDatabase, (transaction) =>
+        transaction.userAccount.update({
+          where: { id: Number(administrator.id) },
+          data: { roleCode: 'Lawyer', updatedAt: new Date() },
+        }),
+      );
       const refreshed = await validateSessionClaims(staleAdministratorClaims, { database });
       assert.equal(staleAdministratorClaims.role, 'Administrator');
       assert.equal(refreshed?.role, 'Lawyer');
@@ -340,10 +360,12 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
           person: { select: { nameAr: true } },
         },
       });
-      await migrationDatabase.userAccount.update({
-        where: { id: account.id },
-        data: { isEnabled: false, sessionVersion: { increment: 1 }, updatedAt: new Date() },
-      });
+      await withMaintenanceContext(migrationDatabase, (transaction) =>
+        transaction.userAccount.update({
+          where: { id: account.id },
+          data: { isEnabled: false, sessionVersion: { increment: 1 }, updatedAt: new Date() },
+        }),
+      );
       const disabledState = await database.userAccount.findUniqueOrThrow({
         where: { id: account.id },
         select: { sessionVersion: true },
@@ -362,13 +384,15 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
       } satisfies AuthenticatedUser);
       assert.equal(await validateSessionClaims(disabledClaims, { database }), null);
 
-      await migrationDatabase.userAccount.update({
-        where: { id: account.id },
-        data: { isEnabled: true, sessionVersion: { increment: 1 }, updatedAt: new Date() },
-      });
-      await migrationDatabase.person.update({
-        where: { id: account.personId },
-        data: { isActive: false, updatedAt: new Date() },
+      await withMaintenanceContext(migrationDatabase, async (transaction) => {
+        await transaction.userAccount.update({
+          where: { id: account.id },
+          data: { isEnabled: true, sessionVersion: { increment: 1 }, updatedAt: new Date() },
+        });
+        await transaction.person.update({
+          where: { id: account.personId },
+          data: { isActive: false, updatedAt: new Date() },
+        });
       });
       const inactiveState = await database.userAccount.findUniqueOrThrow({
         where: { id: account.id },

@@ -10,6 +10,15 @@
 -- ===========================================================================
 
 BEGIN ISOLATION LEVEL SERIALIZABLE;
+SELECT public.audit_set_migration_context();
+SELECT public.audit_set_event_context(
+  gen_random_uuid(),
+  gen_random_uuid(),
+  gen_random_uuid(),
+  NULL,
+  'controlled-maintenance:task-2-6-matters',
+  'system'
+);
 SELECT pg_advisory_xact_lock(hashtext('litigation-system/task-2.6/matters'));
 
 CREATE TEMP TABLE matter_preservation_guard ON COMMIT DROP AS

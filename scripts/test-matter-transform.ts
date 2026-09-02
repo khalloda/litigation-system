@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import {
   asBigInt,
   MATTER_RECONCILIATION_SQL,
@@ -155,6 +156,7 @@ async function proveReconciliationFailure(
 ) {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-matter-reconciliation-negative');
     await mutate();
     const changed = await reconciliation(db);
     for (const field of expectedFields) {
@@ -221,10 +223,18 @@ async function runFixture() {
         '  ok    catalog verification accepts the exact constraint, index, foreign key and triggers',
       );
 
-      await db.query(
-        `INSERT INTO clients (legacy_id, name_ar, updated_at)
-         VALUES (1, 'عميل اختبار تقني — ليس بيانات حقيقية', CURRENT_TIMESTAMP)`,
-      );
+      await db.query('BEGIN');
+      try {
+        await setMaintenanceAuditContext(db, 'test-matter-client-fixture');
+        await db.query(
+          `INSERT INTO clients (legacy_id, name_ar, updated_at)
+           VALUES (1, 'عميل اختبار تقني — ليس بيانات حقيقية', CURRENT_TIMESTAMP)`,
+        );
+        await db.query('COMMIT');
+      } catch (error) {
+        await db.query('ROLLBACK');
+        throw error;
+      }
 
       const separateClients = await db.query<{ source_value: string }>(`
         SELECT source_value FROM migration_crosswalk

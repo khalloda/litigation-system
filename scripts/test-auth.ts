@@ -5,8 +5,12 @@ import { randomBytes } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Client } from 'pg';
 import { createDatabaseClient } from '../src/lib/db';
-import { createRequestAuditMetadata } from '../src/lib/audit-metadata';
-import { PrismaClient } from '../src/generated/prisma/client';
+import { setMigrationAuditContext } from '../src/lib/audit';
+import {
+  createMaintenanceAuditMetadata,
+  createRequestAuditMetadata,
+} from '../src/lib/audit-metadata';
+import { Prisma, PrismaClient } from '../src/generated/prisma/client';
 import {
   authenticateCredentials,
   changeOwnPassword,
@@ -59,6 +63,16 @@ function fixtureRuntimeUrl(fixtureOwnerUrl: URL): URL {
   runtime.port = fixtureOwnerUrl.port;
   runtime.pathname = fixtureOwnerUrl.pathname;
   return runtime;
+}
+
+async function withMaintenanceContext<T>(
+  database: PrismaClient,
+  operation: (transaction: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  return database.$transaction(async (transaction) => {
+    await setMigrationAuditContext(transaction, createMaintenanceAuditMetadata());
+    return operation(transaction);
+  });
 }
 
 async function proveStructureMutation(
@@ -117,6 +131,12 @@ async function main(): Promise<void> {
     await catalog.connect();
     await runtimeProbe.connect();
     try {
+      const fixtureRequestMetadata = () =>
+        createRequestAuditMetadata(
+          new Request('http://localhost/auth-fixture', {
+            headers: { 'user-agent': 'Task 3.3B authentication fixture' },
+          }),
+        );
       assert.deepEqual(
         (
           await runtimeProbe.query<{ current_user: string; session_user: string }>(
@@ -231,11 +251,17 @@ async function main(): Promise<void> {
       assert.equal(await database.personNameAlias.count(), 350);
       const auditActors = (
         await catalog.query<{
+          id: number;
           actor_key: string;
           actor_kind: string;
           user_account_id: number | null;
-        }>('SELECT actor_key,actor_kind,user_account_id FROM audit_actors ORDER BY id')
+        }>('SELECT id,actor_key,actor_kind,user_account_id FROM audit_actors ORDER BY id')
       ).rows;
+      const actorIdForAccount = (accountId: number): number => {
+        const actor = auditActors.find((candidate) => candidate.user_account_id === accountId);
+        assert.ok(actor, `fixture account ${accountId} has no immutable audit actor`);
+        return actor.id;
+      };
       assert.equal(auditActors.length, 7);
       assert.deepEqual(
         auditActors
@@ -297,6 +323,7 @@ async function main(): Promise<void> {
       const replacementPassword = `B ${randomBytes(18).toString('base64url')}`;
       await setApprovedAccountPassword('kHeLmY', temporaryPassword, {
         database: migrationDatabase,
+        auditMetadata: createMaintenanceAuditMetadata(),
       });
       const initialized = await database.userAccount.findUniqueOrThrow({
         where: { usernameNormalized: 'khelmy' },
@@ -319,22 +346,25 @@ async function main(): Promise<void> {
       ).rows[0];
       assert.deepEqual(initializedEvent, {
         actor_key: 'system_administration',
-        target_actor_id: 1000 + initialized.id,
+        target_actor_id: actorIdForAccount(initialized.id),
         action: 'password_initialized',
       });
       await assert.rejects(
-        migrationDatabase.userAccount.update({
-          where: { id: initialized.id },
-          data: {
-            passwordHash: 'malformed',
-            passwordChangedAt: new Date(),
-            sessionVersion: { increment: 1 },
-          },
-        }),
+        withMaintenanceContext(migrationDatabase, (transaction) =>
+          transaction.userAccount.update({
+            where: { id: initialized.id },
+            data: {
+              passwordHash: 'malformed',
+              passwordChangedAt: new Date(),
+              sessionVersion: { increment: 1 },
+            },
+          }),
+        ),
       );
       await assert.rejects(
         setApprovedAccountPassword('not-approved', temporaryPassword, {
           database: migrationDatabase,
+          auditMetadata: createMaintenanceAuditMetadata(),
         }),
         /approved-account-required/u,
       );
@@ -422,6 +452,7 @@ async function main(): Promise<void> {
           { username: 'MHussien', password: temporaryPassword },
           {
             database,
+            auditMetadata: fixtureRequestMetadata(),
             dummyVerify: async () => {
               dummyCalls += 1;
             },
@@ -436,7 +467,7 @@ async function main(): Promise<void> {
         assert.equal(
           await authenticateCredentials(
             { username: 'KHELmy', password: `${temporaryPassword} wrong` },
-            { database, now: clock },
+            { database, now: clock, auditMetadata: fixtureRequestMetadata() },
           ),
           null,
         );
@@ -450,7 +481,7 @@ async function main(): Promise<void> {
       assert.equal(
         await authenticateCredentials(
           { username: 'KHelmy', password: `${temporaryPassword} wrong` },
-          { database, now: clock },
+          { database, now: clock, auditMetadata: fixtureRequestMetadata() },
         ),
         null,
       );
@@ -462,14 +493,22 @@ async function main(): Promise<void> {
       assert.equal(
         await authenticateCredentials(
           { username: 'KHelmy', password: temporaryPassword },
-          { database, now: new Date('2026-08-31T09:14:59.999Z') },
+          {
+            database,
+            now: new Date('2026-08-31T09:14:59.999Z'),
+            auditMetadata: fixtureRequestMetadata(),
+          },
         ),
         null,
       );
 
       const afterExpiry = await authenticateCredentials(
         { username: 'KHelmy', password: temporaryPassword },
-        { database, now: new Date('2026-08-31T09:15:00.001Z') },
+        {
+          database,
+          now: new Date('2026-08-31T09:15:00.001Z'),
+          auditMetadata: fixtureRequestMetadata(),
+        },
       );
       assert.ok(afterExpiry);
       state = await database.userAccount.findUniqueOrThrow({
@@ -477,16 +516,18 @@ async function main(): Promise<void> {
       });
       assert.equal(state.failedLoginAttempts, 0);
       assert.equal(state.lockedUntil, null);
-      assert.equal(state.updatedBy, 1000 + state.id);
+      assert.equal(state.updatedBy, actorIdForAccount(state.id));
 
-      await migrationDatabase.userAccount.update({
-        where: { id: state.id },
-        data: { failedLoginAttempts: 3, updatedAt: clock },
-      });
+      await withMaintenanceContext(migrationDatabase, (transaction) =>
+        transaction.userAccount.update({
+          where: { id: state.id },
+          data: { failedLoginAttempts: 3, updatedAt: clock },
+        }),
+      );
       assert.ok(
         await authenticateCredentials(
           { username: 'KHelmy', password: temporaryPassword },
-          { database, now: clock },
+          { database, now: clock, auditMetadata: fixtureRequestMetadata() },
         ),
       );
       assert.equal(
@@ -495,33 +536,74 @@ async function main(): Promise<void> {
         0,
       );
 
-      await migrationDatabase.userAccount.update({
-        where: { id: state.id },
-        data: { failedLoginAttempts: 0, lockedUntil: null, updatedAt: clock },
-      });
+      await withMaintenanceContext(migrationDatabase, (transaction) =>
+        transaction.userAccount.update({
+          where: { id: state.id },
+          data: { failedLoginAttempts: 0, lockedUntil: null, updatedAt: clock },
+        }),
+      );
       await Promise.all(
         Array.from({ length: 5 }, () =>
           authenticateCredentials(
             { username: 'KHelmy', password: `${temporaryPassword} concurrent-wrong` },
-            { database, now: clock },
+            { database, now: clock, auditMetadata: fixtureRequestMetadata() },
           ),
         ),
       );
       state = await database.userAccount.findUniqueOrThrow({ where: { id: state.id } });
       assert.equal(state.failedLoginAttempts, 5);
       assert.ok(state.lockedUntil);
+      const knownFailureTargets = await catalog.query<{
+        action: string;
+        target_actor_id: number;
+      }>(
+        `
+        SELECT action,target_actor_id FROM audit_events
+         WHERE action IN ('login_failed','account_locked')
+           AND entity_key=jsonb_build_object('id',$1::integer)
+         ORDER BY id`,
+        [state.id],
+      );
+      assert.ok(
+        knownFailureTargets.rows.some(
+          (event) =>
+            event.action === 'login_failed' &&
+            event.target_actor_id === actorIdForAccount(state.id),
+        ),
+      );
+      assert.ok(
+        knownFailureTargets.rows.some(
+          (event) =>
+            event.action === 'account_locked' &&
+            event.target_actor_id === actorIdForAccount(state.id),
+        ),
+      );
 
       await setApprovedAccountPassword('KHelmy', temporaryPassword, {
         database: migrationDatabase,
         now: clock,
+        auditMetadata: createMaintenanceAuditMetadata(),
       });
+      assert.equal(
+        (
+          await catalog.query<{ target_actor_id: number }>(
+            `
+            SELECT target_actor_id FROM audit_events
+             WHERE action='password_reset'
+               AND entity_key=jsonb_build_object('id',$1::integer)
+             ORDER BY id DESC LIMIT 1`,
+            [state.id],
+          )
+        ).rows[0]?.target_actor_id,
+        actorIdForAccount(state.id),
+      );
       const normalUser = await authenticateCredentials(
         { username: 'KHelmy', password: temporaryPassword },
-        { database, now: clock },
+        { database, now: clock, auditMetadata: fixtureRequestMetadata() },
       );
       const rememberedUser = await authenticateCredentials(
         { username: 'KHelmy', password: temporaryPassword, rememberMe: 'true' },
-        { database, now: clock },
+        { database, now: clock, auditMetadata: fixtureRequestMetadata() },
       );
       assert.ok(normalUser);
       assert.ok(rememberedUser);
@@ -567,7 +649,7 @@ async function main(): Promise<void> {
             currentPassword: temporaryPassword,
             newPassword: temporaryPassword,
           },
-          { database, now: clock },
+          { database, now: clock, auditMetadata: fixtureRequestMetadata() },
         ),
         'reused',
       );
@@ -579,7 +661,7 @@ async function main(): Promise<void> {
             currentPassword: `${temporaryPassword} wrong`,
             newPassword: replacementPassword,
           },
-          { database, now: clock },
+          { database, now: clock, auditMetadata: fixtureRequestMetadata() },
         ),
         'invalid-current',
       );
@@ -591,14 +673,14 @@ async function main(): Promise<void> {
             currentPassword: temporaryPassword,
             newPassword: replacementPassword,
           },
-          { database, now: clock },
+          { database, now: clock, auditMetadata: fixtureRequestMetadata() },
         ),
         'changed',
       );
       assert.equal(
         (await database.userAccount.findUniqueOrThrow({ where: { id: Number(normalUser.id) } }))
           .updatedBy,
-        1000 + Number(normalUser.id),
+        actorIdForAccount(Number(normalUser.id)),
       );
       const ownPasswordEvent = (
         await catalog.query<{
@@ -611,15 +693,15 @@ async function main(): Promise<void> {
             FROM audit_events WHERE action='password_changed' ORDER BY id DESC LIMIT 1`)
       ).rows[0];
       assert.deepEqual(ownPasswordEvent, {
-        actor_id: 1000 + Number(normalUser.id),
-        target_actor_id: 1000 + Number(normalUser.id),
+        actor_id: actorIdForAccount(Number(normalUser.id)),
+        target_actor_id: actorIdForAccount(Number(normalUser.id)),
         actor_role: 'Administrator',
         action: 'password_changed',
       });
       assert.equal(await validateSessionClaims(normalClaims, { database, now: clock }), null);
       const replacementLogin = await authenticateCredentials(
         { username: 'KHelmy', password: replacementPassword },
-        { database, now: clock },
+        { database, now: clock, auditMetadata: fixtureRequestMetadata() },
       );
       assert.ok(replacementLogin);
       assert.equal(replacementLogin.mustChangePassword, false);
@@ -628,21 +710,23 @@ async function main(): Promise<void> {
       const beforeDisable = await database.userAccount.findUniqueOrThrow({
         where: { id: Number(replacementLogin.id) },
       });
-      await migrationDatabase.userAccount.update({
-        where: { id: beforeDisable.id },
-        data: {
-          isEnabled: false,
-          failedLoginAttempts: 0,
-          lockedUntil: null,
-          sessionVersion: { increment: 1 },
-          updatedAt: clock,
-        },
-      });
+      await withMaintenanceContext(migrationDatabase, (transaction) =>
+        transaction.userAccount.update({
+          where: { id: beforeDisable.id },
+          data: {
+            isEnabled: false,
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+            sessionVersion: { increment: 1 },
+            updatedAt: clock,
+          },
+        }),
+      );
       assert.equal(await validateSessionClaims(replacementClaims, { database, now: clock }), null);
       assert.equal(
         await authenticateCredentials(
           { username: 'KHelmy', password: replacementPassword },
-          { database, now: clock },
+          { database, now: clock, auditMetadata: fixtureRequestMetadata() },
         ),
         null,
       );
@@ -651,25 +735,29 @@ async function main(): Promise<void> {
           .canLogin,
         false,
       );
-      await migrationDatabase.userAccount.update({
-        where: { id: beforeDisable.id },
-        data: { isEnabled: true, updatedAt: clock },
-      });
-      await migrationDatabase.person.update({
-        where: { id: beforeDisable.personId },
-        data: { isActive: false, updatedAt: clock },
+      await withMaintenanceContext(migrationDatabase, async (transaction) => {
+        await transaction.userAccount.update({
+          where: { id: beforeDisable.id },
+          data: { isEnabled: true, updatedAt: clock },
+        });
+        await transaction.person.update({
+          where: { id: beforeDisable.personId },
+          data: { isActive: false, updatedAt: clock },
+        });
       });
       assert.equal(
         await authenticateCredentials(
           { username: 'KHelmy', password: replacementPassword },
-          { database, now: clock },
+          { database, now: clock, auditMetadata: fixtureRequestMetadata() },
         ),
         null,
       );
-      await migrationDatabase.person.update({
-        where: { id: beforeDisable.personId },
-        data: { isActive: true, updatedAt: clock },
-      });
+      await withMaintenanceContext(migrationDatabase, (transaction) =>
+        transaction.person.update({
+          where: { id: beforeDisable.personId },
+          data: { isActive: true, updatedAt: clock },
+        }),
+      );
       assert.equal(
         (await database.person.findUniqueOrThrow({ where: { id: beforeDisable.personId } }))
           .canLogin,

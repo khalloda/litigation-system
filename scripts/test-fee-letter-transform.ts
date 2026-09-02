@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { reconcileFeeLetters } from './lib/fee-letter-reconciliation';
 import { feeLetterStructureFailures } from './lib/fee-letter-structure';
 import { feeResultDigest, runFeeLetterTransform } from './transform-fee-letters';
@@ -33,6 +34,7 @@ async function clean(db: Client) {
 async function fail(db: Client, label: string, mutate: () => Promise<unknown>, pattern: RegExp) {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-fee-letter-reconciliation-negative');
     await mutate();
     assert.match((await reconcileFeeLetters(db, REF)).defects.join('\n'), pattern);
   } finally {
@@ -59,6 +61,8 @@ async function main() {
     const db = new Client({ connectionString: fu.toString() });
     await db.connect();
     try {
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-fee-letter-fixtures');
       await db.query(
         `INSERT INTO clients(legacy_id,name_ar,updated_at)VALUES(10,'عميل اختبار',CURRENT_TIMESTAMP)`,
       );
@@ -98,6 +102,7 @@ async function main() {
            'fixture'
          )`,
       );
+      await db.query('COMMIT');
       const dry = await runFeeLetterTransform({
         databaseUrl: fu.toString(),
         expectedReferenceCounts: { contract: 1, mfiles: 0, both: 0, neither: 0 },
@@ -234,6 +239,8 @@ async function main() {
         },
         /forward quarantine mismatch/,
       );
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-fee-letter-native-fixtures');
       const nativeFee = (
         await db.query<{ id: number }>(
           `INSERT INTO fee_letters(contract_details,updated_at)VALUES('application native',CURRENT_TIMESTAMP)RETURNING id`,
@@ -252,6 +259,7 @@ async function main() {
         `INSERT INTO matter_fee_letter_references(matter_id,fee_letter_id,updated_at)VALUES($1,$2,CURRENT_TIMESTAMP)`,
         [nativeMatter, nativeFee],
       );
+      await db.query('COMMIT');
       await clean(db);
       console.log(
         '  ok    application-native parent and both link directions remain outside legacy reconciliation',

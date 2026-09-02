@@ -6,11 +6,11 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 2 September 2026:** Task 3.3B's append-only event
-foundation is implemented locally and awaits independent review and
-owner-authorized push. **Do not start Task 3.4.** Task 3.4 — User management is
-the exact next return point only after this Task 3.3B commit is accepted and
-pushed.
+**Current checkpoint — 3 September 2026:** Task 3.3B's append-only event
+foundation and bounded independent-review correction are implemented locally
+and await independent review and owner-authorized push. **Do not start Task
+3.4.** Task 3.4 — User management is the exact next return point only after
+both Task 3.3B commits are accepted and pushed.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1194,12 +1194,15 @@ only ever seen good data is not known to work.
       only `{client_id}/{filename}`, original filename, signature-detected MIME,
       byte size and SHA-256 — never an absolute path or image bytes.
 
-      A serializable transaction and atomic staged publication created **54
-      `client_logos` rows, 54 immutable `migration_client_logo_import` rows and
-      54 files**. The current row remains application-mutable for Task 4.1a;
-      the separate import audit preserves the original Access evidence. The
-      identical second apply was a true no-op: IDs 1–54, timestamps,
-      associations, paths, bytes and hashes were unchanged.
+      A serializable database transaction and staged filesystem publication
+      created **54 `client_logos` rows, 54 immutable
+      `migration_client_logo_import` rows and 54 files**. The directory rename
+      is atomic within that filesystem, but not with PostgreSQL; on database
+      failure the controlled migration compensates by removing only its own
+      newly published tree. The current row remains application-mutable for
+      Task 4.1a; the separate import audit preserves the original Access
+      evidence. The identical second apply was a true no-op: IDs 1–54,
+      timestamps, associations, paths, bytes and hashes were unchanged.
 
       Source digest
       `320d0b7301b5e0cc27ea342fc86c1384dabf7cdb5f5bfe2a38d658bf3268f801`;
@@ -1520,19 +1523,28 @@ only ever seen good data is not known to work.
       Audit UI remains later work and is not part of 3.3A or 3.3B.
 
       Migration `20260902180000_append_only_audit_events` adds the immutable
-      event store, exact 38-table trigger boundary, 262-field explicit
-      allowlist, relationship semantics, trusted request context, current
-      authentication events and atomic typed contracts for the later archive,
-      restore, account, role, report, export and download workflows. Existing
-      history receives one aggregate `audit_baseline_established` event, never
-      fabricated row-by-row activity. Permanent checks protect the event and
-      allowlist digests, append-only grants, bounded/redacted payloads, fixed
-      function inventory and indexed keyset query paths. Acceptance evidence:
+      event store, exact 38-table trigger boundary, the frozen 262-rule
+      allowlist, relationship semantics, trusted request context and current
+      authentication events. Existing history receives one aggregate
+      `audit_baseline_established` event, never fabricated row-by-row activity.
+      Permanent checks protect the event and allowlist digests, append-only
+      grants, bounded/redacted payloads, fixed function inventory and indexed
+      keyset query paths. Acceptance evidence:
       [`docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md`](docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md).
+
+      **Task 3.3B correction — 3 September 2026.** Forward migration
+      `20260903100000_close_task33b_review_gaps` preserves migration 57 and its
+      checkpoint while classifying every one of the 583 columns in the exact
+      38-table boundary. Unclassified future columns fail writes; target users
+      resolve through `audit_actors.user_account_id`; human/authentication
+      operations require explicit server-created request metadata; and atomic
+      wrappers cover only database-reversible lifecycle work. Future
+      report/export/download events are server-observed facts and do not claim
+      atomic filesystem/network delivery or client receipt.
 
       No viewer, drawer, audit export, archive/restore business workflow or
       user-management feature was added. Task 3.4 is approved but not started
-      and remains blocked until this local Task 3.3B commit is independently
+      and remains blocked until both local Task 3.3B commits are independently
       accepted and pushed.
 
 - [ ] **3.4 User management** — Administrator only. Removing access means

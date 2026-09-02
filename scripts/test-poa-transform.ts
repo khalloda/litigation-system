@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { reconcilePowersOfAttorney } from './lib/poa-reconciliation';
 import { poaStructureFailures } from './lib/poa-structure';
 import { poaResultDigest, runPoaTransform } from './transform-powers-of-attorney';
@@ -40,6 +41,7 @@ async function proveFailure(
 ) {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-poa-reconciliation-negative');
     await mutate();
     assert.match((await reconcilePowersOfAttorney(db, [1, 0, 0])).defects.join('\n'), pattern);
   } finally {
@@ -129,6 +131,7 @@ async function main(): Promise<void> {
       ).rows[0]!;
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-poa-whole-value-rule');
         const embeddedRaw = `قبل ${wholeValueRule.raw_value} بعد`;
         const parent = (
           await db.query<{ id: number }>(
@@ -165,6 +168,7 @@ async function main(): Promise<void> {
 
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-poa-unsupported-match-mode');
         await db.query(
           'ALTER TABLE migration_multi_person_rule DROP CONSTRAINT migration_multi_person_rule_poa_match_mode_check',
         );
@@ -221,6 +225,7 @@ async function main(): Promise<void> {
       assert.equal(substringRules.rows.length, 3);
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-poa-substring-rules');
         for (const [index, approvedRule] of substringRules.rows.entries()) {
           const embeddedRaw = `قبل ${approvedRule.raw_value} بعد`;
           const fixtureKey = sourceKey(60 + index);
@@ -363,9 +368,12 @@ async function main(): Promise<void> {
         /relationship evidence mismatch/,
       );
 
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-poa-native-fixture');
       await db.query(
         `INSERT INTO powers_of_attorney (client_name,updated_at) VALUES ('application native',CURRENT_TIMESTAMP)`,
       );
+      await db.query('COMMIT');
       await clean(db);
       console.log('  ok    application-native rows remain outside legacy reconciliation');
 

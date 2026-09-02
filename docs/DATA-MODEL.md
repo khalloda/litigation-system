@@ -164,15 +164,19 @@ application inputs, not cryptographic proof against that process.
 
 ### Task 3.3B — append-only events (implemented)
 
-Migration `20260902180000_append_only_audit_events` implements the
-owner-approved event foundation (**D30**, **D32**) with four purpose-specific
-tables:
+Migration `20260902180000_append_only_audit_events` implements the frozen
+owner-approved event foundation (**D30**, **D32**). Forward migration
+`20260903100000_close_task33b_review_gaps` closes the independent-review gaps
+without changing migrations 1–57 or the original checkpoint. The four
+purpose-specific tables are:
 
 - `audit_events` is the immutable chronological record;
 - `audit_event_table_rules` classifies all 38 tables as records or
   relationships and fixes each structured key to `id`;
-- `audit_event_fields` holds 262 explicit field rules, including one
-  change-fact-only redacted rule for `user_accounts.password_hash`; and
+- `audit_event_fields` retains the frozen 262-rule value/redaction baseline and
+  now classifies all 583 columns in the 38 audited tables exactly once: 261
+  captured values, one change-fact-only redaction, 38 entity keys, 152
+  structural audit columns and 131 precisely reasoned exclusions; and
 - `audit_event_checkpoints` protects the one-event deployment boundary plus
   the event and allowlist digests.
 
@@ -195,17 +199,23 @@ resource identifiers to 256; field strings to 64–2,048 according to the
 allowlist; before/after documents to 64 KiB each; and flat semantic parameters
 and metadata to 32 primitive keys, 256 characters per string and 16 KiB each.
 
-Per-field allowlists exclude legacy/raw payloads, normalisation shadows,
-binary and structured operational data. Secret-shaped strings and structured
-values are replaced by explicit redaction markers; overlong strings keep a
-bounded prefix plus truncation and original-character metadata. SQL `NULL`, an
-empty string and an absent field remain distinct. Ordinary views, searches,
-list loading and navigation generate no event.
+Per-field classifications exclude only exact columns with a precise reason;
+there is no wildcard or naming-rule exclusion that can hide a future business
+field. Any unclassified column in the 38-table boundary fails both permanent
+verification and a row insert/update involving that column. Secret-shaped
+strings and structured values are replaced by explicit redaction markers;
+overlong strings keep a bounded prefix plus truncation and original-character
+metadata. SQL `NULL`, an empty string and an absent field remain distinct.
+Ordinary views, searches, list loading and navigation generate no event.
 
 Events and their rules/checkpoint are retained indefinitely. Update, delete
-and truncate triggers reject changes; the runtime has no direct table or
-sequence access and can execute only the reviewed context setter and semantic
-gateway. Row triggers append through internal fixed-search-path functions.
+and truncate triggers reject changes; the runtime has no direct event, actor or
+sequence access and can execute only the reviewed context setter and
+account-target semantic gateway. That gateway resolves the target actor through
+`audit_actors.user_account_id`, never account-ID arithmetic. Row triggers append
+through internal fixed-search-path functions. Human/authentication paths must
+supply explicit server-created request, correlation and audit-session IDs;
+missing, partial or malformed context rolls the business transaction back.
 Entity, actor, time, action/outcome, request and correlation indexes support
 microsecond-preserving `(occurred_at, id)` keyset retrieval without an
 unrestricted JSON GIN index.
@@ -213,10 +223,13 @@ unrestricted JSON GIN index.
 Deployment writes exactly one truthful `audit_baseline_established` event as
 `system_migration`, containing aggregate counts and existing protected digests.
 It creates no historical row, login, password, report, export or download
-events. Current authentication paths emit real events; later archive, restore,
-account, role, report, export and download workflows must use the typed atomic
-contract when those features are built. The approved viewer/export UI and D31
-capability remain Task 4.9 work.
+events. Current authentication paths emit real events. The atomic wrapper is
+limited to database-reversible archive, restore and account/role lifecycle
+work. Future report/export/download events are server-observed facts emitted at
+a truthful point after the relevant fact; they cannot make filesystem, response
+or network effects atomic with PostgreSQL, and a download event cannot prove
+client receipt. The approved viewer/export UI and D31 capability remain Task
+4.9 work.
 
 ---
 

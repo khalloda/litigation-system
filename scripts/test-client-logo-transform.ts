@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import {
   assertNoCaseInsensitiveLogoPathCollisions,
   assertSafeLogoFileName,
@@ -158,6 +159,8 @@ async function syncManifestToComplexCsv(paths: ClientLogoSourcePaths): Promise<v
 }
 
 async function seedFixture(db: Client, paths: ClientLogoSourcePaths): Promise<FixtureRow[]> {
+  await db.query('BEGIN');
+  await setMaintenanceAuditContext(db, 'test-client-logo-fixtures');
   const clients: FixtureRow[] = [];
   for (const parentKey of [1, 2]) {
     const client = await db.query<{ id: number }>(
@@ -191,6 +194,7 @@ async function seedFixture(db: Client, paths: ClientLogoSourcePaths): Promise<Fi
       ],
     );
   }
+  await db.query('COMMIT');
   return clients;
 }
 
@@ -207,6 +211,7 @@ async function structureFailure(
 ): Promise<void> {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-client-logo-structure-negative');
     await mutation();
     assert.match((await clientLogoStructureFailures(db)).join('\n'), pattern);
   } finally {
@@ -227,6 +232,7 @@ async function reconciliationFailure(
 ): Promise<void> {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-client-logo-reconciliation-negative');
     await mutation();
     const result = await reconcileClientLogos(db, {
       logoRoot,
@@ -344,6 +350,7 @@ async function main(): Promise<void> {
 
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-client-logo-missing-client');
         await db.query('UPDATE clients SET legacy_id=NULL WHERE legacy_id=1');
         await expectFailure(
           'missing client mapping is rejected',
@@ -356,6 +363,7 @@ async function main(): Promise<void> {
 
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-client-logo-ambiguous-client');
         await db.query('DROP INDEX clients_legacy_id_key');
         await db.query(
           `INSERT INTO clients(legacy_id,name_ar,updated_at) VALUES(1,'duplicate',CURRENT_TIMESTAMP)`,
@@ -504,7 +512,9 @@ async function main(): Promise<void> {
       });
       assert.equal(applied.applied, true);
       assert.deepEqual(applied.reconciliation?.defects, []);
-      console.log('  ok    transactional filesystem publication and database import reconcile');
+      console.log(
+        '  ok    staged filesystem publication and committed database import reconcile after success',
+      );
 
       const databaseBefore = JSON.stringify(
         (
@@ -709,6 +719,8 @@ async function main(): Promise<void> {
       );
       console.log('  ok    immutable audit refuses update, delete and truncate');
 
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-client-logo-native-fixture');
       const nativeClient = await db.query<{ id: number }>(
         `INSERT INTO clients(legacy_id,name_ar,updated_at) VALUES(100,'native logo client',CURRENT_TIMESTAMP) RETURNING id`,
       );
@@ -722,6 +734,7 @@ async function main(): Promise<void> {
         `INSERT INTO client_logos(client_id,relative_path,file_name,content_type,byte_size,sha256,updated_at,updated_by) VALUES($1,$2,'native.png','image/png',$3,$4,CURRENT_TIMESTAMP,999)`,
         [nativeId, nativeRelative, nativeBytes.length, nativeSha],
       );
+      await db.query('COMMIT');
       const nativeResult = await reconcileClientLogos(db, {
         logoRoot,
         sourceRoot: paths.sourceRoot,
@@ -734,6 +747,7 @@ async function main(): Promise<void> {
       await writeFile(replacementPath, replacementBytes);
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-client-logo-replacement');
         await db.query('SELECT audit_set_human_context(1)');
         await db.query(
           `UPDATE client_logos
@@ -758,7 +772,10 @@ async function main(): Promise<void> {
         await db.query('ROLLBACK');
       }
       await rm(replacementPath);
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-client-logo-native-cleanup');
       await db.query('DELETE FROM client_logos WHERE client_id=$1', [nativeId]);
+      await db.query('COMMIT');
       await rm(join(logoRoot, String(nativeId)), { recursive: true });
       console.log(
         '  ok    future application-native logo insertion and replacement remain outside immutable import reconciliation',

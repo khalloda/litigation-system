@@ -30,6 +30,15 @@
 -- =========================================================================
 
 BEGIN;
+SELECT public.audit_set_migration_context();
+SELECT public.audit_set_event_context(
+  gen_random_uuid(),
+  gen_random_uuid(),
+  gen_random_uuid(),
+  NULL,
+  'controlled-maintenance:task-2-5-clients-contacts',
+  'system'
+);
 
 --  Rebuilt from staging every run. Contacts first: it references clients.
 DELETE FROM contacts;

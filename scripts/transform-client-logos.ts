@@ -5,6 +5,7 @@ import { copyFile, mkdir, mkdtemp, readdir, rename, rm, rmdir, stat } from 'node
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ClientBase } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import {
   migrationDatabaseTarget,
   type MigrationDatabaseTarget,
@@ -251,6 +252,7 @@ export async function runClientLogoTransform(options: Options = {}): Promise<Run
 
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {
+        await setMaintenanceAuditContext(db, 'task-2-11-client-logos');
         await lockDomain(db);
         await assertStructure(db);
         if (enforceLive) assert.equal(await task211ProtectedState(db), protectedBefore);

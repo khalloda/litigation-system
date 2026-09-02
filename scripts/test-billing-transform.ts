@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { buildBillingPlan } from './lib/billing-transform-plan';
 import { reconcileBillingHistory } from './lib/billing-reconciliation';
 import { billingStructureFailures } from './lib/billing-structure';
@@ -146,6 +147,7 @@ async function reconciliationFailure(
 ): Promise<void> {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-billing-reconciliation-negative');
     if (guardedTable)
       await db.query(
         `ALTER TABLE ${identifier(guardedTable)} DISABLE TRIGGER ${identifier(legacyChangeTrigger[guardedTable])}`,
@@ -167,6 +169,7 @@ async function planFailure(
 ): Promise<void> {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-billing-plan-negative');
     await mutation();
     await verify(await buildBillingPlan(db));
   } finally {
@@ -182,7 +185,13 @@ async function refusal(
   statement: () => Promise<unknown>,
   pattern: RegExp,
 ): Promise<void> {
-  await assert.rejects(statement, pattern);
+  await db.query('BEGIN');
+  try {
+    await setMaintenanceAuditContext(db, 'test-billing-expected-refusal');
+    await assert.rejects(statement, pattern);
+  } finally {
+    await db.query('ROLLBACK');
+  }
   await clean(db);
   console.log(`  ok    ${label}`);
 }
@@ -196,6 +205,7 @@ async function transactionalRefusal(
 ): Promise<void> {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-billing-transactional-refusal');
     await prepare();
     await assert.rejects(statement, pattern);
   } finally {
@@ -213,14 +223,19 @@ async function partialProvenanceRefusal(
 ): Promise<void> {
   const relation = identifier(table);
   const column = identifier(fixture.field);
-  await assert.rejects(
-    db.query(`UPDATE ${relation} SET ${column}=$1 WHERE id=$2`, [fixture.value, nativeId]),
+  await refusal(
+    db,
+    'partial provenance update',
+    () => db.query(`UPDATE ${relation} SET ${column}=$1 WHERE id=$2`, [fixture.value, nativeId]),
     /migration provenance cannot be attached by ordinary update/,
   );
-  await assert.rejects(
-    db.query(`INSERT INTO ${relation}(${column},updated_at) VALUES($1,CURRENT_TIMESTAMP)`, [
-      fixture.value,
-    ]),
+  await refusal(
+    db,
+    'partial provenance insert',
+    () =>
+      db.query(`INSERT INTO ${relation}(${column},updated_at) VALUES($1,CURRENT_TIMESTAMP)`, [
+        fixture.value,
+      ]),
     new RegExp(sourceIdentityConstraint[table]),
   );
   await clean(db);
@@ -294,8 +309,10 @@ async function insertMigratedShape(
 
 async function migratedIdentityShapeRefusals(db: Client, table: LegacyBillingTable): Promise<void> {
   for (const [index, fixture] of identityShapeFixtures.entries()) {
-    await assert.rejects(
-      insertMigratedShape(db, table, fixture, index + 1),
+    await refusal(
+      db,
+      'partial migrated identity',
+      () => insertMigratedShape(db, table, fixture, index + 1),
       new RegExp(sourceIdentityConstraint[table]),
     );
     await clean(db);
@@ -310,6 +327,7 @@ async function partialProvenanceReconciliationDetection(
   for (const [index, fixture] of identityShapeFixtures.entries()) {
     await db.query('BEGIN');
     try {
+      await setMaintenanceAuditContext(db, 'test-billing-partial-provenance');
       await db.query(
         `ALTER TABLE ${identifier(table)}
            DROP CONSTRAINT ${identifier(sourceIdentityConstraint[table])},
@@ -365,6 +383,8 @@ async function main(): Promise<void> {
     const db = new Client({ connectionString: fixtureUrl.toString() });
     await db.connect();
     try {
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-billing-fixtures');
       const feeSourceKey = fixtureKey(900);
       await db.query(
         `INSERT INTO fee_letters(
@@ -425,6 +445,7 @@ async function main(): Promise<void> {
           ],
         );
 
+      await db.query('COMMIT');
       const dry = await runBillingTransform({
         databaseUrl: fixtureUrl.toString(),
         expectedCounts: expected,
@@ -910,6 +931,8 @@ async function main(): Promise<void> {
       );
 
       const legacyDigestBeforeNative = await billingResultDigest(db);
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-billing-native-fixtures');
       await db.query(
         `INSERT INTO invoices(invoice_no,amount,currency,updated_at)
          VALUES('fixture-native',10,'EGP',CURRENT_TIMESTAMP) RETURNING id`,
@@ -981,6 +1004,7 @@ async function main(): Promise<void> {
       );
       assert.equal(await billingResultDigest(db), legacyDigestBeforeNative);
       assert.deepEqual((await reconcileBillingHistory(db, false)).defects, []);
+      await db.query('COMMIT');
       for (const fixture of provenanceFields.invoices)
         await partialProvenanceRefusal(db, 'invoices', nativeInvoiceId, fixture);
       for (const fixture of provenanceFields.payments)
@@ -989,9 +1013,12 @@ async function main(): Promise<void> {
         await partialProvenanceRefusal(db, 'invoice_allocations', nativeAllocationId, fixture);
       assert.equal(await billingResultDigest(db), legacyDigestBeforeNative);
       assert.deepEqual((await reconcileBillingHistory(db, false)).defects, []);
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-billing-native-cleanup');
       await db.query(`DELETE FROM invoice_allocations WHERE id=$1`, [nativeAllocationId]);
       await db.query(`DELETE FROM payments WHERE id=$1`, [nativePaymentId]);
       await db.query(`DELETE FROM invoices WHERE id=$1`, [nativeInvoiceId]);
+      await db.query('COMMIT');
       await clean(db);
       console.log(
         '  ok    application-native invoice, payment and allocation remain valid, editable and outside legacy reconciliation/digest',
@@ -999,6 +1026,7 @@ async function main(): Promise<void> {
 
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-billing-complete-identity');
         const completeInvoiceId = Number(
           (
             await db.query<{ id: number }>(

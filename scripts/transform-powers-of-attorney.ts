@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import type { ClientBase } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   buildPoaTransformPlan,
@@ -134,6 +135,7 @@ export async function runPoaTransform(options: RunOptions = {}) {
       const protectedBefore = await task29bProtectedState(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {
+        await setMaintenanceAuditContext(db, 'task-2-9b-powers-of-attorney');
         await assertPoaStructure(db);
         const plan = await buildPoaTransformPlan(db, expectedOccurrences);
         assert.equal(plan.sourceCount, preview.sourceCount);

@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from '@/generated/prisma/client';
-import { createMaintenanceAuditMetadata, type AuditRequestMetadata } from '@/lib/audit-metadata';
+import type { AuditRequestMetadata } from '@/lib/audit-metadata';
 
 type AuditTransaction = Prisma.TransactionClient;
 
@@ -62,20 +62,20 @@ export type AuditedEntity = Readonly<{
   key: SafeAuditObject;
 }>;
 
-type FutureSemanticAction =
+type DatabaseLifecycleAction =
   | 'archive'
   | 'restore'
   | 'account_created'
   | 'account_enabled'
   | 'account_disabled'
-  | 'role_changed'
-  | 'report_executed'
-  | 'export_completed'
-  | 'download_completed';
+  | 'role_changed';
+
+type ObservedExternalAction = 'report_executed' | 'export_completed' | 'download_completed';
 
 type SemanticAuditEvent = Readonly<{
   action:
-    | FutureSemanticAction
+    | DatabaseLifecycleAction
+    | ObservedExternalAction
     | 'login_succeeded'
     | 'login_failed'
     | 'account_locked'
@@ -84,7 +84,7 @@ type SemanticAuditEvent = Readonly<{
     | 'password_reset';
   outcome: 'succeeded' | 'failed' | 'blocked';
   entity?: AuditedEntity;
-  targetActorId?: number;
+  targetAccountId?: number;
   resourceIdentifier?: string;
   parameters?: SafeAuditObject;
   reasonCode?: string;
@@ -92,20 +92,18 @@ type SemanticAuditEvent = Readonly<{
   attemptedUsername?: string;
 }>;
 
-export type AuditedOperationResult<T> = Readonly<{
+export type AuditedDatabaseOperationResult<T> = Readonly<{
   result: T;
-  event: SemanticAuditEvent & Readonly<{ action: FutureSemanticAction }>;
+  event: SemanticAuditEvent & Readonly<{ action: DatabaseLifecycleAction }>;
 }>;
+
+export type ObservedExternalAuditEvent = SemanticAuditEvent &
+  Readonly<{ action: ObservedExternalAction; resourceIdentifier: string }>;
 
 function assertAccountId(accountId: number): void {
   if (!Number.isSafeInteger(accountId) || accountId < 1) {
     throw new Error('A validated positive account ID is required for human audit context.');
   }
-}
-
-function targetActorId(accountId: number): number {
-  assertAccountId(accountId);
-  return 1_000 + accountId;
 }
 
 async function setEventContext(
@@ -131,7 +129,7 @@ async function setEventContext(
 export async function setHumanAuditContext(
   transaction: AuditTransaction,
   accountId: number,
-  metadata: AuditRequestMetadata = createMaintenanceAuditMetadata(),
+  metadata: AuditRequestMetadata,
 ): Promise<void> {
   assertAccountId(accountId);
   await transaction.$queryRaw(
@@ -143,7 +141,7 @@ export async function setHumanAuditContext(
 /** Fixed, argument-free context for login and lockout state changes. */
 export async function setAuthenticationAuditContext(
   transaction: AuditTransaction,
-  metadata: AuditRequestMetadata = createMaintenanceAuditMetadata(),
+  metadata: AuditRequestMetadata,
 ): Promise<void> {
   await transaction.$queryRaw(
     Prisma.sql`SELECT public.audit_set_authentication_context()::text AS audit_context`,
@@ -157,7 +155,7 @@ export async function setAuthenticationAuditContext(
  */
 export async function setAdministrationAuditContext(
   transaction: AuditTransaction,
-  metadata: AuditRequestMetadata = createMaintenanceAuditMetadata(),
+  metadata: AuditRequestMetadata,
 ): Promise<void> {
   await transaction.$queryRaw(
     Prisma.sql`SELECT public.audit_set_administration_context()::text AS audit_context`,
@@ -168,7 +166,7 @@ export async function setAdministrationAuditContext(
 /** Fixed context for controlled migration, import, seed and backfill tools. */
 export async function setMigrationAuditContext(
   transaction: AuditTransaction,
-  metadata: AuditRequestMetadata = createMaintenanceAuditMetadata(),
+  metadata: AuditRequestMetadata,
 ): Promise<void> {
   await transaction.$queryRaw(
     Prisma.sql`SELECT public.audit_set_migration_context()::text AS audit_context`,
@@ -191,13 +189,13 @@ async function appendSemanticEvent(
     throw new Error('Audit semantic metadata exceeds its safe bound.');
   }
   const rows = await transaction.$queryRaw<Array<{ eventId: string }>>(Prisma.sql`
-    SELECT public.audit_append_semantic_event(
+    SELECT public.audit_append_semantic_event_for_account(
       ${event.action},
       ${event.outcome},
       ${entity?.schema ?? null},
       ${entity?.table ?? null},
       ${entityKey}::jsonb,
-      ${event.targetActorId ?? null},
+      ${event.targetAccountId ?? null},
       ${event.attemptedUsername?.slice(0, 65) ?? null},
       ${event.resourceIdentifier ?? null},
       ${parameters}::jsonb,
@@ -232,11 +230,12 @@ export async function recordLoginFailed(
   }>,
 ): Promise<bigint> {
   const accountId = input.targetAccountId;
+  if (accountId !== undefined) assertAccountId(accountId);
   return appendSemanticEvent(transaction, {
     action: 'login_failed',
     outcome: input.outcome,
     attemptedUsername: input.attemptedUsername,
-    targetActorId: accountId === undefined ? undefined : targetActorId(accountId),
+    targetAccountId: accountId,
     entity:
       accountId === undefined
         ? undefined
@@ -249,10 +248,11 @@ export async function recordAccountLocked(
   transaction: AuditTransaction,
   accountId: number,
 ): Promise<bigint> {
+  assertAccountId(accountId);
   return appendSemanticEvent(transaction, {
     action: 'account_locked',
     outcome: 'succeeded',
-    targetActorId: targetActorId(accountId),
+    targetAccountId: accountId,
     entity: { schema: 'public', table: 'user_accounts', key: { id: accountId } },
   });
 }
@@ -261,10 +261,11 @@ export async function recordOwnPasswordChanged(
   transaction: AuditTransaction,
   accountId: number,
 ): Promise<bigint> {
+  assertAccountId(accountId);
   return appendSemanticEvent(transaction, {
     action: 'password_changed',
     outcome: 'succeeded',
-    targetActorId: targetActorId(accountId),
+    targetAccountId: accountId,
     entity: { schema: 'public', table: 'user_accounts', key: { id: accountId } },
   });
 }
@@ -274,30 +275,50 @@ export async function recordAdministrationPasswordChange(
   accountId: number,
   action: 'password_initialized' | 'password_reset',
 ): Promise<bigint> {
+  assertAccountId(accountId);
   return appendSemanticEvent(transaction, {
     action,
     outcome: 'succeeded',
-    targetActorId: targetActorId(accountId),
+    targetAccountId: accountId,
     entity: { schema: 'public', table: 'user_accounts', key: { id: accountId } },
   });
 }
 
 /**
- * Future Task 4 workflows use this contract so the protected operation and
- * its semantic event either commit together or both roll back. It deliberately
- * implements no archive, account-management, report, export or download UI.
+ * Future database lifecycle workflows use this contract so their reversible
+ * PostgreSQL changes and semantic event either commit together or both roll
+ * back. It deliberately excludes filesystem, generated-artifact, response and
+ * network side effects, and implements no later workflow or UI.
  */
-export async function runAuditedSemanticOperation<T>(
+export async function runAuditedDatabaseOperation<T>(
   database: AuditedDatabase,
   actorAccountId: number,
   metadata: AuditRequestMetadata,
-  operation: (transaction: AuditTransaction) => Promise<AuditedOperationResult<T>>,
+  operation: (transaction: AuditTransaction) => Promise<AuditedDatabaseOperationResult<T>>,
 ): Promise<T> {
   return database.$transaction(async (transaction) => {
     await setHumanAuditContext(transaction, actorAccountId, metadata);
     const completed = await operation(transaction);
     await appendSemanticEvent(transaction, completed.event);
     return completed.result;
+  });
+}
+
+/**
+ * Record a fact the server observed only after the external operation reaches
+ * the named server-side emission point. This event cannot make a file write,
+ * generated artifact, response stream or network delivery atomic with
+ * PostgreSQL. In particular, download_completed never proves client receipt.
+ */
+export async function recordObservedExternalEvent(
+  database: AuditedDatabase,
+  actorAccountId: number,
+  metadata: AuditRequestMetadata,
+  event: ObservedExternalAuditEvent,
+): Promise<bigint> {
+  return database.$transaction(async (transaction) => {
+    await setHumanAuditContext(transaction, actorAccountId, metadata);
+    return appendSemanticEvent(transaction, event);
   });
 }
 

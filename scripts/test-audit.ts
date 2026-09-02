@@ -1,10 +1,11 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Client } from 'pg';
 import { setHumanAuditContext } from '../src/lib/audit';
+import { createMaintenanceAuditMetadata } from '../src/lib/audit-metadata';
 import {
   auditDataFailures,
   auditStructureFailures,
@@ -29,6 +30,7 @@ const TASK33A_CORRECTION_MIGRATION = '20260901170000_close_task33a_acceptance_ga
 const TASK33A_FINAL_ENFORCEMENT_MIGRATION = '20260901190000_complete_task33a_enforcement_inventory';
 const TASK33A_FINAL_ACCEPTANCE_MIGRATION = '20260902120000_finalize_task33a_enforcement';
 const TASK33B_MIGRATION = '20260902180000_append_only_audit_events';
+const TASK33B_CORRECTION_MIGRATION = '20260903100000_close_task33b_review_gaps';
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
@@ -84,6 +86,16 @@ async function rejectsDatabase(operation: () => Promise<unknown>, expected: RegE
     const message = error instanceof Error ? error.message : String(error);
     return expected.test(message);
   });
+}
+
+async function setFixtureEventContext(db: Client): Promise<void> {
+  await db.query('SELECT audit_set_event_context($1,$2,$3,NULL,$4,$5)', [
+    randomUUID(),
+    randomUUID(),
+    randomUUID(),
+    'Task 3.3 audit fixture',
+    'system',
+  ]);
 }
 
 async function gate4MigrationEvidence(db: Client) {
@@ -153,6 +165,7 @@ async function reverseTask33AForHistoricalFixture(db: Client, fixtureName: strin
         DROP TABLE public.audit_event_fields;
         DROP TABLE public.audit_event_table_rules;
         DROP FUNCTION public.audit_capture_row_event();
+        DROP FUNCTION IF EXISTS public.audit_append_semantic_event_for_account(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb);
         DROP FUNCTION public.audit_append_semantic_event(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb);
         DROP FUNCTION public.audit_write_event(text,text,text,text,jsonb,text[],jsonb,jsonb,integer,text,text,jsonb,text,jsonb);
         DROP FUNCTION public.audit_ensure_event_context();
@@ -162,10 +175,12 @@ async function reverseTask33AForHistoricalFixture(db: Client, fixtureName: strin
         DROP FUNCTION public.audit_contains_secret_pattern(text);
         DROP FUNCTION public.refuse_audit_event_change()`);
       const removedTask33b = await db.query(
-        `DELETE FROM _prisma_migrations WHERE migration_name=$1 RETURNING migration_name`,
-        [TASK33B_MIGRATION],
+        `DELETE FROM _prisma_migrations WHERE migration_name=ANY($1::text[])
+         RETURNING migration_name`,
+        [[TASK33B_MIGRATION, TASK33B_CORRECTION_MIGRATION]],
       );
-      assert.equal(removedTask33b.rowCount, 1);
+      assert.ok(removedTask33b.rowCount === 1 || removedTask33b.rowCount === 2);
+      assert.ok(removedTask33b.rows.some((row) => row['migration_name'] === TASK33B_MIGRATION));
     }
     await db.query(`
       ALTER DEFAULT PRIVILEGES
@@ -312,13 +327,14 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
           TASK33A_FINAL_ENFORCEMENT_MIGRATION,
           TASK33A_FINAL_ACCEPTANCE_MIGRATION,
           TASK33B_MIGRATION,
+          TASK33B_CORRECTION_MIGRATION,
         ],
       );
     } finally {
       await upgraded.end();
     }
     console.log(
-      'PASS historical-live clone: migrations 53/54/55/56/57 replay, protected digest and guard definitions unchanged',
+      'PASS historical-live clone: migrations 53/54/55/56/57/58 replay, protected digest and guard definitions unchanged',
     );
   } finally {
     if (created) {
@@ -369,7 +385,7 @@ async function grantProbeRuntimeBoundary(
     `GRANT EXECUTE ON FUNCTION public.audit_set_event_context(uuid,uuid,uuid,inet,text,text) TO ${identifier(roleName)}`,
   );
   await owner.query(
-    `GRANT EXECUTE ON FUNCTION public.audit_append_semantic_event(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb) TO ${identifier(roleName)}`,
+    `GRANT EXECUTE ON FUNCTION public.audit_append_semantic_event_for_account(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb) TO ${identifier(roleName)}`,
   );
 }
 
@@ -425,7 +441,7 @@ async function proveRoleBoundaryAdversarial(
         "'public.audit_set_human_context(integer)'::regprocedure",
         "'public.audit_set_human_context(integer)'::regprocedure,\n" +
           "        'public.audit_set_event_context(uuid,uuid,uuid,inet,text,text)'::regprocedure,\n" +
-          "        'public.audit_append_semantic_event(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb)'::regprocedure",
+          "        'public.audit_append_semantic_event_for_account(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb)'::regprocedure",
       );
 
     const activeRuntimeUrl = new URL(fixtureOwnerUrl);
@@ -1148,6 +1164,7 @@ async function main(): Promise<void> {
           TASK33A_FINAL_ENFORCEMENT_MIGRATION,
           TASK33A_FINAL_ACCEPTANCE_MIGRATION,
           TASK33B_MIGRATION,
+          TASK33B_CORRECTION_MIGRATION,
         ],
       );
       assert.deepEqual(await auditStructureFailures(owner), []);
@@ -1196,6 +1213,7 @@ async function main(): Promise<void> {
 
       await runtimeOne.query('BEGIN');
       await runtimeOne.query('SELECT audit_set_authentication_context()');
+      await setFixtureEventContext(runtimeOne);
       await runtimeOne.query(
         `INSERT INTO lookup_importance
            (id,label_ar,sort_order,is_active,created_at,created_by,updated_at,updated_by)
@@ -1274,6 +1292,7 @@ async function main(): Promise<void> {
         runtimeOne.query('SELECT audit_set_human_context(1)'),
         runtimeTwo.query('SELECT audit_set_human_context(2)'),
       ]);
+      await Promise.all([setFixtureEventContext(runtimeOne), setFixtureEventContext(runtimeTwo)]);
       await Promise.all([
         runtimeOne.query(
           `INSERT INTO lookup_importance(id,label_ar,sort_order,is_active)
@@ -1312,7 +1331,7 @@ async function main(): Promise<void> {
       );
       await prismaRuntime
         .$transaction(async (transaction) => {
-          await setHumanAuditContext(transaction, 1);
+          await setHumanAuditContext(transaction, 1, createMaintenanceAuditMetadata());
           await transaction.lookupImportance.createMany({
             data: [
               { id: 30020, labelAr: '__task33a_prisma_one__', sortOrder: 30020 },
@@ -1341,6 +1360,7 @@ async function main(): Promise<void> {
       // Existing nested auth trigger writes inherit the originating actor.
       await runtimeOne.query('BEGIN');
       await runtimeOne.query('SELECT audit_set_authentication_context()');
+      await setFixtureEventContext(runtimeOne);
       const account = (
         await runtimeOne.query<{ id: number; person_id: number }>(
           'SELECT id,person_id FROM user_accounts ORDER BY id LIMIT 1',
@@ -1366,6 +1386,8 @@ async function main(): Promise<void> {
       // The privileged connection defaults only controlled writes to the
       // migration actor; the web principal cannot choose admin/migration.
       await owner.query('BEGIN');
+      await owner.query('SELECT audit_set_migration_context()');
+      await setFixtureEventContext(owner);
       await owner.query(
         `INSERT INTO lookup_importance(id,label_ar,sort_order,is_active)
          VALUES(30030,'__task33a_migration_default__',30030,true)`,
@@ -1423,6 +1445,7 @@ async function main(): Promise<void> {
       // actor selector; static checks enforce that boundary explicitly.
       await runtimeOne.query('BEGIN');
       await runtimeOne.query(`SELECT set_config('litigation.audit_actor_id','1',true)`);
+      await setFixtureEventContext(runtimeOne);
       await runtimeOne.query(
         `INSERT INTO lookup_importance(id,label_ar,sort_order,is_active)
          VALUES(30040,'__task33a_residual_process_boundary__',30040,true)`,
@@ -1442,7 +1465,7 @@ async function main(): Promise<void> {
       assert.deepEqual(await auditDataFailures(owner), []);
       assert.equal(AUDITED_TABLES.length, 38);
       console.log(
-        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54/55/56/57, exact 38 tables and immutable 7-actor registry',
+        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54/55/56/57/58, exact 38 tables and immutable 7-actor registry',
       );
       console.log(
         'PASS missing/invalid context, spoof overwrite and immutable creation attribution',

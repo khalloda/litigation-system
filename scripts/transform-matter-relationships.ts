@@ -9,6 +9,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import type { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import { buildMatterRelationshipPlan } from './lib/matter-relationship-plan';
 import {
@@ -68,6 +69,7 @@ export async function runMatterRelationshipTransform(options: RunOptions = {}) {
       const beforeProtected = await protectedState(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {
+        await setMaintenanceAuditContext(db, 'task-2-7-matter-relationships');
         await db.query("SELECT pg_advisory_xact_lock(hashtext('task-2.7-matter-relationships'))");
 
         for (const row of plan.lawyers) {

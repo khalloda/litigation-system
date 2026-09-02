@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import type { ClientBase } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   buildAdminTransformPlan,
@@ -145,6 +146,7 @@ export async function runAdminWorkTransform(options: RunOptions = {}) {
       const protectedBefore = await task29ProtectedState(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {
+        await setMaintenanceAuditContext(db, 'task-2-9a-admin-works');
         await assertAdminWorkStructure(db);
         const plan = await buildAdminTransformPlan(db);
         assert.equal(plan.taskSourceCount, preview.taskSourceCount);

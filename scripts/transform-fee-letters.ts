@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import type { ClientBase } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   buildFeeLetterPlan,
@@ -97,6 +98,7 @@ export async function runFeeLetterTransform(options: Options = {}) {
       const before = await task29dProtectedState(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {
+        await setMaintenanceAuditContext(db, 'task-2-9d-fee-letters');
         await assertFeeLetterStructure(db);
         const plan = await buildFeeLetterPlan(db, expected);
         await insertFees(db, plan.fees);

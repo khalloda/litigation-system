@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { buildAttendancePlan } from './lib/attendance-transform-plan';
 import { attendanceResultDigest, reconcileAttendance } from './lib/attendance-reconciliation';
 import { attendanceStructureFailures } from './lib/attendance-structure';
@@ -51,6 +52,7 @@ async function reconciliationFailure(
 ): Promise<void> {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-attendance-reconciliation-negative');
     if (disableTargetGuard)
       await db.query('ALTER TABLE attendance DISABLE TRIGGER attendance_legacy_no_change');
     await mutation();
@@ -130,6 +132,20 @@ async function disableQuarantineGuard(db: Client): Promise<void> {
   );
 }
 
+async function auditedRefusal(
+  db: Client,
+  statement: () => Promise<unknown>,
+  pattern: RegExp,
+): Promise<void> {
+  await db.query('BEGIN');
+  try {
+    await setMaintenanceAuditContext(db, 'test-attendance-expected-refusal');
+    await assert.rejects(statement, pattern);
+  } finally {
+    await db.query('ROLLBACK');
+  }
+}
+
 async function main(): Promise<void> {
   const projectUrl = process.env['MIGRATION_DATABASE_URL'];
   assert.ok(projectUrl, 'MIGRATION_DATABASE_URL is required');
@@ -200,6 +216,7 @@ async function main(): Promise<void> {
 
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-attendance-ambiguous-person');
         await db.query('DROP INDEX person_name_alias_alias_ar_key');
         const newPerson = (
           await db.query<{ id: number }>(
@@ -544,6 +561,8 @@ async function main(): Promise<void> {
         '  ok    identical second run retains ids, timestamps, rows and stable result digest',
       );
 
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-attendance-native-fixture');
       const native = (
         await db.query<{ id: number }>(
           `INSERT INTO attendance(person_id,attendance_date,situation,updated_at)
@@ -552,15 +571,19 @@ async function main(): Promise<void> {
       ).rows[0]!.id;
       await db.query(`UPDATE attendance SET situation='native changed' WHERE id=$1`, [native]);
       await db.query('DELETE FROM attendance WHERE id=$1', [native]);
+      await db.query('COMMIT');
       await clean(db);
       console.log('  ok    application-native Attendance insert, update and delete remain valid');
 
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-attendance-partial-fixture');
       const nativeForPartial = (
         await db.query<{ id: number }>(
           `INSERT INTO attendance(person_id,attendance_date,situation,updated_at)
            VALUES(4,'2026-08-26','native',CURRENT_TIMESTAMP) RETURNING id`,
         )
       ).rows[0]!.id;
+      await db.query('COMMIT');
       const partialFields: Array<[string, unknown]> = [
         ['legacy_id', 999],
         ['legacy_person_raw', 'إيهاب حمدي'],
@@ -570,22 +593,29 @@ async function main(): Promise<void> {
         ['legacy_source_payload', { ID: '999' }],
       ];
       for (const [field, value] of partialFields) {
-        await assert.rejects(
-          db.query(`UPDATE attendance SET ${identifier(field)}=$1 WHERE id=$2`, [
-            value,
-            nativeForPartial,
-          ]),
+        await auditedRefusal(
+          db,
+          () =>
+            db.query(`UPDATE attendance SET ${identifier(field)}=$1 WHERE id=$2`, [
+              value,
+              nativeForPartial,
+            ]),
           /migration provenance cannot be attached/,
         );
-        await assert.rejects(
-          db.query(
-            `INSERT INTO attendance(${identifier(field)},updated_at) VALUES($1,CURRENT_TIMESTAMP)`,
-            [value],
-          ),
+        await auditedRefusal(
+          db,
+          () =>
+            db.query(
+              `INSERT INTO attendance(${identifier(field)},updated_at) VALUES($1,CURRENT_TIMESTAMP)`,
+              [value],
+            ),
           /attendance_source_identity_shape/,
         );
       }
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-attendance-partial-cleanup');
       await db.query('DELETE FROM attendance WHERE id=$1', [nativeForPartial]);
+      await db.query('COMMIT');
       console.log('  ok    every migration-only field rejects partial native provenance');
 
       const partialIdentityShapes: Array<[string, MigratedIdentity]> = [
@@ -634,6 +664,7 @@ async function main(): Promise<void> {
       }
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-attendance-complete-identity');
         await insertMigratedAttendance(db, 9299, {
           sourceKey: key(799),
           extractionSha256: FP,
@@ -647,12 +678,14 @@ async function main(): Promise<void> {
         '  ok    six complete migrated-shaped partial identities are refused and detected; a complete identity is accepted',
       );
 
-      await assert.rejects(
-        db.query(`UPDATE attendance SET situation='forbidden' WHERE legacy_id=1`),
+      await auditedRefusal(
+        db,
+        () => db.query(`UPDATE attendance SET situation='forbidden' WHERE legacy_id=1`),
         /cannot be updated/,
       );
-      await assert.rejects(
-        db.query(`DELETE FROM attendance WHERE legacy_id=1`),
+      await auditedRefusal(
+        db,
+        () => db.query(`DELETE FROM attendance WHERE legacy_id=1`),
         /cannot be deleted/,
       );
       await assert.rejects(db.query('TRUNCATE attendance'), /TRUNCATE is refused/);

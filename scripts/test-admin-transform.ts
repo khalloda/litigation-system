@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import {
   type AdminTaskCreationDateBaseline,
   reconcileAdminWorks,
@@ -60,6 +61,7 @@ async function proveFailure(
 ): Promise<void> {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-admin-reconciliation-negative');
     await mutate();
     assert.match((await reconcileAdminWorks(db)).defects.join('\n'), pattern);
   } finally {
@@ -116,6 +118,8 @@ async function main(): Promise<void> {
           'SELECT label_ar FROM lookup_matter_destination ORDER BY id LIMIT 1',
         )
       ).rows[0]!.label_ar;
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-admin-fixtures');
       const discardedCourt = 'محكمة مستبعدة للاختبار';
       const discardedCourtId = (
         await db.query<{ id: number }>(
@@ -202,6 +206,7 @@ async function main(): Promise<void> {
         ],
       );
 
+      await db.query('COMMIT');
       const dry = await runAdminWorkTransform({ databaseUrl: fixtureUrl.toString() });
       assert.deepEqual(
         [
@@ -493,6 +498,8 @@ async function main(): Promise<void> {
         /action_q_mismatch/,
       );
 
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-admin-native-fixtures');
       const native = await db.query<{ id: number }>(
         `INSERT INTO admin_tasks (required_work,task_created_date,updated_at)
          VALUES ('native','2026-08-30',CURRENT_TIMESTAMP) RETURNING id`,
@@ -501,14 +508,18 @@ async function main(): Promise<void> {
         `INSERT INTO task_actions (task_id,result,updated_at) VALUES ($1,'native',CURRENT_TIMESTAMP)`,
         [native.rows[0]!.id],
       );
+      await db.query('COMMIT');
       await clean(db);
       assert.equal(await adminWorkResultDigest(db), digest);
       console.log('  ok    application-native dates remain outside fixed legacy counts and digest');
 
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-admin-backfill-fixture');
       await db.query(
         'UPDATE admin_tasks SET task_created_date=NULL WHERE legacy_source_record_key=$1',
         [safeTaskKey],
       );
+      await db.query('COMMIT');
       await assert.rejects(
         runAdminTaskCreatedDateBackfill({
           databaseUrl: fixtureUrl.toString(),

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import type { ClientBase } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import {
   migrationDatabaseTarget,
   type MigrationDatabaseTarget,
@@ -128,6 +129,7 @@ export async function runAdminTaskCreatedDateBackfill(options: RunOptions = {}):
       const adminBefore = await adminStateIgnoringTaskCreatedDate(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {
+        await setMaintenanceAuditContext(db, 'task-2-9a-created-date-backfill');
         await db.query(`
         LOCK TABLE staging."admin work table",public.matters,
                    quarantine.matter_transform,public.lookup_court,

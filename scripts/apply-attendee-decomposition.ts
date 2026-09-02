@@ -7,6 +7,7 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import type { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   attendeeAuditResultDigest,
@@ -179,6 +180,7 @@ export async function runAttendeeAudit(options: RunOptions = {}) {
       const protectedBefore = await protectedState(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {
+        await setMaintenanceAuditContext(db, 'correction-b-attendee-audit');
         await db.query("SELECT pg_advisory_xact_lock(hashtext('correction-b-attendee-audit'))");
         const transactionalReviewSnapshot = await readReviewSnapshot(db);
         assert.deepEqual(

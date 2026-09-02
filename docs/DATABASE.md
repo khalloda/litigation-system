@@ -353,46 +353,71 @@ explicit reviewed inventory change.
 
 ## Append-only audit events — Task 3.3B contract
 
-Migration `20260902180000_append_only_audit_events` is migration 57 and adds
-the event layer required by **D30** and **D32**. Its migration file and applied
-Prisma checksum are
+Migration `20260902180000_append_only_audit_events` is the frozen migration 57
+foundation required by **D30** and **D32**. Its file and applied checksum remain
 `81f42f19bcae73b38805391d0ad80b87d92e4270adbd9578db46016907e04ab0`.
-It creates `audit_events`, the exact 38-table rule inventory, a 262-field
-allowlist and an immutable baseline checkpoint. The existing 56 migration
-files and their checksums are unchanged.
+Forward migration 58, `20260903100000_close_task33b_review_gaps`, has file and
+applied checksum
+`e6aefa8ef378434062ef18c82f84d218a1f0531c74f10c3845713cce7226579b`.
+Migrations 1–57 remain byte-identical.
 
-The runtime has no direct privilege on any of the four event-foundation tables
-or the event identity sequence. It may execute only
-`audit_set_event_context(...)` and `audit_append_semantic_event(...)`; the row
-capture, validation and write routines remain internal fixed-search-path
-`SECURITY DEFINER` functions. Append-only triggers reject update, delete and
-truncate against events, rules, fields and the checkpoint. This prevents the
-restricted application principal from rewriting history; the approved
-superuser migration/administration principal remains an explicit operational
-trust boundary.
+The migration 57 checkpoint permanently retains the original 262-rule
+allowlist digest
+`9e271a6e23bc03e55223db3c0a9be1b0e34867da0af8c6f0acab5614506de11b`.
+That historical baseline is not the current schema-coverage contract.
+Migration 58 classifies every one of the 583 columns in the exact 38 audited
+tables exactly once: 261 captured values, one redacted change fact, 38 entity
+keys, 152 structural audit columns and 131 precise exclusions. The current
+classification digest is
+`4ebad0a7bc5862dbd537abac05727f4968598c3b30336ee8e9236ba6b653bf0d`.
+An ordinary future column has no implicit category: an insert/update involving
+it fails and rolls back until a forward migration gives that exact column a
+deliberate classification and reason.
+
+The runtime has no direct privilege on any of the four event-foundation tables,
+the actor table or the event identity sequence. It may execute only
+`audit_set_event_context(...)` and the reviewed
+`audit_append_semantic_event_for_account(...)` gateway. That gateway resolves
+the target human through the immutable
+`audit_actors.user_account_id = user_accounts.id` relationship; application
+code never derives an actor ID arithmetically. Row capture, validation and
+internal actor-ID append routines remain fixed-search-path `SECURITY DEFINER`
+functions unavailable to runtime and `PUBLIC`.
 
 All 38 application tables have an `AFTER INSERT OR UPDATE` event trigger. The
 eight junction tables additionally capture delete as
 `relationship_removed`; ordinary record tables retain D25's no-physical-delete
 contract and the runtime still has no `DELETE`. Audited writes and their events
-share one database transaction. The request context is transaction-local, so a
-failed event rolls back the business write and pooled connections cannot carry
-metadata into another transaction.
+share one database transaction. Human and authentication APIs require explicit
+server-created `AuditRequestMetadata`; the database no longer invents request,
+correlation or audit-session UUIDs. Fully missing, partial, malformed, zero-ID
+or leaked transaction context rejects the event and rolls back the business
+write. Controlled migrations and local administration must explicitly create
+maintenance metadata in their transaction.
 
 The database enforces bounded/redacted field and semantic payloads. It stores
 IP addresses as `inet`, user agents as at most 512 characters with a truncation
 flag, attempted usernames as at most 64, resource identifiers as at most 256,
 and flat semantic parameter/metadata objects as at most 32 primitive keys and
-16 KiB. Explicit allowlists exclude binary, JSON, legacy/raw and normalisation
-payloads; `password_hash` records only that a change occurred. Entity, actor,
-time, action/outcome, request and correlation indexes support later keyset
-history queries without a broad JSON GIN index.
+16 KiB. Exact per-column classifications deliberately exclude the existing
+binary, JSON, legacy/raw and normalisation payload columns; no naming pattern
+automatically excludes a future column. `password_hash` records only that a
+change occurred. Entity, actor, time, action/outcome, request and correlation
+indexes support later keyset history queries without a broad JSON GIN index.
 
 The deployment baseline is exactly one `audit_baseline_established` event by
 `system_migration`; it records aggregate protected evidence rather than
 inventing 45,463 historical row events. The complete contract and verification
 are in
 [`task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md`](task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md).
+
+The atomic operation wrapper is deliberately limited to database-reversible
+archive/restore and account/role lifecycle work. PostgreSQL cannot roll back a
+filesystem write, generated export, response stream or network delivery.
+Future report/export/download events remain valid taxonomy entries, but must be
+emitted only after the server observes the stated fact. In particular,
+`download_completed` can mean that the server completed its emission point; it
+cannot prove that the client received the file.
 
 ### Local setup and upgrade
 

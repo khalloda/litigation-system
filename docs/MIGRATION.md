@@ -60,7 +60,7 @@ reconciliation instead of duplicating its tables and report datasets.
 | Continuity audit | [`2026-09-01-project-continuity-recovery-audit.md`](reviews/2026-09-01-project-continuity-recovery-audit.md) | Tracked dated evidence | Governance and evidence snapshot at commit `553b3d1`; it does not set current task priority |
 | Task 3.3 readiness and approved contract | [`2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md) | Tracked dated evidence | Complete audit-column/event readiness matrix, owner decisions D30–D34, risk dispositions and exact Task 3.3A return point |
 | Task 3.3A acceptance | [`2026-09-01-task-3-3a-secure-actor-attribution.md`](task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md) | Tracked dated evidence | Migrations 53–56, D35, seven-actor taxonomy, 38-table attribution, 5,209-row protection, isolated database principals, verification and exact Task 3.3B return point |
-| Task 3.3B acceptance | [`2026-09-02-task-3-3b-append-only-event-foundation.md`](task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md) | Tracked dated evidence | Migration 57, immutable event store, 38-table/262-field contracts, truthful one-event baseline, authentication integration, adversarial proof and exact Task 3.4 return point |
+| Task 3.3B acceptance and correction | [`2026-09-02-task-3-3b-append-only-event-foundation.md`](task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md) | Tracked dated evidence | Frozen migration 57 baseline plus forward correction migration 58; immutable event store; exhaustive 38-table/583-column classification; truthful one-event baseline; authentication integration; adversarial proof and exact Task 3.4 return point |
 
 Ignored source material and workbooks are never committed. Their hashes,
 fingerprints, protected outcomes and reproduction procedures are the durable
@@ -2125,13 +2125,17 @@ unreferenced, and all 54 parent keys resolve one-to-one through
 in D15 was replaced by this manifest-backed measurement; it was not evidence of
 a second extraction.
 
-The live serializable apply produced **54 current metadata rows + 54 immutable
-import-audit rows + 54 runtime files**, with no quarantine or discarded file.
-Files were copied through a task-owned sibling directory and the completed tree
-was published atomically. Source hashes were checked before copying and
-destination hashes after it. The approved identical second apply was a true
-no-op: current logo IDs remained 1–54, all database IDs/timestamps/associations
-and all file paths/sizes/modification times/hashes stayed byte-identical.
+The live serializable database apply produced **54 current metadata rows + 54
+immutable import-audit rows**, while staged filesystem publication produced 54
+runtime files, with no quarantine or discarded file. Files were copied through
+a task-owned sibling directory and the completed tree was renamed atomically
+within that filesystem. That rename is not atomic with PostgreSQL; if the
+database transaction fails, the controlled migration compensates by removing
+only its own newly published tree. Source hashes were checked before copying
+and destination hashes after it. The approved identical second apply was a
+true no-op: current logo IDs remained 1–54, all database
+IDs/timestamps/associations and all file paths/sizes/modification times/hashes
+stayed byte-identical.
 
 `CLIENT_LOGO_ROOT` is the only machine-specific setting. It is
 `D:\Projects\litigation-system\storage\client-logos` on the current Windows
@@ -2784,7 +2788,7 @@ the same callback never runs for a connected non-superuser. Migrations 53–56,
 schema, rows, roles, authorization decisions and protected evidence are not
 changed by this source/tooling correction.
 
-## Task 3.3B append-only event migration gate — implemented 2 September 2026
+## Task 3.3B original append-only event migration gate — 2 September 2026
 
 Migration `20260902180000_append_only_audit_events` is migration 57. Its file
 SHA-256 and applied Prisma checksum are
@@ -2811,16 +2815,17 @@ four null update actors and the existing protected/reconciliation digests as
 bounded aggregate evidence. It does not claim a historical human action or
 create row-by-row history.
 
-Permanent `db:check` verification now has **91** invariants. It recomputes the
+At the migration 57 checkpoint, permanent `db:check` had **91** invariants. It
+recomputed the
 event and allowlist digests; exact tables, columns, constraints, indexes,
 functions, triggers and grants; the one-event baseline; and unchanged protected
-state. Historical-live migration provenance is 51 required migrations + six
-later migrations + one approved rollback. The Stage 2 database profile remains
+state. Historical-live migration provenance was 51 required migrations + six
+later migrations + one approved rollback. The Stage 2 database profile was
 `86eb32a96d97167d6bc699d3576f42c4a6916a53c0a37d557035abd79bd8447f`;
 the 57-file repository migration digest is
 `edc4da62f26b08e0f344471a133700541d9d96d65ca35e6ecfa2a40b30b94b33`.
 Two independent non-writing reconciliations, each including its own
-idempotency replay, are byte-identical at current report digest
+idempotency replay, were byte-identical at report digest
 `ef4be031694a8d8c9458925d8f3c337559d77c5805e379a03069d5d1b7666477`.
 The pre-migration Task 3.3A checkpoint digest remains recorded separately as
 `c314cd64142cc2cef36b4dc8a35715db7660fed9d9aba2d06b383e86d2fa54ec`;
@@ -2831,7 +2836,55 @@ The complete implementation, redaction limits, authentication behavior,
 adversarial cases, benchmark, protected values and trust boundaries are in
 [`2026-09-02-task-3-3b-append-only-event-foundation.md`](task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md).
 Task 3.4 is the exact next return point only after independent acceptance and
-owner-authorized push of the local Task 3.3B commit.
+owner-authorized push of both local Task 3.3B commits.
+
+### Task 3.3B correction — 3 September 2026
+
+Forward migration `20260903100000_close_task33b_review_gaps` is migration 58;
+its file and applied Prisma checksum are
+`e6aefa8ef378434062ef18c82f84d218a1f0531c74f10c3845713cce7226579b`.
+Migrations 1–57 remain byte-identical, including migration 57's checksum and
+one-event checkpoint. The checkpoint's original 262-rule allowlist digest
+remains historical evidence at
+`9e271a6e23bc03e55223db3c0a9be1b0e34867da0af8c6f0acab5614506de11b`.
+
+Current verification separately classifies every one of the 583 columns in the
+exact 38 audited tables: 261 captured, one redacted change fact, 38 entity
+keys, 152 structural audit columns and 131 exact exclusions with precise
+reasons. The current classification digest is
+`4ebad0a7bc5862dbd537abac05727f4968598c3b30336ee8e9236ba6b653bf0d`.
+A future column is not covered by a wildcard or naming convention: permanent
+verification fails, and an insert/update involving it rolls back until a
+forward migration explicitly classifies that exact column.
+
+The target-account gateway now resolves the human actor only through the
+immutable `audit_actors.user_account_id` relationship and does not expose the
+actor table to runtime. Human/authentication APIs require explicit
+server-created request, correlation and audit-session metadata. Missing,
+partial, malformed or leaked context is rejected; controlled migration and
+local-administration transactions establish maintenance metadata explicitly.
+
+Database atomicity is now stated narrowly. Archive/restore and account/role
+lifecycle callbacks can be atomic with their events because both are database
+work. Filesystem, generated export, response and network delivery effects
+cannot be rolled back by PostgreSQL. Future report/export/download taxonomy
+entries are therefore server-observed facts emitted at a truthful point;
+`download_completed` does not prove client receipt.
+
+The live database retains one baseline event, seven actors and all 91 permanent
+invariants. Provenance is 51 required + seven later migrations + one approved
+rollback; the database profile digest remains
+`86eb32a96d97167d6bc699d3576f42c4a6916a53c0a37d557035abd79bd8447f`
+and the 58-file repository migration digest is
+`95a8ce1f239399397925950f70e4fc8303d6ef46c08a70b88377529a3eb41cf8`.
+Two independent non-writing reconciliations, including their internal
+idempotency proofs, are identical at
+`4a62f91cce658cd4c33536e2b1d9edc67404df1994eaa1e1d6d383ac558312e9`.
+The protected 5,209-row and attribution digests remain respectively
+`b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab`
+and `edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`.
+Task 3.4 remains approved but not started, pending independent acceptance and
+owner-authorized push of both Task 3.3B commits.
 
 ## Cutover
 

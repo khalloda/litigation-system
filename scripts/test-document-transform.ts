@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { buildDocumentTransformPlan } from './lib/document-transform-plan';
 import { reconcileDocuments } from './lib/document-reconciliation';
 import { documentStructureFailures } from './lib/document-structure';
@@ -33,6 +34,7 @@ async function clean(db: Client) {
 async function fail(db: Client, label: string, mutate: () => Promise<unknown>, pattern: RegExp) {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-document-reconciliation-negative');
     await mutate();
     assert.match((await reconcileDocuments(db)).defects.join('\n'), pattern);
   } finally {
@@ -64,6 +66,8 @@ async function main() {
           `SELECT alias_ar FROM person_name_alias ORDER BY id LIMIT 1`,
         )
       ).rows[0]!.alias_ar;
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-document-fixtures');
       const matterKey = key(90);
       await db.query(
         `INSERT INTO matters(legacy_id,case_number_ar,legacy_source_record_key,legacy_source_extraction_sha256,legacy_source_payload,updated_at)VALUES(9001,'قضية/اختبار',$1,$2,'{}',CURRENT_TIMESTAMP)`,
@@ -92,6 +96,7 @@ async function main() {
   ('fixture/doc.csv',3,$5,$3,'103','عميل','قضية/محجوزة','مرجع محجوز',NULL,'1',NULL,NULL,NULL,NULL,NULL)`,
         [safe, invalid, FP, alias, quarantinedMatterDocument],
       );
+      await db.query('COMMIT');
       const dry = await runDocumentTransform({ databaseUrl: url.toString() });
       assert.deepEqual(
         [
@@ -239,9 +244,12 @@ async function main() {
         () => db.query(`DELETE FROM documents WHERE legacy_source_record_key=$1`, [safe]),
         /target\/source mismatch/,
       );
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-document-native-fixture');
       await db.query(
         `INSERT INTO documents(description,updated_at)VALUES('application native',CURRENT_TIMESTAMP)`,
       );
+      await db.query('COMMIT');
       await clean(db);
       console.log('  ok    application-native row remains outside legacy reconciliation');
       const digest = await documentResultDigest(db);

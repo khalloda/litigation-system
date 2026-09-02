@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
 import { reconcileAttendeeAudit } from './lib/attendee-audit-reconciliation';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import {
   hearingResultDigest,
   hearingStructureFailures,
@@ -42,14 +43,22 @@ function migrateFixture(databaseUrl: string): void {
 
 async function insertMatter(db: Client, legacyId: number): Promise<number> {
   const key = sourceKey(10_000 + legacyId);
-  const result = await db.query<{ id: number }>(
-    `INSERT INTO matters (
-       legacy_id, legacy_source_record_key, legacy_source_extraction_sha256,
-       legacy_source_payload, updated_at
-     ) VALUES ($1,$2,$3,'{}'::jsonb,CURRENT_TIMESTAMP) RETURNING id`,
-    [legacyId, key, FINGERPRINT],
-  );
-  return result.rows[0]!.id;
+  await db.query('BEGIN');
+  try {
+    await setMaintenanceAuditContext(db, 'test-hearing-matter-fixture');
+    const result = await db.query<{ id: number }>(
+      `INSERT INTO matters (
+         legacy_id, legacy_source_record_key, legacy_source_extraction_sha256,
+         legacy_source_payload, updated_at
+       ) VALUES ($1,$2,$3,'{}'::jsonb,CURRENT_TIMESTAMP) RETURNING id`,
+      [legacyId, key, FINGERPRINT],
+    );
+    await db.query('COMMIT');
+    return result.rows[0]!.id;
+  } catch (error) {
+    await db.query('ROLLBACK');
+    throw error;
+  }
 }
 
 async function insertParentQuarantine(db: Client, legacyId: number): Promise<void> {
@@ -182,6 +191,7 @@ async function proveFailure(
 ): Promise<void> {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-hearing-reconciliation-negative');
     await mutate();
     const result = await reconcileHearings(db);
     assert.match(result.defects.join('\n'), expected, `${label}: reconciliation did not fail`);
@@ -490,6 +500,8 @@ async function main(): Promise<void> {
           ]),
         /attendees missing, extra or changed/,
       );
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-hearing-invalid-parent-span');
       await assert.rejects(
         db.query(
           `INSERT INTO hearing_attendees (
@@ -511,9 +523,12 @@ async function main(): Promise<void> {
         ),
         /hearing attendee provenance does not match one proved Correction B person span/,
       );
+      await db.query('ROLLBACK');
       await assertClean(db);
       console.log('  ok    quarantined-parent person span is refused immediately');
 
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-hearing-invalid-placeholder-span');
       await assert.rejects(
         db.query(
           `INSERT INTO hearing_attendees (
@@ -533,6 +548,7 @@ async function main(): Promise<void> {
         ),
         /hearing attendee provenance does not match one proved Correction B person span/,
       );
+      await db.query('ROLLBACK');
       await assertClean(db);
       console.log('  ok    placeholder span is refused immediately');
 
@@ -586,6 +602,8 @@ async function main(): Promise<void> {
       assert.deepEqual(await hearingStructureFailures(db), []);
       console.log('  ok    weakened source-identity protection is detected');
 
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-hearing-native-fixture');
       const nativeHearing = await db.query<{ id: number }>(
         `INSERT INTO hearings (decision,updated_at) VALUES ('native',CURRENT_TIMESTAMP) RETURNING id`,
       );
@@ -594,6 +612,7 @@ async function main(): Promise<void> {
          VALUES ($1,$2,CURRENT_TIMESTAMP)`,
         [nativeHearing.rows[0]!.id, alias.person_id],
       );
+      await db.query('COMMIT');
       await assertClean(db);
       assert.equal(await hearingResultDigest(db), digestBefore);
       console.log(

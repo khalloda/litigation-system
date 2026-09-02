@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { stdin, stdout } from 'node:process';
 import { setApprovedAccountPassword } from '../src/lib/auth/service';
 import { passwordMeetsPolicy } from '../src/lib/auth/password';
+import { createMaintenanceAuditMetadata } from '../src/lib/audit-metadata';
 import { t } from '../src/strings';
 import { disconnectMigrationDb, migrationDbReady } from './lib/migration-db';
 
@@ -56,7 +57,10 @@ async function main(): Promise<void> {
   if (password !== confirmation) throw new Error('mismatch');
   if (!passwordMeetsPolicy(password)) throw new Error('policy');
 
-  const result = await setApprovedAccountPassword(username, password, { database: migrationDb });
+  const result = await setApprovedAccountPassword(username, password, {
+    database: migrationDb,
+    auditMetadata: createMaintenanceAuditMetadata(),
+  });
   console.log(`${t.auth.passwordAdmin.success} ${result.username} — ${result.personName}`);
 }
 

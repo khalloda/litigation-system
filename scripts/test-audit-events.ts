@@ -3,13 +3,20 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
-import { runAuditedSemanticOperation, type AuditedOperationResult } from '../src/lib/audit';
+import {
+  recordLoginFailed,
+  recordObservedExternalEvent,
+  runAuditedDatabaseOperation,
+  setAuthenticationAuditContext,
+  type AuditedDatabaseOperationResult,
+} from '../src/lib/audit';
 import { createRequestAuditMetadata } from '../src/lib/audit-metadata';
 import { createDatabaseClient } from '../src/lib/db';
 import {
   auditEventDataFailures,
   auditEventDigest,
   auditEventStructureFailures,
+  TASK33B_CORRECTION_MIGRATION,
   TASK33B_MIGRATION,
 } from './lib/audit-event-structure';
 
@@ -66,6 +73,7 @@ async function removeTask33B(db: Client): Promise<void> {
       DROP TABLE audit_event_fields;
       DROP TABLE audit_event_table_rules;
       DROP FUNCTION audit_capture_row_event();
+      DROP FUNCTION audit_append_semantic_event_for_account(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb);
       DROP FUNCTION audit_append_semantic_event(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb);
       DROP FUNCTION audit_write_event(text,text,text,text,jsonb,text[],jsonb,jsonb,integer,text,text,jsonb,text,jsonb);
       DROP FUNCTION audit_ensure_event_context();
@@ -75,10 +83,11 @@ async function removeTask33B(db: Client): Promise<void> {
       DROP FUNCTION audit_contains_secret_pattern(text);
       DROP FUNCTION refuse_audit_event_change()`);
     const removed = await db.query(
-      `DELETE FROM _prisma_migrations WHERE migration_name=$1 RETURNING migration_name`,
-      [TASK33B_MIGRATION],
+      `DELETE FROM _prisma_migrations WHERE migration_name=ANY($1::text[])
+       RETURNING migration_name`,
+      [[TASK33B_MIGRATION, TASK33B_CORRECTION_MIGRATION]],
     );
-    assert.equal(removed.rowCount, 1);
+    assert.equal(removed.rowCount, 2);
     await db.query('COMMIT');
   } catch (error) {
     await db.query('ROLLBACK');
@@ -209,6 +218,40 @@ async function main(): Promise<void> {
       assert.deepEqual(await auditEventDataFailures(owner), []);
       assert.equal((await owner.query('SELECT count(*) FROM audit_events')).rows[0].count, '1');
 
+      await owner.query('ALTER TABLE lookup_importance ADD COLUMN task33b_unclassified text');
+      assert.ok(
+        (await auditEventStructureFailures(owner)).includes(
+          'audited-table column classification is not exhaustive and exact',
+        ),
+      );
+      const unclassifiedBefore = (
+        await owner.query<{ value: string | null; events: string }>(`
+          SELECT task33b_unclassified value,
+                 (SELECT count(*)::text FROM audit_events) events
+            FROM lookup_importance ORDER BY id LIMIT 1`)
+      ).rows[0]!;
+      await runtime.query('BEGIN');
+      await setPgContext(runtime, 1, [randomUUID(), randomUUID(), randomUUID()]);
+      await rejects(
+        () =>
+          runtime.query(
+            `UPDATE lookup_importance SET task33b_unclassified='must not commit'
+              WHERE id=(SELECT min(id) FROM lookup_importance)`,
+          ),
+        /Unclassified audited column public\.lookup_importance\.task33b_unclassified/u,
+      );
+      await runtime.query('ROLLBACK');
+      const unclassifiedAfter = (
+        await owner.query<{ value: string | null; events: string }>(`
+          SELECT task33b_unclassified value,
+                 (SELECT count(*)::text FROM audit_events) events
+            FROM lookup_importance ORDER BY id LIMIT 1`)
+      ).rows[0]!;
+      assert.deepEqual(unclassifiedAfter, unclassifiedBefore);
+      await owner.query('ALTER TABLE lookup_importance DROP COLUMN task33b_unclassified');
+      assert.deepEqual(await auditEventStructureFailures(owner), []);
+      console.log('PASS unclassified audited columns fail the checker and roll writes back');
+
       for (const statement of [
         `UPDATE audit_events SET outcome='failed'`,
         `DELETE FROM audit_events`,
@@ -223,6 +266,16 @@ async function main(): Promise<void> {
           runtime.query(
             `SELECT audit_write_event('record_updated','succeeded','public','matters',
               '{"id":1}',ARRAY['status'],'{}','{}',NULL,NULL,NULL,'{}',NULL,'{}')`,
+          ),
+        /permission denied/iu,
+      );
+      await rejects(() => runtime.query('SELECT id FROM audit_actors'), /permission denied/iu);
+      await rejects(
+        () =>
+          runtime.query(
+            `SELECT audit_append_semantic_event(
+              'login_failed','failed','public','user_accounts','{"id":1}',1001,
+              'fixture',NULL,'{}','password_incorrect','{}')`,
           ),
         /permission denied/iu,
       );
@@ -255,9 +308,13 @@ async function main(): Promise<void> {
           audit_session_id: string;
           user_agent_length: number;
           user_agent_truncated: boolean;
+          entity_key: Record<string, unknown>;
+          changed_fields: string[];
+          after_values: Record<string, unknown>;
         }>(`
           SELECT action,actor_id,request_id::text,correlation_id::text,audit_session_id::text,
-                 char_length(user_agent) user_agent_length,user_agent_truncated
+                 char_length(user_agent) user_agent_length,user_agent_truncated,
+                 entity_key,changed_fields,after_values
             FROM audit_events WHERE entity_table='lookup_importance'
               AND entity_key='{"id":30001}' ORDER BY id DESC LIMIT 1`)
       ).rows[0]!;
@@ -273,6 +330,17 @@ async function main(): Promise<void> {
         ],
         ['record_created', 1001, ids[0], ids[1], ids[2], 512, true],
       );
+      assert.deepEqual(createdEvent.entity_key, { id: 30001 });
+      assert.deepEqual(createdEvent.changed_fields, [
+        'is_active',
+        'label_ar',
+        'label_en',
+        'sort_order',
+      ]);
+      assert.deepEqual(Object.keys(createdEvent.after_values).sort(), createdEvent.changed_fields);
+      assert.ok(!createdEvent.changed_fields.includes('id'));
+      assert.ok(!createdEvent.changed_fields.some((field) => field.endsWith('_at')));
+      assert.ok(!createdEvent.changed_fields.some((field) => field.endsWith('_by')));
 
       const secretSentinel =
         'password=task33b_plain bearer task33b_token cookie=task33b_cookie postgresql://task33b_connection $argon2id$task33b_hash';
@@ -306,6 +374,30 @@ async function main(): Promise<void> {
         true,
       );
       assert.doesNotMatch(redacted.complete, /task33b_(plain|token|cookie|connection|hash)/u);
+
+      const structuralBefore = (
+        await owner.query<{ updated_at: string; events: string }>(`
+          SELECT updated_at::text,
+                 (SELECT count(*)::text FROM audit_events) events
+            FROM lookup_importance WHERE id=30001`)
+      ).rows[0]!;
+      await runtime.query('BEGIN');
+      await setPgContext(runtime, 1, [randomUUID(), randomUUID(), randomUUID()]);
+      await runtime.query(
+        `UPDATE lookup_importance SET updated_at=updated_at+interval '1 second' WHERE id=30001`,
+      );
+      await runtime.query('COMMIT');
+      const structuralAfter = (
+        await owner.query<{ updated_at: string; events: string }>(`
+          SELECT updated_at::text,
+                 (SELECT count(*)::text FROM audit_events) events
+            FROM lookup_importance WHERE id=30001`)
+      ).rows[0]!;
+      assert.notEqual(structuralAfter.updated_at, structuralBefore.updated_at);
+      assert.equal(structuralAfter.events, structuralBefore.events);
+      console.log(
+        'PASS captured/redacted fields emit bounded values; entity keys and structural fields follow their classified behavior',
+      );
 
       const beforeFailedWrite = (
         await owner.query<{ label_ar: string; events: string }>(`
@@ -370,8 +462,47 @@ async function main(): Promise<void> {
          VALUES(30002,'__task33b_context_one__',30002,true)`,
       );
       await runtime.query('COMMIT');
+      const beforeMissingContext = (
+        await owner.query<{ events: string; rows: string }>(`
+          SELECT (SELECT count(*)::text FROM audit_events) events,
+                 (SELECT count(*)::text FROM lookup_importance WHERE id=30003) rows`)
+      ).rows[0]!;
       await runtime.query('BEGIN');
       await runtime.query('SELECT audit_set_human_context(1)');
+      await rejects(
+        () =>
+          runtime.query(
+            `INSERT INTO lookup_importance(id,label_ar,sort_order,is_active)
+             VALUES(30003,'__task33b_context_missing__',30003,true)`,
+          ),
+        /Explicit transaction-local audit event context is required/u,
+      );
+      await runtime.query('ROLLBACK');
+      assert.deepEqual(
+        (
+          await owner.query<{ events: string; rows: string }>(`
+            SELECT (SELECT count(*)::text FROM audit_events) events,
+                   (SELECT count(*)::text FROM lookup_importance WHERE id=30003) rows`)
+        ).rows[0],
+        beforeMissingContext,
+      );
+
+      await runtime.query('BEGIN');
+      await runtime.query('SELECT audit_set_authentication_context()');
+      await rejects(
+        () =>
+          runtime.query(
+            `SELECT audit_append_semantic_event_for_account(
+              'login_failed','failed','public','user_accounts','{"id":1}',1,
+              'IHamdy',NULL,'{}','password_incorrect','{}')`,
+          ),
+        /Explicit transaction-local audit event context is required/u,
+      );
+      await runtime.query('ROLLBACK');
+
+      const replacementIds = [randomUUID(), randomUUID(), randomUUID()] as const;
+      await runtime.query('BEGIN');
+      await setPgContext(runtime, 1, replacementIds);
       await runtime.query(
         `INSERT INTO lookup_importance(id,label_ar,sort_order,is_active)
          VALUES(30003,'__task33b_context_two__',30003,true)`,
@@ -387,10 +518,10 @@ async function main(): Promise<void> {
             AND entity_key IN ('{"id":30002}','{"id":30003}') ORDER BY id`);
       assert.equal(contexts.rows.length, 2);
       assert.equal(contexts.rows[0]?.request_id, leakedIds[0]);
-      assert.notEqual(contexts.rows[1]?.request_id, leakedIds[0]);
-      assert.notEqual(contexts.rows[1]?.audit_session_id, leakedIds[2]);
+      assert.equal(contexts.rows[1]?.request_id, replacementIds[0]);
+      assert.equal(contexts.rows[1]?.audit_session_id, replacementIds[2]);
       console.log(
-        'PASS row/junction events are exact; request/session context cannot leak across transactions',
+        'PASS missing human/authentication request metadata rolls writes back; request/session context cannot leak across transactions',
       );
 
       const metadata = createRequestAuditMetadata(
@@ -398,41 +529,139 @@ async function main(): Promise<void> {
           headers: { 'user-agent': 'Task33B contract fixture' },
         }),
       );
-      const futureActions = [
+
+      const futureActorIds = [randomUUID(), randomUUID(), randomUUID()] as const;
+      await owner.query('BEGIN');
+      await owner.query('SELECT audit_set_migration_context()');
+      await owner.query('SELECT audit_set_event_context($1,$2,$3,NULL,$4,$5)', [
+        ...futureActorIds,
+        'Task 3.3B non-arithmetic actor fixture',
+        'system',
+      ]);
+      const interveningActorId = (
+        await owner.query<{ id: number }>(`
+          INSERT INTO audit_actors(
+            id,actor_key,actor_kind,user_account_id,identity_label,purpose
+          ) VALUES (
+            nextval('audit_actors_id_seq'),'system_review_intervening','system',NULL,
+            'Review fixture intervening actor','Task 3.3B target-resolution fixture'
+          ) RETURNING id`)
+      ).rows[0]!.id;
+      const futurePersonId = (
+        await owner.query<{ id: number }>(`
+          INSERT INTO people(
+            name_ar,name_en,is_staff,is_active,is_trainee,can_login,updated_at,
+            is_application_native
+          ) VALUES (
+            'TASK33B REVIEW FIXTURE','Task 3.3B review fixture',true,true,false,true,
+            CURRENT_TIMESTAMP,true
+          ) RETURNING id`)
+      ).rows[0]!.id;
+      const futureAccountId = (
+        await owner.query<{ id: number }>(
+          `
+          INSERT INTO user_accounts(
+            id,person_id,username,username_normalized,role_code,updated_at
+          ) VALUES (
+            nextval('user_accounts_id_seq'),$1,'ReviewFixture','reviewfixture','Lawyer',
+            CURRENT_TIMESTAMP
+          ) RETURNING id`,
+          [futurePersonId],
+        )
+      ).rows[0]!.id;
+      const futureAuditActorId = (
+        await owner.query<{ id: number }>(
+          `
+          INSERT INTO audit_actors(
+            id,actor_key,actor_kind,user_account_id,identity_label,purpose
+          ) VALUES (
+            nextval('audit_actors_id_seq'),'user_account:' || $1::integer,'human',$1::integer,
+            'ReviewFixture (fixture account)','Authenticated application account'
+          ) RETURNING id`,
+          [futureAccountId],
+        )
+      ).rows[0]!.id;
+      await owner.query('COMMIT');
+      assert.equal(futureAccountId, 5);
+      assert.equal(interveningActorId, 1005);
+      assert.equal(futureAuditActorId, 1006);
+      assert.notEqual(futureAuditActorId, interveningActorId);
+      const futureAccountCreation = (
+        await owner.query<{ after_values: Record<string, unknown>; entity_key: unknown }>(
+          `
+          SELECT after_values,entity_key FROM audit_events
+           WHERE entity_table='user_accounts'
+             AND entity_key=jsonb_build_object('id',$1::integer)
+             AND action='record_created' ORDER BY id DESC LIMIT 1`,
+          [futureAccountId],
+        )
+      ).rows[0]!;
+      assert.deepEqual(futureAccountCreation.entity_key, { id: futureAccountId });
+      assert.ok(!('username_normalized' in futureAccountCreation.after_values));
+
+      await runtimePrisma.$transaction(async (transaction) => {
+        await setAuthenticationAuditContext(transaction, metadata);
+        await recordLoginFailed(transaction, {
+          attemptedUsername: 'ReviewFixture',
+          targetAccountId: futureAccountId,
+          outcome: 'failed',
+          reasonCode: 'password_incorrect',
+        });
+      });
+      const resolvedFutureTarget = (
+        await owner.query<{ target_actor_id: number }>(
+          `
+          SELECT target_actor_id FROM audit_events
+           WHERE action='login_failed' AND entity_key=jsonb_build_object('id',$1::integer)
+           ORDER BY id DESC LIMIT 1`,
+          [futureAccountId],
+        )
+      ).rows[0]!.target_actor_id;
+      assert.equal(resolvedFutureTarget, futureAuditActorId);
+      console.log(
+        'PASS target-account gateway resolves the immutable actor relationship without runtime audit_actors access',
+      );
+
+      const databaseActions = [
         'archive',
         'restore',
         'account_created',
         'account_enabled',
         'account_disabled',
         'role_changed',
-        'report_executed',
-        'export_completed',
-        'download_completed',
       ] as const;
-      for (const action of futureActions) {
-        const result = await runAuditedSemanticOperation(
+      for (const action of databaseActions) {
+        const result = await runAuditedDatabaseOperation(
           runtimePrisma,
           1,
           metadata,
-          async (): Promise<AuditedOperationResult<string>> => ({
+          async (): Promise<AuditedDatabaseOperationResult<string>> => ({
             result: action,
             event: {
               action,
               outcome: 'succeeded',
               entity: { schema: 'public', table: 'matters', key: { id: matterId } },
-              ...(action.includes('report') ||
-              action.includes('export') ||
-              action.includes('download')
-                ? { resourceIdentifier: `task33b-${action}` }
-                : {}),
             },
           }),
         );
         assert.equal(result, action);
       }
+      const externalActions = [
+        'report_executed',
+        'export_completed',
+        'download_completed',
+      ] as const;
+      for (const action of externalActions) {
+        const eventId = await recordObservedExternalEvent(runtimePrisma, 1, metadata, {
+          action,
+          outcome: 'succeeded',
+          resourceIdentifier: `task33b-${action}`,
+        });
+        assert.ok(eventId > 0n);
+      }
       const atomicLabel = '__task33b_contract_atomic__';
       await assert.rejects(
-        runAuditedSemanticOperation(runtimePrisma, 1, metadata, async (transaction) => {
+        runAuditedDatabaseOperation(runtimePrisma, 1, metadata, async (transaction) => {
           await transaction.lookupImportance.update({
             where: { id: 30003 },
             data: { labelAr: atomicLabel },
@@ -440,13 +669,12 @@ async function main(): Promise<void> {
           return {
             result: null,
             event: {
-              action: 'download_completed',
+              action: 'role_changed',
               outcome: 'succeeded',
-              resourceIdentifier: 'x'.repeat(257),
             },
           };
         }),
-        /256 characters/u,
+        /Lifecycle actor or shape is invalid/u,
       );
       assert.notEqual(
         (await owner.query(`SELECT label_ar FROM lookup_importance WHERE id=30003`)).rows[0]
@@ -454,7 +682,7 @@ async function main(): Promise<void> {
         atomicLabel,
       );
       console.log(
-        'PASS all nine future semantic contracts append atomically without implementing UI',
+        'PASS six database lifecycle contracts are atomic; three external facts append only after a server-observed emission point',
       );
 
       const benchmarkIds = [randomUUID(), randomUUID(), randomUUID()] as const;
@@ -525,6 +753,7 @@ async function main(): Promise<void> {
            WHERE actor_id=1001 AND action='record_created' ORDER BY id LIMIT 1`)
       ).rows[0]!.role;
       await owner.query('BEGIN');
+      await setPgContext(owner, 1, [randomUUID(), randomUUID(), randomUUID()]);
       await owner.query(`UPDATE user_accounts SET role_code='Paralegal' WHERE id=1`);
       const snapshotDuring = (
         await owner.query<{ role: string }>(`

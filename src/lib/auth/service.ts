@@ -9,7 +9,7 @@ import {
   setAuthenticationAuditContext,
   setHumanAuditContext,
 } from '@/lib/audit';
-import { createMaintenanceAuditMetadata, type AuditRequestMetadata } from '@/lib/audit-metadata';
+import type { AuditRequestMetadata } from '@/lib/audit-metadata';
 import { db } from '@/lib/db';
 import {
   APPROVED_INITIAL_USERNAMES,
@@ -57,11 +57,11 @@ export type AuthenticatedUser = {
 };
 
 type AuthenticationDependencies = {
+  auditMetadata: AuditRequestMetadata;
   database?: PrismaClient;
   now?: Date;
   verify?: typeof verifyPassword;
   dummyVerify?: typeof performDummyPasswordVerification;
-  auditMetadata?: AuditRequestMetadata;
 };
 
 const approvedNormalizedUsernames = new Set(
@@ -128,13 +128,13 @@ function rememberRequested(value: unknown): boolean {
 
 export async function authenticateCredentials(
   credentials: Partial<Record<'username' | 'password' | 'rememberMe', unknown>> | undefined,
-  dependencies: AuthenticationDependencies = {},
+  dependencies: AuthenticationDependencies,
 ): Promise<AuthenticatedUser | null> {
   const database = dependencies.database ?? db;
   const now = dependencies.now ?? new Date();
   const verify = dependencies.verify ?? verifyPassword;
   const dummyVerify = dependencies.dummyVerify ?? performDummyPasswordVerification;
-  const auditMetadata = dependencies.auditMetadata ?? createMaintenanceAuditMetadata();
+  const auditMetadata = dependencies.auditMetadata;
   const username = typeof credentials?.username === 'string' ? credentials.username : '';
   const password = typeof credentials?.password === 'string' ? credentials.password : '';
   const usernameNormalized = normalizeUsername(username);
@@ -282,10 +282,7 @@ export async function changeOwnPassword(
     currentPassword: string;
     newPassword: string;
   },
-  dependencies: Pick<
-    AuthenticationDependencies,
-    'database' | 'now' | 'verify' | 'auditMetadata'
-  > = {},
+  dependencies: Pick<AuthenticationDependencies, 'database' | 'now' | 'verify' | 'auditMetadata'>,
 ): Promise<PasswordChangeResult> {
   if (!passwordMeetsPolicy(input.newPassword)) return 'policy';
   if (input.currentPassword === input.newPassword) return 'reused';
@@ -293,7 +290,7 @@ export async function changeOwnPassword(
   const database = dependencies.database ?? db;
   const now = dependencies.now ?? new Date();
   const verify = dependencies.verify ?? verifyPassword;
-  const auditMetadata = dependencies.auditMetadata ?? createMaintenanceAuditMetadata();
+  const auditMetadata = dependencies.auditMetadata;
 
   return withSerializableRetry(() =>
     database.$transaction(
@@ -358,7 +355,7 @@ export async function changeOwnPassword(
 export async function setApprovedAccountPassword(
   username: string,
   password: string,
-  dependencies: Pick<AuthenticationDependencies, 'database' | 'now' | 'auditMetadata'> = {},
+  dependencies: Pick<AuthenticationDependencies, 'database' | 'now' | 'auditMetadata'>,
 ): Promise<{ username: string; personName: string }> {
   const usernameNormalized = normalizeUsername(username);
   if (!approvedNormalizedUsernames.has(usernameNormalized))
@@ -367,7 +364,7 @@ export async function setApprovedAccountPassword(
 
   const database = dependencies.database ?? db;
   const now = dependencies.now ?? new Date();
-  const auditMetadata = dependencies.auditMetadata ?? createMaintenanceAuditMetadata();
+  const auditMetadata = dependencies.auditMetadata;
   const passwordHash = await hashPassword(password);
 
   return withSerializableRetry(() =>

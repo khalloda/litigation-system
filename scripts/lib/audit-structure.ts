@@ -71,7 +71,7 @@ export const TASK33A_ATTRIBUTION_DIGEST =
 export const RUNTIME_DATABASE_ROLE = 'litigation_runtime';
 export const PROJECT_DATABASE_SCHEMAS = ['_migration', 'public', 'quarantine', 'staging'] as const;
 export const APPROVED_RUNTIME_SECURITY_DEFINERS = [
-  'public.audit_append_semantic_event(p_action text, p_outcome text, p_entity_schema text, p_entity_table text, p_entity_key jsonb, p_target_actor_id integer, p_attempted_username text, p_resource_identifier text, p_parameters jsonb, p_reason_code text, p_event_metadata jsonb)',
+  'public.audit_append_semantic_event_for_account(p_action text, p_outcome text, p_entity_schema text, p_entity_table text, p_entity_key jsonb, p_target_user_account_id integer, p_attempted_username text, p_resource_identifier text, p_parameters jsonb, p_reason_code text, p_event_metadata jsonb)',
   'public.audit_current_actor_id()',
   'public.audit_set_event_context(p_request_id uuid, p_correlation_id uuid, p_audit_session_id uuid, p_ip_address inet, p_user_agent text, p_device_class text)',
   'public.audit_set_authentication_context()',
@@ -962,7 +962,6 @@ export async function auditDataFailures(
   for (const row of accounts.rows) {
     if (
       row.actor_count !== 1 ||
-      row.actor_id !== 1000 + row.id ||
       row.actor_key !== `user_account:${row.id}` ||
       row.identity_label !== `${row.username} (account ${row.id})`
     ) {

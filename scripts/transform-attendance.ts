@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import type { ClientBase } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
   ATTENDANCE_SOURCE_BASELINE,
@@ -139,6 +140,7 @@ export async function runAttendanceTransform(options: Options = {}) {
       const protectedBefore = await task210bProtectedState(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {
+        await setMaintenanceAuditContext(db, 'task-2-10b-attendance');
         await lockAttendanceDomain(db);
         await assertAttendanceStructure(db);
         if (enforceLive) {

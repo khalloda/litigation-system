@@ -96,7 +96,7 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     AUDIT_GATEWAY,
     'appendSemanticEvent',
-    '5e9eef1358607ed07f383e4e4b5d082ce4c03927b243a2fca5d16590b36e1d95',
+    '9fed0be77b8676c5f08c752ef293551beebe0fe6fae8a22edb00197c09ede34d',
   ],
   [
     AUDIT_AUTH_SERVICE,
@@ -1564,7 +1564,9 @@ export function auditRuntimeSourceFailures(
               helper === 'setHumanAuditContext' &&
               ts.isCallExpression(node.parent) &&
               node.parent.expression === node &&
-              containingFunctionName(node.parent, sourceFile) === 'runAuditedSemanticOperation' &&
+              ['runAuditedDatabaseOperation', 'recordObservedExternalEvent'].includes(
+                containingFunctionName(node.parent, sourceFile) ?? '',
+              ) &&
               node.parent.arguments
                 .map((argument) => argument.getText(sourceFile).replace(/\s+/gu, ''))
                 .join(',') === 'transaction,actorAccountId,metadata';

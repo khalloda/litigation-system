@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import { setMaintenanceAuditContext } from './lib/audit-maintenance-context';
 import {
   matterRelationshipResultDigest,
   reconcileMatterRelationships,
@@ -125,6 +126,7 @@ async function proveFailure(
 ) {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-matter-relationship-negative');
     await mutate();
     const result = await reconcileMatterRelationships(db);
     assert.match(result.defects.join('\n'), expected, `${label}: permanent check did not fail`);
@@ -143,6 +145,7 @@ async function proveStructureFailure(
 ) {
   await db.query('BEGIN');
   try {
+    await setMaintenanceAuditContext(db, 'test-matter-relationship-structure');
     await mutate();
     assert.match(
       (await matterRelationshipStructureFailures(db)).join('\n'),
@@ -189,6 +192,8 @@ async function main() {
       const secondAlias = aliases.rows[1]!.alias_ar;
       const corrected = correctedMultiPersonRules[0];
 
+      await db.query('BEGIN');
+      await setMaintenanceAuditContext(db, 'test-matter-relationship-fixtures');
       const directKey = await insertSourceMatter(db, 1, {
         lawyerA: firstAlias,
         lawyerB: secondAlias,
@@ -204,6 +209,7 @@ async function main() {
         clientCap: 'طرف اختبار\n"صفة قانونية غير مراجعة"',
       });
       const parentQuarantinedKey = await insertParentQuarantinedMatter(db, 6, firstAlias);
+      await db.query('COMMIT');
 
       const dryRun = await runMatterRelationshipTransform({
         databaseUrl: fixtureUrl.toString(),
@@ -295,6 +301,7 @@ async function main() {
 
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-matter-relationship-native');
         const nativePerson = await db.query<{ id: number }>(`
           INSERT INTO people (name_ar, is_staff, is_active, updated_at)
           VALUES ('شخص تطبيق أصلي', false, true, CURRENT_TIMESTAMP)
@@ -417,6 +424,7 @@ async function main() {
       );
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-matter-relationship-ordinal');
         await assert.rejects(
           db.query(`
             UPDATE migration_multi_person_rule_member SET ordinal = 1
@@ -645,6 +653,7 @@ async function main() {
       );
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-matter-relationship-duplicate');
         await assert.rejects(
           db.query(`
             INSERT INTO matter_lawyers (
@@ -664,6 +673,7 @@ async function main() {
 
       await db.query('BEGIN');
       try {
+        await setMaintenanceAuditContext(db, 'test-matter-relationship-provenance');
         await assert.rejects(
           db.query(`
             INSERT INTO matter_lawyers (

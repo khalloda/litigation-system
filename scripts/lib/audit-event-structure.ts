@@ -2,9 +2,12 @@ import type { ClientBase } from 'pg';
 import { AUDITED_TABLES, RUNTIME_DATABASE_ROLE } from './audit-structure';
 
 export const TASK33B_MIGRATION = '20260902180000_append_only_audit_events';
+export const TASK33B_CORRECTION_MIGRATION = '20260903100000_close_task33b_review_gaps';
 export const TASK33B_CHECKPOINT = 'task_3_3b_baseline';
 export const TASK33B_ALLOWLIST_DIGEST =
   '9e271a6e23bc03e55223db3c0a9be1b0e34867da0af8c6f0acab5614506de11b';
+export const TASK33B_CLASSIFICATION_DIGEST =
+  '4ebad0a7bc5862dbd537abac05727f4968598c3b30336ee8e9236ba6b653bf0d';
 
 const EVENT_TABLES = [
   'audit_event_checkpoints',
@@ -50,6 +53,15 @@ const EVENT_COLUMNS = [
   'user_agent_truncated',
 ] as const;
 
+const FIELD_RULE_COLUMNS = [
+  'capture_mode',
+  'classification_reason',
+  'entity_schema',
+  'entity_table',
+  'field_name',
+  'max_text_characters',
+] as const;
+
 const EVENT_INDEXES = [
   'audit_events_action_outcome_newest_idx',
   'audit_events_actor_newest_idx',
@@ -63,6 +75,7 @@ const EVENT_INDEXES = [
 
 const SECURITY_DEFINER_FUNCTIONS = new Set([
   'audit_append_semantic_event',
+  'audit_append_semantic_event_for_account',
   'audit_capture_row_event',
   'audit_ensure_event_context',
   'audit_set_event_context',
@@ -72,6 +85,7 @@ const SECURITY_DEFINER_FUNCTIONS = new Set([
 
 const EVENT_FUNCTIONS = [
   'audit_append_semantic_event',
+  'audit_append_semantic_event_for_account',
   'audit_bound_json_value',
   'audit_capture_row_event',
   'audit_contains_secret_pattern',
@@ -82,7 +96,37 @@ const EVENT_FUNCTIONS = [
   'refuse_audit_event_change',
 ] as const;
 
-const RUNTIME_EVENT_GATEWAYS = ['audit_append_semantic_event', 'audit_set_event_context'] as const;
+const RUNTIME_EVENT_GATEWAYS = [
+  'audit_append_semantic_event_for_account',
+  'audit_set_event_context',
+] as const;
+
+const CORRECTION_FUNCTION_MD5 = new Map([
+  ['audit_append_semantic_event_for_account', '5628bb7316726abbd755fe13ecf9dcd6'],
+  ['audit_capture_row_event', '483ecdff146cbd0a5f3906e6e8ec891a'],
+  ['audit_ensure_event_context', 'e4c5e1d72a5f1366825e3a452ccf0ee1'],
+]);
+
+const FIELD_RULE_CONSTRAINTS = new Map([
+  [
+    'audit_event_fields_bound',
+    "CHECK ((((capture_mode = ANY (ARRAY['value'::text, 'redacted'::text])) AND ((max_text_characters >= 64) AND (max_text_characters <= 2048))) OR ((capture_mode = ANY (ARRAY['entity_key'::text, 'structural'::text, 'excluded'::text])) AND (max_text_characters = 0))))",
+  ],
+  [
+    'audit_event_fields_capture_mode',
+    "CHECK ((capture_mode = ANY (ARRAY['value'::text, 'redacted'::text, 'entity_key'::text, 'structural'::text, 'excluded'::text])))",
+  ],
+  ['audit_event_fields_name_shape', "CHECK ((field_name ~ '^[a-z][a-z0-9_]{0,62}$'::text))"],
+  ['audit_event_fields_pkey', 'PRIMARY KEY (entity_schema, entity_table, field_name)'],
+  [
+    'audit_event_fields_reason_shape',
+    "CHECK (((classification_reason ~ '^[a-z][a-z0-9_]{2,127}$'::text) AND (classification_reason <> ALL (ARRAY['excluded'::text, 'other'::text, 'unknown'::text]))))",
+  ],
+  [
+    'audit_event_fields_table_fkey',
+    'FOREIGN KEY (entity_schema, entity_table) REFERENCES audit_event_table_rules(entity_schema, entity_table) ON UPDATE RESTRICT ON DELETE RESTRICT',
+  ],
+]);
 
 function same(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
@@ -118,6 +162,30 @@ export async function auditEventStructureFailures(
     )
   ) {
     failures.push('audit_events column inventory differs');
+  }
+
+  const fieldRuleColumns = await db.query<{ column_name: string }>(`
+    SELECT column_name FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='audit_event_fields'
+     ORDER BY column_name`);
+  if (
+    !same(
+      fieldRuleColumns.rows.map((row) => row.column_name),
+      FIELD_RULE_COLUMNS,
+    )
+  ) {
+    failures.push('audit_event_fields column inventory differs');
+  }
+  const fieldRuleConstraints = await db.query<{ name: string; definition: string }>(`
+    SELECT conname name,pg_get_constraintdef(oid) definition
+      FROM pg_constraint
+     WHERE conrelid='public.audit_event_fields'::regclass
+     ORDER BY conname`);
+  if (
+    fieldRuleConstraints.rows.length !== FIELD_RULE_CONSTRAINTS.size ||
+    fieldRuleConstraints.rows.some((row) => FIELD_RULE_CONSTRAINTS.get(row.name) !== row.definition)
+  ) {
+    failures.push('audit_event_fields constraint inventory/definitions differ');
   }
 
   const keyColumns = await db.query<{
@@ -206,42 +274,81 @@ export async function auditEventStructureFailures(
   }
   const unsafeFields = await db.query<{ count: string }>(`
     SELECT count(*)::text count FROM audit_event_fields f
+    JOIN audit_event_table_rules r
+      ON r.entity_schema=f.entity_schema AND r.entity_table=f.entity_table
     LEFT JOIN information_schema.columns c
       ON c.table_schema=f.entity_schema AND c.table_name=f.entity_table
      AND c.column_name=f.field_name
     WHERE c.column_name IS NULL
-       OR c.data_type IN ('bytea','json','jsonb')
-       OR f.field_name LIKE 'legacy_%'
-       OR f.field_name IN ('legacy_source_payload','next_attendance_raw',
-                           'created_at','created_by','updated_at','updated_by')
+       OR (f.capture_mode IN ('value','redacted') AND (
+           c.data_type IN ('bytea','json','jsonb')
+           OR f.field_name LIKE 'legacy_%'
+           OR f.field_name IN ('legacy_source_payload','next_attendance_raw',
+                               'created_at','created_by','updated_at','updated_by')
+       ))
        OR (f.field_name='password_hash' AND f.capture_mode<>'redacted')
        OR (f.capture_mode='redacted' AND NOT (
-           f.entity_table='user_accounts' AND f.field_name='password_hash'))`);
-  if (unsafeFields.rows[0]?.count !== '0') failures.push('audit field allowlist is unsafe');
+           f.entity_table='user_accounts' AND f.field_name='password_hash'))
+       OR (f.capture_mode='entity_key' AND NOT f.field_name=ANY(r.key_fields))
+       OR (f.capture_mode='structural' AND f.field_name NOT IN
+           ('created_at','created_by','updated_at','updated_by'))
+       OR (f.capture_mode IN ('entity_key','structural','excluded')
+           AND f.max_text_characters<>0)
+       OR (f.capture_mode IN ('value','redacted')
+           AND f.classification_reason<>'frozen_task_3_3b_baseline_rule')`);
+  if (unsafeFields.rows[0]?.count !== '0') failures.push('audit field classification is unsafe');
+  const coverage = await db.query<{ unclassified: string; stale: string }>(`
+    SELECT
+      (SELECT count(*)::text FROM information_schema.columns c
+        JOIN audit_event_table_rules r
+          ON r.entity_schema=c.table_schema AND r.entity_table=c.table_name
+        LEFT JOIN audit_event_fields f
+          ON f.entity_schema=c.table_schema AND f.entity_table=c.table_name
+         AND f.field_name=c.column_name
+       WHERE f.field_name IS NULL) unclassified,
+      (SELECT count(*)::text FROM audit_event_fields f
+        LEFT JOIN information_schema.columns c
+          ON c.table_schema=f.entity_schema AND c.table_name=f.entity_table
+         AND c.column_name=f.field_name
+       WHERE c.column_name IS NULL) stale`);
+  if (coverage.rows[0]?.unclassified !== '0' || coverage.rows[0]?.stale !== '0') {
+    failures.push('audited-table column classification is not exhaustive and exact');
+  }
   const fieldShape = await db.query<{
     field_count: string;
+    baseline_field_count: string;
     password_rule_count: string;
     allowlist_digest: string;
     checkpoint_digest: string;
+    classification_digest: string;
   }>(`
     SELECT count(*)::text field_count,
+      count(*) FILTER(WHERE capture_mode IN ('value','redacted'))::text baseline_field_count,
       count(*) FILTER(WHERE entity_table='user_accounts' AND field_name='password_hash'
                        AND capture_mode='redacted')::text password_rule_count,
       encode(sha256(convert_to(string_agg(
         entity_schema||E'\\x1f'||entity_table||E'\\x1f'||field_name||E'\\x1f'||
         max_text_characters::text||E'\\x1f'||capture_mode,
-        E'\\n' ORDER BY entity_schema,entity_table,field_name),'UTF8')),'hex') allowlist_digest,
+        E'\\n' ORDER BY entity_schema,entity_table,field_name)
+        FILTER(WHERE capture_mode IN ('value','redacted')),'UTF8')),'hex') allowlist_digest,
       (SELECT allowlist_digest::text FROM audit_event_checkpoints
-        WHERE checkpoint_key='task_3_3b_baseline') checkpoint_digest
+        WHERE checkpoint_key='task_3_3b_baseline') checkpoint_digest,
+      encode(sha256(convert_to(string_agg(
+        entity_schema||E'\\x1f'||entity_table||E'\\x1f'||field_name||E'\\x1f'||
+        max_text_characters::text||E'\\x1f'||capture_mode||E'\\x1f'||classification_reason,
+        E'\\n' ORDER BY entity_schema,entity_table,field_name),'UTF8')),'hex')
+        classification_digest
       FROM audit_event_fields`);
   const fieldEvidence = fieldShape.rows[0];
   if (
-    fieldEvidence?.field_count !== '262' ||
+    fieldEvidence?.field_count !== '583' ||
+    fieldEvidence.baseline_field_count !== '262' ||
     fieldEvidence.password_rule_count !== '1' ||
     fieldEvidence.allowlist_digest !== fieldEvidence.checkpoint_digest ||
-    fieldEvidence.allowlist_digest !== TASK33B_ALLOWLIST_DIGEST
+    fieldEvidence.allowlist_digest !== TASK33B_ALLOWLIST_DIGEST ||
+    fieldEvidence.classification_digest !== TASK33B_CLASSIFICATION_DIGEST
   ) {
-    failures.push('audit field allowlist count/redaction/checkpoint digest differs');
+    failures.push('audit baseline allowlist or current classification evidence differs');
   }
 
   const captureTriggers = await db.query<{ table_name: string; definition: string }>(`
@@ -303,9 +410,11 @@ export async function auditEventStructureFailures(
     configuration: string[] | null;
     runtime_execute: boolean;
     public_execute: boolean;
+    definition_md5: string;
   }>(
     `
     SELECT p.proname name,p.prosecdef security_definer,p.proconfig configuration,
+           md5(pg_get_functiondef(p.oid)) definition_md5,
            has_function_privilege($1,p.oid,'EXECUTE') runtime_execute,
            EXISTS (
              SELECT 1 FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
@@ -330,7 +439,9 @@ export async function auditEventStructureFailures(
       row.security_definer !== shouldDefine ||
       !same(row.configuration ?? [], ['search_path=pg_catalog, public, pg_temp']) ||
       row.runtime_execute !== shouldExecute ||
-      row.public_execute
+      row.public_execute ||
+      (CORRECTION_FUNCTION_MD5.has(row.name) &&
+        CORRECTION_FUNCTION_MD5.get(row.name) !== row.definition_md5)
     ) {
       failures.push(`${row.name}: security/search-path/execute boundary differs`);
     }
