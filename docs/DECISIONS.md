@@ -722,3 +722,97 @@ compensating `pg_signal_backend`, membership, `SET` or similar grant to a
 non-superuser; and accepting either confirmed enforcement gap. D35 completes
 the operational detail required by D33 and preserves D30's attribution scope;
 it does not authorize Task 3.3B or alter the four application roles.
+
+## D36 — Task 3.4 creates accounts only for existing active staff
+
+**Approved by Khaled Helmy on 3 September 2026 through the Task 3.4 owner
+mandate.**
+
+An account candidate must already exist in `people`, have `is_staff=true` and
+`is_active=true`, and have no existing `user_accounts` row. `can_login=true` is
+not an eligibility precondition because login eligibility is derived from
+account existence and enablement. External people, former or inactive staff,
+ambiguous identities and people with an account are ineligible.
+
+The application selects and re-reads the person by database ID. It never
+matches or accepts a supplied Arabic name. Task 3.4 does not create or edit
+people, aliases, teams, employment status or staff information. New hires and
+staff identity maintenance belong to the separate future **Task 4.0a — Staff
+roster management**, which must have its own reviewed contract before go-live.
+
+**Rationale:** an account is an authentication identity linked to an already
+reviewed staff identity, not a second staff roster. Keeping these concerns
+separate prevents a mistyped or ambiguous Arabic name from creating a duplicate
+person and preserves the one-account-per-person model.
+
+**Boundary and rejected alternatives:** Task 3.4 may create the account and its
+immutable audit actor only. It does not create a new person as a convenience,
+reactivate former staff, accept external people, infer identity from names, or
+fold staff maintenance into the user-management screen.
+
+## D37 — Last-Administrator and self-lockout protection
+
+**Approved by Khaled Helmy on 3 September 2026 through the Task 3.4 owner
+mandate.**
+
+An Administrator cannot disable or demote their own account through the
+application; another Administrator must perform that operation. No account or
+person mutation may leave the system without a usable Administrator. At the
+relevant mutation boundary, usable means an Administrator-role account that is
+enabled, has an initialized password, and is linked to an active,
+login-eligible person.
+
+The safeguard is enforced in both the server service and database, serializes
+competing changes so two Administrators cannot disable or demote one another
+concurrently, and also guards a later attempt to deactivate the linked person
+through future staff management. UI control hiding is supplementary, not the
+security boundary.
+
+**Rationale:** losing the last usable Administrator would make ordinary account
+recovery impossible. A database guard is necessary because a future service or
+concurrent transaction could bypass an interface-only count.
+
+**Boundary and rejected alternatives:** migration 59 does not require an
+initialized Administrator unconditionally because canonical clean replay must
+first create passwordless accounts. Availability is enforced when a mutation
+could reduce it, while operational readiness is checked separately. Rejected
+alternatives are self-demotion/self-disablement with a warning, an interface-
+only check, a non-serialized count, and coverage limited to account rows while
+ignoring later person deactivation.
+
+## D38 — Account lifecycle policy
+
+**Approved by Khaled Helmy on 3 September 2026 through the Task 3.4 owner
+mandate.**
+
+Administrators may correct usernames. Username and role changes increment
+`session_version` and invalidate every existing target session. Disabling
+clears failed-login and lockout state, increments `session_version`, immediately
+invalidates sessions and retains the account, person, actor and history.
+Reactivation requires a new temporary password, clears lockout, increments
+`session_version`, sets `must_change_password=true` and retains the same account
+and immutable actor. Administrative password reset has the same password and
+session behavior and records the actual human Administrator.
+
+There is no manual-unlock action: a locked user waits for the 15-minute expiry
+or an Administrator performs a password reset. Administrators use the ordinary
+self-password-change workflow for themselves and cannot administratively reset
+themselves. Temporary passwords are entered twice in hidden fields. They are
+never generated into logs, displayed after submission, returned by the server,
+preserved in form state, placed in a URL, or recorded—nor is their hash—in
+audit evidence. Username correction has the explicit semantic action
+`username_changed`; username format and normalization remain the existing D24
+and database contract.
+
+**Rationale:** each lifecycle action has one unambiguous security and audit
+meaning, invalidates stale sessions where identity or access changed, and
+retains the evidence needed to explain past activity.
+
+**Boundary and rejected alternatives:** exactly four roles, Argon2id, the
+12-character minimum, five-attempt/15-minute lockout and existing absolute
+session durations remain unchanged. Rejected alternatives are physical
+deletion, manual unlock, self-administrative reset, password generation or
+redisplay, email reset, OAuth, registration, magic links, a fifth role, custom
+roles and username-hard-coded authorization. A generalized break-glass command
+for accounts created after the original four is a separate pre-go-live owner
+decision, not a Task 3.4 capability.

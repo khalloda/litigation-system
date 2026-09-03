@@ -1,6 +1,7 @@
 # Roles and permissions
 
-About 10 users. Four roles. Users can be added and removed by the Administrator.
+About 10 users. Four roles. Accounts can be added and disabled by the
+Administrator; they are never physically deleted.
 
 ## Matrix
 
@@ -76,12 +77,30 @@ recoverable removal, not database deletion. Only the Administrator can archive
 or restore; every other role is denied both everywhere. Permanent deletion of
 Phase 1 business records through the application is prohibited. See D25.
 
-Staff and user removal is disable/deactivate, and dropdown removal is
+User-account disable/reactivate is implemented in Task 3.4 and retains the
+account, person, actor and history. Staff and dropdown removal remains
 deactivate; their rows and values are retained. Client-logo removal must
-eventually be recoverable and retain the file and its evidence. These
-lifecycle operations are policy only in Task 3.2: the screens, handlers,
-database representation, archived-record visibility, filters and reporting
-behavior will be designed with the relevant later tasks.
+eventually be recoverable and retain the file and its evidence. Those other
+lifecycle screens, handlers, database representations, archived-record
+visibility, filters and reporting behavior remain with their relevant later
+tasks.
+
+## User management — implemented Task 3.4
+
+`/users` requires `usersAndRoles / view`; each of its six mutation actions is
+directly inventoried and requires `usersAndRoles / manage`. With the unchanged
+448-decision matrix, both permissions are Administrator-only. Unauthenticated,
+forced-password-change, Litigation Assistant, Lawyer and Paralegal sessions
+are rejected before account data or mutation work.
+
+Accounts are created only for an existing active staff person with no account,
+selected and re-read by numeric ID. Username correction, role change, disable,
+reactivate and administrative password reset all use the validated acting
+Administrator from the server session; form fields cannot choose the actor or
+acting role. Self-disablement, self-demotion and self-administrative reset are
+refused. The database also prevents any account or later person mutation from
+leaving zero usable Administrators. Disable/reactivate replaces deletion, and
+staff roster editing remains future Task 4.0a work.
 
 ## Audit access — approved UI/capability, not implemented
 
@@ -159,5 +178,6 @@ pages and ordinary 401/403 responses for handlers instead.
    rows, and Task 3.3B writes bounded/redacted chronological events through
    database-enforced append paths. D31's audit-export capability and viewer
    remain later Task 4.9 work.
-7. **User management is still Task 3.4.** Administrator permission exists in
-   the policy, but no user-management screen or mutation is built yet.
+7. **User management is implemented.** Task 3.4 supplies the Administrator-only
+   `/users` screen, six permission-wrapped actions, reviewed lifecycle service
+   and database guards without changing any of the 448 decisions.

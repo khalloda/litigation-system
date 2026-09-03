@@ -83,6 +83,24 @@ username, Arabic display name, role, password-change state, session version, an
 independently generated non-secret audit-session UUID and absolute timestamps;
 no password hash or email is placed in the session.
 
+Task 3.4 keeps this table append-only in identity terms: accounts are disabled
+and reactivated, never deleted. Migration
+`20260903160000_secure_user_account_lifecycle` makes one fixed-search-path
+database gateway the runtime's only account-creation path. It re-reads one
+eligible existing active staff person by ID and atomically creates both the
+account and its immutable human actor. The actor uses its own sequence and has
+no arithmetic relationship to the account ID. Direct runtime `INSERT`,
+`DELETE` and `TRUNCATE` are denied.
+
+Username/role changes, disablement, reactivation and administrative password
+reset use serializable transactions, row locks, stale-version checks and
+ordered semantic events. Changes that affect identity or access increment
+`session_version`; disablement and password operations also clear lockout.
+Reactivation always supplies a fresh temporary password and requires an
+ordinary password change at the next login. Database guards protect both
+account changes and later person deactivation from removing the last usable
+Administrator.
+
 ---
 
 ## Task 3.3 audit foundation
@@ -111,13 +129,21 @@ do not indicate baseline drift.
 ### Task 3.3A — actor attribution (implemented)
 
 Migration `20260901120000_secure_audit_actor_attribution` implements **D30**
-and **D33** on the exact 38-table application boundary. `audit_actors` holds
-seven immutable identities:
+and **D33** on the exact 38-table application boundary. `audit_actors` began
+with seven immutable identities and is now an evolvable registry:
 
 - three system actors: `system_migration`, `system_authentication` and
   `system_administration`;
-- four human actors, one for each current `user_accounts.id`, keyed as
+- four original human actors, one for each Task 3.3 `user_accounts.id`, keyed as
   `user_account:<id>` and linked by a restricted foreign key.
+
+Every later account receives exactly one human actor through the Task 3.4
+creation gateway, and every human actor remains linked to exactly one account.
+The three system actors and original four human actors stay exact historical
+anchors while legitimate account/activity growth is allowed. Permanent checks
+reject orphan or multiply linked accounts/actors and separately preserve the
+frozen Task 3.3 attribution baseline rather than recalculating it from growing
+current state.
 
 The two additional system identities are purpose-specific, not application
 users or a fifth role. Failed/successful login and lockout state use

@@ -2883,8 +2883,50 @@ idempotency proofs, are identical at
 The protected 5,209-row and attribution digests remain respectively
 `b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab`
 and `edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`.
-Task 3.4 remains approved but not started, pending independent acceptance and
-owner-authorized push of both Task 3.3B commits.
+The complete three-commit Task 3.3B chain was later independently accepted and
+pushed before Task 3.4 began.
+
+## Task 3.4 account-lifecycle migration gate — 3 September 2026
+
+Migration `20260903160000_secure_user_account_lifecycle` is migration 59. Its
+file SHA-256 and applied Prisma checksum are
+`364c04d7cf96a476cf3efaf092c5ffc7ad99389cf51a70b8b31d8f9d0268f15d`.
+Migrations 1–58 remain byte-identical, including the exact migration 57 and 58
+hashes above. Historical-live provenance is 51 required migrations + eight
+later migrations + one approved rollback; canonical clean replay applies the
+same forward chain through 59.
+
+Migration 59 adds no business row, account, actor or historical event. It
+removes direct runtime account creation and grants only the fixed-search-path
+`create_user_account_with_actor(...)` gateway, which atomically links one
+eligible existing active staff identity to a new account and sequence-allocated
+immutable actor under validated human Administrator context. An event failure
+removes both new rows. Runtime account `INSERT`, `DELETE` and `TRUNCATE` are
+denied.
+
+The migration separates strict account-lifecycle semantic validation from
+generic archive/restore validation, adds `username_changed`, and admits the
+controlled `system_administration` password path only for the immutable
+original four account IDs. The web path always records the current human
+Administrator. Ordered creation and reactivation event pairs commit or roll
+back together.
+
+The last-usable-Administrator guard serializes availability-reducing account
+and person mutations and checks enabled state, Administrator role, initialized
+password, active person and login eligibility. It deliberately does not block
+clean replay's initial passwordless account rows; live operational readiness is
+the separate 92nd invariant. Permanent checks preserve the three system actors,
+original four human actors and frozen Task 3.3 evidence while requiring every
+current account and human actor to form one exact pair.
+
+Project deployment retains four accounts, seven actors, one audit baseline
+event and 583 classified fields. The four roles and 448 decisions are
+unchanged. Protected billing and attendance remain 543 invoices, 597 payments,
+47 allocations and 4,022 attendance rows (5,209 total), with digests
+`b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab`
+and `edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`.
+Task 3.5 is the exact next return point after independent acceptance of Task
+3.4; it remains unstarted.
 
 ## Cutover
 

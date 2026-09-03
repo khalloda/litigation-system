@@ -1,8 +1,9 @@
 # Visual direction
 
 Agreed from mockups, 23 August 2026. **Direction only — not a specification.**
-Nothing here has been built. Every screen will be revisited during Stage 4
-(core screens) and Stage 6 (reports) with real data in front of us.
+Task 3.4's bounded `/users` administrative screen now applies the relevant
+direction; the Stage 4 core screens and Stage 6 reports still must be revisited
+with their real data in front of us.
 
 This file records what was decided so the decisions are not re-argued, and so
 whoever builds the first screen starts from something rather than nothing.
@@ -165,7 +166,29 @@ twelve-colour brand palette, and a derived, extensible UI token set. All five
 are seeded as Layer 2 tokens with their derivations, and `npm run check:rtl`
 now fails on any raw colour outside the token definitions.
 
-## 7. Audit history — owner-approved direction, deferred
+## 7. User management — implemented Task 3.4
+
+The Administrator-only Arabic/RTL `/users` screen uses the light surface and
+emerald structure above without placing the Kufic motif over account data. It
+shows approximately ten accounts as responsive cards, including disabled
+accounts, with textual role, enablement, password, lock and last-login states.
+Western digits are retained, while username and password controls use isolated
+left-to-right treatment inside the RTL page.
+
+Creation is visibly limited to eligible existing active staff. Username, role,
+disable, reactivate and password-reset operations are separate labelled
+disclosures rather than one ambiguous edit form. Disablement uses terracotta
+only as an additional warning signal, names the affected person and describes
+the consequence; it is never called deletion. Password fields are hidden,
+uncontrolled, marked `new-password`, entered twice and reset after every server
+result. Live feedback, visible focus, logical source order and a single-column
+narrow-screen layout preserve keyboard and mobile use.
+
+This is Task 3.4 evidence, not a universal component specification and not a
+start on Task 4.0. Staff identity maintenance remains Task 4.0a, and audit
+history remains Task 4.9.
+
+## 8. Audit history — owner-approved direction, deferred
 
 Recovered owner conversation evidence from 31 August 2026 confirms the hybrid
 audit-history direction. It is approved visual/product direction, but nothing
@@ -199,7 +222,7 @@ particular dimensions, spacing and component selections are not automatically
 universal requirements. Re-evaluate those details with the real event volumes,
 screen context and responsive behavior when Task 4.9 begins.
 
-## 8. What this file is not
+## 9. What this file is not
 
 - Not a component library
 - Not a specification anyone should build from without revisiting

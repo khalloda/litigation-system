@@ -6,11 +6,11 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 3 September 2026:** Task 3.3B's append-only event
-foundation and bounded independent-review correction are implemented locally
-and await independent review and owner-authorized push. **Do not start Task
-3.4.** Task 3.4 — User management is the exact next return point only after
-both Task 3.3B commits are accepted and pushed.
+**Current checkpoint — 3 September 2026:** Task 3.3B's three-commit chain is
+independently accepted and pushed. Task 3.4 Administrator-only user management
+is implemented locally and awaits independent review. **Do not start Task
+3.5.** Task 3.5 — High-impact quarantine review is the exact next return point
+after Task 3.4 is accepted.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1543,13 +1543,29 @@ only ever seen good data is not known to work.
       atomic filesystem/network delivery or client receipt.
 
       No viewer, drawer, audit export, archive/restore business workflow or
-      user-management feature was added. Task 3.4 is approved but not started
-      and remains blocked until both local Task 3.3B commits are independently
-      accepted and pushed.
+      user-management feature was added by Task 3.3B. Its three-commit chain
+      was later independently accepted and pushed before Task 3.4 began.
 
-- [ ] **3.4 User management** — Administrator only. Removing access means
-      disable/deactivate while retaining the user and staff rows (D25); do not
-      add physical deletion. Do not begin until both 3.3A and 3.3B are accepted.
+- [x] **3.4 User management** — implemented 3 September 2026 (**D36–D38**).
+      The Arabic/RTL `/users` page and its six directly inventoried Server
+      Actions are Administrator-only at the server boundary. Administrators
+      can list enabled and disabled accounts, create an account only for an
+      eligible existing active staff identity, correct a username, change a
+      role, disable, reactivate with a temporary password, and reset a
+      temporary password. No people, alias or staff record is created or
+      changed; no physical deletion or audit-history interface exists.
+
+      Migration `20260903160000_secure_user_account_lifecycle` removes runtime
+      account-insert privilege and supplies the one atomic account/immutable-
+      actor creation gateway. Database and service guards prevent self-
+      disablement, self-demotion, self-administrative reset and loss of the
+      last usable Administrator, including concurrent account changes and a
+      later person-deactivation path. Every lifecycle change invalidates the
+      required sessions and writes the complete ordered semantic event set in
+      the same transaction. Permanent checks retain the frozen Task 3.3
+      evidence while allowing legitimate one-account/one-human-actor growth.
+      Acceptance evidence:
+      [`docs/task-reports/2026-09-03-task-3-4-user-management.md`](docs/task-reports/2026-09-03-task-3-4-user-management.md).
 
 - [ ] **3.5 High-impact quarantine review checkpoint** — firm review after
       Task 3.4 and before Stage 4 (**D26**). Review all 55 quarantined matters,
@@ -1583,6 +1599,11 @@ than assuming one rule for every workflow. Test with real volumes.
       Both need the checker to parse TSX and CSS structurally rather than
       pattern-match lines. Roughly 2–4 hours. Deferred from the Stage 0
       re-review because there were no screens yet to check.
+
+- [ ] **4.0a Staff roster management** — future reviewed contract for new
+      hires and staff identity maintenance before go-live (**D36**). Do not
+      create accounts here: Task 3.4 only links accounts to eligible existing
+      active staff. This task remains unstarted.
 
 - [ ] **4.1 Clients** — list, detail, contacts, logo
 

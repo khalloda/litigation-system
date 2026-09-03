@@ -75,7 +75,7 @@
     "test:audit": "tsx scripts/test-audit.ts && tsx scripts/test-audit-events.ts",
     "test:audit-events": "tsx scripts/test-audit-events.ts",
     "test:permissions": "tsx scripts/test-permissions.ts",
-    "test:user-management": "tsx scripts/test-user-management.ts",
+    "test:user-management": "tsx scripts/test-user-management.ts && tsx scripts/test-user-management-ui.ts",
     "transform:client-logos": "tsx scripts/transform-client-logos.ts",
     "test:client-logo-transform": "tsx scripts/test-client-logo-transform.ts",
     "reconcile:gate4": "tsx scripts/reconcile-gate4.ts --prove-idempotency",

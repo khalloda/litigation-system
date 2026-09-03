@@ -419,6 +419,53 @@ emitted only after the server observes the stated fact. In particular,
 `download_completed` can mean that the server completed its emission point; it
 cannot prove that the client received the file.
 
+## User-account lifecycle — Task 3.4 contract
+
+Forward migration 59 is
+`20260903160000_secure_user_account_lifecycle`; its file and applied Prisma
+checksum are
+`364c04d7cf96a476cf3efaf092c5ffc7ad99389cf51a70b8b31d8f9d0268f15d`.
+Migrations 1–58 remain byte-identical. The project database contains 59 applied
+migrations plus the approved historical rollback.
+
+The restricted runtime no longer has direct `INSERT`, `DELETE` or `TRUNCATE`
+on `user_accounts`. Its single creation path is
+`create_user_account_with_actor(...)`, a narrowly granted fixed-search-path
+`SECURITY DEFINER` function. With validated human audit context, it locks and
+proves the acting account is a usable Administrator, re-reads an eligible
+existing active staff person by numeric ID, creates one account, obtains a
+separate actor identity from the actor sequence and creates the immutable human
+actor. The function returns only the account ID. Account, actor, row event and
+ordered semantic events remain in one transaction, so any later failure rolls
+back the entire creation.
+
+`guard_usable_administrator()` serializes availability-reducing changes with a
+transaction-scoped advisory lock. It rejects any user-account or person change
+that would leave no Administrator-role, enabled, password-initialized account
+linked to an active and login-eligible person. This covers concurrent
+disable/demotion attempts and future person deactivation. It is intentionally
+mutation-time enforcement, not a migration precondition, because clean replay
+creates the original accounts before local password initialization. The
+permanent operational-readiness invariant separately requires a usable
+Administrator in the live project database.
+
+Account semantic validation is distinct from generic archive/restore. Every
+lifecycle event requires a current human Administrator, the matching target
+human actor, `public.user_accounts`, an exact target account key, and the
+approved action/outcome shape. Password initialization/reset additionally
+accepts `system_administration` only for the controlled local command restricted
+to the four immutable original account IDs. Web initialization/reset records
+the validated human Administrator. `username_changed` is an explicit action;
+combined creation and reactivation write their full ordered event pairs.
+
+Permanent invariants retain the exact three system actors, the original four
+human actors and frozen Task 3.3 baseline evidence while enforcing a one-to-one
+account/human-actor relationship for current and future accounts. Current
+growth therefore does not rewrite a historical digest. The protected 5,209
+business rows and their digest, current attribution digest, four roles, 448
+authorization decisions, one baseline event and 583 field classifications are
+unchanged. The live invariant count is 92.
+
 ### Local setup and upgrade
 
 For an existing development `.env` that still has the old privileged

@@ -112,6 +112,48 @@ export const ROUTE_INVENTORY = [
     },
   },
   {
+    kind: 'page',
+    source: 'src/app/users/page.tsx',
+    route: '/users',
+    classification: { access: 'permission', area: 'usersAndRoles', action: 'view' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/users/actions.ts',
+    exportName: 'changeRoleAction',
+    classification: { access: 'permission', area: 'usersAndRoles', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/users/actions.ts',
+    exportName: 'correctUsernameAction',
+    classification: { access: 'permission', area: 'usersAndRoles', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/users/actions.ts',
+    exportName: 'createUserAction',
+    classification: { access: 'permission', area: 'usersAndRoles', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/users/actions.ts',
+    exportName: 'disableAccountAction',
+    classification: { access: 'permission', area: 'usersAndRoles', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/users/actions.ts',
+    exportName: 'reactivateAccountAction',
+    classification: { access: 'permission', area: 'usersAndRoles', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/users/actions.ts',
+    exportName: 'resetPasswordAction',
+    classification: { access: 'permission', area: 'usersAndRoles', action: 'manage' },
+  },
+  {
     kind: 'route',
     source: 'src/app/api/auth/[...nextauth]/route.ts',
     route: '/api/auth/[...nextauth]',

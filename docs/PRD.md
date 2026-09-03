@@ -66,6 +66,15 @@ About 10 people, four roles. Full matrix in `docs/PERMISSIONS.md`.
 - **Lawyer** — view only
 - **Paralegal** — view only, except administrative works which they update
 
+Task 3.4 implements Administrator-only account management for existing active
+staff. An Administrator can see enabled and disabled accounts, create an
+account for an eligible staff identity, correct a username, change a role,
+disable access, reactivate with a new temporary password and issue a temporary
+password reset. All actions are enforced from the validated server session and
+there is no account deletion, self-disablement, self-demotion or
+self-administrative reset. Staff roster and identity maintenance remain the
+separate future Task 4.0a; Task 3.4 never creates or edits a person or alias.
+
 ### Audit and accountability
 
 The old Access system cannot say who changed a record or reconstruct a sequence
