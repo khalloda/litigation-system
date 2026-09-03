@@ -720,12 +720,13 @@ model AuditEventTableRule {
 /// Explicit field allowlist. `redacted` fields record only that the field
 /// changed; their value is never admitted to an event.
 model AuditEventField {
-  entitySchema      String              @map("entity_schema")
-  entityTable       String              @map("entity_table")
-  fieldName         String              @map("field_name")
-  maxTextCharacters Int                 @default(1024) @map("max_text_characters") @db.SmallInt
-  captureMode       String              @default("value") @map("capture_mode")
-  tableRule         AuditEventTableRule @relation(fields: [entitySchema, entityTable], references: [entitySchema, entityTable], onDelete: Restrict, onUpdate: Restrict, map: "audit_event_fields_table_fkey")
+  entitySchema         String              @map("entity_schema")
+  entityTable          String              @map("entity_table")
+  fieldName            String              @map("field_name")
+  maxTextCharacters    Int                 @map("max_text_characters") @db.SmallInt
+  captureMode          String              @default("value") @map("capture_mode")
+  classificationReason String              @map("classification_reason")
+  tableRule            AuditEventTableRule @relation(fields: [entitySchema, entityTable], references: [entitySchema, entityTable], onDelete: Restrict, onUpdate: Restrict, map: "audit_event_fields_table_fkey")
 
   @@id([entitySchema, entityTable, fieldName], map: "audit_event_fields_pkey")
   @@map("audit_event_fields")

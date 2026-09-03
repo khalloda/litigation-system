@@ -15,8 +15,10 @@
   full-index review patch, then stop without beginning Task 3.4.
 - Correction: one later focused local commit named
   `fix: close Task 3.3B review gaps`, recorded in the correction section below.
+- Schema synchronization: one final focused local commit named
+  `fix: synchronize Task 3.3B Prisma model`, recorded below.
 - Exact next return point: Task 3.4 — User management, approved but not started,
-  only after independent acceptance and owner-authorized push of both Task 3.3B
+  only after independent acceptance and owner-authorized push of all Task 3.3B
   commits.
 
 ## Run configuration and scope
@@ -348,6 +350,44 @@ tested as atomic. The three future external event kinds remain server-observed
 facts and no database rollback is presented as proof of reversing an external
 side effect.
 
+### Post-review Prisma schema synchronization — 3 September 2026
+
+A final bounded review found that migration 58 and the live database agreed,
+but the Prisma model still described the migration-57 shape. Before editing,
+the migration showed required `classification_reason text` with its temporary
+backfill default removed and the default removed from `max_text_characters`.
+A read-only `information_schema.columns` query confirmed both columns are
+`NOT NULL` with no database default, while `capture_mode` remains `NOT NULL`
+with default `'value'::text`. In contrast, `AuditEventField` omitted
+`classificationReason` and declared `maxTextCharacters` with
+`@default(1024)`.
+
+The Prisma model now maps required `classificationReason` to
+`classification_reason`, gives it no default, and removes the obsolete Prisma
+default from mapped `maxTextCharacters`. The valid mapped `captureMode`
+`@default("value")` is unchanged. No migration or runtime behavior changed.
+
+The permanent audit source check now fails closed unless this exact three-field
+contract is present. Its self-test accepts the correct model and separately
+rejects a missing, optional or defaulted `classificationReason`, a restored
+`maxTextCharacters` default, and a missing or changed `captureMode` default.
+This synchronization does not change a classification, baseline, digest,
+protected value, task status or return point.
+
+Bounded verification reran Prisma format, validation and client generation;
+the complete `npm run check`; the production build; `npm run db:verify`;
+all 91 permanent `npm run db:check` invariants; and Git whitespace and scope
+checks. The database still reports 58 applied migrations plus the one approved
+rollback, seven actors, one baseline event/checkpoint and 583 classified
+fields. Migration 57 and 58 retain their exact file and database checksums,
+and the protected 5,209-row, attribution, billing, attendance, workbook, logo
+and reconciliation evidence remains exact. Only this report,
+`prisma/schema.prisma` and `scripts/check-audit.ts` changed; dependency,
+lockfile, raw-data, runtime-storage, credential, binary, workstation-path and
+disposable-artifact checks found no change. No disposable database suite was
+needed or rerun for this static synchronization, and no database write was
+performed.
+
 ## Verification result
 
 The final focused state passes:
@@ -391,5 +431,5 @@ operational access control remain necessary for defense beyond the application
 boundary.
 
 The exact return point is **independent review and owner-authorized push of the
-two local Task 3.3B commits**. After acceptance, resume at **Task 3.4 — User
+local Task 3.3B commits**. After acceptance, resume at **Task 3.4 — User
 management**. Do not start Task 3.4 from this run.

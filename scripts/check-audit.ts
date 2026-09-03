@@ -420,7 +420,114 @@ function accountIdExpressions(sourceFile: ts.SourceFile): string[] {
   return expressions;
 }
 
+export function auditEventFieldPrismaModelFailures(schemaSource: string): string[] {
+  const modelBlocks = [...schemaSource.matchAll(/^model\s+AuditEventField\s*\{([\s\S]*?)^\}/gmu)];
+  if (modelBlocks.length !== 1) {
+    return ['Prisma schema must contain exactly one AuditEventField model'];
+  }
+
+  const model = modelBlocks[0]![1] ?? '';
+  const failures: string[] = [];
+  const fieldContract = (fieldName: string, expected: RegExp, requirement: string): void => {
+    const declarations = model.match(new RegExp(`^\\s*${fieldName}\\b.*$`, 'gmu')) ?? [];
+    if (declarations.length !== 1) {
+      failures.push(`AuditEventField.${fieldName} must be declared exactly once`);
+    } else if (!expected.test(declarations[0]!)) {
+      failures.push(`AuditEventField.${fieldName} ${requirement}`);
+    }
+  };
+
+  fieldContract(
+    'classificationReason',
+    /^\s*classificationReason\s+String\s+@map\("classification_reason"\)\s*$/u,
+    'must be a required String mapped to classification_reason with no default',
+  );
+  fieldContract(
+    'maxTextCharacters',
+    /^\s*maxTextCharacters\s+Int\s+@map\("max_text_characters"\)\s+@db\.SmallInt\s*$/u,
+    'must map to max_text_characters with no default',
+  );
+  fieldContract(
+    'captureMode',
+    /^\s*captureMode\s+String\s+@default\("value"\)\s+@map\("capture_mode"\)\s*$/u,
+    'must map to capture_mode and retain the value default',
+  );
+  return failures;
+}
+
 function selfTest(): void {
+  const correctAuditEventFieldModel = `model AuditEventField {
+  entitySchema         String @map("entity_schema")
+  entityTable          String @map("entity_table")
+  fieldName            String @map("field_name")
+  maxTextCharacters    Int    @map("max_text_characters") @db.SmallInt
+  captureMode          String @default("value") @map("capture_mode")
+  classificationReason String @map("classification_reason")
+}`;
+  assert.deepEqual(
+    auditEventFieldPrismaModelFailures(correctAuditEventFieldModel),
+    [],
+    'the correct AuditEventField Prisma model failed its static contract',
+  );
+  const prismaModelFailures = [
+    {
+      label: 'missing classificationReason',
+      schema: correctAuditEventFieldModel.replace(
+        '  classificationReason String @map("classification_reason")\n',
+        '',
+      ),
+      reason: 'classificationReason must be declared exactly once',
+    },
+    {
+      label: 'optional classificationReason',
+      schema: correctAuditEventFieldModel.replace(
+        'classificationReason String @map',
+        'classificationReason String? @map',
+      ),
+      reason: 'classificationReason must be a required String',
+    },
+    {
+      label: 'defaulted classificationReason',
+      schema: correctAuditEventFieldModel.replace(
+        'classificationReason String @map',
+        'classificationReason String @default("unspecified") @map',
+      ),
+      reason: 'classificationReason must be a required String',
+    },
+    {
+      label: 'restored maxTextCharacters default',
+      schema: correctAuditEventFieldModel.replace(
+        'maxTextCharacters    Int    @map',
+        'maxTextCharacters    Int    @default(1024) @map',
+      ),
+      reason: 'maxTextCharacters must map to max_text_characters with no default',
+    },
+    {
+      label: 'missing captureMode default',
+      schema: correctAuditEventFieldModel.replace(
+        'String @default("value") @map("capture_mode")',
+        'String @map("capture_mode")',
+      ),
+      reason: 'captureMode must map to capture_mode and retain the value default',
+    },
+    {
+      label: 'changed captureMode default',
+      schema: correctAuditEventFieldModel.replace(
+        '@default("value") @map("capture_mode")',
+        '@default("redacted") @map("capture_mode")',
+      ),
+      reason: 'captureMode must map to capture_mode and retain the value default',
+    },
+  ] as const;
+  for (const fixture of prismaModelFailures) {
+    assert.ok(
+      auditEventFieldPrismaModelFailures(fixture.schema).some((failure) =>
+        failure.includes(fixture.reason),
+      ),
+      `${fixture.label} was not rejected for its intended reason`,
+    );
+  }
+
   const legitimateRuntime = discoverAuditRuntimeSources(process.cwd());
   assert.deepEqual(
     auditRuntimeSourceFailures(legitimateRuntime),
@@ -1238,7 +1345,7 @@ export const run = () => withApprovedMigrationClient(async (database) => databas
     rmSync(d35Root, { force: true, recursive: true });
   }
   console.log(
-    `check:audit self-test — ${negative.length + 13} semantic/fingerprint/D35 bypass fixtures rejected; ${positive.length} focused legitimate fixtures plus the complete runtime, eight fingerprinted SQL calls and the approved migration gateway accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
+    `check:audit self-test — ${prismaModelFailures.length} Prisma schema fixtures plus ${negative.length + 13} semantic/fingerprint/D35 bypass fixtures rejected; the correct AuditEventField model, ${positive.length} focused legitimate fixtures, the complete runtime, eight fingerprinted SQL calls and the approved migration gateway accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
   );
 }
 
@@ -1253,6 +1360,7 @@ function main(): void {
   const migrationDatabase = source('scripts/lib/migration-db.ts');
   const migrationGateway = source('scripts/lib/migration-principal.ts');
   const passwordCommand = source('scripts/auth-set-password.ts');
+  const prismaSchema = source('prisma/schema.prisma');
   const packageJson = JSON.parse(source('package.json')) as { scripts?: Record<string, string> };
 
   assert.match(database, /runtimeIdentity\.username !== 'litigation_runtime'/u);
@@ -1288,6 +1396,7 @@ function main(): void {
   ]);
   assert.deepEqual(accountIdExpressions(changePassword), ['Number(session.user.id)']);
   assert.match(passwordCommand, /database: migrationDb/u);
+  assert.deepEqual(auditEventFieldPrismaModelFailures(prismaSchema), []);
 
   const runtimeSources = discoverAuditRuntimeSources(process.cwd());
   const failures = auditRuntimeSourceFailures(runtimeSources);
@@ -1320,6 +1429,7 @@ function main(): void {
     `PASS ${runtimeSources.length} project runtime sources use the exact reviewed audit gateway and call-site inventory`,
   );
   console.log('PASS request data cannot select human or system audit context');
+  console.log('PASS AuditEventField Prisma model matches the migration-58 database contract');
   console.log('PASS runtime and migration database principals are statically separated');
 }
 
