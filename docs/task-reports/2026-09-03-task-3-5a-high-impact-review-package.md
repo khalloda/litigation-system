@@ -1,7 +1,7 @@
 # Task 3.5A — Prepare the high-impact quarantine-review package
 
-- Implemented: 3 September 2026; pending independent review of the single
-  local commit
+- Implemented: 3 September 2026; the bounded validator correction is pending
+  independent review of the two local commits
 - Codex model: GPT-5.6 Sol
 - Reasoning effort: high
 - Environment: Local
@@ -13,14 +13,16 @@
   already-installed local Excel application without external services or a
   second implementation context.
 - Starting commit: `e7c4c0337561f21667d417294b2a1442596f01e5`
-- Final commit: the single enclosing commit named
-  `feat: prepare Task 3.5 quarantine review package`; record its SHA after
-  creation because a content-addressed commit cannot contain its own SHA
+- Package commit: `c20c0fda1bc9ea8795b5c5fa866caa2c01e1ef7e`
+  (`feat: prepare Task 3.5 quarantine review package`)
+- Validator correction: the enclosing commit named
+  `fix: close Task 3.5A validation gaps`; record its SHA after creation because
+  a content-addressed commit cannot contain its own SHA
 - Push status: not pushed; `origin/main` remains
   `e7c4c0337561f21667d417294b2a1442596f01e5`
-- Exact authorized stop point: one local Task 3.5A package-preparation commit,
-  one external full-index binary-safe review patch, and no database write or
-  answer application
+- Exact authorized stop point: one local correction commit after the package
+  commit, one correction-only external full-index binary-safe review patch,
+  and no workbook or database write or answer application
 - Exact next return point: firm completion of the Task 3.5 workbook; Task 3.5B
   answer application remains separately authorized future work
 
@@ -42,6 +44,20 @@ operation active. Migration 59 remained
 `364c04d7cf96a476cf3efaf092c5ffc7ad99389cf51a70b8b31d8f9d0268f15d`.
 PostgreSQL 17.11 reported all 59 migrations applied plus the approved
 historical rollback, and all 92 permanent invariants passed before editing.
+
+The validator correction used the owner-mandated GPT-5.6 Sol / high / Local
+configuration with expected medium usage. Subagents were prohibited and none
+were used. The spreadsheet skill supplied the preservation, exact-validation
+and visual-integrity discipline, while the existing ExcelJS implementation
+remained authoritative for this repository. Because the correction did not
+author or edit the XLSX, it did not replace ExcelJS or create an alternate
+artifact.
+
+Its mandatory preflight fetched `origin` and proved clean `main` at package
+commit `c20c0fda1bc9ea8795b5c5fa866caa2c01e1ef7e`, parent and `origin/main`
+`e7c4c0337561f21667d417294b2a1442596f01e5`, exactly 1 ahead / 0 behind, no
+Git operation, the exact nine-file package inventory, the workbook SHA-256
+above and unchanged migration 59.
 
 ## Approved and prohibited scope
 
@@ -99,6 +115,46 @@ The tracked changed files are exactly:
 - `docs/MIGRATION.md`
 - `docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md`
 
+The later bounded validator correction changes exactly:
+
+- `scripts/lib/high-impact-review-workbook.ts`
+- `scripts/test-high-impact-review-workbook.ts`
+- `docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md`
+
+It does not change the generated workbook, checksum manifest, workbook format,
+Arabic labels, sheet inventory, row identity, evidence or decision meaning.
+
+## Bounded validator correction
+
+Pre-edit in-memory reproductions established four gaps in the package commit's
+validator:
+
+1. `ClientChoices` could be redirected to the exact `CourtChoices` range and
+   validation still passed.
+2. Reviewer-name, review-date and decision-note data validations could be
+   removed and validation still passed.
+3. A 201-character reviewer, dates before 2000 or after 2100, a 501-character
+   free-text target and a 2,001-character note each counted as a completed
+   decision when the remaining fields were valid.
+4. A normal-width extra visible column containing an additional Arabic header
+   and firm-like value was ignored and the workbook still reported zero
+   answers.
+
+The shared validator now derives the eight exact defined-name contracts from
+the protected lookup manifest and compares the complete name inventory plus
+each exact `__lookups` start/end range. Every answer cell is checked against
+its exact list, text-length or bounded-date validation, including type,
+operator, formulas, blank policy, error policy and editable/locked state. The
+same 500/200/2,000-character limits and inclusive 2000-01-01 through
+2100-12-31 date bounds are enforced semantically, so pasted or externally
+edited values cannot bypass Excel's UI rules.
+
+Any value, formula, hyperlink, note or other non-empty cell content beyond the
+approved visible columns is rejected; harmless unused column formatting is
+not treated as an answer. The generator already validates an existing workbook
+before reaching its write step, so this same fail-closed check prevents it from
+overwriting a workbook containing extra or out-of-contract firm content.
+
 ## Verification and exact results
 
 The pre-edit repeatable-read, read-only database inventory returned exactly:
@@ -132,6 +188,14 @@ target, parent-following hearing with an incomplete parent, writing SQL,
 non-read-only transaction and an artifact entering Git. Only 382 complete,
 internally consistent explicit decisions can produce a complete result.
 
+The correction fixtures additionally reject redirected, shortened and expanded
+named ranges; missing or altered reviewer/date/note validations; altered
+decision, lookup-target and free-text-target rules; overlong target, reviewer
+and note values; both out-of-range dates; and a populated extra visible column.
+Exact text limits and both inclusive date boundaries remain valid. Every
+pre-edit bypass now fails for its intended reason, while the unchanged
+unanswered workbook remains **0 complete, 382 incomplete, 0 invalid**.
+
 The first sandboxed focused-test invocation reached the final Git-artifact
 check and then stopped because Windows denied Node's read-only `spawnSync git`
 with `EPERM`. The unchanged command was rerun with permission for that local
@@ -147,10 +211,10 @@ All five visible sheets were inspected. The cover and representative beginning,
 middle and answer segments of every answer sheet render right-to-left with a
 frozen heading row, filters, readable wrapped Arabic, non-clipped material
 sample fields, deliberate widths/heights, visible editable styling and
-color-plus-text priority. The validator independently read the full workbook
-and proved every expected validation range and named lookup, sheet protection,
-RTL/freeze/filter/layout contract, the absence of formulas and the two
-very-hidden sheets.
+color-plus-text priority. The corrected validator independently reads the full
+workbook and proves every exact defined-name sheet/start/end range, complete
+answer-cell validation contract, sheet protection, RTL/freeze/filter/layout
+contract, absence of formulas and the two very-hidden sheets.
 
 One hidden-Excel clipboard attempt produced a blank preview and left two
 windowless Excel processes. Both processes belonged to this inspection and

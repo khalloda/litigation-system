@@ -71,6 +71,55 @@ function firstLookupChoices(workbook: ExcelJS.Workbook): Map<string, string> {
   return result;
 }
 
+function reviewLocationForTargetKind(workbook: ExcelJS.Workbook, targetKind: TargetKind) {
+  const identity = workbook.getWorksheet(IDENTITY_SHEET)!;
+  for (let identityRow = 8; identityRow <= identity.rowCount; identityRow += 1) {
+    if (identity.getCell(identityRow, 14).text !== targetKind) continue;
+    const sheet = workbook.getWorksheet(identity.getCell(identityRow, 1).text)!;
+    const reviewId = identity.getCell(identityRow, 2).text;
+    for (let row = 2; row <= sheet.rowCount; row += 1) {
+      if (sheet.getCell(row, 1).text === reviewId) {
+        return {
+          sheet,
+          row,
+          columns: answerColumnIndexes(reviewId.startsWith('M-') ? 'matter' : 'hearing'),
+        };
+      }
+    }
+  }
+  throw new Error(`No review row uses target kind ${targetKind}`);
+}
+
+function setDefinedNameRanges(
+  workbook: ExcelJS.Workbook,
+  name: string,
+  ranges: readonly string[],
+): void {
+  workbook.definedNames.model = workbook.definedNames.model.map((entry) =>
+    entry.name === name ? { ...entry, ranges: [...ranges] } : entry,
+  );
+}
+
+function changeRangeEnd(range: string, delta: number): string {
+  return range.replace(
+    /(\$D\$)(\d+)$/u,
+    (_match, prefix: string, row: string) => `${prefix}${Number(row) + delta}`,
+  );
+}
+
+function completeCorrection(workbook: ExcelJS.Workbook, targetKind: TargetKind) {
+  const location = reviewLocationForTargetKind(workbook, targetKind);
+  const choices = firstLookupChoices(workbook);
+  location.sheet.getCell(location.row, location.columns.decision).value = DECISION_STATUSES[0];
+  location.sheet.getCell(location.row, location.columns.target).value =
+    choices.get(targetKind) ?? 'دائرة معتمدة للاختبار';
+  location.sheet.getCell(location.row, location.columns.reviewer).value = 'مراجع اختبار';
+  location.sheet.getCell(location.row, location.columns.date).value = new Date(
+    '2026-09-03T00:00:00.000Z',
+  );
+  return location;
+}
+
 function fillAllDecisions(workbook: ExcelJS.Workbook): void {
   const kinds = identityTargetKinds(workbook);
   const choices = firstLookupChoices(workbook);
@@ -129,6 +178,218 @@ async function main(): Promise<void> {
     console.log(
       '  ok    correct unanswered workbook passes structurally but cannot be called complete',
     );
+
+    const namedRangeSource = await cloneWorkbook(firstBuffer);
+    const clientRange = namedRangeSource.definedNames.getRanges('ClientChoices').ranges[0]!;
+    const courtRange = namedRangeSource.definedNames.getRanges('CourtChoices').ranges[0]!;
+    const namedRangeCases: Array<[string, string]> = [
+      ['redirected to CourtChoices', courtRange],
+      ['shortened', changeRangeEnd(clientRange, -1)],
+      ['expanded', changeRangeEnd(clientRange, 1)],
+    ];
+    for (const [label, range] of namedRangeCases) {
+      const workbook = await cloneWorkbook(firstBuffer);
+      setDefinedNameRanges(workbook, 'ClientChoices', [range]);
+      expectContractFailure(
+        () => validateHighImpactWorkbook(workbook, snapshot),
+        'named validation range ClientChoices must be exactly',
+      );
+      console.log(`  ok    ${label} ClientChoices range is rejected`);
+    }
+
+    const answerValidationCases: Array<[string, (workbook: ExcelJS.Workbook) => void, string]> = [
+      [
+        'missing reviewer validation',
+        (workbook) => {
+          const location = reviewLocationForTargetKind(workbook, 'client');
+          location.sheet.getCell(location.row, location.columns.reviewer).dataValidation =
+            {} as ExcelJS.DataValidation;
+        },
+        'reviewer: data-validation contract changed',
+      ],
+      [
+        'altered reviewer maximum',
+        (workbook) => {
+          const location = reviewLocationForTargetKind(workbook, 'client');
+          const cell = location.sheet.getCell(location.row, location.columns.reviewer);
+          cell.dataValidation = { ...cell.dataValidation, formulae: [201] };
+        },
+        'reviewer: data-validation contract changed',
+      ],
+      [
+        'missing review-date validation',
+        (workbook) => {
+          const location = reviewLocationForTargetKind(workbook, 'client');
+          location.sheet.getCell(location.row, location.columns.date).dataValidation =
+            {} as ExcelJS.DataValidation;
+        },
+        'review date: data-validation contract changed',
+      ],
+      [
+        'altered review-date bounds',
+        (workbook) => {
+          const location = reviewLocationForTargetKind(workbook, 'client');
+          const cell = location.sheet.getCell(location.row, location.columns.date);
+          cell.dataValidation = {
+            ...cell.dataValidation,
+            formulae: [new Date('1999-12-31T00:00:00.000Z'), new Date('2100-12-31T00:00:00.000Z')],
+          };
+        },
+        'review date: data-validation contract changed',
+      ],
+      [
+        'missing decision-note validation',
+        (workbook) => {
+          const location = reviewLocationForTargetKind(workbook, 'client');
+          location.sheet.getCell(location.row, location.columns.note).dataValidation =
+            {} as ExcelJS.DataValidation;
+        },
+        'decision note: data-validation contract changed',
+      ],
+      [
+        'altered decision-note maximum',
+        (workbook) => {
+          const location = reviewLocationForTargetKind(workbook, 'client');
+          const cell = location.sheet.getCell(location.row, location.columns.note);
+          cell.dataValidation = { ...cell.dataValidation, formulae: [2_001] };
+        },
+        'decision note: data-validation contract changed',
+      ],
+      [
+        'altered free-text target maximum',
+        (workbook) => {
+          const location = reviewLocationForTargetKind(workbook, 'circuit');
+          const cell = location.sheet.getCell(location.row, location.columns.target);
+          cell.dataValidation = { ...cell.dataValidation, formulae: [501] };
+        },
+        'free-text target: data-validation contract changed',
+      ],
+      [
+        'altered decision-list rule',
+        (workbook) => {
+          const location = reviewLocationForTargetKind(workbook, 'client');
+          const cell = location.sheet.getCell(location.row, location.columns.decision);
+          cell.dataValidation = { ...cell.dataValidation, allowBlank: false };
+        },
+        'decision: data-validation contract changed',
+      ],
+      [
+        'altered target-list rule',
+        (workbook) => {
+          const location = reviewLocationForTargetKind(workbook, 'client');
+          const cell = location.sheet.getCell(location.row, location.columns.target);
+          cell.dataValidation = { ...cell.dataValidation, showErrorMessage: false };
+        },
+        'target: data-validation contract changed',
+      ],
+    ];
+    for (const [label, mutate, message] of answerValidationCases) {
+      const workbook = await cloneWorkbook(firstBuffer);
+      mutate(workbook);
+      expectContractFailure(() => validateHighImpactWorkbook(workbook, snapshot), message);
+      console.log(`  ok    ${label} is rejected`);
+    }
+
+    const semanticLimitCases: Array<
+      [string, TargetKind, (location: ReturnType<typeof completeCorrection>) => void, string]
+    > = [
+      [
+        'free-text target over 500 characters',
+        'circuit',
+        (location) => {
+          location.sheet.getCell(location.row, location.columns.target).value = 'د'.repeat(501);
+        },
+        'الهدف يتجاوز 500 حرفًا',
+      ],
+      [
+        'reviewer over 200 characters',
+        'client',
+        (location) => {
+          location.sheet.getCell(location.row, location.columns.reviewer).value = 'م'.repeat(201);
+        },
+        'اسم المراجع يتجاوز 200 حرفًا',
+      ],
+      [
+        'decision note over 2,000 characters',
+        'client',
+        (location) => {
+          location.sheet.getCell(location.row, location.columns.note).value = 'ن'.repeat(2_001);
+        },
+        'ملاحظة القرار تتجاوز 2000 حرفًا',
+      ],
+      [
+        'review date below 2000-01-01',
+        'client',
+        (location) => {
+          location.sheet.getCell(location.row, location.columns.date).value = new Date(
+            '1999-12-31T00:00:00.000Z',
+          );
+        },
+        'تاريخ المراجعة غير صحيح',
+      ],
+      [
+        'review date above 2100-12-31',
+        'client',
+        (location) => {
+          location.sheet.getCell(location.row, location.columns.date).value = new Date(
+            '2101-01-01T00:00:00.000Z',
+          );
+        },
+        'تاريخ المراجعة غير صحيح',
+      ],
+    ];
+    for (const [label, targetKind, mutate, issue] of semanticLimitCases) {
+      const workbook = await cloneWorkbook(firstBuffer);
+      const location = completeCorrection(workbook, targetKind);
+      mutate(location);
+      const result = validateHighImpactWorkbook(workbook, snapshot);
+      assert.equal(result.completed, 0, label);
+      assert.equal(result.invalid, 1, label);
+      assert.equal(result.complete, false, label);
+      assert.ok(
+        result.issues.some((item) => item.includes(issue)),
+        label,
+      );
+      console.log(`  ok    ${label} is invalid, never complete`);
+    }
+
+    const inclusiveLimits = await cloneWorkbook(firstBuffer);
+    const inclusiveLocation = completeCorrection(inclusiveLimits, 'circuit');
+    inclusiveLocation.sheet.getCell(inclusiveLocation.row, inclusiveLocation.columns.target).value =
+      'د'.repeat(500);
+    inclusiveLocation.sheet.getCell(
+      inclusiveLocation.row,
+      inclusiveLocation.columns.reviewer,
+    ).value = 'م'.repeat(200);
+    inclusiveLocation.sheet.getCell(inclusiveLocation.row, inclusiveLocation.columns.note).value =
+      'ن'.repeat(2_000);
+    inclusiveLocation.sheet.getCell(inclusiveLocation.row, inclusiveLocation.columns.date).value =
+      new Date('2000-01-01T00:00:00.000Z');
+    const inclusiveResult = validateHighImpactWorkbook(inclusiveLimits, snapshot);
+    assert.equal(inclusiveResult.completed, 1);
+    assert.equal(inclusiveResult.invalid, 0);
+    const upperDate = await cloneWorkbook(firstBuffer);
+    const upperLocation = completeCorrection(upperDate, 'client');
+    upperLocation.sheet.getCell(upperLocation.row, upperLocation.columns.date).value = new Date(
+      '2100-12-31T00:00:00.000Z',
+    );
+    const upperResult = validateHighImpactWorkbook(upperDate, snapshot);
+    assert.equal(upperResult.completed, 1);
+    assert.equal(upperResult.invalid, 0);
+    console.log('  ok    exact text limits and both inclusive date bounds remain valid');
+
+    const extraVisibleColumn = await cloneWorkbook(firstBuffer);
+    const extraSheet = extraVisibleColumn.getWorksheet(VISIBLE_SHEETS[1])!;
+    const extraColumn = extraSheet.columnCount + 1;
+    extraSheet.getColumn(extraColumn).width = 24;
+    extraSheet.getCell(1, extraColumn).value = 'إفادة إضافية';
+    extraSheet.getCell(1, extraColumn).alignment = { wrapText: true };
+    extraSheet.getCell(2, extraColumn).value = 'اعتماد المكتب';
+    expectContractFailure(
+      () => validateHighImpactWorkbook(extraVisibleColumn, snapshot),
+      'content is outside the approved visible-column contract',
+    );
+    console.log('  ok    an extra populated normal-width visible column is rejected');
 
     const reordered = await cloneWorkbook(firstBuffer);
     const wrongClient = reordered.getWorksheet(VISIBLE_SHEETS[1])!;

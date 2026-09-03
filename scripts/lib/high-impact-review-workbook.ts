@@ -71,6 +71,11 @@ export const PARENT_DECISION_STATUSES = [
 const NULL_DISPLAY = '(فارغ / NULL)';
 const EMPTY_TEXT_DISPLAY = '(نص فارغ)';
 const NOT_APPLICABLE_DISPLAY = 'غير مطلوب';
+const MAX_FREE_TEXT_TARGET_CHARACTERS = 500;
+const MAX_REVIEWER_CHARACTERS = 200;
+const MAX_DECISION_NOTE_CHARACTERS = 2_000;
+const MIN_REVIEW_DATE = '2000-01-01';
+const MAX_REVIEW_DATE = '2100-12-31';
 const HEADER_FILL = 'FF17365D';
 const EVIDENCE_FILL = 'FFF2F2F2';
 const EDITABLE_FILL = 'FFDDEBF7';
@@ -247,6 +252,17 @@ type LookupManifestRow = {
   label: string;
   choice: string;
   databaseBacked: boolean;
+};
+
+const LOOKUP_RANGE_NAMES: Record<LookupManifestRow['kind'], string> = {
+  decision_status: 'DecisionStatuses',
+  parent_decision_status: 'ParentDecisionStatuses',
+  client: 'ClientChoices',
+  court: 'CourtChoices',
+  importance: 'ImportanceChoices',
+  branch: 'BranchChoices',
+  category: 'CategoryChoices',
+  type: 'TypeChoices',
 };
 
 export type WorkbookBuildResult = {
@@ -888,6 +904,25 @@ function lookupManifestRows(snapshot: HighImpactReviewSnapshot): LookupManifestR
   return rows;
 }
 
+function definedNameContracts(
+  rows: readonly LookupManifestRow[],
+): Array<{ name: string; range: string }> {
+  const ranges = new Map<LookupManifestRow['kind'], { start: number; end: number }>();
+  rows.forEach((entry, index) => {
+    const rowNumber = index + 2;
+    const range = ranges.get(entry.kind);
+    if (range === undefined) ranges.set(entry.kind, { start: rowNumber, end: rowNumber });
+    else {
+      if (rowNumber !== range.end + 1) fail(`${entry.kind}: lookup rows are not contiguous`);
+      range.end = rowNumber;
+    }
+  });
+  return [...ranges].map(([kind, range]) => ({
+    name: LOOKUP_RANGE_NAMES[kind],
+    range: `${LOOKUP_SHEET}!$D$${range.start}:$D$${range.end}`,
+  }));
+}
+
 export function lookupManifestSha256(rows: readonly LookupManifestRow[]): string {
   return sha256(
     rows
@@ -943,6 +978,21 @@ function textValidation(maximum: number): ExcelJS.DataValidation {
     showErrorMessage: true,
     errorTitle: 'النص أطول من المسموح',
     error: `الحد الأقصى ${maximum} حرفًا.`,
+  };
+}
+
+function dateValidation(): ExcelJS.DataValidation {
+  return {
+    type: 'date',
+    operator: 'between',
+    allowBlank: true,
+    formulae: [
+      new Date(`${MIN_REVIEW_DATE}T00:00:00.000Z`),
+      new Date(`${MAX_REVIEW_DATE}T00:00:00.000Z`),
+    ],
+    showErrorMessage: true,
+    errorTitle: 'تاريخ غير صحيح',
+    error: 'أدخل تاريخًا صحيحًا.',
   };
 }
 
@@ -1024,7 +1074,7 @@ async function addReviewSheet(
     const targetRange = namedRangeForTarget(review.targetKind);
     if (targetRange !== null) targetCell.dataValidation = listValidation(targetRange);
     else if (review.targetKind === 'circuit' || review.targetKind === 'text') {
-      targetCell.dataValidation = textValidation(500);
+      targetCell.dataValidation = textValidation(MAX_FREE_TEXT_TARGET_CHARACTERS);
     } else {
       targetCell.fill = {
         type: 'pattern',
@@ -1034,18 +1084,10 @@ async function addReviewSheet(
       targetCell.protection = { locked: true };
       targetCell.value = NOT_APPLICABLE_DISPLAY;
     }
-    reviewerCell.dataValidation = textValidation(200);
+    reviewerCell.dataValidation = textValidation(MAX_REVIEWER_CHARACTERS);
     dateCell.numFmt = 'yyyy-mm-dd';
-    dateCell.dataValidation = {
-      type: 'date',
-      operator: 'between',
-      allowBlank: true,
-      formulae: [new Date('2000-01-01T00:00:00Z'), new Date('2100-12-31T00:00:00Z')],
-      showErrorMessage: true,
-      errorTitle: 'تاريخ غير صحيح',
-      error: 'أدخل تاريخًا صحيحًا.',
-    };
-    noteCell.dataValidation = textValidation(2000);
+    dateCell.dataValidation = dateValidation();
+    noteCell.dataValidation = textValidation(MAX_DECISION_NOTE_CHARACTERS);
   }
   await protectVisibleSheet(sheet);
 }
@@ -1115,34 +1157,17 @@ function addLookupSheet(workbook: ExcelJS.Workbook, rows: readonly LookupManifes
   sheet.state = 'veryHidden';
   sheet.columns = [{ width: 26 }, { width: 16 }, { width: 70 }, { width: 88 }, { width: 18 }];
   sheet.addRow(['lookup_kind', 'database_id_or_code', 'label', 'choice', 'database_backed']);
-  const ranges = new Map<string, { start: number; end: number }>();
-  const rangeNames: Record<LookupManifestRow['kind'], string> = {
-    decision_status: 'DecisionStatuses',
-    parent_decision_status: 'ParentDecisionStatuses',
-    client: 'ClientChoices',
-    court: 'CourtChoices',
-    importance: 'ImportanceChoices',
-    branch: 'BranchChoices',
-    category: 'CategoryChoices',
-    type: 'TypeChoices',
-  };
   rows.forEach((entry) => {
-    const row = sheet.addRow([
+    sheet.addRow([
       entry.kind,
       entry.id,
       entry.label,
       entry.choice,
       entry.databaseBacked ? 'true' : 'false',
     ]);
-    const range = ranges.get(entry.kind);
-    if (range === undefined) ranges.set(entry.kind, { start: row.number, end: row.number });
-    else range.end = row.number;
   });
-  for (const [kind, range] of ranges) {
-    workbook.definedNames.add(
-      `${LOOKUP_SHEET}!$D$${range.start}:$D$${range.end}`,
-      rangeNames[kind as LookupManifestRow['kind']],
-    );
+  for (const contract of definedNameContracts(rows)) {
+    workbook.definedNames.add(contract.range, contract.name);
   }
   void sheet.protect('', { selectLockedCells: true, selectUnlockedCells: false });
 }
@@ -1272,6 +1297,14 @@ function cellText(value: ExcelJS.CellValue | null | undefined): string {
   }
   if (typeof value === 'object' && 'text' in value) return String(value.text ?? '');
   return String(value);
+}
+
+function cellHasUserContent(cell: ExcelJS.Cell): boolean {
+  const value = cell.value;
+  if (value !== null && value !== undefined && (typeof value !== 'string' || value !== '')) {
+    return true;
+  }
+  return cell.note !== undefined && cell.note !== null && cell.note !== '';
 }
 
 function nullableJson(value: ExcelJS.CellValue, where: string): string | null {
@@ -1445,6 +1478,13 @@ function assertWorkbookShape(workbook: ExcelJS.Workbook): void {
   const actualSheets = workbook.worksheets.map((sheet) => sheet.name);
   if (canonicalJson(actualSheets) !== canonicalJson(expectedSheets))
     fail('workbook sheet inventory or order changed');
+  const visibleColumnCounts = new Map<string, number>([
+    [VISIBLE_SHEETS[0], 2],
+    [VISIBLE_SHEETS[1], MATTER_HEADERS.length + ANSWER_HEADERS.length],
+    [VISIBLE_SHEETS[2], MATTER_HEADERS.length + ANSWER_HEADERS.length],
+    [VISIBLE_SHEETS[3], HEARING_HEADERS.length + ANSWER_HEADERS.length],
+    [VISIBLE_SHEETS[4], HEARING_HEADERS.length + ANSWER_HEADERS.length],
+  ]);
   for (const name of VISIBLE_SHEETS) {
     const sheet = workbook.getWorksheet(name)!;
     if (sheet.state !== 'visible') fail(`${name}: visible sheet is hidden`);
@@ -1459,8 +1499,19 @@ function assertWorkbookShape(workbook: ExcelJS.Workbook): void {
     sheet.getRow(1).eachCell((cell) => {
       if (cell.alignment?.wrapText !== true) fail(`${name}: a heading is not wrapped`);
     });
-    if (sheet.columns.some((column) => (column.width ?? 0) < 12))
-      fail(`${name}: a column is too narrow`);
+    const approvedColumnCount = visibleColumnCounts.get(name)!;
+    for (let column = 1; column <= approvedColumnCount; column += 1) {
+      if ((sheet.getColumn(column).width ?? 0) < 12) fail(`${name}: a column is too narrow`);
+    }
+    sheet.eachRow({ includeEmpty: true }, (row) => {
+      const lastColumn = Math.max(sheet.columnCount, row.cellCount);
+      for (let column = approvedColumnCount + 1; column <= lastColumn; column += 1) {
+        const cell = row.getCell(column);
+        if (cellHasUserContent(cell)) {
+          fail(`${name}!${cell.address}: content is outside the approved visible-column contract`);
+        }
+      }
+    });
     if (!worksheetIsProtected(sheet)) fail(`${name}: evidence sheet protection is missing`);
   }
   for (const name of [IDENTITY_SHEET, LOOKUP_SHEET]) {
@@ -1485,38 +1536,68 @@ function worksheetIsProtected(sheet: ExcelJS.Worksheet): boolean {
   );
 }
 
-function assertNamedRanges(workbook: ExcelJS.Workbook): void {
-  for (const name of [
-    'DecisionStatuses',
-    'ParentDecisionStatuses',
-    'ClientChoices',
-    'CourtChoices',
-    'ImportanceChoices',
-    'BranchChoices',
-    'CategoryChoices',
-    'TypeChoices',
-  ]) {
-    const ranges = workbook.definedNames.getRanges(name).ranges;
-    if (ranges.length !== 1 || !ranges[0]!.replaceAll("'", '').startsWith(`${LOOKUP_SHEET}!$D$`)) {
-      fail(`named validation range ${name} is missing or broken`);
+function normalizeDefinedNameRange(range: string): string {
+  const quotedPrefix = `'${LOOKUP_SHEET}'!`;
+  return range.startsWith(quotedPrefix)
+    ? `${LOOKUP_SHEET}!${range.slice(quotedPrefix.length)}`
+    : range;
+}
+
+function assertNamedRanges(workbook: ExcelJS.Workbook, rows: readonly LookupManifestRow[]): void {
+  const expected = definedNameContracts(rows).sort((left, right) =>
+    left.name.localeCompare(right.name, 'en'),
+  );
+  const actualNames = workbook.definedNames.model.map((entry) => entry.name).sort();
+  if (canonicalJson(actualNames) !== canonicalJson(expected.map((entry) => entry.name).sort())) {
+    fail('defined-name inventory changed');
+  }
+  for (const contract of expected) {
+    const ranges = workbook.definedNames
+      .getRanges(contract.name)
+      .ranges.map(normalizeDefinedNameRange);
+    if (canonicalJson(ranges) !== canonicalJson([contract.range])) {
+      fail(`named validation range ${contract.name} must be exactly ${contract.range}`);
     }
   }
 }
 
-function validationFormula(cell: ExcelJS.Cell): string {
-  return String(cell.dataValidation?.formulae?.[0] ?? '');
+function comparableDataValidation(validation: ExcelJS.DataValidation | undefined): unknown {
+  return {
+    type: validation?.type ?? null,
+    operator: validation?.operator ?? null,
+    allowBlank: validation?.allowBlank === true,
+    showErrorMessage: validation?.showErrorMessage === true,
+    errorTitle: validation?.errorTitle ?? null,
+    error: validation?.error ?? null,
+    formulae: (validation?.formulae ?? []).map((value) =>
+      value instanceof Date ? value.toISOString() : value,
+    ),
+  };
+}
+
+function assertDataValidation(
+  cell: ExcelJS.Cell,
+  expected: ExcelJS.DataValidation,
+  label: string,
+): void {
+  if (
+    canonicalJson(comparableDataValidation(cell.dataValidation)) !==
+    canonicalJson(comparableDataValidation(expected))
+  ) {
+    fail(`${label}: data-validation contract changed`);
+  }
 }
 
 function dateValue(value: ExcelJS.CellValue): string | null {
-  if (value instanceof Date && !Number.isNaN(value.valueOf()))
-    return value.toISOString().slice(0, 10);
-  const text = cellText(value).trim();
+  const text =
+    value instanceof Date && !Number.isNaN(value.valueOf())
+      ? value.toISOString().slice(0, 10)
+      : cellText(value).trim();
   if (text === '') return null;
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(text)) return 'invalid';
   const date = new Date(`${text}T00:00:00Z`);
-  return Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== text
-    ? 'invalid'
-    : text;
+  if (Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== text) return 'invalid';
+  return text < MIN_REVIEW_DATE || text > MAX_REVIEW_DATE ? 'invalid' : text;
 }
 
 function lookupMaps(rows: readonly LookupManifestRow[]): Map<DatabaseLookupKind, Set<string>> {
@@ -1537,7 +1618,8 @@ export function validateHighImpactWorkbook(
 ): WorkbookValidationResult {
   validateSnapshot(snapshot);
   assertWorkbookShape(workbook);
-  assertNamedRanges(workbook);
+  const expectedLookups = lookupManifestRows(snapshot);
+  assertNamedRanges(workbook, expectedLookups);
   const expectedRows = prepareReviewRows(snapshot);
   const expectedIdentities = new Map(expectedRows.map((row) => [row.reviewId, identityRow(row)]));
   const parsedIdentity = parseIdentityRows(workbook);
@@ -1551,7 +1633,6 @@ export function validateHighImpactWorkbook(
     }
   }
   const parsedLookups = parseLookupRows(workbook);
-  const expectedLookups = lookupManifestRows(snapshot);
   const actualLookupDigest = lookupManifestSha256(parsedLookups);
   if (actualLookupDigest !== parsedIdentity.lookupDigest)
     fail(`${LOOKUP_SHEET}: lookup manifest digest mismatch`);
@@ -1565,9 +1646,12 @@ export function validateHighImpactWorkbook(
       identity: IdentityRow;
       decision: string;
       target: string;
+      targetCharacters: number;
       reviewer: string;
+      reviewerCharacters: number;
       date: string | null;
       note: string;
+      noteCharacters: number;
     }
   >();
   for (const sheetName of [...MATTER_SHEETS, ...HEARING_SHEETS]) {
@@ -1588,7 +1672,7 @@ export function validateHighImpactWorkbook(
       if (id === '') {
         let hasContent = false;
         row.eachCell({ includeEmpty: true }, (cell) => {
-          if (cell.text.trim() !== '') hasContent = true;
+          if (cellHasUserContent(cell)) hasContent = true;
         });
         if (hasContent) {
           fail(`${sheetName} row ${rowNumber}: content has no review identity`);
@@ -1612,41 +1696,65 @@ export function validateHighImpactWorkbook(
       const reviewerCell = row.getCell(answerStart + 2);
       const dateCell = row.getCell(answerStart + 3);
       const noteCell = row.getCell(answerStart + 4);
-      for (const cell of [decisionCell, reviewerCell, dateCell, noteCell]) {
+      const editableCells = [decisionCell, reviewerCell, dateCell, noteCell];
+      if (identity.targetKind !== 'parent') editableCells.push(targetCell);
+      for (const cell of editableCells) {
         if (cell.protection?.locked !== false) fail(`${id}: an answer cell is not editable`);
         if (cell.fill.type !== 'pattern' || cell.fill.fgColor?.argb !== EDITABLE_FILL) {
           fail(`${id}: editable-cell styling changed`);
         }
       }
-      const expectedStatusRange =
-        identity.targetKind === 'parent' ? '=ParentDecisionStatuses' : '=DecisionStatuses';
-      if (validationFormula(decisionCell) !== expectedStatusRange)
-        fail(`${id}: decision dropdown changed`);
+      assertDataValidation(
+        decisionCell,
+        listValidation(
+          identity.targetKind === 'parent' ? 'ParentDecisionStatuses' : 'DecisionStatuses',
+        ),
+        `${id}: decision`,
+      );
+      assertDataValidation(
+        reviewerCell,
+        textValidation(MAX_REVIEWER_CHARACTERS),
+        `${id}: reviewer`,
+      );
+      assertDataValidation(dateCell, dateValidation(), `${id}: review date`);
+      assertDataValidation(
+        noteCell,
+        textValidation(MAX_DECISION_NOTE_CHARACTERS),
+        `${id}: decision note`,
+      );
       const targetRange = namedRangeForTarget(identity.targetKind);
       if (targetRange !== null) {
-        if (
-          targetCell.protection?.locked !== false ||
-          validationFormula(targetCell) !== `=${targetRange}`
-        ) {
-          fail(`${id}: target dropdown changed`);
-        }
+        assertDataValidation(targetCell, listValidation(targetRange), `${id}: target`);
       } else if (identity.targetKind === 'parent') {
-        if (targetCell.protection?.locked === false || targetCell.text !== NOT_APPLICABLE_DISPLAY) {
+        if (
+          targetCell.protection?.locked === false ||
+          targetCell.text !== NOT_APPLICABLE_DISPLAY ||
+          targetCell.fill.type !== 'pattern' ||
+          targetCell.fill.fgColor?.argb !== LOCKED_TARGET_FILL ||
+          Object.keys(targetCell.dataValidation ?? {}).length !== 0
+        ) {
           fail(`${id}: parent-following target cell changed`);
         }
-      } else if (
-        targetCell.protection?.locked !== false ||
-        targetCell.dataValidation.type !== 'textLength'
-      ) {
-        fail(`${id}: free-text target contract changed`);
+      } else {
+        assertDataValidation(
+          targetCell,
+          textValidation(MAX_FREE_TEXT_TARGET_CHARACTERS),
+          `${id}: free-text target`,
+        );
       }
+      const targetText = targetCell.text;
+      const reviewerText = reviewerCell.text;
+      const noteText = noteCell.text;
       visibleRows.set(id, {
         identity,
         decision: decisionCell.text.trim(),
-        target: identity.targetKind === 'parent' ? '' : targetCell.text.trim(),
-        reviewer: reviewerCell.text.trim(),
+        target: identity.targetKind === 'parent' ? '' : targetText.trim(),
+        targetCharacters: identity.targetKind === 'parent' ? 0 : [...targetText].length,
+        reviewer: reviewerText.trim(),
+        reviewerCharacters: [...reviewerText].length,
         date: dateValue(dateCell.value),
-        note: noteCell.text.trim(),
+        note: noteText.trim(),
+        noteCharacters: [...noteText].length,
       });
     }
   }
@@ -1670,7 +1778,19 @@ export function validateHighImpactWorkbook(
     let issue = '';
     const statusSet =
       row.identity.targetKind === 'parent' ? PARENT_DECISION_STATUSES : DECISION_STATUSES;
-    if (row.decision !== '' && !(statusSet as readonly string[]).includes(row.decision)) {
+    if (
+      (row.identity.targetKind === 'circuit' || row.identity.targetKind === 'text') &&
+      row.targetCharacters > MAX_FREE_TEXT_TARGET_CHARACTERS
+    ) {
+      state = 'invalid';
+      issue = `الهدف يتجاوز ${MAX_FREE_TEXT_TARGET_CHARACTERS} حرفًا`;
+    } else if (row.reviewerCharacters > MAX_REVIEWER_CHARACTERS) {
+      state = 'invalid';
+      issue = `اسم المراجع يتجاوز ${MAX_REVIEWER_CHARACTERS} حرفًا`;
+    } else if (row.noteCharacters > MAX_DECISION_NOTE_CHARACTERS) {
+      state = 'invalid';
+      issue = `ملاحظة القرار تتجاوز ${MAX_DECISION_NOTE_CHARACTERS} حرفًا`;
+    } else if (row.decision !== '' && !(statusSet as readonly string[]).includes(row.decision)) {
       state = 'invalid';
       issue = 'حالة القرار ليست من القائمة المعتمدة';
     } else if (row.date === 'invalid') {
