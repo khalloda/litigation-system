@@ -61,6 +61,8 @@ reconciliation instead of duplicating its tables and report datasets.
 | Task 3.3 readiness and approved contract | [`2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md) | Tracked dated evidence | Complete audit-column/event readiness matrix, owner decisions D30–D34, risk dispositions and exact Task 3.3A return point |
 | Task 3.3A acceptance | [`2026-09-01-task-3-3a-secure-actor-attribution.md`](task-reports/2026-09-01-task-3-3a-secure-actor-attribution.md) | Tracked dated evidence | Migrations 53–56, D35, seven-actor taxonomy, 38-table attribution, 5,209-row protection, isolated database principals, verification and exact Task 3.3B return point |
 | Task 3.3B acceptance and correction | [`2026-09-02-task-3-3b-append-only-event-foundation.md`](task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md) | Tracked dated evidence | Frozen migration 57 baseline plus forward correction migration 58; immutable event store; exhaustive 38-table/583-column classification; truthful one-event baseline; authentication integration; adversarial proof and exact Task 3.4 return point |
+| Task 3.4 acceptance | [`2026-09-03-task-3-4-user-management.md`](task-reports/2026-09-03-task-3-4-user-management.md) | Tracked dated evidence | Migration 59, Administrator-only lifecycle gateway and Arabic/RTL management interface; independently accepted four-commit chain |
+| Task 3.5A review package | [`2026-09-03-task-3-5a-high-impact-review-package.md`](task-reports/2026-09-03-task-3-5a-high-impact-review-package.md) | Tracked generator, validator and dated evidence; raw workbook ignored | Read-only 382-row decision package, durable row identity, protected lookup associations and fail-closed completion validation; no firm answer applied |
 
 Ignored source material and workbooks are never committed. Their hashes,
 fingerprints, protected outcomes and reproduction procedures are the durable
@@ -2925,8 +2927,55 @@ unchanged. Protected billing and attendance remain 543 invoices, 597 payments,
 47 allocations and 4,022 attendance rows (5,209 total), with digests
 `b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab`
 and `edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`.
-Task 3.5 is the exact next return point after independent acceptance of Task
-3.4; it remains unstarted.
+The four-commit Task 3.4 chain was independently accepted and pushed before
+Task 3.5A began.
+
+## Task 3.5A high-impact quarantine-review package — 3 September 2026
+
+Task 3.5A prepares the firm's explicit decision surface without resolving or
+changing a quarantined record. The generated workbook and adjacent checksum
+manifest are respectively:
+
+- `_migration/review/task-3-5-high-impact-quarantine-review-2026-09-03.xlsx`
+- `_migration/review/task-3-5-high-impact-quarantine-review-2026-09-03.xlsx.sha256`
+
+Both are ignored and untracked raw review artifacts. The generated XLSX is
+162,864 bytes with SHA-256
+`3b0ba712f20eda42db73d7df4816742f86c7aabb1918b82bf53762a7a94fca36`.
+Its ordered semantic identity-manifest digest is
+`f6d63da36e2ebd28631929bebb302b7151c3729bf1ff4f2e60d950d426ffbee7`;
+the protected lookup-association manifest digest is
+`c71df1d140199cec2e61a66b4dcc8614503ac31cb40490ee5c78fd60e71e4c86`.
+
+The five visible Arabic/RTL sheets are `اقرأ أولاً`, `العميل غير الصحيح`,
+`الدعاوى الأخرى`, `الجلسات التابعة` and `مشكلات الجلسات`. The four answer
+sheets contain exactly 14 wrong-client matters + 41 other matters + 313
+parent-held hearings + 14 independent hearing issues: 382 unique review rows,
+with no duplicated answer row. Very-hidden protected `__identity` and
+`__lookups` sheets retain database quarantine IDs, source keys, extraction
+fingerprints, ordered reason identity, source identity and immutable database
+ID-to-Arabic-label associations. Visible rows may be reordered only as whole
+rows; position and labels are never import keys.
+
+Generation runs in an explicit repeatable-read, read-only transaction and
+refuses any writing SQL, unexpected count, reason breakdown, extraction
+fingerprint or protected digest before writing the artifact. The source
+quarantine evidence digest is
+`bb3ca71e490123dd0e8d9da7665b73bdae37e3d607fd2e6746b89862fef7ed2a`;
+the 679-row approved target lookup digest is
+`1852b58e40986aaea93eec61624562f11c233902ae6cd38852a9ad804d07debe`;
+the authoritative extraction fingerprint remains
+`40EBF988D4C952A676A4A00A403AE9576D87C18E35D4F7E3BAD0A62DF92D5979`.
+
+The validator performs no database write. It rejects missing, added,
+duplicated or identity-modified rows; changed source/reason evidence; altered
+lookup associations; stale targets; incomplete corrections; and a
+parent-following hearing whose parent matter lacks a completed explicit
+decision. Blank and `يحتاج إلى نقاش` answers remain incomplete; the untouched
+generated workbook therefore reports **0 complete, 382 incomplete, 0 invalid**
+and cannot close Task 3.5. Task 3.5B has not started: the exact next step is
+firm completion of the ignored workbook, followed by a separately authorized
+answer-application phase.
 
 ## Cutover
 

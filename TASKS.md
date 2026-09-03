@@ -7,10 +7,11 @@ Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
 **Current checkpoint — 3 September 2026:** Task 3.3B's three-commit chain is
-independently accepted and pushed. Task 3.4 Administrator-only user management
-is implemented locally and awaits independent review. **Do not start Task
-3.5.** Task 3.5 — High-impact quarantine review is the exact next return point
-after Task 3.4 is accepted.
+independently accepted and pushed. Task 3.4's four-commit Administrator-only
+user-management chain is also independently accepted and pushed. Task 3.5A's
+read-only high-impact quarantine-review package is prepared locally for the
+firm. Overall Task 3.5 remains unchecked until explicit answers are completed
+and later applied; Task 3.5B and Stage 4 have not started.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1567,6 +1568,9 @@ only ever seen good data is not known to work.
       Acceptance evidence:
       [`docs/task-reports/2026-09-03-task-3-4-user-management.md`](docs/task-reports/2026-09-03-task-3-4-user-management.md).
 
+      Its four-commit chain was independently accepted and pushed before Task
+      3.5A began.
+
 - [ ] **3.5 High-impact quarantine review checkpoint** — firm review after
       Task 3.4 and before Stage 4 (**D26**). Review all 55 quarantined matters,
       prioritising the 14 `separate_client` / wrong-client cases, and all 327
@@ -1576,6 +1580,20 @@ only ever seen good data is not known to work.
       applicable reconciliation and permanent invariants after approved
       outcomes are implemented. This checkpoint is not complete merely because
       the source values are preserved.
+
+      **Task 3.5A — review-package preparation, 3 September 2026.** A
+      reproducible read-only Arabic/RTL workbook now presents exactly 55 matter
+      decisions and 327 hearing decisions without changing a project row. It
+      separates the 14 wrong-client matters, the other 41 matters, the 313
+      parent-held hearings and the 14 independent hearing issues; protects
+      evidence and durable identity; and validates every answer as complete,
+      incomplete or invalid. The ignored workbook is
+      `_migration/review/task-3-5-high-impact-quarantine-review-2026-09-03.xlsx`.
+      Its preparation evidence is
+      [`docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md`](docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md).
+      No answer has been inferred or applied. The next step is firm completion
+      of this workbook; Task 3.5B answer application remains separate and
+      unstarted.
 
 ---
 

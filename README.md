@@ -6,9 +6,10 @@ litigation practice since 2010.
 **Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
 authentication, server-side role permissions, secure actor attribution and the
 Task 3.3B append-only event foundation are implemented and accepted. Task 3.4
-Administrator-only user management is implemented locally and awaits
-independent review. **Do not start Task 3.5.** Task 3.5 — High-impact
-quarantine review is the exact next return point after this checkpoint.
+Administrator-only user management is accepted and pushed. Task 3.5A's
+read-only high-impact quarantine-review package is prepared locally for firm
+completion. Task 3.5 remains open: no answer has been applied, and Task 3.5B
+and Stage 4 have not started.
 The owner-readable
 migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
@@ -21,6 +22,8 @@ Task 3.3B's implementation and verification record is
 [`docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md`](docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md).
 Task 3.4's implementation and verification record is
 [`docs/task-reports/2026-09-03-task-3-4-user-management.md`](docs/task-reports/2026-09-03-task-3-4-user-management.md).
+Task 3.5A's package and validation record is
+[`docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md`](docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md).
 
 ---
 
