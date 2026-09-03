@@ -8,8 +8,10 @@ import {
 } from './lib/authorization-route-inventory';
 import { discoverAuditRuntimeSources } from './lib/audit-source-inventory';
 import { userManagementSourceFailures } from './lib/user-management-source';
+import { t } from '../src/strings';
 
 const root = process.cwd();
+const homePath = 'src/app/page.tsx';
 const pagePath = 'src/app/users/page.tsx';
 const actionsPath = 'src/app/users/actions.ts';
 const componentPath = 'src/app/users/user-management.tsx';
@@ -64,16 +66,27 @@ function main(): void {
 
   const runtimeSources = discoverAuditRuntimeSources(root);
   assert.deepEqual(userManagementSourceFailures(runtimeSources), []);
+  const homeSource = source(homePath);
   const pageSource = source(pagePath);
   const actionsSource = source(actionsPath);
   const componentSource = source(componentPath);
   const cssSource = source('src/app/users/users.module.css');
+  const authCssSource = source('src/app/auth.module.css');
+  assert.match(homeSource, /hasPermission\(session\.user\.role, 'usersAndRoles', 'view'\)/u);
+  assert.match(homeSource, /canViewUsers \? \([\s\S]*?href="\/users"[\s\S]*?\{t\.nav\.users\}/u);
+  assert.doesNotMatch(homeSource, /session\.user\.role\s*={2,3}/u);
   assert.equal((actionsSource.match(/Number\(session\.user\.id\)/gu) ?? []).length, 6);
   assert.doesNotMatch(actionsSource, /console\.|passwordHash|actorId|actorRole/iu);
   assert.doesNotMatch(componentSource, /useState[^;]*(?:password|hash)/iu);
   assert.doesNotMatch(`${pageSource}\n${componentSource}`, /audit[_ -]?(?:history|export)/iu);
   assert.match(cssSource, /:focus-visible/u);
+  assert.match(authCssSource, /\.secondaryButton:focus-visible/u);
+  assert.match(authCssSource, /\.navigationLink/u);
   assert.match(cssSource, /@media \(max-width:/u);
+  assert.equal(
+    t.users.usernameHint,
+    'يجب أن يبدأ اسم المستخدم بحرف لاتيني، وأن يكون طوله الإجمالي من 3 إلى 64 حرفاً. ويجوز أن تتضمن الأحرف اللاحقة حروفاً لاتينية وأرقاماً ونقطة وشرطة وشرطة سفلية.',
+  );
 
   const parsed = ts.createSourceFile(
     componentPath,
@@ -85,6 +98,7 @@ function main(): void {
   const passwordInputs: Array<ts.JsxSelfClosingElement | ts.JsxOpeningElement> = [];
   const visibleLiteralAttributes: string[] = [];
   const visibleText: string[] = [];
+  const forms: Array<ts.JsxSelfClosingElement | ts.JsxOpeningElement> = [];
   let liveRegions = 0;
   let detailCount = 0;
   const visit = (node: ts.Node): void => {
@@ -101,6 +115,7 @@ function main(): void {
       if (node.tagName.getText() === 'input' && literalAttribute(node, 'type') === 'password') {
         passwordInputs.push(node);
       }
+      if (node.tagName.getText() === 'form') forms.push(node);
       if (node.tagName.getText() === 'details') detailCount += 1;
       if (attribute(node, 'aria-live')) liveRegions += 1;
     }
@@ -116,23 +131,50 @@ function main(): void {
     assert.equal(attribute(input, 'defaultValue'), undefined);
     assert.ok(attribute(input, 'aria-describedby'));
   }
+  assert.equal(forms.length, 5);
+  for (const form of forms) {
+    assert.ok(attribute(form, 'onSubmit'));
+    assert.ok(attribute(form, 'aria-busy'));
+    assert.equal(attribute(form, 'action'), undefined);
+  }
   assert.equal(detailCount, 4);
   assert.ok(liveRegions >= 1);
-  assert.match(componentSource, /formRef\.current\?\.reset\(\)/u);
+  assert.match(componentSource, /event\.preventDefault\(\)/u);
+  assert.match(componentSource, /startTransition\(\(\) => formAction\(formData\)\)/u);
+  assert.match(componentSource, /if \(state\.revision === 0\) return/u);
+  assert.match(componentSource, /\['temporaryPassword', 'confirmPassword'\] as const/u);
+  assert.match(
+    componentSource,
+    /passwordField instanceof HTMLInputElement\) passwordField\.value = ''/u,
+  );
+  assert.match(componentSource, /if \(state\.kind === 'success'\) form\.reset\(\)/u);
+  assert.doesNotMatch(componentSource, /state\.kind === 'error'[\s\S]{0,200}form\.reset\(\)/u);
+  assert.match(componentSource, /form\.elements\.namedItem\(state\.field\)/u);
+  assert.match(
+    componentSource,
+    /focusField instanceof HTMLElement\)[\s\S]*?focusField\.focus\(\)/u,
+  );
+  assert.match(componentSource, /feedbackRef\.current\?\.focus\(\)/u);
+  assert.match(componentSource, /tabIndex=\{-1\}/u);
   assert.doesNotMatch(componentSource, /Date\.now\(\)/u);
   assert.match(componentSource, /account\.isLocked/u);
   assert.match(componentSource, /type="checkbox"/u);
   assert.match(componentSource, /styles\.disabled/u);
 
   console.log('PASS /users page plus six actions are exact usersAndRoles view/manage entries');
+  console.log('PASS authenticated-home /users link is conditioned by usersAndRoles/view policy');
   console.log(
     'PASS action actor identity is session-owned and exact lifecycle service imports cannot escape',
   );
+  console.log('PASS both uncontrolled password inputs are cleared after every completed result');
   console.log(
-    'PASS password inputs are uncontrolled, hidden, non-repopulating and reset after every result',
+    'PASS result handling consumes state.field and wires named-control plus summary focus fallback',
   );
   console.log(
-    'PASS named confirmations, textual states, live regions, focus and narrow-screen rules are present',
+    'PASS errors preserve non-secret form values while successful operations may reset the form',
+  );
+  console.log(
+    'PASS live regions, programmatic summary focusability, visible-focus CSS and narrow layout are present',
   );
   console.log('PASS focused JSX inspection covers the two known multiline-literal checker gaps');
   console.log(

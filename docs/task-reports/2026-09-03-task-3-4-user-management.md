@@ -1,7 +1,7 @@
 # Task 3.4 — Administrator-only user management
 
-- Accepted: 3 September 2026, pending independent review of the two local
-  commits
+- Implemented: 3 September 2026; the bounded UI acceptance correction is
+  pending independent review of the three local commits
 - Codex model: GPT-5.6 Sol
 - Reasoning effort: high
 - Environment: Local
@@ -14,13 +14,15 @@
 - Starting commit: `5d016eba6be7664c9f075766c33d6da426cd30a4`
 - Foundation commit: `24bf7433f228bfae2e8ca525431b9d461d4a40ed`
   (`feat: secure Task 3.4 account lifecycle`)
-- Final commit: the enclosing commit named `feat: add Task 3.4 user management`;
-  record its SHA after creation because a content-addressed commit cannot
-  contain its own SHA.
+- UI commit: `b1ca42019f1fa1a48758fab6542d841d263bf83e`
+  (`feat: add Task 3.4 user management`)
+- UI acceptance correction: the enclosing commit named
+  `fix: close Task 3.4 UI acceptance gaps`; record its SHA after creation
+  because a content-addressed commit cannot contain its own SHA.
 - Push status: not pushed; `origin/main` remains the accepted Task 3.3B commit
   `5d016eba6be7664c9f075766c33d6da426cd30a4`
-- Exact authorized stop point: two local Task 3.4 commits and one combined
-  external review patch; no push
+- Exact authorized stop point: three local Task 3.4 commits and one
+  correction-only external review patch; no push
 - Exact next return point: Task 3.5 — High-impact quarantine review, not started
 
 ## Run configuration and cost rationale
@@ -37,9 +39,41 @@ localhost database and disposable password, but its control runtime could not
 initialize because its local kernel-assets path was missing. No Playwright
 dependency is installed, and adding one was prohibited and unnecessary for the
 feature. The temporary server, database and harness were removed. Permanent
-source/DOM checks cover the page/action inventory, password behavior, RTL
-string gaps, textual states, live regions, focus, confirmations and narrow
-layout; the production build supplies the rendering compilation gate.
+static TypeScript, TSX and CSS checks cover the page/action inventory,
+permission-conditioned navigation, password-clearing and non-secret-state
+logic, returned-field focus wiring, programmatic summary focusability, live
+regions, confirmations, visible-focus rules and narrow layout. These checks are
+not an interactive browser test and do not prove focus movement in a running
+browser; the production build supplies the rendering compilation gate.
+
+## Post-review UI acceptance correction
+
+The bounded correction reproduced four acceptance gaps before editing: the
+authenticated home had no `/users` link; completed-result logic never consumed
+`state.field`; every result reset its entire form; and the focused static test
+claimed focus coverage while checking only for a `:focus-visible` CSS rule. The
+old focused test passed with all four gaps present, proving that its acceptance
+claim was too broad.
+
+The authenticated home now renders the existing Arabic `t.nav.users` link only
+when the canonical policy grants `usersAndRoles / view`; `/users` keeps its
+existing server-side authorization. Each management form now submits without
+the automatic successful-action form reset, clears both uncontrolled password
+inputs after every completed result, resets the full form only on success, and
+preserves safe non-secret inputs on error. Error focus follows the returned
+field name when that control exists and otherwise moves to a focusable error
+summary; a retained success message receives focus. No password is held in
+React state. The Arabic username hint now states the first-character rule, the
+total 3–64-character length and the allowed later characters precisely.
+
+The focused static suite now asserts each of those source contracts directly,
+including the absence of form `action` attributes that would reset uncontrolled
+non-secret fields after a resolved semantic error. It retains separate checks
+for live regions, visible-focus CSS and responsive rules without representing
+those source checks as an interactive browser run. `npm run check` and the
+production build passed after the correction. The bounded scope, migration,
+dependency, lockfile, secret, raw-data and artifact scans passed without a
+backend, database, migration, runtime-storage or protected-data change.
 
 ## Approved and prohibited scope
 
@@ -161,6 +195,15 @@ UI/documentation commit (18 files):
 - `src/lib/auth/route-inventory.ts`
 - `src/strings.ts`
 
+UI acceptance correction (6 files):
+
+- `docs/task-reports/2026-09-03-task-3-4-user-management.md`
+- `scripts/test-user-management-ui.ts`
+- `src/app/auth.module.css`
+- `src/app/page.tsx`
+- `src/app/users/user-management.tsx`
+- `src/strings.ts`
+
 ## Verification and exact results
 
 - `npx prisma format`, `npx prisma validate`, `npx prisma generate`: passed;
@@ -173,7 +216,7 @@ UI/documentation commit (18 files):
   Administrator in the project database.
 - `npm run test:user-management`: passed lifecycle/eligibility/atomicity,
   non-arithmetic actor, privilege, concurrency, local-command, rollback and
-  secret-output fixtures; the focused `/users` source/DOM suite also passed.
+  secret-output fixtures; the focused `/users` static source suite also passed.
 - `npm run test:audit`: passed historical-live migrations 53–59, canonical
   clean replay 52–59, D35/role/ACL paths, failed-migration atomicity,
   missing-context/classification rollback, strict lifecycle semantics,
@@ -197,7 +240,7 @@ UI/documentation commit (18 files):
   first returned its required-argument usage message; it made no change and was
   rerun with the correct explicit profile.
 - `npm run check`: passed type, lint, formatting, RTL (22 rules/59 deliberate
-  findings and both known gaps covered by the focused DOM test), authorization
+  findings and both known gaps covered by the focused static UI test), authorization
   (16 entry points), audit (30 runtime sources, 6 schema and 67 bypass fixtures),
   user-management (8 negative fixtures), gitignore and encoding checks.
 - Two `npm run reconcile:gate4` executions, each with its own idempotency proof,
@@ -240,6 +283,7 @@ not weaken the Task 3.4 last-Administrator guard or the existing original-four
 local recovery command.
 
 Browser interaction remains an environment limitation described above, not a
-failed product gate: the compiled UI, dedicated source/DOM evidence and all
-server/database enforcement passed. Task 3.5 is the exact next return point
-after independent acceptance and remains unstarted.
+failed product gate: the compiled UI, dedicated static source evidence and all
+server/database enforcement passed, but no interactive browser test was run for
+this correction. Task 3.5 is the exact next return point after independent
+acceptance and remains unstarted.

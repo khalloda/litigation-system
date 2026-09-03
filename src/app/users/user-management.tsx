@@ -1,7 +1,14 @@
 'use client';
 
-import { useActionState, useEffect, useId, useRef } from 'react';
-import { useFormStatus } from 'react-dom';
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useId,
+  useRef,
+  type FormEvent,
+  type RefObject,
+} from 'react';
 import type { EligibleStaffPerson, ManagedAccount } from '@/lib/auth/user-management';
 import { t } from '@/strings';
 import {
@@ -27,14 +34,47 @@ type ManagedAction = typeof createUserAction;
 function useManagedForm(action: ManagedAction) {
   const [state, formAction, pending] = useActionState(action, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const feedbackRef = useRef<HTMLParagraphElement>(null);
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => formAction(formData));
+  }
+
   useEffect(() => {
-    if (state.revision > 0) formRef.current?.reset();
-  }, [state.revision]);
-  return { state, formAction, pending, formRef };
+    if (state.revision === 0) return;
+    const form = formRef.current;
+    if (!form) return;
+
+    for (const fieldName of ['temporaryPassword', 'confirmPassword'] as const) {
+      const passwordField = form.elements.namedItem(fieldName);
+      if (passwordField instanceof HTMLInputElement) passwordField.value = '';
+    }
+
+    if (state.kind === 'success') form.reset();
+
+    const focusField =
+      state.kind === 'error' && state.field !== null ? form.elements.namedItem(state.field) : null;
+    if (focusField instanceof HTMLElement) {
+      focusField.focus();
+    } else {
+      feedbackRef.current?.focus();
+    }
+  }, [state.field, state.kind, state.revision]);
+
+  return { state, onSubmit, pending, formRef, feedbackRef };
 }
 
-function SubmitButton({ label, danger = false }: { label: string; danger?: boolean }) {
-  const { pending } = useFormStatus();
+function SubmitButton({
+  label,
+  pending,
+  danger = false,
+}: {
+  label: string;
+  pending: boolean;
+  danger?: boolean;
+}) {
   return (
     <button
       className={danger ? styles.dangerButton : styles.primaryButton}
@@ -46,14 +86,24 @@ function SubmitButton({ label, danger = false }: { label: string; danger?: boole
   );
 }
 
-function Feedback({ state, id }: { state: UserManagementActionState; id: string }) {
+function Feedback({
+  state,
+  id,
+  feedbackRef,
+}: {
+  state: UserManagementActionState;
+  id: string;
+  feedbackRef: RefObject<HTMLParagraphElement | null>;
+}) {
   if (state.kind === 'idle') return <span className={styles.srOnly} id={id} />;
   return (
     <p
+      ref={feedbackRef}
       className={state.kind === 'error' ? styles.error : styles.success}
       id={id}
       role={state.kind === 'error' ? 'alert' : 'status'}
       aria-live={state.kind === 'error' ? 'assertive' : 'polite'}
+      tabIndex={-1}
     >
       {state.message}
     </p>
@@ -115,7 +165,7 @@ function PasswordFields({ prefix, feedbackId }: { prefix: string; feedbackId: st
 
 function CreateAccount({ eligibleStaff }: { eligibleStaff: readonly EligibleStaffPerson[] }) {
   const id = useId();
-  const { state, formAction, formRef } = useManagedForm(createUserAction);
+  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(createUserAction);
   const feedbackId = `${id}-feedback`;
   return (
     <section className={styles.panel} aria-labelledby={`${id}-heading`}>
@@ -129,7 +179,7 @@ function CreateAccount({ eligibleStaff }: { eligibleStaff: readonly EligibleStaf
       {eligibleStaff.length === 0 ? (
         <p className={styles.empty}>{t.users.noEligibleStaff}</p>
       ) : (
-        <form action={formAction} className={styles.form} ref={formRef}>
+        <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
           <div className={styles.fieldGrid}>
             <div className={styles.field}>
               <label htmlFor={`${id}-person`}>{t.users.person}</label>
@@ -172,8 +222,8 @@ function CreateAccount({ eligibleStaff }: { eligibleStaff: readonly EligibleStaf
             </div>
           </div>
           <PasswordFields feedbackId={feedbackId} prefix={`${id}-create`} />
-          <Feedback id={feedbackId} state={state} />
-          <SubmitButton label={t.users.actions.create} />
+          <Feedback feedbackRef={feedbackRef} id={feedbackId} state={state} />
+          <SubmitButton label={t.users.actions.create} pending={pending} />
         </form>
       )}
     </section>
@@ -182,12 +232,12 @@ function CreateAccount({ eligibleStaff }: { eligibleStaff: readonly EligibleStaf
 
 function UsernameAction({ account }: { account: ManagedAccount }) {
   const id = useId();
-  const { state, formAction, formRef } = useManagedForm(correctUsernameAction);
+  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(correctUsernameAction);
   const feedbackId = `${id}-feedback`;
   return (
     <details className={styles.action}>
       <summary>{t.users.actions.username}</summary>
-      <form action={formAction} className={styles.form} ref={formRef}>
+      <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
         <HiddenAccount account={account} />
         <p>{t.users.confirmations.username(account.personName)}</p>
         <div className={styles.field}>
@@ -202,8 +252,11 @@ function UsernameAction({ account }: { account: ManagedAccount }) {
             required
           />
         </div>
-        <Feedback id={feedbackId} state={state} />
-        <SubmitButton label={t.users.actions.confirmUsername(account.personName)} />
+        <Feedback feedbackRef={feedbackRef} id={feedbackId} state={state} />
+        <SubmitButton
+          label={t.users.actions.confirmUsername(account.personName)}
+          pending={pending}
+        />
       </form>
     </details>
   );
@@ -211,12 +264,12 @@ function UsernameAction({ account }: { account: ManagedAccount }) {
 
 function RoleAction({ account }: { account: ManagedAccount }) {
   const id = useId();
-  const { state, formAction, formRef } = useManagedForm(changeRoleAction);
+  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(changeRoleAction);
   const feedbackId = `${id}-feedback`;
   return (
     <details className={styles.action}>
       <summary>{t.users.actions.role}</summary>
-      <form action={formAction} className={styles.form} ref={formRef}>
+      <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
         <HiddenAccount account={account} />
         <p>{t.users.confirmations.role(account.personName)}</p>
         <div className={styles.field}>
@@ -230,8 +283,8 @@ function RoleAction({ account }: { account: ManagedAccount }) {
             <RoleOptions />
           </select>
         </div>
-        <Feedback id={feedbackId} state={state} />
-        <SubmitButton label={t.users.actions.confirmRole(account.personName)} />
+        <Feedback feedbackRef={feedbackRef} id={feedbackId} state={state} />
+        <SubmitButton label={t.users.actions.confirmRole(account.personName)} pending={pending} />
       </form>
     </details>
   );
@@ -239,12 +292,12 @@ function RoleAction({ account }: { account: ManagedAccount }) {
 
 function DisableAction({ account }: { account: ManagedAccount }) {
   const id = useId();
-  const { state, formAction, formRef } = useManagedForm(disableAccountAction);
+  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(disableAccountAction);
   const feedbackId = `${id}-feedback`;
   return (
     <details className={styles.action}>
       <summary>{t.users.actions.disable}</summary>
-      <form action={formAction} className={styles.form} ref={formRef}>
+      <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
         <HiddenAccount account={account} />
         <p>{t.users.confirmations.disable(account.personName)}</p>
         <label className={styles.confirmation}>
@@ -257,8 +310,12 @@ function DisableAction({ account }: { account: ManagedAccount }) {
           />
           <span>{t.users.confirmations.disableCheckbox(account.personName)}</span>
         </label>
-        <Feedback id={feedbackId} state={state} />
-        <SubmitButton danger label={t.users.actions.confirmDisable(account.personName)} />
+        <Feedback feedbackRef={feedbackRef} id={feedbackId} state={state} />
+        <SubmitButton
+          danger
+          label={t.users.actions.confirmDisable(account.personName)}
+          pending={pending}
+        />
       </form>
     </details>
   );
@@ -267,12 +324,12 @@ function DisableAction({ account }: { account: ManagedAccount }) {
 function PasswordAction({ account, reactivate }: { account: ManagedAccount; reactivate: boolean }) {
   const id = useId();
   const action = reactivate ? reactivateAccountAction : resetPasswordAction;
-  const { state, formAction, formRef } = useManagedForm(action);
+  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(action);
   const feedbackId = `${id}-feedback`;
   return (
     <details className={styles.action}>
       <summary>{reactivate ? t.users.actions.reactivate : t.users.actions.password}</summary>
-      <form action={formAction} className={styles.form} ref={formRef}>
+      <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
         <HiddenAccount account={account} />
         <p>
           {reactivate
@@ -280,13 +337,14 @@ function PasswordAction({ account, reactivate }: { account: ManagedAccount; reac
             : t.users.confirmations.password(account.personName)}
         </p>
         <PasswordFields feedbackId={feedbackId} prefix={`${id}-password`} />
-        <Feedback id={feedbackId} state={state} />
+        <Feedback feedbackRef={feedbackRef} id={feedbackId} state={state} />
         <SubmitButton
           label={
             reactivate
               ? t.users.actions.confirmReactivate(account.personName)
               : t.users.actions.confirmPassword(account.personName)
           }
+          pending={pending}
         />
       </form>
     </details>

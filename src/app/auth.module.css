@@ -169,6 +169,24 @@
   color: var(--colour-primary);
 }
 
+.accountActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.accountActions form {
+  margin: 0;
+}
+
+.navigationLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .accountSummary {
   display: grid;
   gap: var(--space-2);
