@@ -102,10 +102,14 @@ const RUNTIME_EVENT_GATEWAYS = [
 ] as const;
 
 const CORRECTION_FUNCTION_MD5 = new Map([
+  ['audit_append_semantic_event', 'c3bcb052c3094540c0e63cde35e29b2b'],
   ['audit_append_semantic_event_for_account', '5628bb7316726abbd755fe13ecf9dcd6'],
   ['audit_capture_row_event', '483ecdff146cbd0a5f3906e6e8ec891a'],
   ['audit_ensure_event_context', 'e4c5e1d72a5f1366825e3a452ccf0ee1'],
 ]);
+
+const EVENT_ACTION_CONSTRAINT =
+  "CHECK ((action = ANY (ARRAY['record_created'::text, 'record_updated'::text, 'relationship_added'::text, 'relationship_updated'::text, 'relationship_removed'::text, 'login_succeeded'::text, 'login_failed'::text, 'account_locked'::text, 'password_changed'::text, 'password_initialized'::text, 'password_reset'::text, 'archive'::text, 'restore'::text, 'account_created'::text, 'account_enabled'::text, 'account_disabled'::text, 'username_changed'::text, 'role_changed'::text, 'report_executed'::text, 'export_completed'::text, 'download_completed'::text, 'audit_baseline_established'::text])))";
 
 const FIELD_RULE_CONSTRAINTS = new Map([
   [
@@ -162,6 +166,17 @@ export async function auditEventStructureFailures(
     )
   ) {
     failures.push('audit_events column inventory differs');
+  }
+  const eventActionConstraint = await db.query<{ definition: string }>(`
+    SELECT pg_get_constraintdef(oid) definition
+      FROM pg_constraint
+     WHERE conrelid='public.audit_events'::regclass
+       AND conname='audit_events_action_shape'`);
+  if (
+    eventActionConstraint.rows.length !== 1 ||
+    eventActionConstraint.rows[0]?.definition !== EVENT_ACTION_CONSTRAINT
+  ) {
+    failures.push('audit_events approved action constraint differs');
   }
 
   const fieldRuleColumns = await db.query<{ column_name: string }>(`

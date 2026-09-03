@@ -68,6 +68,7 @@ type DatabaseLifecycleAction =
   | 'account_created'
   | 'account_enabled'
   | 'account_disabled'
+  | 'username_changed'
   | 'role_changed';
 
 type ObservedExternalAction = 'report_executed' | 'export_completed' | 'download_completed';
@@ -282,6 +283,54 @@ export async function recordAdministrationPasswordChange(
     targetAccountId: accountId,
     entity: { schema: 'public', table: 'user_accounts', key: { id: accountId } },
   });
+}
+
+export async function recordAccountLifecycleEvent(
+  transaction: AuditTransaction,
+  accountId: number,
+  action:
+    | 'account_created'
+    | 'account_enabled'
+    | 'account_disabled'
+    | 'username_changed'
+    | 'role_changed',
+): Promise<bigint> {
+  assertAccountId(accountId);
+  return appendSemanticEvent(transaction, {
+    action,
+    outcome: 'succeeded',
+    targetAccountId: accountId,
+    entity: { schema: 'public', table: 'user_accounts', key: { id: accountId } },
+  });
+}
+
+/**
+ * The sole restricted-runtime account creation path. PostgreSQL validates the
+ * current human Administrator, locks and re-reads the staff identity, creates
+ * the account and immutable actor, and returns no actor details.
+ */
+export async function createUserAccountWithActor(
+  transaction: AuditTransaction,
+  input: Readonly<{
+    personId: number;
+    username: string;
+    passwordHash: string;
+    role: string;
+  }>,
+): Promise<number> {
+  assertAccountId(input.personId);
+  const rows = await transaction.$queryRaw<Array<{ accountId: number }>>(Prisma.sql`
+    SELECT public.create_user_account_with_actor(
+      ${input.personId},
+      ${input.username},
+      ${input.passwordHash},
+      ${input.role}
+    ) AS "accountId"
+  `);
+  const accountId = rows[0]?.accountId;
+  if (!accountId) throw new Error('Account creation gateway returned no account ID.');
+  assertAccountId(accountId);
+  return accountId;
 }
 
 /**

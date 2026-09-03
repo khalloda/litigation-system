@@ -16,6 +16,7 @@ export const AUDIT_RUNTIME_SOURCE_EXTENSIONS = Object.freeze([
 
 export const AUDIT_GATEWAY = 'src/lib/audit.ts';
 export const AUDIT_AUTH_SERVICE = 'src/lib/auth/service.ts';
+export const AUDIT_USER_MANAGEMENT_SERVICE = 'src/lib/auth/user-management.ts';
 export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 
 const GENERATED_EXCLUSION = 'src/generated/prisma/';
@@ -30,6 +31,8 @@ const CONTEXT_HELPERS = new Set([
   'recordAccountLocked',
   'recordOwnPasswordChanged',
   'recordAdministrationPasswordChange',
+  'recordAccountLifecycleEvent',
+  'createUserAccountWithActor',
 ]);
 const AUTH_SERVICE_HELPERS = new Set([
   'setHumanAuditContext',
@@ -40,6 +43,12 @@ const AUTH_SERVICE_HELPERS = new Set([
   'recordAccountLocked',
   'recordOwnPasswordChanged',
   'recordAdministrationPasswordChange',
+]);
+const USER_MANAGEMENT_SERVICE_HELPERS = new Set([
+  'setHumanAuditContext',
+  'recordAdministrationPasswordChange',
+  'recordAccountLifecycleEvent',
+  'createUserAccountWithActor',
 ]);
 const SYSTEM_ACTOR_KEYS = new Set([
   'system_migration',
@@ -99,6 +108,11 @@ const REVIEWED_RAW_SQL_CALLS = [
     '9fed0be77b8676c5f08c752ef293551beebe0fe6fae8a22edb00197c09ede34d',
   ],
   [
+    AUDIT_GATEWAY,
+    'createUserAccountWithActor',
+    '2a8c8e6171e9816c4ab7b7feec832c9ffa96c22fa54b9f2c6e87075fcdc8ffdc',
+  ],
+  [
     AUDIT_AUTH_SERVICE,
     'lockedAccount',
     '1e16f9db148a62bc3e22921740c70430596eca908516ec093e38cafe580096bb',
@@ -107,6 +121,11 @@ const REVIEWED_RAW_SQL_CALLS = [
     AUDIT_AUTH_SERVICE,
     'changeOwnPassword',
     '94b602038781824c995eaaac3bc353a08f07c58ec002d9298d0d5c6f4172a858',
+  ],
+  [
+    AUDIT_USER_MANAGEMENT_SERVICE,
+    'lockedManagementAccount',
+    'd60421c4faa91f8267ba3ea577b0e1af11d2d8b120f26882c8c9e4fd1bbee784',
   ],
 ] as const;
 
@@ -1353,6 +1372,7 @@ export function auditRuntimeSourceFailures(
   const generatedRoot = path.join(root, GENERATED_EXCLUSION);
   const gatewayAbsolute = canonical(path.join(root, AUDIT_GATEWAY));
   const serviceAbsolute = canonical(path.join(root, AUDIT_AUTH_SERVICE));
+  const userManagementServiceAbsolute = canonical(path.join(root, AUDIT_USER_MANAGEMENT_SERVICE));
   const databaseAbsolute = canonical(path.join(root, AUDIT_DATABASE_MODULE));
   const failures = new Set<string>();
   const sourcePaths = new Set(sources.map((source) => normalized(source.path)));
@@ -1402,6 +1422,8 @@ export function auditRuntimeSourceFailures(
     }
     const isGateway = absolute === gatewayAbsolute;
     const isAuthService = absolute === serviceAbsolute;
+    const isUserManagementService = absolute === userManagementServiceAbsolute;
+    const isReviewedAuthService = isAuthService || isUserManagementService;
     const isDatabaseModule = absolute === databaseAbsolute;
     const add = (node: ts.Node, message: string): void => {
       failures.add(`${source.path}:${sourceLocation(sourceFile, node)} ${message}`);
@@ -1446,7 +1468,7 @@ export function auditRuntimeSourceFailures(
       if (target === gatewayAbsolute) {
         if (request.kind !== 'static') {
           add(request.node, 'audit gateway access must use the reviewed static named import');
-        } else if (!isAuthService) {
+        } else if (!isReviewedAuthService) {
           add(request.node, 'audit context imports are allowed only in the reviewed auth service');
         } else if (
           !ts.isImportDeclaration(request.node) ||
@@ -1457,7 +1479,10 @@ export function auditRuntimeSourceFailures(
         } else {
           for (const element of request.node.importClause.namedBindings.elements) {
             const imported = element.propertyName?.text ?? element.name.text;
-            if (element.propertyName || !AUTH_SERVICE_HELPERS.has(imported)) {
+            const approvedHelpers = isAuthService
+              ? AUTH_SERVICE_HELPERS
+              : USER_MANAGEMENT_SERVICE_HELPERS;
+            if (element.propertyName || !approvedHelpers.has(imported)) {
               add(element, `unapproved or aliased audit import ${element.getText(sourceFile)}`);
             } else authImports.add(imported);
           }
@@ -1575,9 +1600,9 @@ export function auditRuntimeSourceFailures(
           } else {
             const importBinding = ts.isImportSpecifier(node.parent) && node.parent.name === node;
             const directCall = ts.isCallExpression(node.parent) && node.parent.expression === node;
-            if (isAuthService && importBinding && !node.parent.propertyName) {
+            if (isReviewedAuthService && importBinding && !node.parent.propertyName) {
               // The import's resolved module and binding shape were checked above.
-            } else if (isAuthService && directCall) {
+            } else if (isReviewedAuthService && directCall) {
               authCalls.push({
                 file: source.path,
                 helper,
@@ -1659,7 +1684,7 @@ export function auditRuntimeSourceFailures(
             argument.tag.name.text === 'sql' &&
             prismaSymbol !== undefined &&
             resolvedSymbol(checker, argument.tag.expression) === prismaSymbol;
-          if (!(isGateway || isAuthService) || !reviewedSql) {
+          if (!(isGateway || isReviewedAuthService) || !reviewedSql) {
             add(node, `${method} is outside the exact reviewed static Prisma.sql call sites`);
           } else {
             rawCalls.push({
@@ -1818,6 +1843,96 @@ export function auditRuntimeSourceFailures(
         'tx,account.id,semanticAction',
         1,
       ],
+      [
+        'setHumanAuditContext',
+        'createManagedAccount',
+        'transaction,positiveId(actorAccountId),dependencies.auditMetadata',
+        1,
+      ],
+      [
+        'createUserAccountWithActor',
+        'createManagedAccount',
+        'transaction,{personId,username,passwordHash,role,}',
+        1,
+      ],
+      [
+        'recordAccountLifecycleEvent',
+        'createManagedAccount',
+        "transaction,accountId,'account_created'",
+        1,
+      ],
+      [
+        'recordAdministrationPasswordChange',
+        'createManagedAccount',
+        "transaction,accountId,'password_initialized'",
+        1,
+      ],
+      [
+        'setHumanAuditContext',
+        'correctManagedUsername',
+        'transaction,positiveId(actorAccountId),dependencies.auditMetadata',
+        1,
+      ],
+      [
+        'recordAccountLifecycleEvent',
+        'correctManagedUsername',
+        "transaction,accountId,'username_changed'",
+        1,
+      ],
+      [
+        'setHumanAuditContext',
+        'changeManagedRole',
+        'transaction,positiveId(actorAccountId),dependencies.auditMetadata',
+        1,
+      ],
+      [
+        'recordAccountLifecycleEvent',
+        'changeManagedRole',
+        "transaction,accountId,'role_changed'",
+        1,
+      ],
+      [
+        'setHumanAuditContext',
+        'disableManagedAccount',
+        'transaction,positiveId(actorAccountId),dependencies.auditMetadata',
+        1,
+      ],
+      [
+        'recordAccountLifecycleEvent',
+        'disableManagedAccount',
+        "transaction,accountId,'account_disabled'",
+        1,
+      ],
+      [
+        'setHumanAuditContext',
+        'reactivateManagedAccount',
+        'transaction,positiveId(actorAccountId),dependencies.auditMetadata',
+        1,
+      ],
+      [
+        'recordAccountLifecycleEvent',
+        'reactivateManagedAccount',
+        "transaction,accountId,'account_enabled'",
+        1,
+      ],
+      [
+        'recordAdministrationPasswordChange',
+        'reactivateManagedAccount',
+        "transaction,accountId,'password_reset'",
+        1,
+      ],
+      [
+        'setHumanAuditContext',
+        'resetManagedPassword',
+        'transaction,positiveId(actorAccountId),dependencies.auditMetadata',
+        1,
+      ],
+      [
+        'recordAdministrationPasswordChange',
+        'resetManagedPassword',
+        'transaction,accountId,semanticAction',
+        1,
+      ],
     ] as const;
     for (const [helper, functionName, argumentsText, expectedCount] of expectedCalls) {
       const count = authCalls.filter(
@@ -1835,7 +1950,7 @@ export function auditRuntimeSourceFailures(
     const expectedCallCount = expectedCalls.reduce((sum, call) => sum + call[3], 0);
     if (authCalls.length !== expectedCallCount) {
       failures.add(
-        `${AUDIT_AUTH_SERVICE} has ${authCalls.length}/${expectedCallCount} reviewed audit context/event calls`,
+        `reviewed authentication services have ${authCalls.length}/${expectedCallCount} audit context/event calls`,
       );
     }
     for (const [file, functionName] of REVIEWED_RAW_SQL_CALLS) {

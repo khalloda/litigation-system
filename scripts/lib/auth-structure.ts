@@ -104,7 +104,21 @@ const triggerDefinitions = {
     type: 19,
     function: 'guard_user_account_security',
     definition:
-      'CREATE TRIGGER user_accounts_security_guard BEFORE UPDATE OF person_id, password_hash, is_enabled, failed_login_attempts, locked_until, session_version ON user_accounts FOR EACH ROW EXECUTE FUNCTION guard_user_account_security()',
+      'CREATE TRIGGER user_accounts_security_guard BEFORE UPDATE OF person_id, username, username_normalized, password_hash, role_code, is_enabled, must_change_password, failed_login_attempts, locked_until, session_version, password_changed_at ON user_accounts FOR EACH ROW EXECUTE FUNCTION guard_user_account_security()',
+  },
+  user_accounts_administrator_availability_guard: {
+    table: 'user_accounts',
+    type: 19,
+    function: 'guard_usable_administrator',
+    definition:
+      'CREATE TRIGGER user_accounts_administrator_availability_guard BEFORE UPDATE OF role_code, is_enabled, password_hash ON user_accounts FOR EACH ROW EXECUTE FUNCTION guard_usable_administrator()',
+  },
+  people_administrator_availability_guard: {
+    table: 'people',
+    type: 19,
+    function: 'guard_usable_administrator',
+    definition:
+      'CREATE TRIGGER people_administrator_availability_guard BEFORE UPDATE OF is_active, can_login ON people FOR EACH ROW EXECUTE FUNCTION guard_usable_administrator()',
   },
   user_accounts_sync_person_login: {
     table: 'user_accounts',
@@ -123,7 +137,14 @@ const functionBodies: Readonly<Record<string, string>> = {
   );
   RETURN NEW;
 END;`,
-  guard_user_account_security: `BEGIN
+  guard_user_account_security: `DECLARE
+    lifecycle_changed boolean :=
+        NEW.username IS DISTINCT FROM OLD.username
+        OR NEW.username_normalized IS DISTINCT FROM OLD.username_normalized
+        OR NEW.password_hash IS DISTINCT FROM OLD.password_hash
+        OR NEW.role_code IS DISTINCT FROM OLD.role_code
+        OR NEW.is_enabled IS DISTINCT FROM OLD.is_enabled;
+BEGIN
   IF NEW.person_id <> OLD.person_id THEN
     RAISE EXCEPTION 'A user account cannot be moved to another person';
   END IF;
@@ -133,13 +154,21 @@ END;`,
   IF OLD.password_hash IS NOT NULL AND NEW.password_hash IS NULL THEN
     RAISE EXCEPTION 'An initialized user password cannot be cleared';
   END IF;
+  IF lifecycle_changed AND NEW.session_version <> OLD.session_version+1 THEN
+    RAISE EXCEPTION 'Account lifecycle changes must increment the session version exactly once';
+  END IF;
   IF NEW.password_hash IS DISTINCT FROM OLD.password_hash
-     OR (OLD.is_enabled AND NOT NEW.is_enabled) THEN
-    IF NEW.session_version <= OLD.session_version THEN
-      RAISE EXCEPTION 'Password changes and account disabling must invalidate sessions';
-    END IF;
+     OR NEW.is_enabled IS DISTINCT FROM OLD.is_enabled THEN
     IF NEW.failed_login_attempts <> 0 OR NEW.locked_until IS NOT NULL THEN
-      RAISE EXCEPTION 'Password changes and account disabling must clear lockout state';
+      RAISE EXCEPTION 'Password and enablement changes must clear lockout state';
+    END IF;
+  END IF;
+  IF NOT OLD.is_enabled AND NEW.is_enabled THEN
+    IF NEW.password_hash IS NOT DISTINCT FROM OLD.password_hash
+       OR NEW.password_hash IS NULL
+       OR NOT NEW.must_change_password
+       OR NEW.password_changed_at IS NOT DISTINCT FROM OLD.password_changed_at THEN
+      RAISE EXCEPTION 'Reactivation requires a new temporary password and forced change';
     END IF;
   END IF;
   RETURN NEW;
@@ -280,7 +309,11 @@ export async function authStructureFailures(db: ClientBase): Promise<string[]> {
       JOIN pg_namespace ns ON ns.oid=r.relnamespace JOIN pg_proc p ON p.oid=t.tgfoid
       JOIN pg_namespace fns ON fns.oid=p.pronamespace
      WHERE ns.nspname='public' AND NOT t.tgisinternal
-       AND t.tgname IN ('people_login_eligibility_guard','user_accounts_security_guard','user_accounts_sync_person_login')
+       AND t.tgname IN (
+         'people_administrator_availability_guard','people_login_eligibility_guard',
+         'user_accounts_administrator_availability_guard','user_accounts_security_guard',
+         'user_accounts_sync_person_login'
+       )
      ORDER BY t.tgname`);
   for (const [name, expected] of Object.entries(triggerDefinitions)) {
     const row = triggers.rows.find((candidate) => candidate.name === name);
@@ -339,18 +372,21 @@ export async function authStructureFailures(db: ClientBase): Promise<string[]> {
 
 export async function authDataFailures(db: ClientBase): Promise<string[]> {
   const result = await db.query<{ defect: string }>(`
-    WITH expected(username,name_ar,email,role_code,native,person_id) AS (VALUES
-      ('KHelmy','خالد حلمي','khelmy@sarieldin.com','Administrator',true,NULL::integer),
-      ('MHussien','محمد حسين','mhussien@sarieldin.com','Litigation Assistant',true,NULL::integer),
-      ('IHamdy','إيهاب حمدي','ihamdy@sarieldin.com','Lawyer',false,4),
-      ('SKhattab','سامي إبراهيم خطاب','skhattab@sarieldin.com','Paralegal',false,5)
+    WITH expected(original_username,name_ar,email,native,person_id) AS (VALUES
+      ('KHelmy','خالد حلمي','khelmy@sarieldin.com',true,NULL::integer),
+      ('MHussien','محمد حسين','mhussien@sarieldin.com',true,NULL::integer),
+      ('IHamdy','إيهاب حمدي','ihamdy@sarieldin.com',false,4),
+      ('SKhattab','سامي إبراهيم خطاب','skhattab@sarieldin.com',false,5)
     ), defects AS (
       SELECT 'approved account mapping differs' defect FROM expected e
-      LEFT JOIN user_accounts u ON u.username=e.username
+      LEFT JOIN audit_actors actor
+        ON actor.actor_kind='human'
+       AND actor.identity_label=e.original_username||' (account '||actor.user_account_id::text||')'
+      LEFT JOIN user_accounts u ON u.id=actor.user_account_id
       LEFT JOIN people p ON p.id=u.person_id
       LEFT JOIN person_name_alias a ON a.person_id=p.id AND a.alias_ar=e.name_ar
       WHERE u.id IS NULL OR p.name_ar IS DISTINCT FROM e.name_ar
-         OR p.email IS DISTINCT FROM e.email OR u.role_code IS DISTINCT FROM e.role_code
+         OR p.email IS DISTINCT FROM e.email
          OR p.is_application_native IS DISTINCT FROM e.native
          OR (e.person_id IS NOT NULL AND p.id IS DISTINCT FROM e.person_id)
          OR a.person_id IS NULL

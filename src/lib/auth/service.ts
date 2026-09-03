@@ -12,7 +12,7 @@ import {
 import type { AuditRequestMetadata } from '@/lib/audit-metadata';
 import { db } from '@/lib/db';
 import {
-  APPROVED_INITIAL_USERNAMES,
+  APPROVED_INITIAL_ACCOUNT_IDS,
   LOCKOUT_FAILURES,
   LOCKOUT_MINUTES,
   normalizeUsername,
@@ -64,11 +64,7 @@ type AuthenticationDependencies = {
   dummyVerify?: typeof performDummyPasswordVerification;
 };
 
-const approvedNormalizedUsernames = new Set(
-  APPROVED_INITIAL_USERNAMES.map((username) => normalizeUsername(username)),
-);
-
-async function withSerializableRetry<T>(operation: () => Promise<T>): Promise<T> {
+export async function withSerializableRetry<T>(operation: () => Promise<T>): Promise<T> {
   for (let attempt = 1; attempt <= 10; attempt += 1) {
     try {
       return await operation();
@@ -358,8 +354,6 @@ export async function setApprovedAccountPassword(
   dependencies: Pick<AuthenticationDependencies, 'database' | 'now' | 'auditMetadata'>,
 ): Promise<{ username: string; personName: string }> {
   const usernameNormalized = normalizeUsername(username);
-  if (!approvedNormalizedUsernames.has(usernameNormalized))
-    throw new Error('approved-account-required');
   if (!passwordMeetsPolicy(password)) throw new Error('password-policy');
 
   const database = dependencies.database ?? db;
@@ -372,6 +366,9 @@ export async function setApprovedAccountPassword(
       async (tx) => {
         const account = await lockedAccount(tx, usernameNormalized);
         if (!account) throw new Error('approved-account-not-found');
+        if (!APPROVED_INITIAL_ACCOUNT_IDS.some((accountId) => accountId === account.id)) {
+          throw new Error('approved-account-required');
+        }
         const semanticAction = account.passwordHash ? 'password_reset' : 'password_initialized';
         await setAdministrationAuditContext(tx, auditMetadata);
         await tx.userAccount.update({

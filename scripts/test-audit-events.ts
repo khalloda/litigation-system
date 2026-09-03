@@ -583,9 +583,10 @@ async function main(): Promise<void> {
       ).rows[0]!.id;
       await owner.query('COMMIT');
       assert.equal(futureAccountId, 5);
-      assert.equal(interveningActorId, 1005);
-      assert.equal(futureAuditActorId, 1006);
+      assert.ok(interveningActorId >= 2000);
+      assert.equal(futureAuditActorId, interveningActorId + 1);
       assert.notEqual(futureAuditActorId, interveningActorId);
+      assert.notEqual(futureAuditActorId, 1000 + futureAccountId);
       const futureAccountCreation = (
         await owner.query<{ after_values: Record<string, unknown>; entity_key: unknown }>(
           `
@@ -622,14 +623,7 @@ async function main(): Promise<void> {
         'PASS target-account gateway resolves the immutable actor relationship without runtime audit_actors access',
       );
 
-      const databaseActions = [
-        'archive',
-        'restore',
-        'account_created',
-        'account_enabled',
-        'account_disabled',
-        'role_changed',
-      ] as const;
+      const databaseActions = ['archive', 'restore'] as const;
       for (const action of databaseActions) {
         const result = await runAuditedDatabaseOperation(
           runtimePrisma,
@@ -674,7 +668,7 @@ async function main(): Promise<void> {
             },
           };
         }),
-        /Lifecycle actor or shape is invalid/u,
+        /lifecycle actor or shape is invalid/u,
       );
       assert.notEqual(
         (await owner.query(`SELECT label_ar FROM lookup_importance WHERE id=30003`)).rows[0]
@@ -682,7 +676,7 @@ async function main(): Promise<void> {
         atomicLabel,
       );
       console.log(
-        'PASS six database lifecycle contracts are atomic; three external facts append only after a server-observed emission point',
+        'PASS record lifecycle contracts are atomic; account lifecycle has its separate strict gateway; three external facts append only after a server-observed emission point',
       );
 
       const benchmarkIds = [randomUUID(), randomUUID(), randomUUID()] as const;
@@ -754,7 +748,9 @@ async function main(): Promise<void> {
       ).rows[0]!.role;
       await owner.query('BEGIN');
       await setPgContext(owner, 1, [randomUUID(), randomUUID(), randomUUID()]);
-      await owner.query(`UPDATE user_accounts SET role_code='Paralegal' WHERE id=1`);
+      await owner.query(
+        `UPDATE user_accounts SET role_code='Paralegal',session_version=session_version+1 WHERE id=1`,
+      );
       const snapshotDuring = (
         await owner.query<{ role: string }>(`
           SELECT actor_role_snapshot role FROM audit_events

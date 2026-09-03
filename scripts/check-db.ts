@@ -57,7 +57,6 @@ import { reconcileClientLogos } from './lib/client-logo-reconciliation';
 import { clientLogoStructureFailures } from './lib/client-logo-structure';
 import { authDataFailures, authStructureFailures } from './lib/auth-structure';
 import {
-  auditAttributionDigest,
   auditDataFailures,
   auditStructureFailures,
   protectedAuditExcludedDigest,
@@ -2631,6 +2630,18 @@ async function main() {
         : authStructure.join('; '),
       authStructure.length === 0,
     );
+    const usableAdministrators = await relationshipDb.query<{ count: string }>(`
+      SELECT count(*)::text count
+        FROM user_accounts u JOIN people p ON p.id=u.person_id
+       WHERE u.role_code='Administrator' AND u.is_enabled
+         AND u.password_hash IS NOT NULL AND p.is_active AND p.can_login`);
+    const usableAdministratorCount = Number(usableAdministrators.rows[0]?.count ?? '0');
+    record(
+      'Task 3.4 operational Administrator readiness',
+      'at least one usable Administrator',
+      `${usableAdministratorCount} usable Administrator(s)`,
+      usableAdministratorCount >= 1,
+    );
     const auditStructure = await auditStructureFailures(relationshipDb);
     record(
       'Task 3.3A actor schema and trigger enforcement',
@@ -2651,10 +2662,10 @@ async function main() {
     );
     const auditData = await auditDataFailures(relationshipDb, { historicalLive: true });
     record(
-      'Task 3.3A truthful actor registry and historical backfill',
-      '7 immutable actors; 45,463 created by migration; 45,459 updated by migration; only 4 documented update actors unknown',
+      'Task 3.3A/3.4 truthful actor registry and current attribution',
+      'three exact system actors; four exact original human actors; one immutable human actor per current account; frozen 45,463 migration creations; at most four original update actors unknown',
       auditData.length === 0
-        ? '4 human + 3 system actors; exact 45,463/45,459/4 population'
+        ? 'original identities protected; current account/actor cardinality and attribution are structurally exact'
         : auditData.join('; '),
       auditData.length === 0,
     );
@@ -2665,11 +2676,16 @@ async function main() {
       protectedDigest,
       protectedDigest === TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
     );
-    const attributionDigest = await auditAttributionDigest(relationshipDb);
+    const attributionBaseline = await relationshipDb.query<{ digest: string | null }>(`
+      SELECT event_metadata->>'attribution_digest' digest
+        FROM public.audit_events
+       WHERE action='audit_baseline_established'
+       ORDER BY id LIMIT 1`);
+    const attributionDigest = attributionBaseline.rows[0]?.digest ?? null;
     record(
-      'Task 3.3A audit-attribution projection',
+      'Frozen Task 3.3A audit-attribution projection',
       TASK33A_ATTRIBUTION_DIGEST,
-      attributionDigest,
+      attributionDigest ?? 'missing',
       attributionDigest === TASK33A_ATTRIBUTION_DIGEST,
     );
     const auditEventStructure = await auditEventStructureFailures(relationshipDb);

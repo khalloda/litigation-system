@@ -532,7 +532,7 @@ function selfTest(): void {
   assert.deepEqual(
     auditRuntimeSourceFailures(legitimateRuntime),
     [],
-    'the complete legitimate runtime source and eight reviewed SQL calls failed',
+    'the complete legitimate runtime source and ten reviewed SQL calls failed',
   );
   const alteredReviewedSql = legitimateRuntime.map((runtimeSource) =>
     runtimeSource.path === 'src/lib/audit.ts'
@@ -550,6 +550,37 @@ function selfTest(): void {
       failure.includes('call fingerprint'),
     ),
     'a reviewed SQL-template change retained approval without a new fingerprint',
+  );
+  const missingLifecycleEvent = legitimateRuntime.map((runtimeSource) =>
+    runtimeSource.path === 'src/lib/auth/user-management.ts'
+      ? {
+          ...runtimeSource,
+          text: runtimeSource.text.replace(
+            /\s+await recordAccountLifecycleEvent\(transaction, accountId, 'account_disabled'\);/u,
+            '',
+          ),
+        }
+      : runtimeSource,
+  );
+  assert.ok(
+    auditRuntimeSourceFailures(missingLifecycleEvent).some((failure) =>
+      failure.includes('recordAccountLifecycleEvent'),
+    ),
+    'an account lifecycle mutation could omit its required semantic event',
+  );
+  const changedLifecycleEvent = legitimateRuntime.map((runtimeSource) =>
+    runtimeSource.path === 'src/lib/auth/user-management.ts'
+      ? {
+          ...runtimeSource,
+          text: runtimeSource.text.replace("'account_disabled'", "'account_enabled'"),
+        }
+      : runtimeSource,
+  );
+  assert.ok(
+    auditRuntimeSourceFailures(changedLifecycleEvent).some((failure) =>
+      failure.includes('recordAccountLifecycleEvent'),
+    ),
+    'an account lifecycle mutation could select the wrong semantic event',
   );
   const gateway: AuditRuntimeSource = {
     path: 'src/lib/audit.ts',
@@ -1345,7 +1376,7 @@ export const run = () => withApprovedMigrationClient(async (database) => databas
     rmSync(d35Root, { force: true, recursive: true });
   }
   console.log(
-    `check:audit self-test — ${prismaModelFailures.length} Prisma schema fixtures plus ${negative.length + 13} semantic/fingerprint/D35 bypass fixtures rejected; the correct AuditEventField model, ${positive.length} focused legitimate fixtures, the complete runtime, eight fingerprinted SQL calls and the approved migration gateway accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
+    `check:audit self-test — ${prismaModelFailures.length} Prisma schema fixtures plus ${negative.length + 13} semantic/fingerprint/D35 bypass fixtures rejected; the correct AuditEventField model, ${positive.length} focused legitimate fixtures, the complete runtime, ten fingerprinted SQL calls and the approved migration gateway accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
   );
 }
 

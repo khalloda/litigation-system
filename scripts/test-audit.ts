@@ -31,6 +31,7 @@ const TASK33A_FINAL_ENFORCEMENT_MIGRATION = '20260901190000_complete_task33a_enf
 const TASK33A_FINAL_ACCEPTANCE_MIGRATION = '20260902120000_finalize_task33a_enforcement';
 const TASK33B_MIGRATION = '20260902180000_append_only_audit_events';
 const TASK33B_CORRECTION_MIGRATION = '20260903100000_close_task33b_review_gaps';
+const TASK34_MIGRATION = '20260903160000_secure_user_account_lifecycle';
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
@@ -155,6 +156,22 @@ async function reverseTask33AForHistoricalFixture(db: Client, fixtureName: strin
         )
       ).rows[0]?.present
     ) {
+      if (
+        (
+          await db.query<{ present: boolean }>(
+            `SELECT to_regprocedure(
+               'public.create_user_account_with_actor(integer,text,text,text)'
+             ) IS NOT NULL present`,
+          )
+        ).rows[0]?.present
+      ) {
+        await db.query(`
+          DROP TRIGGER user_accounts_administrator_availability_guard ON public.user_accounts;
+          DROP TRIGGER people_administrator_availability_guard ON public.people;
+          DROP FUNCTION public.create_user_account_with_actor(integer,text,text,text);
+          DROP FUNCTION public.guard_usable_administrator();
+          DROP FUNCTION public.user_account_is_usable_administrator(integer)`);
+      }
       for (const table of AUDITED_TABLES) {
         assert.match(table, /^[a-z_]+$/u);
         await db.query(`DROP TRIGGER audit_event_capture ON public.${table}`);
@@ -177,9 +194,9 @@ async function reverseTask33AForHistoricalFixture(db: Client, fixtureName: strin
       const removedTask33b = await db.query(
         `DELETE FROM _prisma_migrations WHERE migration_name=ANY($1::text[])
          RETURNING migration_name`,
-        [[TASK33B_MIGRATION, TASK33B_CORRECTION_MIGRATION]],
+        [[TASK33B_MIGRATION, TASK33B_CORRECTION_MIGRATION, TASK34_MIGRATION]],
       );
-      assert.ok(removedTask33b.rowCount === 1 || removedTask33b.rowCount === 2);
+      assert.ok(removedTask33b.rowCount !== null && removedTask33b.rowCount >= 1);
       assert.ok(removedTask33b.rows.some((row) => row['migration_name'] === TASK33B_MIGRATION));
     }
     await db.query(`
@@ -328,13 +345,14 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
           TASK33A_FINAL_ACCEPTANCE_MIGRATION,
           TASK33B_MIGRATION,
           TASK33B_CORRECTION_MIGRATION,
+          TASK34_MIGRATION,
         ],
       );
     } finally {
       await upgraded.end();
     }
     console.log(
-      'PASS historical-live clone: migrations 53/54/55/56/57/58 replay, protected digest and guard definitions unchanged',
+      'PASS historical-live clone: migrations 53/54/55/56/57/58/59 replay, protected digest and guard definitions unchanged',
     );
   } finally {
     if (created) {
@@ -354,7 +372,7 @@ async function grantProbeRuntimeBoundary(
   await owner.query(`GRANT USAGE ON SCHEMA public TO ${identifier(roleName)}`);
   for (const table of AUDITED_TABLES) {
     await owner.query(
-      `GRANT SELECT,INSERT,UPDATE ON TABLE public.${identifier(table)} TO ${identifier(roleName)}`,
+      `GRANT SELECT,UPDATE${table === 'user_accounts' ? '' : ',INSERT'} ON TABLE public.${identifier(table)} TO ${identifier(roleName)}`,
     );
   }
   const sequences = await owner.query<{ schema_name: string; sequence_name: string }>(
@@ -368,6 +386,7 @@ async function grantProbeRuntimeBoundary(
     [AUDITED_TABLES],
   );
   for (const sequence of sequences.rows) {
+    if (sequence.sequence_name === 'user_accounts_id_seq') continue;
     await owner.query(
       `GRANT USAGE,SELECT ON SEQUENCE ${identifier(sequence.schema_name)}.${identifier(sequence.sequence_name)} TO ${identifier(roleName)}`,
     );
@@ -386,6 +405,9 @@ async function grantProbeRuntimeBoundary(
   );
   await owner.query(
     `GRANT EXECUTE ON FUNCTION public.audit_append_semantic_event_for_account(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb) TO ${identifier(roleName)}`,
+  );
+  await owner.query(
+    `GRANT EXECUTE ON FUNCTION public.create_user_account_with_actor(integer,text,text,text) TO ${identifier(roleName)}`,
   );
 }
 
@@ -422,6 +444,14 @@ async function proveRoleBoundaryAdversarial(
     await grantProbeRuntimeBoundary(owner, fixtureName, probeRole);
     assert.deepEqual(await runtimeRoleBoundaryFailures(owner, probeRole), []);
 
+    // Migration 56's immutable postcondition predates Task 3.4 and therefore
+    // expects the then-current direct account INSERT/sequence grants. Give its
+    // disposable probe that historical input, then narrow it again below.
+    await owner.query(
+      `GRANT INSERT ON public.user_accounts TO ${identifier(probeRole)};
+       GRANT USAGE,SELECT ON SEQUENCE public.user_accounts_id_seq TO ${identifier(probeRole)}`,
+    );
+
     // Execute the exact forward migration with only its reviewed runtime-role
     // identifier substituted for this disposable probe. An unexpected PUBLIC
     // grant must leave the probe NOLOGIN and without CONNECT after validation
@@ -435,13 +465,14 @@ async function proveRoleBoundaryAdversarial(
     )
       .replaceAll('litigation_runtime', probeRole)
       // Migration 56 is immutable historical evidence. Its disposable
-      // re-enforcement copy must nevertheless recognize the two later,
-      // reviewed Task 3.3B runtime SECURITY DEFINER gateways.
+      // re-enforcement copy must nevertheless recognize the later reviewed
+      // Task 3.3B and Task 3.4 runtime SECURITY DEFINER gateways.
       .replace(
         "'public.audit_set_human_context(integer)'::regprocedure",
         "'public.audit_set_human_context(integer)'::regprocedure,\n" +
           "        'public.audit_set_event_context(uuid,uuid,uuid,inet,text,text)'::regprocedure,\n" +
-          "        'public.audit_append_semantic_event_for_account(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb)'::regprocedure",
+          "        'public.audit_append_semantic_event_for_account(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb)'::regprocedure,\n" +
+          "        'public.create_user_account_with_actor(integer,text,text,text)'::regprocedure",
       );
 
     const activeRuntimeUrl = new URL(fixtureOwnerUrl);
@@ -465,6 +496,14 @@ async function proveRoleBoundaryAdversarial(
         '1',
       );
       await owner.query(migration56);
+      // Reapply migration 59's narrower forward privilege delta after the
+      // historical migration-56 boundary has been exercised unchanged.
+      await owner.query(
+        `REVOKE INSERT,DELETE,TRUNCATE ON public.user_accounts FROM ${identifier(probeRole)};
+         REVOKE ALL ON SEQUENCE public.user_accounts_id_seq FROM ${identifier(probeRole)};
+         GRANT EXECUTE ON FUNCTION public.create_user_account_with_actor(integer,text,text,text)
+           TO ${identifier(probeRole)}`,
+      );
       await assert.rejects(
         activeRuntime.query('SELECT 1'),
         /terminating connection|Connection terminated|connection is closed|connection error|not queryable/u,
@@ -1165,6 +1204,7 @@ async function main(): Promise<void> {
           TASK33A_FINAL_ACCEPTANCE_MIGRATION,
           TASK33B_MIGRATION,
           TASK33B_CORRECTION_MIGRATION,
+          TASK34_MIGRATION,
         ],
       );
       assert.deepEqual(await auditStructureFailures(owner), []);
@@ -1465,7 +1505,7 @@ async function main(): Promise<void> {
       assert.deepEqual(await auditDataFailures(owner), []);
       assert.equal(AUDITED_TABLES.length, 38);
       console.log(
-        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54/55/56/57/58, exact 38 tables and immutable 7-actor registry',
+        'PASS canonical clean replay: Gate 4 profile plus migrations 52/53/54/55/56/57/58/59, exact 38 tables and immutable 7-actor registry',
       );
       console.log(
         'PASS missing/invalid context, spoof overwrite and immutable creation attribution',

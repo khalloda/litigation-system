@@ -3,6 +3,7 @@ export const AUTH_ROLES = ['Administrator', 'Litigation Assistant', 'Lawyer', 'P
 export type AuthRole = (typeof AUTH_ROLES)[number];
 
 export const APPROVED_INITIAL_USERNAMES = ['KHelmy', 'MHussien', 'IHamdy', 'SKhattab'] as const;
+export const APPROVED_INITIAL_ACCOUNT_IDS = [1, 2, 3, 4] as const;
 
 export const NORMAL_SESSION_SECONDS = 8 * 60 * 60;
 export const REMEMBERED_SESSION_SECONDS = 7 * 24 * 60 * 60;

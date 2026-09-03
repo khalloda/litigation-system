@@ -63,6 +63,15 @@ export const SYSTEM_AUDIT_ACTORS = [
   },
 ] as const;
 
+export const ORIGINAL_HUMAN_AUDIT_ACTORS = [
+  { id: 1001, accountId: 1, key: 'user_account:1' },
+  { id: 1002, accountId: 2, key: 'user_account:2' },
+  { id: 1003, accountId: 3, key: 'user_account:3' },
+  { id: 1004, accountId: 4, key: 'user_account:4' },
+] as const;
+
+const ORIGINAL_HUMAN_ACTOR_USERNAMES = ['IHamdy', 'KHelmy', 'MHussien', 'SKhattab'] as const;
+
 export const TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST =
   'b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab';
 export const TASK33A_ATTRIBUTION_DIGEST =
@@ -76,6 +85,7 @@ export const APPROVED_RUNTIME_SECURITY_DEFINERS = [
   'public.audit_set_event_context(p_request_id uuid, p_correlation_id uuid, p_audit_session_id uuid, p_ip_address inet, p_user_agent text, p_device_class text)',
   'public.audit_set_authentication_context()',
   'public.audit_set_human_context(p_user_account_id integer)',
+  'public.create_user_account_with_actor(p_person_id integer, p_username text, p_password_hash text, p_role_code text)',
 ] as const;
 
 const FUNCTION_DEFINITION_MD5 = new Map([
@@ -84,8 +94,11 @@ const FUNCTION_DEFINITION_MD5 = new Map([
   ['audit_set_authentication_context', '67507f5cde5dcb13be779811da0df7ca'],
   ['audit_set_human_context', '73feabf98fa0384b1f0062b9e65e3b60'],
   ['audit_set_migration_context', '2c9cef400046ecf085849d1b7867113a'],
+  ['create_user_account_with_actor', '8d3419e9b89335cba86decf0e67b2082'],
   ['enforce_audit_actor_columns', 'feeb29427e8b432be33609c5246e21e8'],
+  ['guard_usable_administrator', '741fd89af472963f4ff614551a3c96b0'],
   ['refuse_audit_actor_identity_change', '9cface3f217d424f3c629b4f68b86d0c'],
+  ['user_account_is_usable_administrator', 'c3d3860973c74a069accef436592e904'],
 ]);
 
 const ACTOR_CONSTRAINTS = new Map([
@@ -562,9 +575,10 @@ export async function runtimeRoleBoundaryFailures(
   for (const row of relations.rows) {
     const approved =
       row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never);
+    const insertApproved = approved && row.relation_name !== 'user_accounts';
     if (
       row.select_ok !== approved ||
-      row.insert_ok !== approved ||
+      row.insert_ok !== insertApproved ||
       row.update_ok !== approved ||
       row.delete_ok ||
       row.truncate_ok ||
@@ -629,7 +643,11 @@ export async function runtimeRoleBoundaryFailures(
       )
       .map((acl) => acl.privilege_type)
       .sort();
-    const expected = approved ? ['INSERT', 'SELECT', 'UPDATE'] : [];
+    const expected = approved
+      ? relation.relation_name === 'user_accounts'
+        ? ['SELECT', 'UPDATE']
+        : ['INSERT', 'SELECT', 'UPDATE']
+      : [];
     if (!same(direct, expected)) {
       failures.push(
         `${relation.schema_name}.${relation.relation_name}: direct runtime relation ACL is ${direct.join(',') || 'none'}`,
@@ -658,9 +676,10 @@ export async function runtimeRoleBoundaryFailures(
   for (const row of columnPrivileges.rows) {
     const approved =
       row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never);
+    const insertApproved = approved && row.relation_name !== 'user_accounts';
     if (
       row.select_ok !== approved ||
-      row.insert_ok !== approved ||
+      row.insert_ok !== insertApproved ||
       row.update_ok !== approved ||
       row.references_ok
     ) {
@@ -695,13 +714,16 @@ export async function runtimeRoleBoundaryFailures(
     }
   }
 
-  const approvedSequences = await db.query<{ oid: string | null }>(
+  const approvedSequences = await db.query<{ table_name: string; oid: string | null }>(
     `SELECT to_regclass(pg_get_serial_sequence(format('public.%I',table_name),'id'))::oid::text oid
+            ,table_name
        FROM unnest($1::text[]) table_name ORDER BY table_name`,
     [AUDITED_TABLES],
   );
   const approvedSequenceOids = new Set(
-    approvedSequences.rows.flatMap((row) => (row.oid === null ? [] : [row.oid])),
+    approvedSequences.rows.flatMap((row) =>
+      row.oid === null || row.table_name === 'user_accounts' ? [] : [row.oid],
+    ),
   );
   const sequences = await db.query<{
     oid: string;
@@ -929,8 +951,6 @@ export async function auditDataFailures(
   const actors = await db.query<ActorRow>(`
     SELECT id,actor_key,actor_kind,user_account_id,identity_label,purpose
       FROM audit_actors ORDER BY id`);
-  if (actors.rows.length !== 7)
-    failures.push(`actor registry contains ${actors.rows.length}/7 rows`);
   for (const expected of SYSTEM_AUDIT_ACTORS) {
     const row = actors.rows.find((candidate) => candidate.actor_key === expected.key);
     if (
@@ -942,6 +962,27 @@ export async function auditDataFailures(
       row.purpose !== expected.purpose
     ) {
       failures.push(`${expected.key}: immutable system identity differs`);
+    }
+  }
+  const originalActorUsernames = ORIGINAL_HUMAN_AUDIT_ACTORS.flatMap((expected) => {
+    const row = actors.rows.find((candidate) => candidate.id === expected.id);
+    return row ? [row.identity_label.split(' (account ')[0]!] : [];
+  }).sort();
+  if (!same(originalActorUsernames, [...ORIGINAL_HUMAN_ACTOR_USERNAMES].sort())) {
+    failures.push('original human actor username snapshot set differs');
+  }
+  for (const expected of ORIGINAL_HUMAN_AUDIT_ACTORS) {
+    const row = actors.rows.find((candidate) => candidate.id === expected.id);
+    if (
+      !row ||
+      row.actor_key !== expected.key ||
+      row.actor_kind !== 'human' ||
+      row.user_account_id !== expected.accountId ||
+      row.identity_label !==
+        `${row.identity_label.split(' (account ')[0]} (account ${expected.accountId})` ||
+      row.purpose !== 'Authenticated application account'
+    ) {
+      failures.push(`original human actor ${expected.id}: immutable identity differs`);
     }
   }
   const accounts = await db.query<{
@@ -957,15 +998,30 @@ export async function auditDataFailures(
       FROM user_accounts u LEFT JOIN audit_actors a
         ON a.user_account_id=u.id AND a.actor_kind='human'
      GROUP BY u.id,u.username ORDER BY u.id`);
-  if (accounts.rows.length !== 4)
-    failures.push(`current account count is ${accounts.rows.length}/4`);
+  const humanActors = actors.rows.filter((row) => row.actor_kind === 'human');
+  if (actors.rows.length !== accounts.rows.length + SYSTEM_AUDIT_ACTORS.length) {
+    failures.push('actor registry does not equal every account plus the three system actors');
+  }
+  if (humanActors.length !== accounts.rows.length) {
+    failures.push('human actor/account cardinality differs');
+  }
   for (const row of accounts.rows) {
     if (
       row.actor_count !== 1 ||
       row.actor_key !== `user_account:${row.id}` ||
-      row.identity_label !== `${row.username} (account ${row.id})`
+      !row.identity_label
     ) {
       failures.push(`account ${row.id}: immutable human actor linkage differs`);
+    }
+  }
+  for (const actor of humanActors) {
+    if (actor.user_account_id === null) {
+      failures.push(`human actor ${actor.id}: account linkage is absent`);
+    } else if (
+      actor.user_account_id > 4 &&
+      (actor.id < 2000 || actor.id === 1000 + actor.user_account_id)
+    ) {
+      failures.push(`human actor ${actor.id}: future identity is arithmetically derived`);
     }
   }
 
@@ -998,19 +1054,26 @@ export async function auditDataFailures(
     updatedMigration += Number(row.updated_migration);
     createdNulls += Number(row.created_nulls);
     updatedNulls += Number(row.updated_nulls);
-    const expectedUpdatedNulls = table === 'user_accounts' ? 4 : 0;
-    if (Number(row.created_nulls) !== 0 || Number(row.updated_nulls) !== expectedUpdatedNulls) {
+    const allowedUpdatedNulls = table === 'user_accounts' ? 4 : 0;
+    if (Number(row.created_nulls) !== 0 || Number(row.updated_nulls) > allowedUpdatedNulls) {
       failures.push(`${table}: historical actor-null exceptions differ`);
     }
   }
-  if (createdNulls !== 0 || updatedNulls !== 4)
+  const unexpectedAccountNulls = await db.query<{ id: number }>(`
+    SELECT id FROM public.user_accounts
+     WHERE updated_by IS NULL AND id<>ALL(ARRAY[1,2,3,4]) ORDER BY id`);
+  if (unexpectedAccountNulls.rows.length > 0) {
+    failures.push('a later account has an unknown updated actor');
+  }
+  if (createdNulls !== 0 || updatedNulls > 4)
     failures.push('aggregate actor-null exceptions differ');
   if (options.historicalLive) {
-    if (rowTotal !== 45_463) failures.push(`historical audited row count is ${rowTotal}/45463`);
+    if (rowTotal < 45_463)
+      failures.push(`current audited row count fell below 45463 (${rowTotal})`);
     if (createdMigration !== 45_463)
-      failures.push(`system_migration creation count is ${createdMigration}/45463`);
-    if (updatedMigration !== 45_459)
-      failures.push(`system_migration update count is ${updatedMigration}/45459`);
+      failures.push(`frozen system_migration creation population is ${createdMigration}/45463`);
+    if (updatedMigration > 45_459)
+      failures.push(`system_migration update population grew unexpectedly (${updatedMigration})`);
   }
   return failures;
 }

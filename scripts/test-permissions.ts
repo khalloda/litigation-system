@@ -30,6 +30,7 @@ import {
   type AuthenticatedUser,
 } from '../src/lib/auth/service';
 import { AUTH_ROLES, type AuthRole } from '../src/lib/auth/constants';
+import { hashPassword } from '../src/lib/auth/password';
 import {
   PERMISSION_ACTIONS,
   PERMISSION_AREAS,
@@ -338,16 +339,32 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
       );
       assert.ok(administrator);
       const staleAdministratorClaims = createSessionClaims(administrator);
+      await setApprovedAccountPassword('MHussien', `${temporaryPassword}-secondary`, {
+        database: migrationDatabase,
+        auditMetadata: createMaintenanceAuditMetadata(),
+      });
+      const secondaryAdministrator = await migrationDatabase.userAccount.findUniqueOrThrow({
+        where: { usernameNormalized: 'mhussien' },
+      });
+      await withMaintenanceContext(migrationDatabase, (transaction) =>
+        transaction.userAccount.update({
+          where: { id: secondaryAdministrator.id },
+          data: {
+            roleCode: 'Administrator',
+            sessionVersion: { increment: 1 },
+            updatedAt: new Date(),
+          },
+        }),
+      );
       await withMaintenanceContext(migrationDatabase, (transaction) =>
         transaction.userAccount.update({
           where: { id: Number(administrator.id) },
-          data: { roleCode: 'Lawyer', updatedAt: new Date() },
+          data: { roleCode: 'Lawyer', sessionVersion: { increment: 1 }, updatedAt: new Date() },
         }),
       );
       const refreshed = await validateSessionClaims(staleAdministratorClaims, { database });
       assert.equal(staleAdministratorClaims.role, 'Administrator');
-      assert.equal(refreshed?.role, 'Lawyer');
-      assert.equal(hasPermission(refreshed?.role, 'usersAndRoles', 'manage'), false);
+      assert.equal(refreshed, null);
 
       const account = await database.userAccount.findUniqueOrThrow({
         where: { id: Number(administrator.id) },
@@ -384,10 +401,21 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
       } satisfies AuthenticatedUser);
       assert.equal(await validateSessionClaims(disabledClaims, { database }), null);
 
+      const reactivatedAt = new Date(Date.now() + 1_000);
+      const reactivatedPasswordHash = await hashPassword(`${temporaryPassword}-reactivated`);
       await withMaintenanceContext(migrationDatabase, async (transaction) => {
         await transaction.userAccount.update({
           where: { id: account.id },
-          data: { isEnabled: true, sessionVersion: { increment: 1 }, updatedAt: new Date() },
+          data: {
+            isEnabled: true,
+            passwordHash: reactivatedPasswordHash,
+            mustChangePassword: true,
+            passwordChangedAt: reactivatedAt,
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+            sessionVersion: { increment: 1 },
+            updatedAt: reactivatedAt,
+          },
         });
         await transaction.person.update({
           where: { id: account.personId },
@@ -1122,7 +1150,7 @@ export async function updateClient() {
   const tasks = readFileSync('TASKS.md', 'utf8');
   assert.match(tasks, /- \[x\] \*\*3\.3A Secure actor attribution\*\*/u);
   assert.match(tasks, /- \[x\] \*\*3\.3B Append-only event foundation\*\*/u);
-  assert.match(tasks, /- \[ \] \*\*3\.4 User management\*\*/u);
+  assert.match(tasks, /- \[x\] \*\*3\.4 User management\*\*/u);
 
   await proveDatabaseSessionAuthorization();
 
@@ -1144,7 +1172,7 @@ export async function updateClient() {
     'PASS static fixtures reject outside-app actions, shadowed/wrong guards, unawaited/late/conditional guards, dynamic or mismatched literals, partial methods and proxy-only enforcement',
   );
   console.log('PASS only the exact reviewed generated Prisma subtree is excluded from discovery');
-  console.log('PASS Task 3.3B event foundation leaves Task 3.4 user management outstanding');
+  console.log('PASS Task 3.4 user-management completion checkpoint is exact');
 }
 
 main().catch((error: unknown) => {

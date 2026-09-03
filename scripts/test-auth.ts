@@ -366,7 +366,7 @@ async function main(): Promise<void> {
           database: migrationDatabase,
           auditMetadata: createMaintenanceAuditMetadata(),
         }),
-        /approved-account-required/u,
+        /approved-account-not-found/u,
       );
 
       let dummyCalls = 0;
@@ -707,6 +707,21 @@ async function main(): Promise<void> {
       assert.equal(replacementLogin.mustChangePassword, false);
       const replacementClaims = createSessionClaims(replacementLogin);
 
+      const secondaryAdministratorPassword = `${temporaryPassword}-secondary`;
+      await setApprovedAccountPassword('MHussien', secondaryAdministratorPassword, {
+        database: migrationDatabase,
+        auditMetadata: createMaintenanceAuditMetadata(),
+      });
+      const secondaryAdministrator = await migrationDatabase.userAccount.findUniqueOrThrow({
+        where: { usernameNormalized: 'mhussien' },
+      });
+      await withMaintenanceContext(migrationDatabase, (transaction) =>
+        transaction.userAccount.update({
+          where: { id: secondaryAdministrator.id },
+          data: { roleCode: 'Administrator', sessionVersion: { increment: 1 }, updatedAt: clock },
+        }),
+      );
+
       const beforeDisable = await database.userAccount.findUniqueOrThrow({
         where: { id: Number(replacementLogin.id) },
       });
@@ -735,10 +750,21 @@ async function main(): Promise<void> {
           .canLogin,
         false,
       );
+      const reactivatedAt = new Date(clock.getTime() + 1);
+      const reactivatedPasswordHash = await hashPassword(`${temporaryPassword}-reactivated`);
       await withMaintenanceContext(migrationDatabase, async (transaction) => {
         await transaction.userAccount.update({
           where: { id: beforeDisable.id },
-          data: { isEnabled: true, updatedAt: clock },
+          data: {
+            isEnabled: true,
+            passwordHash: reactivatedPasswordHash,
+            mustChangePassword: true,
+            passwordChangedAt: reactivatedAt,
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+            sessionVersion: { increment: 1 },
+            updatedAt: reactivatedAt,
+          },
         });
         await transaction.person.update({
           where: { id: beforeDisable.personId },
