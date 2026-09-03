@@ -1,7 +1,7 @@
 # Task 3.4 — Administrator-only user management
 
-- Implemented: 3 September 2026; the bounded UI acceptance correction is
-  pending independent review of the three local commits
+- Implemented: 3 September 2026; the final bounded security correction is
+  pending independent review of the four local commits
 - Codex model: GPT-5.6 Sol
 - Reasoning effort: high
 - Environment: Local
@@ -16,12 +16,14 @@
   (`feat: secure Task 3.4 account lifecycle`)
 - UI commit: `b1ca42019f1fa1a48758fab6542d841d263bf83e`
   (`feat: add Task 3.4 user management`)
-- UI acceptance correction: the enclosing commit named
-  `fix: close Task 3.4 UI acceptance gaps`; record its SHA after creation
+- UI acceptance correction: `416d96a774b6e292fc45ebc8a478f348f94d602b`
+  (`fix: close Task 3.4 UI acceptance gaps`)
+- Final security correction: the enclosing commit named
+  `fix: prevent pre-hydration password query leakage`; record its SHA after creation
   because a content-addressed commit cannot contain its own SHA.
 - Push status: not pushed; `origin/main` remains the accepted Task 3.3B commit
   `5d016eba6be7664c9f075766c33d6da426cd30a4`
-- Exact authorized stop point: three local Task 3.4 commits and one
+- Exact authorized stop point: four local Task 3.4 commits and one final
   correction-only external review patch; no push
 - Exact next return point: Task 3.5 — High-impact quarantine review, not started
 
@@ -57,23 +59,51 @@ claim was too broad.
 
 The authenticated home now renders the existing Arabic `t.nav.users` link only
 when the canonical policy grants `usersAndRoles / view`; `/users` keeps its
-existing server-side authorization. Each management form now submits without
-the automatic successful-action form reset, clears both uncontrolled password
-inputs after every completed result, resets the full form only on success, and
-preserves safe non-secret inputs on error. Error focus follows the returned
-field name when that control exists and otherwise moves to a focusable error
-summary; a retained success message receives focus. No password is held in
-React state. The Arabic username hint now states the first-character rule, the
-total 3–64-character length and the allowed later characters precisely.
+existing server-side authorization. Once hydrated, each management form
+intercepts submission before the Server Action fallback so semantic errors do
+not trigger React's automatic form reset. Both uncontrolled password inputs are
+cleared after every completed result, the full form resets only on success, and
+safe non-secret inputs remain on error. Error focus follows the returned field
+name when that control exists and otherwise moves to a focusable error summary;
+a retained success message receives focus. No password is held in React state.
+The Arabic username hint now states the first-character rule, the total
+3–64-character length and the allowed later characters precisely.
 
 The focused static suite now asserts each of those source contracts directly,
-including the absence of form `action` attributes that would reset uncontrolled
-non-secret fields after a resolved semantic error. It retains separate checks
-for live regions, visible-focus CSS and responsive rules without representing
-those source checks as an interactive browser run. `npm run check` and the
-production build passed after the correction. The bounded scope, migration,
-dependency, lockfile, secret, raw-data and artifact scans passed without a
-backend, database, migration, runtime-storage or protected-data change.
+including the hydrated interception that preserves non-secret values after a
+resolved semantic error. It retains separate checks for live regions,
+visible-focus CSS and responsive rules without representing those source checks
+as an interactive browser run. `npm run check` and the production build passed
+after the correction. The bounded scope, migration, dependency, lockfile,
+secret, raw-data and artifact scans passed without a backend, database,
+migration, runtime-storage or protected-data change.
+
+## Final pre-hydration security correction
+
+Commit `416d96a774b6e292fc45ebc8a478f348f94d602b` removed the Server Action
+`action` property from all five user-management forms while retaining only the
+hydrated `onSubmit` handler. Before React hydration, or when JavaScript failed,
+native HTML could therefore submit the current page with the default GET method.
+The create, reset and reactivation forms could serialize `temporaryPassword`
+and `confirmPassword` into the `/users` query string, browser history and
+request logs. The focused static test also required this unsafe missing-action
+state.
+
+Every management form again has `action={formAction}`, where `formAction` is the
+exact function returned by `useActionState`. This function-valued Server Action
+is the POST/progressive-enhancement fallback and prevents native GET/query-string
+submission before hydration. Once hydrated, `onSubmit` calls `preventDefault()`
+before capturing `FormData`, then makes exactly one controlled dispatch inside
+`startTransition`; the fallback is not invoked a second time. Pending-state,
+password clearing, non-secret error preservation, success reset and focus
+routing remain unchanged.
+
+The focused test now requires every form to have both `action={formAction}` and
+`onSubmit={onSubmit}`, proves that the action originates in `useActionState` and
+is returned by the shared hook, and requires exactly one hydrated
+`formAction(formData)` call. This remains static source evidence, not an
+interactive browser test. The previously disclosed browser-runtime limitation
+therefore remains exact.
 
 ## Approved and prohibited scope
 
@@ -204,6 +234,12 @@ UI acceptance correction (6 files):
 - `src/app/users/user-management.tsx`
 - `src/strings.ts`
 
+Final pre-hydration security correction (3 files):
+
+- `docs/task-reports/2026-09-03-task-3-4-user-management.md`
+- `scripts/test-user-management-ui.ts`
+- `src/app/users/user-management.tsx`
+
 ## Verification and exact results
 
 - `npx prisma format`, `npx prisma validate`, `npx prisma generate`: passed;
@@ -285,5 +321,5 @@ local recovery command.
 Browser interaction remains an environment limitation described above, not a
 failed product gate: the compiled UI, dedicated static source evidence and all
 server/database enforcement passed, but no interactive browser test was run for
-this correction. Task 3.5 is the exact next return point after independent
+either correction. Task 3.5 is the exact next return point after independent
 acceptance and remains unstarted.

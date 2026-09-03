@@ -40,6 +40,16 @@ function literalAttribute(
     : null;
 }
 
+function expressionAttribute(
+  node: ts.JsxSelfClosingElement | ts.JsxOpeningElement,
+  name: string,
+): string | null {
+  const found = attribute(node, name);
+  return found?.initializer && ts.isJsxExpression(found.initializer) && found.initializer.expression
+    ? found.initializer.expression.getText()
+    : null;
+}
+
 function main(): void {
   const discovered = discoverAuthorizationEntrypoints(root);
   assert.deepEqual(routeInventoryFailures(discovered), []);
@@ -133,14 +143,24 @@ function main(): void {
   }
   assert.equal(forms.length, 5);
   for (const form of forms) {
-    assert.ok(attribute(form, 'onSubmit'));
-    assert.ok(attribute(form, 'aria-busy'));
-    assert.equal(attribute(form, 'action'), undefined);
+    assert.equal(expressionAttribute(form, 'action'), 'formAction');
+    assert.equal(expressionAttribute(form, 'onSubmit'), 'onSubmit');
+    assert.equal(expressionAttribute(form, 'aria-busy'), 'pending');
+    assert.equal(attribute(form, 'method'), undefined);
   }
   assert.equal(detailCount, 4);
   assert.ok(liveRegions >= 1);
   assert.match(componentSource, /event\.preventDefault\(\)/u);
+  assert.match(
+    componentSource,
+    /const \[state, formAction, pending\] = useActionState\(action, initialState\)/u,
+  );
+  assert.match(
+    componentSource,
+    /return \{ state, formAction, onSubmit, pending, formRef, feedbackRef \}/u,
+  );
   assert.match(componentSource, /startTransition\(\(\) => formAction\(formData\)\)/u);
+  assert.equal((componentSource.match(/formAction\(formData\)/gu) ?? []).length, 1);
   assert.match(componentSource, /if \(state\.revision === 0\) return/u);
   assert.match(componentSource, /\['temporaryPassword', 'confirmPassword'\] as const/u);
   assert.match(
@@ -163,6 +183,9 @@ function main(): void {
 
   console.log('PASS /users page plus six actions are exact usersAndRoles view/manage entries');
   console.log('PASS authenticated-home /users link is conditioned by usersAndRoles/view policy');
+  console.log(
+    'PASS all management forms retain the Server Action fallback plus one hydrated dispatch',
+  );
   console.log(
     'PASS action actor identity is session-owned and exact lifecycle service imports cannot escape',
   );

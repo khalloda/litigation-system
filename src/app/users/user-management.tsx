@@ -63,7 +63,7 @@ function useManagedForm(action: ManagedAction) {
     }
   }, [state.field, state.kind, state.revision]);
 
-  return { state, onSubmit, pending, formRef, feedbackRef };
+  return { state, formAction, onSubmit, pending, formRef, feedbackRef };
 }
 
 function SubmitButton({
@@ -165,7 +165,8 @@ function PasswordFields({ prefix, feedbackId }: { prefix: string; feedbackId: st
 
 function CreateAccount({ eligibleStaff }: { eligibleStaff: readonly EligibleStaffPerson[] }) {
   const id = useId();
-  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(createUserAction);
+  const { state, formAction, onSubmit, pending, formRef, feedbackRef } =
+    useManagedForm(createUserAction);
   const feedbackId = `${id}-feedback`;
   return (
     <section className={styles.panel} aria-labelledby={`${id}-heading`}>
@@ -179,7 +180,13 @@ function CreateAccount({ eligibleStaff }: { eligibleStaff: readonly EligibleStaf
       {eligibleStaff.length === 0 ? (
         <p className={styles.empty}>{t.users.noEligibleStaff}</p>
       ) : (
-        <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
+        <form
+          action={formAction}
+          aria-busy={pending}
+          className={styles.form}
+          onSubmit={onSubmit}
+          ref={formRef}
+        >
           <div className={styles.fieldGrid}>
             <div className={styles.field}>
               <label htmlFor={`${id}-person`}>{t.users.person}</label>
@@ -232,12 +239,19 @@ function CreateAccount({ eligibleStaff }: { eligibleStaff: readonly EligibleStaf
 
 function UsernameAction({ account }: { account: ManagedAccount }) {
   const id = useId();
-  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(correctUsernameAction);
+  const { state, formAction, onSubmit, pending, formRef, feedbackRef } =
+    useManagedForm(correctUsernameAction);
   const feedbackId = `${id}-feedback`;
   return (
     <details className={styles.action}>
       <summary>{t.users.actions.username}</summary>
-      <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
+      <form
+        action={formAction}
+        aria-busy={pending}
+        className={styles.form}
+        onSubmit={onSubmit}
+        ref={formRef}
+      >
         <HiddenAccount account={account} />
         <p>{t.users.confirmations.username(account.personName)}</p>
         <div className={styles.field}>
@@ -264,12 +278,19 @@ function UsernameAction({ account }: { account: ManagedAccount }) {
 
 function RoleAction({ account }: { account: ManagedAccount }) {
   const id = useId();
-  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(changeRoleAction);
+  const { state, formAction, onSubmit, pending, formRef, feedbackRef } =
+    useManagedForm(changeRoleAction);
   const feedbackId = `${id}-feedback`;
   return (
     <details className={styles.action}>
       <summary>{t.users.actions.role}</summary>
-      <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
+      <form
+        action={formAction}
+        aria-busy={pending}
+        className={styles.form}
+        onSubmit={onSubmit}
+        ref={formRef}
+      >
         <HiddenAccount account={account} />
         <p>{t.users.confirmations.role(account.personName)}</p>
         <div className={styles.field}>
@@ -292,12 +313,19 @@ function RoleAction({ account }: { account: ManagedAccount }) {
 
 function DisableAction({ account }: { account: ManagedAccount }) {
   const id = useId();
-  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(disableAccountAction);
+  const { state, formAction, onSubmit, pending, formRef, feedbackRef } =
+    useManagedForm(disableAccountAction);
   const feedbackId = `${id}-feedback`;
   return (
     <details className={styles.action}>
       <summary>{t.users.actions.disable}</summary>
-      <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
+      <form
+        action={formAction}
+        aria-busy={pending}
+        className={styles.form}
+        onSubmit={onSubmit}
+        ref={formRef}
+      >
         <HiddenAccount account={account} />
         <p>{t.users.confirmations.disable(account.personName)}</p>
         <label className={styles.confirmation}>
@@ -324,12 +352,18 @@ function DisableAction({ account }: { account: ManagedAccount }) {
 function PasswordAction({ account, reactivate }: { account: ManagedAccount; reactivate: boolean }) {
   const id = useId();
   const action = reactivate ? reactivateAccountAction : resetPasswordAction;
-  const { state, onSubmit, pending, formRef, feedbackRef } = useManagedForm(action);
+  const { state, formAction, onSubmit, pending, formRef, feedbackRef } = useManagedForm(action);
   const feedbackId = `${id}-feedback`;
   return (
     <details className={styles.action}>
       <summary>{reactivate ? t.users.actions.reactivate : t.users.actions.password}</summary>
-      <form aria-busy={pending} className={styles.form} onSubmit={onSubmit} ref={formRef}>
+      <form
+        action={formAction}
+        aria-busy={pending}
+        className={styles.form}
+        onSubmit={onSubmit}
+        ref={formRef}
+      >
         <HiddenAccount account={account} />
         <p>
           {reactivate
