@@ -3,7 +3,8 @@
 **Historical sections below record the 3 September package and its first
 validator correction.** Both were subsequently accepted and pushed. The
 [4 September D39 correction](#d39-client-review-contract-correction--4-september-2026)
-at the end records the current workbook, decision meaning and return point.
+records the earlier client-review correction. The D40 owner-answer integration
+section at the end now records the current workbook and return point.
 Earlier wrong-client wording, empty-answer counts, hashes and push status are
 historical evidence, not the current state.
 
@@ -504,3 +505,157 @@ D39 branches, prevent an unrelated parent association, preserve historical
 evidence, create truthful audit events and reconcile all downstream references.
 That work is not implemented. Stop for independent review, then firm completion
 of the 207 remaining answers. Task 3.5B and Stage 4 remain unstarted.
+
+## D40 owner-answer integration — 4 September 2026
+
+This section supersedes earlier **current-status** counts and return points,
+not their historical evidence. D39 was accepted and pushed in `76e86574`.
+The next available decision ID was verified as D40 before recording the owner's
+explicit resolutions. One local agent performed this bounded correction; no
+subagents, Graphify, browser tools, PostgreSQL writes or later-task work were used.
+
+### Preflight and immutable input
+
+After fetching origin, `main` was clean, with no active Git operation; HEAD and
+origin/main were both `76e86574ad0de1e15320e693a775b171fe27d6bf`, ahead/behind
+0/0. Migration 59 retained SHA-256
+`364c04d7cf96a476cf3efaf092c5ffc7ad99389cf51a70b8b31d8f9d0268f15d`.
+
+The mentioned 4 September workbook, despite lacking the expected `(1)` filename
+suffix, matched the required **195,913 bytes** and SHA-256
+`fcd78d0498b4250ecacf25430a8c7215e09e582c059d7a62b9f1dc0c58e29d58`.
+It was never opened for writing or resaved. All workbook operations used external
+disposable copies. Its existing adjacent generation manifest was not rewritten.
+
+The original blank successor was no longer present at that path. Regeneration
+outside the repository from read-only inputs produced SHA-256
+`1fd72363cd04141bb09cacb9a126f9322c76d2497d51e12e2e7631bc7d5c68a7`,
+different from historical `ff2e72fe…`, but with the same semantic identity and
+lookup manifests and exact 175 complete / 207 incomplete / zero invalid result.
+Binary identity is not expected after regeneration of the ZIP/protection metadata.
+
+Before repository edits, comparison independently reproduced:
+
+- 382 durable identities and 679 database-backed lookup entries.
+- 55 edited rows: 41 in `الدعاوى الأخرى`, 14 in `مشكلات الجلسات`;
+  220 changed answer cells, none outside permitted answer cells.
+- 218 complete: all 175 baseline decisions plus 43 newly complete decisions.
+- 164 incomplete: 12 owner-touched rows and 152 blank dependent hearings;
+  zero invalid rows.
+- Unchanged hidden identity/lookup evidence, protection and validation semantics;
+  no formulas or error cells. Excel's accepted optional leading `=` on exact
+  named references was normalized only for comparison.
+
+### Narrow contract and integration
+
+V2 remains readable and its digest is retained as historical evidence. V3 keeps
+the same sheets, 382 identities, 679 database-backed lookup rows, widths, heights,
+RTL views, styles, protection and editable cells. Its hidden lookup sheet appends
+eight review-status entries and one structured, non-database-backed court approval.
+There is no fabricated database ID and no duplicated database lookup inventory.
+The original identity digest remains
+`cd2333e5f90af9c418aa58a4f6d96fc98d383651b0ef9c548330b2046491289a`.
+V3's separate lookup-contract digest is
+`882b098b5180c6296a9e77ef085855e7d28c07e24f012d17fc5c51d64ece342b`;
+the frozen v2 digest remains
+`95d360e64cb6880f2111440325d83caed6e923ea1de2a0313c32d00af6903d65`.
+
+The ten exact D40 branch rows now use `لا يوجد فرع معتمد`, blank target,
+reviewer/date and the preserved note `لا يوجد فرع`. Their raw
+`دعاوى قضائية` evidence remains untouched. Task 3.5B must interpret this as
+intentional NULL, not create a branch lookup.
+
+H-000080 / Access 15778 and H-000232 / 15766 now use the explicit pending-new-court
+status and exact `أسرة مصر الجديدة` target. Protected review code `D40-court-1`
+has `database_backed=false`; the validator returns `databaseId: null` and the
+two pending review/source IDs. Existing court 123 is never substituted.
+
+The three corrected circuits retain their exact weekday and newline. The court
+crosswalk migration and a read-only query independently confirmed that the three
+matter targets must be `وكيل نيابة/ أسامة الطنطاوي`, not the separately extracted
+court. M-000111 retains the owner's exact Masters target (Access 133 / system 142),
+reviewer and date without repopulation. Other owner answers remain unchanged.
+
+Each of the 152 blank dependents was matched to its durable parent and a valid,
+complete parent decision: 116 under 31 ordinary matters, 36 under ten no-branch
+matters. M-000088 and M-000111 have zero dependents; per-parent reconciliation
+includes these zeroes. All 161 earlier dependent decisions remain unchanged.
+
+The full semantic diff contains only 628 authorized answer-cell changes,
+two format/digest cells and 54 cells in the nine appended lookup-contract rows:
+684 changed cells total. Exactly 15 validation cells change for the new branch/
+court statuses and the two approved-court target lists. No cell style changes.
+
+### Counts, readiness and remaining Task 3.5B work
+
+| Measure | Result |
+|---|---:|
+| Owner decisions complete | 382 / 382 |
+| Incomplete or blank owner decisions | 0 |
+| Invalid decisions | 0 |
+| Explicitly covered dependent hearings | 313 |
+| Decisions with no identified lookup prerequisite | 205 |
+| Decisions with outstanding lookup prerequisites | 177 |
+| Database-applied decisions in this task | 0 |
+
+The 177 comprise the preserved 14 D39 matters plus their 161 hearings, and
+H-000080/H-000232 requiring the new court. The other 205 pass the workbook's
+decision/target checks without an identified lookup-creation prerequisite.
+**This is not a claim that 205 or 382 records are immediately application-ready.**
+No database application implementation/readiness certification is delivered here;
+all 382 records (55 matters, 327 hearings) remain quarantined and await Task 3.5B.
+That separately authorized work must implement D39 branch-parent compatibility,
+create the exact D40 court, apply intentional NULL branches and the exact reviewed
+targets, append truthful audit evidence and reconcile downstream relationships.
+
+### Verification and deliverables
+
+Passed: focused workbook suite, including new positive/negative D40 fixtures;
+successor validation; native Microsoft Excel 16.0 disposable-copy save/open
+round trip; full semantic before/after comparison; visual inspection of every
+visible sheet; `npm run check`; read-only `npm run db:verify` (59 applied
+migrations, one approved historical rollback); and `npm run db:check` (92/92).
+The spreadsheet skill informed preservation and visual verification. The
+repository's existing ExcelJS generator/validator was retained; the bundled
+spreadsheet renderer was also used for inspection, with native Excel supplying
+the authoritative RTL/save check. No interactive browser test is claimed.
+
+Fixtures reject wrong target kinds, nonblank no-branch targets, missing approval
+metadata, changed/fake court identities, generic-court substitution, weekday/note/
+Masters target changes, altered identities, orphan/mismatched parents and
+inheritance from an incomplete parent. They also prove all 175 baseline decisions
+and other uncorrected owner answers survive. Native Excel's saved copy has no
+value, validation or protection difference from the generated successor.
+
+Two temporary inspection helpers needed corrections for absent validation
+metadata and existing legacy table names. A new per-parent assertion initially
+assumed every reviewed matter had hearings; it was corrected from source evidence
+to include the two zero-hearing matters. No source data or expected owner count
+was changed to satisfy a check. Sandbox-blocked esbuild subprocess checks passed
+with permission. No unrelated build or disposable-database suite was required.
+
+Final preservation checks matched every before/after count and sorted-row digest
+across all 93 database tables in `public`, `staging`, `quarantine` and
+`_migration`: inventory SHA-256
+`f406f6011595ae4ca2c7b2393ae9e0c14d6f2f3dbbeb23fbf84d499dc8b82fdc`.
+All 59 SQL migration files and the migration lock file matched committed bytes;
+all 140 inventoried raw/review/runtime-storage files matched their before hashes.
+The protected 5,209-row business digest and actor-attribution digest remained
+`b50879f52200275e70515cb4e1daa76594c304237a40b864205108e15490aeab` and
+`edf4be9e8668fc65005deaa69cababf79dec1ac1b3e12f2356b9e6da892c009d`.
+The original attachment retained its required SHA-256. `git diff --check` and
+the exact nine-file scope, dependency/lockfile, secret, raw-data, binary,
+runtime-storage, workstation-path and artifact scans passed. No Excel process
+remained. No Prisma, migration, configuration or database row was changed.
+
+The external successor is
+`task-3-5-high-impact-quarantine-review-2026-09-04-d40.xlsx`, **172,273 bytes**,
+SHA-256 `0dc23134639e0bc6477fe1f39613bd7575b56cdcd0085d2f2831a96693f2376b`,
+with its adjacent `.sha256` manifest. Neither is in this Git worktree; existing
+ignore protection at their canonical review destination is independently checked.
+The final handoff supplies their external paths and the correction-only patch.
+
+**Return point:** independent review of one new local commit,
+`fix: integrate Task 3.5A owner decisions`, parent
+`76e86574ad0de1e15320e693a775b171fe27d6bf`. Nothing is pushed. Task 3.5 remains
+open; Task 3.5B and Stage 4 remain unstarted.

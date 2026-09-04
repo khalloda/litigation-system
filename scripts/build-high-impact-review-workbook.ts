@@ -9,7 +9,7 @@
  */
 
 import 'dotenv/config';
-import { basename, dirname } from 'node:path';
+import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import ExcelJS from 'exceljs';
 import { withApprovedMigrationClient } from './lib/migration-principal';
@@ -25,9 +25,75 @@ import {
   readHistoricalClientSelection,
   populateD39WorkbookAnswers,
   validateHighImpactWorkbook,
+  integrateD40OwnerAnswers,
 } from './lib/high-impact-review-workbook';
 
 async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  if (args.length > 0) {
+    if (args.length !== 4 || args[0] !== '--owner' || args[2] !== '--output')
+      throw new HighImpactWorkbookError(
+        'usage: --owner immutable-owner.xlsx --output external-successor.xlsx',
+      );
+    const input = resolve(args[1]!);
+    const output = resolve(args[3]!);
+    const relativeOutput = relative(process.cwd(), output);
+    if (!(isAbsolute(relativeOutput) || relativeOutput.startsWith(`..${sep}`)))
+      throw new HighImpactWorkbookError('D40 successor must be outside the repository');
+    const manifest = `${output}.sha256`;
+    assertWorkbookArtifactSafety(input);
+    assertWorkbookArtifactSafety(output);
+    assertWorkbookArtifactSafety(manifest);
+    if (existsSync(output) || existsSync(manifest))
+      throw new HighImpactWorkbookError(
+        'D40 successor or manifest already exists; refusing overwrite',
+      );
+    const ownerBytes = readFileSync(input);
+    await withApprovedMigrationClient(
+      async (database) => {
+        const snapshot = await readHighImpactReviewSnapshot(database);
+        const baseline = await buildHighImpactWorkbook(snapshot);
+        populateD39WorkbookAnswers(
+          baseline.workbook,
+          snapshot,
+          await readHistoricalClientSelection(readFileSync(HISTORICAL_WORKBOOK_PATH), snapshot),
+        );
+        const successor = await integrateD40OwnerAnswers(ownerBytes, snapshot, baseline.workbook);
+        const bytes = Buffer.from(await successor.xlsx.writeBuffer());
+        const roundTrip = new ExcelJS.Workbook();
+        await roundTrip.xlsx.load(bytes as never);
+        const result = validateHighImpactWorkbook(roundTrip, snapshot);
+        if (!result.complete || result.pendingLookupCreation.length !== 2)
+          throw new HighImpactWorkbookError(
+            'D40 successor serialization changed its decision contract',
+          );
+        if (!readFileSync(input).equals(ownerBytes))
+          throw new HighImpactWorkbookError('immutable owner input changed');
+        mkdirSync(dirname(output), { recursive: true });
+        writeFileSync(output, bytes, { flag: 'wx' });
+        writeFileSync(manifest, `${fileSha256(bytes)}  ${basename(output)}\n`, { flag: 'wx' });
+        console.log(
+          JSON.stringify(
+            {
+              workbook: output,
+              bytes: bytes.length,
+              sha256: fileSha256(bytes),
+              ownerComplete: result.completed,
+              incomplete: result.incomplete,
+              invalid: result.invalid,
+              pendingLookupCreation: result.pendingLookupCreation,
+              application:
+                'Not applied. All 382 decisions await Task 3.5B; D39 branch prerequisites also remain.',
+            },
+            null,
+            2,
+          ),
+        );
+      },
+      { clientConfig: { options: '-c default_transaction_read_only=on' } },
+    );
+    return;
+  }
   assertWorkbookArtifactSafety(HIGH_IMPACT_WORKBOOK_PATH);
   assertWorkbookArtifactSafety(HIGH_IMPACT_SHA256_PATH);
   if (existsSync(HIGH_IMPACT_WORKBOOK_PATH) || existsSync(HIGH_IMPACT_SHA256_PATH)) {

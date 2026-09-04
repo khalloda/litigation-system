@@ -273,6 +273,14 @@ duplicate-name clients remain distinct.
 Access/legacy 188 → system client 197, and the Alpha matter retains Access/legacy
 2 → system client 11. Three exact historically misclassified branch values
 must later be added/mapped with parent compatibility enforced in Task 3.5B.
+
+**D40, approved 4 September 2026, not yet applied:** ten exact reviewed matters
+have an intentional NULL branch, not a synthetic lookup. Two exact hearing
+decisions approve the distinct court `أسرة مصر الجديدة`, with no database ID
+until Task 3.5B creates it. M-000111 confirms Access client 133 / system client
+142 (`ماسترز`) despite its blank source client. The circuit and hearing-note
+corrections are recorded in D40. These are workbook decisions only; no schema,
+lookup, relationship or project row changes in Task 3.5A.
 No new branch row, parent constraint, renamed client or released record exists
 as a result of this Task 3.5A workbook correction. The current 15-branch count
 and historical migration evidence below remain unchanged.

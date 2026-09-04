@@ -871,3 +871,77 @@ D19 and quarantine evidence, append truthful audit events, and reconcile every
 released matter, hearing, person relationship, administrative task, task step
 and fee reference. Lower-impact evidence is not implicitly released. Task
 3.5B and Stage 4 remain unstarted and require separate authorization.
+
+## D40 — Remaining high-impact owner decisions and explicit pending court creation
+
+**Approved explicitly by خالد حلمي on 4 September 2026 in the bounded
+Task 3.5A owner-answer integration mandate.** The filled workbook is immutable
+owner evidence: 195,913 bytes, SHA-256
+`fcd78d0498b4250ecacf25430a8c7215e09e582c059d7a62b9f1dc0c58e29d58`.
+This decision records only the supplied resolutions; it does not authorize
+Task 3.5B application or Stage 4.
+
+### Intentional absence of a branch
+
+`لا يوجد فرع معتمد` means an intentional NULL branch for exactly:
+
+| Review ID | Access matter ID |
+|---|---|
+| M-000057 | 87 |
+| M-000058 | 208 |
+| M-000059 | 253 |
+| M-000060 | 356 |
+| M-000071 | 636 |
+| M-000072 | 637 |
+| M-000074 | 773 |
+| M-000077 | 1114 |
+| M-000078 | 1121 |
+| M-000079 | 1123 |
+
+The raw `دعاوى قضائية` denotes a work type, not a branch. Preserve that raw
+value and the owner's note `لا يوجد فرع`. The replacement target must be
+blank, with reviewer and date. No synthetic branch is approved. This status
+is invalid on another target kind or outside these exact approved identities.
+
+### A distinct new court, not the generic court
+
+H-000080 (Access hearing 15778) and H-000232 (15766) approve exactly
+`أسرة مصر الجديدة`. Existing court 123 — `مصر الجديدة` is not the approved
+target. Task 3.5B must create the distinct exact court and resolve its actual
+generated ID before applying these two decisions; no ID is reserved or invented.
+The workbook status `محكمة جديدة معتمدة — بانتظار الإنشاء`, exact label,
+reviewer/date and preserved owner note form the approval. Its protected lookup
+entry is classified as `approved_new_court`, `database_backed=false`, with
+review-only code `D40-court-1`, never a database identifier. Missing/changed
+approval evidence, wrong target kinds and fake/reused IDs cannot complete it.
+
+### Exact target corrections and confirmation
+
+- H-000123 (Access 2396): `جنح العجوزة` followed by a line break and
+  `دائرة الاثنين`.
+- H-000139 (2339) and H-000214 (2340): `جنح العجوزة` followed by a line
+  break and `دائرة السبت`.
+- M-000111 (Access matter 1777) belongs to `ماسترز`: Access client 133 /
+  new-system client 142, despite the blank source client. Preserve its existing
+  approved target, reviewer and date.
+- M-000064 (467), M-000065 (468) and M-000067 (515) target the hearing note
+  `وكيل نيابة/ أسامة الطنطاوي`. The frozen court crosswalk separately extracts
+  `نيابة الشئون المالية والتجارية` as the court; it is not the hearing note.
+
+### Dependent hearings and deferred application
+
+After proving the exact parent and a complete valid decision, the 152 blank
+sole-parent-reason hearings receive `يتبع القرار المعتمد للدعوى`, reviewer
+`خالد حلمي`, date 2026-09-04 and the exact parent review ID. They comprise
+116 hearings under the 31 ordinary matter decisions (two have zero hearings)
+and 36 under the ten no-branch matters. No independently problematic hearing
+inherits an answer. Preserve the existing 161 dependent decisions and all
+175 D39 baseline answers without changes.
+
+The successor accounts for 382 owner decisions, including all 313 dependents,
+with no incomplete or invalid decisions. Owner completion is not database
+application readiness: the two new-court approvals and D39's three branch
+prerequisites remain. All 382 records still await separately authorized,
+implemented and reconciled Task 3.5B work. Historical source values, crosswalks,
+quarantine evidence and all earlier decisions remain intact. No PostgreSQL
+write, migration, Task 3.5B or Stage 4 work is part of this approval.

@@ -3026,6 +3026,37 @@ it does not create another branch lookup. No SQL, schema or data application
 is implemented here. The next return point is independent review and remaining
 firm answers, not Task 3.5B or Stage 4.
 
+### D40 owner-answer integration — 4 September 2026
+
+The immutable owner-filled v2 workbook now at the 4 September path hashes to
+`fcd78d0498b4250ecacf25430a8c7215e09e582c059d7a62b9f1dc0c58e29d58`.
+Do not overwrite it or its historical manifest. Its 55 edited rows reconcile
+to 218 complete, 164 incomplete and zero invalid decisions. The original
+175/207 D39 baseline remains historical evidence, not the current owner status.
+
+The explicit `--owner <immutable.xlsx> --output <external-successor.xlsx>`
+mode of `npm run review:high-impact:build` creates a separately versioned v3
+workbook and adjacent manifest outside the repository, using read-only inputs
+and refusing overwrite. It preserves every existing durable identity and all
+679 database-backed lookups. It appends only review-status codes and the
+non-database-backed exact D40 new-court approval. V2 validation remains available
+for the immutable baseline/owner evidence; the v3 contract has its own lookup
+digest, without rewriting the original v2 digest.
+
+D40 owns the exact ten intentional NULL branches, two pending new-court
+approvals, three weekday-preserving circuits, three hearing-note corrections,
+Masters confirmation and 152 additional sole-parent hearing decisions. The
+successor validates as 382 owner-complete, zero incomplete, zero invalid and
+313 explicitly covered dependent hearings. No database ID is invented for
+`أسرة مصر الجديدة`. H-000080 and H-000232 await that court's creation in
+Task 3.5B; the existing D39 branch-parent prerequisites also remain.
+
+The external artifacts cannot be tracked in this worktree. Their canonical
+`_migration/review/` destinations are additionally checked against existing
+ignore rules; no ignore configuration is changed. All 382 decisions still
+await separately authorized Task 3.5B application and reconciliation. Task
+3.5 and Stage 3 are not closed; Task 3.5B and Stage 4 remain unstarted.
+
 ## Cutover
 
 The Access file is in daily use. A stale copy drifted **325 rows in a few days**.

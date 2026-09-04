@@ -9,10 +9,12 @@ be bigger than expected, split it and tell the owner.
 **Current checkpoint — 4 September 2026:** Task 3.3B's three-commit chain is
 independently accepted and pushed. Task 3.4's four-commit Administrator-only
 user-management chain is also independently accepted and pushed. Task 3.5A's
-high-impact quarantine-review package has a D39 successor recording 14
-current-client confirmations and 161 sole-parent-reason hearing decisions.
-There are 207 incomplete decisions. Overall Task 3.5 remains unchecked until
-answers are completed and later applied; Task 3.5B and Stage 4 have not started.
+high-impact quarantine-review package has a D40 successor recording all 382
+owner decisions, including the preserved D39 14/161 decisions and all 313
+dependent hearings. Zero owner decisions are incomplete or invalid. Two court
+approvals await lookup creation; D39 branch prerequisites remain. Overall Task
+3.5 stays unchecked until reviewed answers are applied and reconciled;
+Task 3.5B and Stage 4 have not started.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1606,8 +1608,14 @@ only ever seen good data is not known to work.
       replaces the blanket wrong-client wording, and records the owner's 14
       current-parent confirmations plus exactly 161 sole-parent-reason hearing
       decisions: **175 completed, 207 incomplete, zero invalid**. No answer
-      has been applied to PostgreSQL. The next step is independent review of
-      this correction, then firm completion of the remaining successor answers.
+      has been applied to PostgreSQL. Those counts are the historical D39 baseline.
+      **D40 owner-answer integration, 4 September 2026:** the immutable filled
+      attachment reconciled to 218 complete / 164 incomplete / zero invalid.
+      The external v3 successor records all 382 owner decisions, including ten
+      intentional NULL branches, two approved new-court values awaiting creation,
+      the exact circuit/note corrections and 152 newly covered dependent hearings.
+      All 175 baseline decisions remain unchanged. The next step is independent
+      review of this integration, not data application.
       Task 3.5B remains separate and unstarted. Its reviewed contract must
       enforce D39 branch-parent compatibility, preserve historical evidence,
       append truthful events and reconcile every affected matter, hearing,

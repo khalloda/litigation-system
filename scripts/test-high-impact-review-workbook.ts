@@ -20,6 +20,15 @@ import {
   clientChoice,
   CURRENT_CLIENT_CONFIRMED,
   DECISION_STATUSES,
+  APPROVED_NEW_COURT,
+  D40_EXACT_TARGETS,
+  D40_NEW_COURT,
+  D40_NO_BRANCH,
+  FILLED_OWNER_WORKBOOK_SHA256,
+  fileSha256,
+  integrateD40OwnerAnswers,
+  NEW_COURT_APPROVED,
+  NO_BRANCH_APPROVED,
   HIGH_IMPACT_SHA256_PATH,
   HIGH_IMPACT_WORKBOOK_PATH,
   HISTORICAL_WORKBOOK_PATH,
@@ -423,14 +432,186 @@ async function main(): Promise<void> {
     if (process.argv[2]) {
       const excelSaved = new ExcelJS.Workbook();
       await excelSaved.xlsx.readFile(process.argv[2]);
-      assertOnlyD39Answers(excelSaved);
-      console.log(
-        '  ok    supplied real-Excel-saved successor retains exactly the authorized 175 answers',
-      );
+      const savedResult = validateHighImpactWorkbook(excelSaved, snapshot);
+      assert.equal(savedResult.completed, 382);
+      assert.equal(savedResult.invalid, 0);
+      assert.equal(savedResult.pendingLookupCreation.length, 2);
+      console.log('  ok    supplied Excel-saved D40 successor retains all 382 owner decisions');
     }
     assert.ok(readFileSync(HISTORICAL_WORKBOOK_PATH).equals(historicalBytes));
     console.log(
       '  ok    only D39 14/161 answers populated, transfer follows durable identity after reordering, historical bytes preserved',
+    );
+
+    const ownerBytes = readFileSync(HIGH_IMPACT_WORKBOOK_PATH);
+    assert.equal(fileSha256(ownerBytes), FILLED_OWNER_WORKBOOK_SHA256);
+    const owner = await cloneWorkbook(ownerBytes);
+    const d40 = await integrateD40OwnerAnswers(ownerBytes, snapshot, successor);
+    const d40Bytes = await workbookBuffer(d40);
+    const d40Result = validateHighImpactWorkbook(await cloneWorkbook(d40Bytes), snapshot);
+    assert.deepEqual(
+      [d40Result.completed, d40Result.incomplete, d40Result.invalid, d40Result.answered],
+      [382, 0, 0, 382],
+    );
+    assert.deepEqual(
+      d40Result.pendingLookupCreation.map((row) => [
+        row.reviewId,
+        row.legacyId,
+        row.label,
+        row.databaseId,
+      ]),
+      [...D40_NEW_COURT].map(([id, legacyId]) => [id, legacyId, APPROVED_NEW_COURT, null]),
+    );
+    const byId = (book: ExcelJS.Workbook, id: string) => {
+      const review = first.reviewRows.find((row) => row.reviewId === id)!;
+      const sheet = book.getWorksheet(review.sheet)!;
+      const matches = sheet
+        .getRows(2, sheet.rowCount - 1)!
+        .filter((row) => row.getCell(1).text === id);
+      assert.equal(matches.length, 1);
+      return { row: matches[0]!, columns: answerColumnIndexes(review.kind) };
+    };
+    for (const [id] of D40_NO_BRANCH) {
+      const { row, columns } = byId(d40, id);
+      assert.equal(row.getCell(columns.decision).text, NO_BRANCH_APPROVED);
+      assert.equal(row.getCell(columns.target).text, '');
+      assert.equal(row.getCell(columns.note).text, 'لا يوجد فرع');
+      assert.equal(row.getCell(10).text, 'دعاوى قضائية');
+    }
+    for (const [id, correction] of D40_EXACT_TARGETS) {
+      const { row, columns } = byId(d40, id);
+      assert.equal(row.getCell(columns.target).text, correction.target);
+    }
+    let baselinePreserved = 0,
+      inherited = 0;
+    const baselineStates = validateHighImpactWorkbook(successor, snapshot).rowStates;
+    for (const review of first.reviewRows) {
+      const previous = byId(owner, review.reviewId),
+        current = byId(d40, review.reviewId);
+      const baselineState = baselineStates[review.reviewId];
+      if (baselineState === 'completed') {
+        baselinePreserved++;
+        for (const column of Object.values(previous.columns))
+          assert.deepEqual(current.row.getCell(column).value, previous.row.getCell(column).value);
+      }
+      if (review.targetKind === 'parent') {
+        inherited++;
+        assert.equal(
+          current.row.getCell(current.columns.decision).text,
+          PARENT_DECISION_STATUSES[0],
+        );
+        assert.ok(
+          current.row.getCell(current.columns.note).text.includes(review.parentMatterReviewId!),
+        );
+      }
+      if (
+        !D40_NO_BRANCH.has(review.reviewId) &&
+        !D40_NEW_COURT.has(review.reviewId) &&
+        !D40_EXACT_TARGETS.has(review.reviewId) &&
+        review.targetKind !== 'parent'
+      ) {
+        for (const column of Object.values(previous.columns))
+          assert.deepEqual(current.row.getCell(column).value, previous.row.getCell(column).value);
+      }
+    }
+    assert.equal(baselinePreserved, 175);
+    assert.equal(inherited, 313);
+    console.log(
+      '  ok    D40: 382 owner-complete, 313 explicit dependents, 175 baseline decisions preserved; two court approvals have no database ID',
+    );
+    const negatives: Array<
+      [string, string, 'decision' | 'target' | 'reviewer' | 'date' | 'note', ExcelJS.CellValue]
+    > = [
+      ['no-branch wrong kind', 'M-000061', 'decision', NO_BRANCH_APPROVED],
+      ['no-branch target', 'M-000057', 'target', '1 — فرع'],
+      ['no-branch whitespace target', 'M-000057', 'target', ' '],
+      ['no-branch status variation', 'M-000057', 'decision', `${NO_BRANCH_APPROVED} `],
+      ['no-branch missing reviewer', 'M-000057', 'reviewer', ''],
+      ['no-branch missing date', 'M-000057', 'date', ''],
+      ['no-branch changed approval', 'M-000057', 'note', 'بدون فرع'],
+      ['new-court wrong kind', 'M-000061', 'decision', NEW_COURT_APPROVED],
+      ['new-court unapproved row', 'H-000278', 'decision', NEW_COURT_APPROVED],
+      ['new-court missing label', 'H-000080', 'target', ''],
+      ['new-court generic label', 'H-000080', 'target', 'مصر الجديدة'],
+      ['new-court reused ID', 'H-000080', 'target', '123 — مصر الجديدة'],
+      ['new-court fake ID', 'H-000080', 'target', '999999 — أسرة مصر الجديدة'],
+      ['new-court changed label', 'H-000080', 'target', 'اسرة مصر الجديدة'],
+      ['new-court missing reviewer', 'H-000080', 'reviewer', ''],
+      ['new-court missing date', 'H-000080', 'date', ''],
+      ['new-court missing approval note', 'H-000080', 'note', ''],
+      ['new-court ordinary correction bypass', 'H-000080', 'decision', DECISION_STATUSES[0]],
+      ['independent hearing cannot inherit', 'H-000123', 'decision', PARENT_DECISION_STATUSES[0]],
+      ...[...D40_EXACT_TARGETS].map(
+        ([id]) =>
+          [
+            'exact approved target changed',
+            id,
+            'target',
+            id.startsWith('H-') ? 'جنح العجوزة' : 'نيابة الشئون المالية والتجارية',
+          ] as [string, string, 'target', string],
+      ),
+    ];
+    for (const [label, id, field, value] of negatives) {
+      const changed = await cloneWorkbook(d40Bytes),
+        location = byId(changed, id);
+      location.row.getCell(location.columns[field]).value = value;
+      const result = validateHighImpactWorkbook(changed, snapshot);
+      assert.notEqual(result.rowStates[id], 'completed', label);
+      assert.equal(result.complete, false, label);
+      assert.ok(
+        result.issues.some((issue) => issue.startsWith(`${id}:`)),
+        label,
+      );
+      console.log(`  ok    D40 rejects ${label}`);
+    }
+    for (const parentValue of ['null', '"M-000111"']) {
+      const changed = await cloneWorkbook(d40Bytes);
+      const identity = changed.getWorksheet(IDENTITY_SHEET)!;
+      const dependent = identity.getRows(8, 382)!.find((row) => row.getCell(14).text === 'parent')!;
+      dependent.getCell(13).value = parentValue;
+      expectContractFailure(
+        () => validateHighImpactWorkbook(changed, snapshot),
+        'identity manifest digest mismatch',
+      );
+    }
+    const incompleteParent = await cloneWorkbook(d40Bytes);
+    const parent = byId(incompleteParent, 'M-000057');
+    parent.row.getCell(parent.columns.date).value = '';
+    const incompleteParentResult = validateHighImpactWorkbook(incompleteParent, snapshot);
+    const children = first.reviewRows.filter((row) => row.parentMatterReviewId === 'M-000057');
+    assert.ok(children.length > 0);
+    children.forEach((row) =>
+      assert.equal(incompleteParentResult.rowStates[row.reviewId], 'invalid'),
+    );
+    const tamperedIdentity = await cloneWorkbook(d40Bytes);
+    tamperedIdentity.getWorksheet(IDENTITY_SHEET)!.getCell(8, 6).value = 'tampered-source';
+    expectContractFailure(
+      () => validateHighImpactWorkbook(tamperedIdentity, snapshot),
+      'identity manifest digest mismatch',
+    );
+    const fakeLookup = await cloneWorkbook(d40Bytes);
+    const approvedCourtRow = fakeLookup
+      .getWorksheet(LOOKUP_SHEET)!
+      .getRows(2, 698)!
+      .find((row) => row.getCell(1).text === 'approved_new_court')!;
+    approvedCourtRow.getCell(2).value = '123';
+    approvedCourtRow.getCell(5).value = 'true';
+    expectContractFailure(
+      () => validateHighImpactWorkbook(fakeLookup, snapshot),
+      'lookup manifest digest mismatch',
+    );
+    await assert.rejects(
+      () =>
+        integrateD40OwnerAnswers(
+          Buffer.concat([ownerBytes, Buffer.from('tampered')]),
+          snapshot,
+          successor,
+        ),
+      /immutable owner attachment/u,
+    );
+    assert.ok(readFileSync(HIGH_IMPACT_WORKBOOK_PATH).equals(ownerBytes));
+    console.log(
+      '  ok    D40 orphan/mismatched/invalid parent, altered identity, fabricated court identity and changed attachment rejected',
     );
 
     const namedRangeSource = await cloneWorkbook(firstBuffer);

@@ -7,8 +7,9 @@ litigation practice since 2010.
 authentication, server-side role permissions, secure actor attribution and the
 Task 3.3B append-only event foundation are implemented and accepted. Task 3.4
 Administrator-only user management is accepted and pushed. Task 3.5A's
-high-impact quarantine-review package has a 4 September D39 successor: 175
-explicit owner decisions recorded, 207 still incomplete. Task 3.5 remains open:
+high-impact quarantine-review package now has a 4 September D40 successor:
+382 owner decisions complete, zero incomplete or invalid. Two court approvals
+await lookup creation; D39 branch prerequisites also remain. Task 3.5 stays open:
 no answer has been applied to PostgreSQL, and Task 3.5B and Stage 4 have not
 started.
 The owner-readable

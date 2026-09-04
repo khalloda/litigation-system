@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { basename, isAbsolute, relative, resolve, sep } from 'node:path';
 import type { ClientBase, QueryResultRow } from 'pg';
 import ExcelJS from 'exceljs';
 
@@ -7,6 +8,37 @@ export const HIGH_IMPACT_WORKBOOK_PATH =
   '_migration/review/task-3-5-high-impact-quarantine-review-2026-09-04.xlsx';
 export const HIGH_IMPACT_SHA256_PATH = `${HIGH_IMPACT_WORKBOOK_PATH}.sha256`;
 export const HIGH_IMPACT_FORMAT = 'task-3-5a-high-impact-review-v2';
+export const OWNER_DECISION_FORMAT = 'task-3-5a-high-impact-review-v3';
+export const FILLED_OWNER_WORKBOOK_SHA256 =
+  'fcd78d0498b4250ecacf25430a8c7215e09e582c059d7a62b9f1dc0c58e29d58';
+export const NO_BRANCH_APPROVED = 'لا يوجد فرع معتمد';
+export const NEW_COURT_APPROVED = 'محكمة جديدة معتمدة — بانتظار الإنشاء';
+export const APPROVED_NEW_COURT = 'أسرة مصر الجديدة';
+export const D40_NO_BRANCH = new Map([
+  ['M-000057', '87'],
+  ['M-000058', '208'],
+  ['M-000059', '253'],
+  ['M-000060', '356'],
+  ['M-000071', '636'],
+  ['M-000072', '637'],
+  ['M-000074', '773'],
+  ['M-000077', '1114'],
+  ['M-000078', '1121'],
+  ['M-000079', '1123'],
+]);
+export const D40_NEW_COURT = new Map([
+  ['H-000080', '15778'],
+  ['H-000232', '15766'],
+]);
+export const D40_EXACT_TARGETS = new Map([
+  ['H-000123', { legacyId: '2396', target: 'جنح العجوزة\nدائرة الاثنين' }],
+  ['H-000139', { legacyId: '2339', target: 'جنح العجوزة\nدائرة السبت' }],
+  ['H-000214', { legacyId: '2340', target: 'جنح العجوزة\nدائرة السبت' }],
+  ['M-000064', { legacyId: '467', target: 'وكيل نيابة/ أسامة الطنطاوي' }],
+  ['M-000065', { legacyId: '468', target: 'وكيل نيابة/ أسامة الطنطاوي' }],
+  ['M-000067', { legacyId: '515', target: 'وكيل نيابة/ أسامة الطنطاوي' }],
+  ['M-000111', { legacyId: '1777', target: 'Access 133 | النظام الجديد 142 | ماسترز' }],
+]);
 export const HISTORICAL_WORKBOOK_PATH =
   '_migration/review/task-3-5-high-impact-quarantine-review-2026-09-03.xlsx';
 export const OWNER_SAVED_WORKBOOK_SHA256 =
@@ -257,7 +289,13 @@ type IdentityRow = Omit<PreparedReviewRow, 'evidence'> & { visibleContextSha256:
 
 type LookupManifestRow = {
   kind:
-    DatabaseLookupKind | 'decision_status' | 'client_decision_status' | 'parent_decision_status';
+    | DatabaseLookupKind
+    | 'decision_status'
+    | 'client_decision_status'
+    | 'parent_decision_status'
+    | 'branch_decision_status'
+    | 'new_court_decision_status'
+    | 'approved_new_court';
   id: string;
   label: string;
   choice: string;
@@ -269,6 +307,9 @@ const LOOKUP_RANGE_NAMES: Record<LookupManifestRow['kind'], string> = {
   decision_status: 'DecisionStatuses',
   client_decision_status: 'ClientDecisionStatuses',
   parent_decision_status: 'ParentDecisionStatuses',
+  branch_decision_status: 'BranchDecisionStatuses',
+  new_court_decision_status: 'NewCourtDecisionStatuses',
+  approved_new_court: 'ApprovedNewCourtChoices',
   client: 'ClientChoices',
   court: 'CourtChoices',
   importance: 'ImportanceChoices',
@@ -294,6 +335,14 @@ export type WorkbookValidationResult = {
   issues: string[];
   identityManifestSha256: string;
   lookupManifestSha256: string;
+  /** Completed owner decisions, not database application or release authority. */
+  pendingLookupCreation: Array<{
+    reviewId: string;
+    legacyId: string;
+    label: string;
+    databaseId: null;
+  }>;
+  rowStates: Record<string, 'completed' | 'incomplete' | 'invalid'>;
 };
 
 export class HighImpactWorkbookError extends Error {}
@@ -914,7 +963,10 @@ export function clientChoice(client: DatabaseLookup): string {
   return `Access ${client.legacyId ?? 'لا يوجد'} | النظام الجديد ${client.id} | ${client.label}`;
 }
 
-function lookupManifestRows(snapshot: HighImpactReviewSnapshot): LookupManifestRow[] {
+function lookupManifestRows(
+  snapshot: HighImpactReviewSnapshot,
+  ownerContract = false,
+): LookupManifestRow[] {
   const rows: LookupManifestRow[] = [
     ...DECISION_STATUSES.map((label, index) => ({
       kind: 'decision_status' as const,
@@ -947,6 +999,32 @@ function lookupManifestRows(snapshot: HighImpactReviewSnapshot): LookupManifestR
       databaseBacked: true,
     })),
   ];
+  if (ownerContract) {
+    for (const [kind, labels] of [
+      ['branch_decision_status', [...DECISION_STATUSES, NO_BRANCH_APPROVED]],
+      ['new_court_decision_status', [...DECISION_STATUSES, NEW_COURT_APPROVED]],
+    ] as const) {
+      labels.forEach((label, index) =>
+        rows.push({
+          kind,
+          id: String(index + 1),
+          label,
+          choice: label,
+          databaseBacked: false,
+          legacyId: null,
+        }),
+      );
+    }
+    // A review approval code, explicitly NOT a database lookup identity.
+    rows.push({
+      kind: 'approved_new_court',
+      id: 'D40-court-1',
+      label: APPROVED_NEW_COURT,
+      choice: APPROVED_NEW_COURT,
+      databaseBacked: false,
+      legacyId: null,
+    });
+  }
   return rows;
 }
 
@@ -965,7 +1043,7 @@ function definedNameContracts(
   });
   return [...ranges].map(([kind, range]) => ({
     name: LOOKUP_RANGE_NAMES[kind],
-    range: `${LOOKUP_SHEET}!$D$${range.start}:$D$${range.end}`,
+    range: `${LOOKUP_SHEET}!$D$${range.start}${range.start === range.end ? '' : `:$D$${range.end}`}`,
   }));
 }
 
@@ -1017,7 +1095,9 @@ function listValidation(name: string): ExcelJS.DataValidation {
   };
 }
 
-function decisionRange(kind: TargetKind): string {
+function decisionRange(kind: TargetKind, ownerContract = false): string {
+  if (ownerContract && kind === 'branch') return 'BranchDecisionStatuses';
+  if (ownerContract && kind === 'court') return 'NewCourtDecisionStatuses';
   return kind === 'parent'
     ? 'ParentDecisionStatuses'
     : kind === 'client'
@@ -1401,7 +1481,7 @@ function parseIdentityRows(workbook: ExcelJS.Workbook): {
   if (sheet === undefined || sheet.state !== 'veryHidden')
     fail(`${IDENTITY_SHEET} is missing or not very hidden`);
   const metadata = [
-    ['format', HIGH_IMPACT_FORMAT],
+    ['format', ownerDecisionContract(workbook) ? OWNER_DECISION_FORMAT : HIGH_IMPACT_FORMAT],
     ['extraction_sha256', EXPECTED_EXTRACTION_SHA256],
     ['database_evidence_sha256', EXPECTED_DATABASE_EVIDENCE_SHA256],
     ['database_lookup_sha256', EXPECTED_DATABASE_LOOKUP_SHA256],
@@ -1534,6 +1614,9 @@ function parseLookupRows(workbook: ExcelJS.Workbook): LookupManifestRow[] {
         'decision_status',
         'client_decision_status',
         'parent_decision_status',
+        'branch_decision_status',
+        'new_court_decision_status',
+        'approved_new_court',
         'client',
         'court',
         'importance',
@@ -1710,7 +1793,8 @@ export function validateHighImpactWorkbook(
 ): WorkbookValidationResult {
   validateSnapshot(snapshot);
   assertWorkbookShape(workbook);
-  const expectedLookups = lookupManifestRows(snapshot);
+  const ownerContract = ownerDecisionContract(workbook);
+  const expectedLookups = lookupManifestRows(snapshot, ownerContract);
   assertNamedRanges(workbook, expectedLookups);
   const expectedRows = prepareReviewRows(snapshot);
   const expectedIdentities = new Map(expectedRows.map((row) => [row.reviewId, identityRow(row)]));
@@ -1798,7 +1882,7 @@ export function validateHighImpactWorkbook(
       }
       assertDataValidation(
         decisionCell,
-        listValidation(decisionRange(identity.targetKind)),
+        listValidation(decisionRange(identity.targetKind, ownerContract)),
         `${id}: decision`,
       );
       assertDataValidation(
@@ -1812,7 +1896,10 @@ export function validateHighImpactWorkbook(
         textValidation(MAX_DECISION_NOTE_CHARACTERS),
         `${id}: decision note`,
       );
-      const targetRange = namedRangeForTarget(identity.targetKind);
+      const targetRange =
+        ownerContract && D40_NEW_COURT.has(id)
+          ? 'ApprovedNewCourtChoices'
+          : namedRangeForTarget(identity.targetKind);
       if (targetRange !== null) {
         assertDataValidation(targetCell, listValidation(targetRange), `${id}: target`);
       } else if (identity.targetKind === 'parent') {
@@ -1837,7 +1924,7 @@ export function validateHighImpactWorkbook(
       const noteText = noteCell.text;
       visibleRows.set(id, {
         identity,
-        decision: decisionCell.text.trim(),
+        decision: ownerContract ? decisionCell.text : decisionCell.text.trim(),
         target: identity.targetKind === 'parent' ? '' : targetText.trim(),
         targetCharacters: identity.targetKind === 'parent' ? 0 : [...targetText].length,
         reviewer: reviewerText.trim(),
@@ -1871,7 +1958,11 @@ export function validateHighImpactWorkbook(
         ? PARENT_DECISION_STATUSES
         : row.identity.targetKind === 'client'
           ? CLIENT_DECISION_STATUSES
-          : DECISION_STATUSES;
+          : ownerContract && row.identity.targetKind === 'branch'
+            ? [...DECISION_STATUSES, NO_BRANCH_APPROVED]
+            : ownerContract && row.identity.targetKind === 'court'
+              ? [...DECISION_STATUSES, NEW_COURT_APPROVED]
+              : DECISION_STATUSES;
     if (
       (row.identity.targetKind === 'circuit' || row.identity.targetKind === 'text') &&
       row.targetCharacters > MAX_FREE_TEXT_TARGET_CHARACTERS
@@ -1919,6 +2010,29 @@ export function validateHighImpactWorkbook(
       } else if (row.reviewer === '' || row.date === null)
         issue = 'اسم المراجع وتاريخ المراجعة مطلوبان';
       else state = 'completed';
+    } else if (row.decision === NO_BRANCH_APPROVED) {
+      if (
+        D40_NO_BRANCH.get(id) !== row.identity.legacyId ||
+        row.targetCharacters !== 0 ||
+        row.note !== 'لا يوجد فرع'
+      ) {
+        state = 'invalid';
+        issue = 'قرار غياب الفرع لا يطابق اعتماد D40 أو يتضمن هدفًا';
+      } else if (row.reviewer !== 'خالد حلمي' || row.date !== '2026-09-04') {
+        issue = 'اسم المراجع وتاريخ اعتماد D40 مطلوبان';
+      } else state = 'completed';
+    } else if (row.decision === NEW_COURT_APPROVED) {
+      if (
+        D40_NEW_COURT.get(id) !== row.identity.legacyId ||
+        row.target !== APPROVED_NEW_COURT ||
+        row.targetCharacters !== APPROVED_NEW_COURT.length ||
+        row.note !== APPROVED_NEW_COURT
+      ) {
+        state = 'invalid';
+        issue = 'اعتماد المحكمة الجديدة يجب أن يطابق D40 دون معرّف قاعدة بيانات';
+      } else if (row.reviewer !== 'خالد حلمي' || row.date !== '2026-09-04') {
+        issue = 'اسم المراجع وتاريخ اعتماد D40 مطلوبان';
+      } else state = 'completed';
     } else if (row.decision === 'تصحيح معتمد') {
       if (row.target === '') issue = 'هدف التصحيح مطلوب';
       else if (row.reviewer === '' || row.date === null)
@@ -1941,13 +2055,35 @@ export function validateHighImpactWorkbook(
       if (row.reviewer === '' || row.date === null) issue = 'اسم المراجع وتاريخ المراجعة مطلوبان';
       else state = 'completed';
     }
+    if (ownerContract && state === 'completed') {
+      const exact = D40_EXACT_TARGETS.get(id);
+      if (
+        (D40_NO_BRANCH.has(id) && row.decision !== NO_BRANCH_APPROVED) ||
+        (D40_NEW_COURT.has(id) && row.decision !== NEW_COURT_APPROVED) ||
+        (exact &&
+          (row.identity.legacyId !== exact.legacyId ||
+            row.decision !== DECISION_STATUSES[0] ||
+            row.target !== exact.target ||
+            row.targetCharacters !== [...exact.target].length))
+      ) {
+        state = 'invalid';
+        issue = 'القرار يخالف الهدف الدقيق المعتمد في D40';
+      }
+    }
     states.set(id, state);
     if (issue !== '') issues.push(`${id}: ${issue}`);
   }
   for (const [id, row] of visibleRows) {
     if (row.decision !== 'يتبع القرار المعتمد للدعوى') continue;
     const parent = row.identity.parentMatterReviewId;
-    if (parent === null || states.get(parent) !== 'completed') {
+    if (
+      row.identity.targetKind !== 'parent' ||
+      row.identity.reasonCodes.length !== 1 ||
+      row.identity.reasonCodes[0] !== 'parent_matter_quarantined' ||
+      parent === null ||
+      visibleRows.get(parent)?.identity.kind !== 'matter' ||
+      states.get(parent) !== 'completed'
+    ) {
       if (states.get(id) !== 'invalid')
         issues.push(`${id}: لا يمكن اتباع قرار دعوى أصلية غير مكتمل`);
       states.set(id, 'invalid');
@@ -1966,7 +2102,23 @@ export function validateHighImpactWorkbook(
     issues,
     identityManifestSha256: parsedIdentity.identityDigest,
     lookupManifestSha256: actualLookupDigest,
+    pendingLookupCreation: [...visibleRows]
+      .filter(([id, row]) => states.get(id) === 'completed' && row.decision === NEW_COURT_APPROVED)
+      .map(([reviewId, row]) => ({
+        reviewId,
+        legacyId: row.identity.legacyId!,
+        label: APPROVED_NEW_COURT,
+        databaseId: null,
+      })),
+    rowStates: Object.fromEntries(states),
   };
+}
+
+function ownerDecisionContract(workbook: ExcelJS.Workbook): boolean {
+  const format = workbook.getWorksheet(IDENTITY_SHEET)?.getCell('B1').text;
+  if (format !== HIGH_IMPACT_FORMAT && format !== OWNER_DECISION_FORMAT)
+    fail('unsupported review format');
+  return format === OWNER_DECISION_FORMAT;
 }
 
 export type ArtifactGitState = { ignored: boolean; tracked: boolean };
@@ -1978,6 +2130,23 @@ export function assertArtifactGitSafety(path: string, state: ArtifactGitState): 
 }
 
 export function inspectArtifactGitState(path: string): ArtifactGitState {
+  const root = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+  if (root.status !== 0) fail('Git repository root could not be established');
+  const relativePath = relative(root.stdout.trim(), resolve(path));
+  if (isAbsolute(relativePath) || relativePath === '..' || relativePath.startsWith(`..${sep}`)) {
+    if (!/\.xlsx(?:\.sha256)?$/iu.test(path))
+      fail('external review artifact must be XLSX or its SHA-256 manifest');
+    // Outside this Git worktree: cannot be tracked here. Verify that the same
+    // artifact name is also excluded at the canonical review destination.
+    const ignored = spawnSync('git', [
+      'check-ignore',
+      '-q',
+      '--',
+      `_migration/review/${basename(path)}`,
+    ]);
+    if (ignored.status !== 0) fail('external review artifact has no canonical ignore protection');
+    return { ignored: true, tracked: false };
+  }
   const ignored = spawnSync('git', ['check-ignore', '-q', '--', path], { encoding: 'utf8' });
   const tracked = spawnSync('git', ['ls-files', '--error-unmatch', '--', path], {
     encoding: 'utf8',
@@ -2226,4 +2395,207 @@ export function populateD39WorkbookAnswers(
     })),
     hearings: dependent.length,
   };
+}
+
+function locateReview(workbook: ExcelJS.Workbook, review: PreparedReviewRow): ExcelJS.Row {
+  const sheet = workbook.getWorksheet(review.sheet);
+  const matches =
+    sheet
+      ?.getRows(2, sheet.rowCount - 1)
+      ?.filter((row) => row.getCell(1).text === review.reviewId) ?? [];
+  if (matches.length !== 1) fail(`${review.reviewId}: expected one durable review identity`);
+  return matches[0]!;
+}
+
+/** Narrow D40 overlay: preserve v2 identities/lookups; append review-only codes. */
+function upgradeOwnerContract(
+  workbook: ExcelJS.Workbook,
+  snapshot: HighImpactReviewSnapshot,
+): void {
+  const lookups = lookupManifestRows(snapshot, true);
+  const sheet = workbook.getWorksheet(LOOKUP_SHEET)!;
+  for (const entry of lookups.slice(lookupManifestRows(snapshot).length)) {
+    sheet.addRow([entry.kind, entry.id, entry.label, entry.choice, 'false', 'null']);
+  }
+  for (const contract of definedNameContracts(lookups))
+    workbook.definedNames.add(contract.range, contract.name);
+  workbook.getWorksheet(IDENTITY_SHEET)!.getCell('B1').value = OWNER_DECISION_FORMAT;
+  workbook.getWorksheet(IDENTITY_SHEET)!.getCell('B6').value = lookupManifestSha256(lookups);
+  for (const review of prepareReviewRows(snapshot)) {
+    const row = locateReview(workbook, review);
+    const columns = answerColumnIndexes(review.kind);
+    if (review.targetKind === 'branch' || review.targetKind === 'court')
+      row.getCell(columns.decision).dataValidation = listValidation(
+        decisionRange(review.targetKind, true),
+      );
+    if (D40_NEW_COURT.has(review.reviewId))
+      row.getCell(columns.target).dataValidation = listValidation('ApprovedNewCourtChoices');
+  }
+}
+
+/** Integrate the hash-pinned owner attachment; never apply decisions to PostgreSQL. */
+export async function integrateD40OwnerAnswers(
+  ownerBytes: Buffer,
+  snapshot: HighImpactReviewSnapshot,
+  baseline: ExcelJS.Workbook,
+): Promise<ExcelJS.Workbook> {
+  if (ownerBytes.length !== 195_913 || fileSha256(ownerBytes) !== FILLED_OWNER_WORKBOOK_SHA256)
+    fail('D40 immutable owner attachment size/hash changed');
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(ownerBytes as never);
+  const original = validateHighImpactWorkbook(workbook, snapshot);
+  const baselineResult = validateHighImpactWorkbook(baseline, snapshot);
+  if (
+    ownerDecisionContract(workbook) ||
+    ownerDecisionContract(baseline) ||
+    original.completed !== 218 ||
+    original.incomplete !== 164 ||
+    original.invalid !== 0 ||
+    original.answered !== 230 ||
+    baselineResult.completed !== 175 ||
+    baselineResult.incomplete !== 207 ||
+    baselineResult.invalid !== 0 ||
+    baselineResult.answered !== 175
+  )
+    fail('D40 pre-integration decision counts differ');
+  const reviews = prepareReviewRows(snapshot);
+  const answers = (book: ExcelJS.Workbook, review: PreparedReviewRow) => {
+    const row = locateReview(book, review);
+    return Object.values(answerColumnIndexes(review.kind)).map(
+      (column) => row.getCell(column).text,
+    );
+  };
+  const before = new Map(reviews.map((review) => [review.reviewId, answers(workbook, review)]));
+  const edited = reviews.filter(
+    (review) =>
+      canonicalJson(answers(baseline, review)) !== canonicalJson(before.get(review.reviewId)),
+  );
+  if (
+    edited.length !== 55 ||
+    edited.filter((row) => row.sheet === VISIBLE_SHEETS[2]).length !== 41 ||
+    edited.filter((row) => row.sheet === VISIBLE_SHEETS[4]).length !== 14 ||
+    edited.some((row) => baselineResult.rowStates[row.reviewId] === 'completed')
+  )
+    fail('D40 owner/baseline answer reconciliation differs');
+  const pending = reviews.filter(
+    (review) =>
+      review.targetKind === 'parent' && original.rowStates[review.reviewId] === 'incomplete',
+  );
+  if (
+    pending.length !== 152 ||
+    pending.filter((row) => D40_NO_BRANCH.has(row.parentMatterReviewId ?? '')).length !== 36 ||
+    pending.filter((row) => original.rowStates[row.parentMatterReviewId ?? ''] === 'completed')
+      .length !== 116
+  )
+    fail('D40 dependent hearing inventory differs');
+  const reviewedParents = edited.filter((row) => row.kind === 'matter');
+  if (
+    reviewedParents.length !== 41 ||
+    reviewedParents.filter((row) => !D40_NO_BRANCH.has(row.reviewId)).length !== 31
+  )
+    fail('D40 requires 31 ordinary and ten no-branch matter decisions');
+  // Two ordinary matters have zero dependent hearings; reconcile those too.
+  for (const parent of reviewedParents) {
+    const parentId = parent.reviewId;
+    const source = snapshot.matters.find((row) => row.src_record_key === parent.sourceRecordKey)!;
+    if (
+      pending.filter((row) => row.parentMatterReviewId === parentId).length !==
+      source.linked_quarantined_hearings
+    )
+      fail(`${parentId}: per-parent dependent hearing count differs`);
+  }
+  // Crosswalk evidence is frozen in the court_list_and_crosswalk migration and each reason_details
+  // payload. The target is the hearing note, not the already extracted court.
+  for (const [id, correction] of D40_EXACT_TARGETS) {
+    const review = reviews.find((row) => row.reviewId === id)!;
+    if (review?.legacyId !== correction.legacyId) fail(`${id}: D40 source identity differs`);
+    if (review.targetKind === 'text' && !review.reasonDetailsJson.includes(correction.target))
+      fail(`${id}: D40 hearing-note crosswalk evidence differs`);
+    if (review.targetKind === 'circuit' && !review.evidence.includes(correction.target))
+      fail(`${id}: D40 weekday circuit evidence differs`);
+  }
+  if (snapshot.lookups.some((row) => row.kind === 'court' && row.label === APPROVED_NEW_COURT))
+    fail('D40 court already exists; this approval must be reconciled before proceeding');
+  upgradeOwnerContract(workbook, snapshot);
+  const allowedChanges = new Map<string, Set<number>>();
+  const set = (review: PreparedReviewRow, column: number, value: ExcelJS.CellValue): void => {
+    locateReview(workbook, review).getCell(column).value = value;
+    const allowed = allowedChanges.get(review.reviewId) ?? new Set<number>();
+    allowed.add(column);
+    allowedChanges.set(review.reviewId, allowed);
+  };
+  for (const [id, legacyId] of [...D40_NO_BRANCH, ...D40_NEW_COURT]) {
+    const review = reviews.find((row) => row.reviewId === id)!;
+    const branch = D40_NO_BRANCH.has(id);
+    if (review?.legacyId !== legacyId || review.targetKind !== (branch ? 'branch' : 'court'))
+      fail(`${id}: D40 approved identity/target kind differs`);
+    if (branch && review.evidence[9] !== 'دعاوى قضائية')
+      fail(`${id}: original no-branch evidence differs`);
+    const columns = answerColumnIndexes(review.kind);
+    const row = locateReview(workbook, review);
+    if (row.getCell(columns.note).text !== (branch ? 'لا يوجد فرع' : APPROVED_NEW_COURT))
+      fail(`${id}: owner approval note differs`);
+    set(review, columns.decision, branch ? NO_BRANCH_APPROVED : NEW_COURT_APPROVED);
+    set(review, columns.target, branch ? '' : APPROVED_NEW_COURT);
+    set(review, columns.reviewer, 'خالد حلمي');
+    set(review, columns.date, new Date('2026-09-04T00:00:00.000Z'));
+  }
+  for (const [id, correction] of D40_EXACT_TARGETS) {
+    const review = reviews.find((row) => row.reviewId === id)!;
+    // Masters already has the approved answer: assert it, never repopulate it.
+    if (id === 'M-000111') {
+      const row = locateReview(workbook, review),
+        columns = answerColumnIndexes(review.kind);
+      if (
+        row.getCell(columns.target).text !== correction.target ||
+        row.getCell(columns.reviewer).text !== 'خالد حلمي' ||
+        dateValue(row.getCell(columns.date).value) !== '2026-09-04'
+      )
+        fail('D40 Masters confirmation differs');
+    } else set(review, answerColumnIndexes(review.kind).target, correction.target);
+  }
+  const parentResult = validateHighImpactWorkbook(workbook, snapshot);
+  if (
+    parentResult.invalid !== 0 ||
+    parentResult.completed !== 230 ||
+    parentResult.incomplete !== 152
+  )
+    fail('D40 corrected parents/independent decisions are not valid and complete');
+  for (const review of pending) {
+    const parent = reviews.find((row) => row.reviewId === review.parentMatterReviewId);
+    if (
+      review.reasonCodes.length !== 1 ||
+      review.reasonCodes[0] !== 'parent_matter_quarantined' ||
+      parent?.kind !== 'matter' ||
+      parentResult.rowStates[parent.reviewId] !== 'completed'
+    )
+      fail(`${review.reviewId}: ineligible D40 parent inheritance`);
+    const columns = answerColumnIndexes('hearing');
+    if (before.get(review.reviewId)!.some((value, index) => index !== 1 && value !== ''))
+      fail(`${review.reviewId}: dependent answer is not blank`);
+    set(review, columns.decision, PARENT_DECISION_STATUSES[0]);
+    set(review, columns.reviewer, 'خالد حلمي');
+    set(review, columns.date, new Date('2026-09-04T00:00:00.000Z'));
+    set(
+      review,
+      columns.note,
+      `D40: يتبع قرار الدعوى ${parent.reviewId}؛ سبب الحجز الوحيد هو حجز الدعوى الأصلية.`,
+    );
+  }
+  for (const review of reviews) {
+    const previous = before.get(review.reviewId)!;
+    Object.values(answerColumnIndexes(review.kind)).forEach((column, index) => {
+      if (
+        !allowedChanges.get(review.reviewId)?.has(column) &&
+        answers(workbook, review)[index] !== previous[index]
+      )
+        fail(`${review.reviewId}: an unapproved owner/baseline answer changed`);
+    });
+  }
+  const result = validateHighImpactWorkbook(workbook, snapshot);
+  if (!result.complete || result.pendingLookupCreation.length !== 2)
+    fail(
+      'D40 successor did not reconcile to 382 owner-complete decisions and two pending court approvals',
+    );
+  return workbook;
 }
