@@ -268,6 +268,13 @@ Every list report gets a **count row** at the foot (`إجمالي عدد الد�
 
 ## D19 — A client branch is a site, not a practice area
 
+**Historical decision preserved. D39 (4 September 2026) supersedes only the
+separate-client classification and blanket wrong-client claim for the three
+exact values `سيجما للصناعات الدوائية`, `سيجما للإعلام (تليفزيون الحياة)`
+and `ألفا مصر للتجارة`. The text below, migration 0007 and its crosswalk and
+quarantine evidence remain historical evidence, not the current interpretation
+of those three values. D39's data application is deferred to Task 3.5B.**
+
 `clientBranch` had become a box people typed anything into. Its 31 values held
 at least four different concepts at once — the same overloaded-column pattern
 as `matterDegree` (D8), affecting 560 matters.
@@ -816,3 +823,51 @@ redisplay, email reset, OAuth, registration, magic links, a fifth role, custom
 roles and username-hard-coded authorization. A generalized break-glass command
 for accounts created after the original four is a separate pre-go-live owner
 decision, not a Task 3.4 capability.
+
+## D39 — Reviewed Sigma and Alpha branches retain their existing parent clients
+
+**Approved explicitly by Khaled Helmy on 4 September 2026 through the bounded
+Task 3.5A client-review contract correction mandate.**
+
+For these migration records, main Sigma is the existing client with Access
+`ID_client=188`, `clients.legacy_id=188` and new-system `clients.id=197`.
+Its current full name is `شركة سيجما للصناعات الدوائية` and short name is
+`سيجما`. All Sigma entities appearing in these 14 records are branches or
+subsidiaries of that parent, including `سيجما للصناعات الدوائية`,
+`سيجما للإعلام (تليفزيون الحياة)` and `سيجما تك للصناعات الدوائية`.
+
+`ألفا مصر للتجارة` is a branch or subsidiary of existing `الفطيم`: Access
+`ID_client=2`, `clients.legacy_id=2`, new-system `clients.id=11`.
+
+All 14 historically `separate_client` matters already identify the correct
+parent: the 13 Sigma matters retain client 197 and the Alpha matter retains
+client 11. No new client or client reassignment is required. Do not rename main
+Sigma; an official-name change requires a separate owner decision. Sigma Tech
+occurs in party text, which must retain its ordinary relationship transformation;
+do not invent a `clientBranch` lookup solely from that party text.
+
+**Rationale and relationship to D19:** the earlier blanket interpretation
+treated a branch label as proof of an unrelated client. The owner has now
+confirmed the parent identities and branch/subsidiary relationships explicitly.
+D39 supersedes only that interpretation for the three exact previously
+misclassified branch values named in D19. All other D19 rules remain in force.
+D19's historical text, migration 0007, existing crosswalk rows, complete source
+payloads and historical quarantine evidence must not be rewritten or deleted.
+
+**Task 3.5A scope:** record the decisions in a separately versioned workbook,
+using `الارتباط الحالي صحيح`, the same protected current-client target,
+reviewer `خالد حلمي` and date 2026-09-04. Only hearings whose sole reason is
+`parent_matter_quarantined` and whose parent is one of these 14 matters may
+receive `يتبع القرار المعتمد للدعوى`, with the exact parent review ID. The
+independently verified eligible population is 161 hearings. This records owner
+answers only: it does not apply a branch, release a record or close Task 3.5.
+
+**Deferred enforcement — Task 3.5B, not implemented here:** add/map exactly
+`سيجما للصناعات الدوائية`, `سيجما للإعلام (تليفزيون الحياة)` and
+`ألفا مصر للتجارة` as reviewed branches with the approved parent associations.
+Determine the smallest correct database/application mechanism that prevents
+pairing them with an unrelated client during application. Preserve historical
+D19 and quarantine evidence, append truthful audit events, and reconcile every
+released matter, hearing, person relationship, administrative task, task step
+and fee reference. Lower-impact evidence is not implicitly released. Task
+3.5B and Stage 4 remain unstarted and require separate authorization.

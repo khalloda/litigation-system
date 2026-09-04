@@ -4,9 +4,13 @@ import type { ClientBase, QueryResultRow } from 'pg';
 import ExcelJS from 'exceljs';
 
 export const HIGH_IMPACT_WORKBOOK_PATH =
-  '_migration/review/task-3-5-high-impact-quarantine-review-2026-09-03.xlsx';
+  '_migration/review/task-3-5-high-impact-quarantine-review-2026-09-04.xlsx';
 export const HIGH_IMPACT_SHA256_PATH = `${HIGH_IMPACT_WORKBOOK_PATH}.sha256`;
-export const HIGH_IMPACT_FORMAT = 'task-3-5a-high-impact-review-v1';
+export const HIGH_IMPACT_FORMAT = 'task-3-5a-high-impact-review-v2';
+export const HISTORICAL_WORKBOOK_PATH =
+  '_migration/review/task-3-5-high-impact-quarantine-review-2026-09-03.xlsx';
+export const OWNER_SAVED_WORKBOOK_SHA256 =
+  '0e9d9fed686e2b158bf4eb73409bedff7fa05e29c80b91be8a5fc2240821a324';
 export const IDENTITY_SHEET = '__identity';
 export const LOOKUP_SHEET = '__lookups';
 
@@ -22,7 +26,7 @@ export const READ_ONLY_TRANSACTION_SQL =
 
 export const VISIBLE_SHEETS = [
   'اقرأ أولاً',
-  'العميل غير الصحيح',
+  'مراجعة ارتباط العميل',
   'الدعاوى الأخرى',
   'الجلسات التابعة',
   'مشكلات الجلسات',
@@ -62,6 +66,9 @@ export const DECISION_STATUSES = [
   'يحتاج إلى نقاش',
 ] as const;
 
+export const CURRENT_CLIENT_CONFIRMED = 'الارتباط الحالي صحيح';
+export const CLIENT_DECISION_STATUSES = [CURRENT_CLIENT_CONFIRMED, ...DECISION_STATUSES] as const;
+
 export const PARENT_DECISION_STATUSES = [
   'يتبع القرار المعتمد للدعوى',
   'يبقى قيد المراجعة دون حل',
@@ -91,8 +98,8 @@ const MATTER_HEADERS = [
   'رقم الدعوى في أكسيس',
   'رقم الدعوى',
   'الموضوع',
-  'العميل المرتبط حاليًا',
-  'رقم العميل في المصدر',
+  'العميل الحالي ومعرّفاته',
+  'رقم العميل في أكسيس / المصدر',
   'نص العميل وصفته في المصدر',
   'الفرع في المصدر',
   'التصنيف في المصدر',
@@ -137,15 +144,15 @@ const HEARING_HEADERS = [
 
 export const ANSWER_HEADERS = [
   '⬅ حالة القرار (يُملأ بواسطة المكتب)',
-  '⬅ الهدف المعتمد (يُملأ عند التصحيح)',
+  '⬅ الهدف المعتمد (عند التصحيح أو التأكيد)',
   '⬅ اسم المراجع',
   '⬅ تاريخ المراجعة',
   '⬅ ملاحظة القرار',
 ] as const;
 
 const MATTER_WIDTHS = [
-  15, 27, 18, 16, 24, 38, 30, 17, 34, 28, 25, 28, 28, 24, 28, 22, 28, 28, 24, 31, 42, 17, 22, 30,
-  40, 24, 16, 42,
+  15, 27, 18, 16, 24, 38, 46, 17, 34, 28, 25, 28, 28, 24, 28, 22, 28, 28, 24, 31, 42, 17, 22, 30,
+  52, 24, 16, 42,
 ];
 const HEARING_WIDTHS = [
   15, 27, 17, 17, 20, 24, 29, 36, 17, 20, 29, 29, 27, 31, 25, 40, 35, 18, 40, 34, 42, 22, 34, 40,
@@ -217,6 +224,7 @@ export type DatabaseLookup = {
   kind: DatabaseLookupKind;
   id: string;
   label: string;
+  legacyId: string | null;
 };
 
 export type HighImpactReviewSnapshot = {
@@ -241,21 +249,25 @@ export type PreparedReviewRow = {
   reasonDetailsJson: string;
   parentMatterReviewId: string | null;
   targetKind: TargetKind;
+  currentClientId: string | null;
   evidence: string[];
 };
 
 type IdentityRow = Omit<PreparedReviewRow, 'evidence'> & { visibleContextSha256: string };
 
 type LookupManifestRow = {
-  kind: DatabaseLookupKind | 'decision_status' | 'parent_decision_status';
+  kind:
+    DatabaseLookupKind | 'decision_status' | 'client_decision_status' | 'parent_decision_status';
   id: string;
   label: string;
   choice: string;
   databaseBacked: boolean;
+  legacyId: string | null;
 };
 
 const LOOKUP_RANGE_NAMES: Record<LookupManifestRow['kind'], string> = {
   decision_status: 'DecisionStatuses',
+  client_decision_status: 'ClientDecisionStatuses',
   parent_decision_status: 'ParentDecisionStatuses',
   client: 'ClientChoices',
   court: 'CourtChoices',
@@ -391,16 +403,16 @@ SELECT q.id::text quarantine_id,
           q.id`;
 
 const LOOKUP_QUERY = `
-WITH lookup_rows(kind,id,label) AS (
-  SELECT 'client',id::bigint,coalesce(nullif(full_name,''),nullif(name_ar,''),nullif(name_en,''))
+WITH lookup_rows(kind,id,label,legacy_id) AS (
+  SELECT 'client',id::bigint,coalesce(nullif(full_name,''),nullif(name_ar,''),nullif(name_en,'')),legacy_id
     FROM clients
-  UNION ALL SELECT 'court',id,label_ar FROM lookup_court
-  UNION ALL SELECT 'importance',id,label_ar FROM lookup_importance
-  UNION ALL SELECT 'branch',id,label_ar FROM lookup_client_branch
-  UNION ALL SELECT 'category',id,label_ar FROM lookup_matter_category
-  UNION ALL SELECT 'type',id,label_ar FROM lookup_matter_type
+  UNION ALL SELECT 'court',id,label_ar,NULL FROM lookup_court
+  UNION ALL SELECT 'importance',id,label_ar,NULL FROM lookup_importance
+  UNION ALL SELECT 'branch',id,label_ar,NULL FROM lookup_client_branch
+  UNION ALL SELECT 'category',id,label_ar,NULL FROM lookup_matter_category
+  UNION ALL SELECT 'type',id,label_ar,NULL FROM lookup_matter_type
 )
-SELECT kind,id::text,label
+SELECT kind,id::text,label,legacy_id::text "legacyId"
   FROM lookup_rows
  ORDER BY kind,label COLLATE "arabic",id`;
 
@@ -529,6 +541,7 @@ function validateSnapshot(snapshot: HighImpactReviewSnapshot): void {
     fail('protected review lookup ID/label digest changed');
   }
   const lookupKeys = new Set<string>();
+  const clientLegacyIds = new Set<string>();
   for (const lookup of snapshot.lookups) {
     if (!EXPECTED_LOOKUP_COUNTS.has(lookup.kind)) fail(`unexpected lookup kind ${lookup.kind}`);
     if (!/^[1-9][0-9]*$/u.test(lookup.id) || lookup.label.trim() === '') {
@@ -537,6 +550,12 @@ function validateSnapshot(snapshot: HighImpactReviewSnapshot): void {
     const key = `${lookup.kind}\u0000${lookup.id}`;
     if (lookupKeys.has(key)) fail(`duplicate ${lookup.kind} lookup id ${lookup.id}`);
     lookupKeys.add(key);
+    if (lookup.legacyId !== null) {
+      if (lookup.kind !== 'client' || !/^[1-9][0-9]*$/u.test(lookup.legacyId))
+        fail('invalid client legacy identity');
+      if (clientLegacyIds.has(lookup.legacyId)) fail('duplicate client legacy identity');
+      clientLegacyIds.add(lookup.legacyId);
+    }
   }
   for (const [kind, count] of EXPECTED_LOOKUP_COUNTS) {
     const actual = snapshot.lookups.filter((lookup) => lookup.kind === kind).length;
@@ -623,7 +642,7 @@ function combinedStatus(status: string | null, current: string | null): string {
 
 function reasonLabel(reason: string): string {
   const labels: Record<string, string> = {
-    separate_client: 'العميل المسجل غير صحيح',
+    separate_client: 'مراجعة ارتباط العميل والفرع',
     unmapped_importance: 'قيمة الأهمية غير معروفة',
     branch_requires_review: 'الفرع يحتاج إلى قرار المكتب',
     'classification_conflict:matter_category': 'تعارض في تصنيف الدعوى',
@@ -655,7 +674,7 @@ function targetKindFor(reason: string): TargetKind {
 
 function targetKindLabel(kind: TargetKind): string {
   const labels: Record<TargetKind, string> = {
-    client: 'عميل موجود (المعرّف والاسم)',
+    client: 'عميل موجود (أكسيس والنظام الجديد والاسم)',
     court: 'محكمة موجودة (المعرّف والاسم)',
     importance: 'درجة أهمية موجودة (المعرّف والاسم)',
     branch: 'فرع موجود (المعرّف والاسم)',
@@ -691,7 +710,7 @@ function matterReasonDetails(row: MatterDatabaseRow): string {
     return `نص المحكمة: ${detailString(detail['matterCourt'])}\nجزء مخصص للجلسة: ${sourceText(match?.[1] ?? null)}`;
   }
   if (reason === 'separate_client') {
-    return `رقم العميل الحالي: ${detailString(detail['clientID'])}\nنص الفرع: ${detailString(detail['clientBranch'])}`;
+    return `سبب الحجز التاريخي: separate_client\nرقم العميل في أكسيس: ${detailString(detail['clientID'])}\nنص الفرع: ${detailString(detail['clientBranch'])}`;
   }
   if (reason === 'branch_requires_review') {
     return `نص الفرع المطلوب مراجعته: ${detailString(detail['clientBranch'])}`;
@@ -726,6 +745,12 @@ export function prepareReviewRows(snapshot: HighImpactReviewSnapshot): PreparedR
     const reason = row.reason_codes[0]!;
     const targetKind = targetKindFor(reason);
     const id = reviewId('matter', row.quarantine_id);
+    const currentClient = snapshot.lookups.find(
+      (lookup) =>
+        lookup.kind === 'client' &&
+        lookup.legacyId === row.source_client_id &&
+        lookup.legacyId !== null,
+    );
     const evidence = [
       id,
       reasonLabel(reason),
@@ -733,7 +758,9 @@ export function prepareReviewRows(snapshot: HighImpactReviewSnapshot): PreparedR
       sourceText(row.legacy_matter_id),
       sourceText(row.case_number),
       sourceText(row.subject),
-      sourceText(row.associated_client),
+      currentClient === undefined
+        ? sourceText(row.associated_client)
+        : `${clientChoice(currentClient)}\nclients.legacy_id: ${currentClient.legacyId ?? 'NULL'}`,
       sourceText(row.source_client_id),
       sourceText(row.source_client_text),
       sourceText(row.source_branch),
@@ -765,6 +792,7 @@ export function prepareReviewRows(snapshot: HighImpactReviewSnapshot): PreparedR
       reasonDetailsJson: canonicalJson(row.reason_details),
       parentMatterReviewId: null,
       targetKind,
+      currentClientId: currentClient?.id ?? null,
       evidence,
     };
   });
@@ -819,6 +847,7 @@ export function prepareReviewRows(snapshot: HighImpactReviewSnapshot): PreparedR
       reasonDetailsJson: canonicalJson(row.reason_details),
       parentMatterReviewId: parentId,
       targetKind,
+      currentClientId: null,
       evidence,
     };
   });
@@ -863,6 +892,7 @@ function identityPayload(row: IdentityRow): unknown[] {
     row.parentMatterReviewId,
     row.targetKind,
     row.visibleContextSha256,
+    row.currentClientId,
   ];
 }
 
@@ -879,6 +909,11 @@ function lookupChoice(id: string, label: string): string {
   return `${id} — ${label}`;
 }
 
+export function clientChoice(client: DatabaseLookup): string {
+  if (client.kind !== 'client') fail('client choice requires a client lookup');
+  return `Access ${client.legacyId ?? 'لا يوجد'} | النظام الجديد ${client.id} | ${client.label}`;
+}
+
 function lookupManifestRows(snapshot: HighImpactReviewSnapshot): LookupManifestRow[] {
   const rows: LookupManifestRow[] = [
     ...DECISION_STATUSES.map((label, index) => ({
@@ -887,6 +922,15 @@ function lookupManifestRows(snapshot: HighImpactReviewSnapshot): LookupManifestR
       label,
       choice: label,
       databaseBacked: false,
+      legacyId: null,
+    })),
+    ...CLIENT_DECISION_STATUSES.map((label, index) => ({
+      kind: 'client_decision_status' as const,
+      id: String(index + 1),
+      label,
+      choice: label,
+      databaseBacked: false,
+      legacyId: null,
     })),
     ...PARENT_DECISION_STATUSES.map((label, index) => ({
       kind: 'parent_decision_status' as const,
@@ -894,10 +938,12 @@ function lookupManifestRows(snapshot: HighImpactReviewSnapshot): LookupManifestR
       label,
       choice: label,
       databaseBacked: false,
+      legacyId: null,
     })),
     ...snapshot.lookups.map((lookup) => ({
       ...lookup,
-      choice: lookupChoice(lookup.id, lookup.label),
+      choice:
+        lookup.kind === 'client' ? clientChoice(lookup) : lookupChoice(lookup.id, lookup.label),
       databaseBacked: true,
     })),
   ];
@@ -926,7 +972,9 @@ function definedNameContracts(
 export function lookupManifestSha256(rows: readonly LookupManifestRow[]): string {
   return sha256(
     rows
-      .map((row) => canonicalJson([row.kind, row.id, row.label, row.choice, row.databaseBacked]))
+      .map((row) =>
+        canonicalJson([row.kind, row.id, row.label, row.choice, row.databaseBacked, row.legacyId]),
+      )
       .join('\n'),
   );
 }
@@ -967,6 +1015,14 @@ function listValidation(name: string): ExcelJS.DataValidation {
     errorTitle: 'قيمة غير معتمدة',
     error: 'اختر قيمة من القائمة فقط.',
   };
+}
+
+function decisionRange(kind: TargetKind): string {
+  return kind === 'parent'
+    ? 'ParentDecisionStatuses'
+    : kind === 'client'
+      ? 'ClientDecisionStatuses'
+      : 'DecisionStatuses';
 }
 
 function textValidation(maximum: number): ExcelJS.DataValidation {
@@ -1068,9 +1124,7 @@ async function addReviewSheet(
     const reviewerCell = row.getCell(answerStart + 2);
     const dateCell = row.getCell(answerStart + 3);
     const noteCell = row.getCell(answerStart + 4);
-    decisionCell.dataValidation = listValidation(
-      review.targetKind === 'parent' ? 'ParentDecisionStatuses' : 'DecisionStatuses',
-    );
+    decisionCell.dataValidation = listValidation(decisionRange(review.targetKind));
     const targetRange = namedRangeForTarget(review.targetKind);
     if (targetRange !== null) targetCell.dataValidation = listValidation(targetRange);
     else if (review.targetKind === 'circuit' || review.targetKind === 'text') {
@@ -1105,7 +1159,11 @@ function addCoverSheet(workbook: ExcelJS.Workbook): void {
     ],
     [
       'الأولوية القصوى',
-      'ابدأ بورقة «العميل غير الصحيح». تضم 14 دعوى مرتبطة بعميل غير صحيح، وهي أعلى أولوية.',
+      'ورقة «مراجعة ارتباط العميل» تضم 14 دعوى حُجزت تاريخيًا بسبب separate_client. أكد المكتب في D39 صحة ارتباطها بالعميل الحالي. التطبيق مؤجل إلى Task 3.5B.',
+    ],
+    [
+      'تأكيد الارتباط',
+      '«الارتباط الحالي صحيح» خاص بمراجعة العميل، ويتطلب اختيار العميل الحالي نفسه مع اسم المراجع والتاريخ. لا يسمح بتغيير العميل. يبقى «تصحيح معتمد» لإعادة الربط الفعلية.',
     ],
     [
       'عدم التخمين',
@@ -1130,7 +1188,7 @@ function addCoverSheet(workbook: ExcelJS.Workbook): void {
     ],
     [
       'مفاتيح الاختيار',
-      'اختيارات العملاء والمحاكم والتصنيفات تعرض معرّف قاعدة البيانات مع الاسم. الاسم العربي وحده ليس مفتاح الربط.',
+      'اختيار العميل يعرض Access (رقم المصدر نفسه المحفوظ في clients.legacy_id)، ورقم النظام الجديد clients.id، والاسم. المعرفان مستقلان ولا تُحسب العلاقة بينهما. اختيارات القوائم الأخرى تعرض معرّف قاعدة البيانات والاسم.',
     ],
     [
       'المراجع والتاريخ',
@@ -1155,8 +1213,22 @@ function addLookupSheet(workbook: ExcelJS.Workbook, rows: readonly LookupManifes
     views: [{ rightToLeft: true, state: 'frozen', ySplit: 1 }],
   });
   sheet.state = 'veryHidden';
-  sheet.columns = [{ width: 26 }, { width: 16 }, { width: 70 }, { width: 88 }, { width: 18 }];
-  sheet.addRow(['lookup_kind', 'database_id_or_code', 'label', 'choice', 'database_backed']);
+  sheet.columns = [
+    { width: 26 },
+    { width: 16 },
+    { width: 70 },
+    { width: 88 },
+    { width: 18 },
+    { width: 18 },
+  ];
+  sheet.addRow([
+    'lookup_kind',
+    'database_id_or_code',
+    'label',
+    'choice',
+    'database_backed',
+    'client_legacy_id_json',
+  ]);
   rows.forEach((entry) => {
     sheet.addRow([
       entry.kind,
@@ -1164,6 +1236,7 @@ function addLookupSheet(workbook: ExcelJS.Workbook, rows: readonly LookupManifes
       entry.label,
       entry.choice,
       entry.databaseBacked ? 'true' : 'false',
+      JSON.stringify(entry.legacyId),
     ]);
   });
   for (const contract of definedNameContracts(rows)) {
@@ -1203,6 +1276,7 @@ function addIdentitySheet(
     'parent_matter_review_id_json',
     'target_kind',
     'visible_context_sha256',
+    'current_client_id_json',
   ]);
   for (const row of rows) {
     sheet.addRow([
@@ -1221,6 +1295,7 @@ function addIdentitySheet(
       JSON.stringify(row.parentMatterReviewId),
       row.targetKind,
       row.visibleContextSha256,
+      JSON.stringify(row.currentClientId),
     ]);
   }
   void sheet.protect('', { selectLockedCells: true, selectUnlockedCells: false });
@@ -1237,8 +1312,8 @@ export async function buildHighImpactWorkbook(
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Litigation migration — Task 3.5A';
   workbook.lastModifiedBy = 'Litigation migration — Task 3.5A';
-  workbook.created = new Date('2026-09-03T00:00:00.000Z');
-  workbook.modified = new Date('2026-09-03T00:00:00.000Z');
+  workbook.created = new Date('2026-09-04T00:00:00.000Z');
+  workbook.modified = new Date('2026-09-04T00:00:00.000Z');
   workbook.views = [
     {
       x: 0,
@@ -1360,6 +1435,7 @@ function parseIdentityRows(workbook: ExcelJS.Workbook): {
     'parent_matter_review_id_json',
     'target_kind',
     'visible_context_sha256',
+    'current_client_id_json',
   ];
   if (expectedHeader.some((header, index) => sheet.getRow(7).getCell(index + 1).text !== header)) {
     fail(`${IDENTITY_SHEET}: identity header changed`);
@@ -1415,6 +1491,7 @@ function parseIdentityRows(workbook: ExcelJS.Workbook): {
       ),
       targetKind,
       visibleContextSha256: row.getCell(15).text,
+      currentClientId: nullableJson(row.getCell(16).value, `${IDENTITY_SHEET} row ${rowNumber}`),
     };
     const expectedSourceTable =
       kind === 'matter' ? 'quarantine.matter_transform' : 'quarantine.hearing_transform';
@@ -1435,7 +1512,14 @@ function parseLookupRows(workbook: ExcelJS.Workbook): LookupManifestRow[] {
   const sheet = workbook.getWorksheet(LOOKUP_SHEET);
   if (sheet === undefined || sheet.state !== 'veryHidden')
     fail(`${LOOKUP_SHEET} is missing or not very hidden`);
-  const header = ['lookup_kind', 'database_id_or_code', 'label', 'choice', 'database_backed'];
+  const header = [
+    'lookup_kind',
+    'database_id_or_code',
+    'label',
+    'choice',
+    'database_backed',
+    'client_legacy_id_json',
+  ];
   if (header.some((name, index) => sheet.getRow(1).getCell(index + 1).text !== name)) {
     fail(`${LOOKUP_SHEET}: lookup header changed`);
   }
@@ -1448,6 +1532,7 @@ function parseLookupRows(workbook: ExcelJS.Workbook): LookupManifestRow[] {
     if (
       ![
         'decision_status',
+        'client_decision_status',
         'parent_decision_status',
         'client',
         'court',
@@ -1468,6 +1553,7 @@ function parseLookupRows(workbook: ExcelJS.Workbook): LookupManifestRow[] {
       label: row.getCell(3).text,
       choice: row.getCell(4).text,
       databaseBacked: databaseBacked === 'true',
+      legacyId: nullableJson(row.getCell(6).value, `${LOOKUP_SHEET} row ${rowNumber}`),
     });
   }
   return rows;
@@ -1569,9 +1655,15 @@ function comparableDataValidation(validation: ExcelJS.DataValidation | undefined
     showErrorMessage: validation?.showErrorMessage === true,
     errorTitle: validation?.errorTitle ?? null,
     error: validation?.error ?? null,
-    formulae: (validation?.formulae ?? []).map((value) =>
-      value instanceof Date ? value.toISOString() : value,
-    ),
+    formulae: (validation?.formulae ?? []).map((value) => {
+      if (value instanceof Date) return value.toISOString();
+      // Excel saves a direct named reference without '='. Nothing else is normalized.
+      if (validation?.type === 'list' && typeof value === 'string') {
+        const exactName = value.startsWith('=') ? value.slice(1) : value;
+        if (Object.values(LOOKUP_RANGE_NAMES).includes(exactName)) return exactName;
+      }
+      return value;
+    }),
   };
 }
 
@@ -1706,9 +1798,7 @@ export function validateHighImpactWorkbook(
       }
       assertDataValidation(
         decisionCell,
-        listValidation(
-          identity.targetKind === 'parent' ? 'ParentDecisionStatuses' : 'DecisionStatuses',
-        ),
+        listValidation(decisionRange(identity.targetKind)),
         `${id}: decision`,
       );
       assertDataValidation(
@@ -1777,7 +1867,11 @@ export function validateHighImpactWorkbook(
     let state: 'completed' | 'incomplete' | 'invalid' = 'incomplete';
     let issue = '';
     const statusSet =
-      row.identity.targetKind === 'parent' ? PARENT_DECISION_STATUSES : DECISION_STATUSES;
+      row.identity.targetKind === 'parent'
+        ? PARENT_DECISION_STATUSES
+        : row.identity.targetKind === 'client'
+          ? CLIENT_DECISION_STATUSES
+          : DECISION_STATUSES;
     if (
       (row.identity.targetKind === 'circuit' || row.identity.targetKind === 'text') &&
       row.targetCharacters > MAX_FREE_TEXT_TARGET_CHARACTERS
@@ -1810,6 +1904,18 @@ export function validateHighImpactWorkbook(
       if (row.target !== '') {
         state = 'invalid';
         issue = 'قرار البقاء دون حل لا يقبل هدفًا معتمدًا';
+      } else if (row.reviewer === '' || row.date === null)
+        issue = 'اسم المراجع وتاريخ المراجعة مطلوبان';
+      else state = 'completed';
+    } else if (row.decision === CURRENT_CLIENT_CONFIRMED) {
+      const selected = parsedLookups.find(
+        (lookup) =>
+          lookup.kind === 'client' && lookup.databaseBacked && lookup.choice === row.target,
+      );
+      if (row.target === '') issue = 'هدف تأكيد العميل الحالي مطلوب';
+      else if (selected === undefined || selected.id !== row.identity.currentClientId) {
+        state = 'invalid';
+        issue = 'تأكيد الارتباط يتطلب المعرّف المحمي للعميل الحالي نفسه';
       } else if (row.reviewer === '' || row.date === null)
         issue = 'اسم المراجع وتاريخ المراجعة مطلوبان';
       else state = 'completed';
@@ -1900,5 +2006,224 @@ export function answerColumnIndexes(kind: ReviewKind): {
     reviewer: start + 2,
     date: start + 3,
     note: start + 4,
+  };
+}
+
+export type HistoricalClientSelection = {
+  reviewId: string;
+  sourceRecordKey: string;
+  clientId: string;
+};
+
+/** One bounded transfer from the independently inspected, owner-saved v1 file. */
+export async function readHistoricalClientSelection(
+  bytes: Buffer,
+  snapshot: HighImpactReviewSnapshot,
+): Promise<HistoricalClientSelection> {
+  if (fileSha256(bytes) !== OWNER_SAVED_WORKBOOK_SHA256)
+    fail('owner-saved historical workbook changed; inspect it before transferring any answer');
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(bytes as never);
+  const entered: Array<{ reviewId: string; column: number; value: string }> = [];
+  for (const sheet of workbook.worksheets.slice(1, 5)) {
+    // These are the frozen v1 answer columns, not successor row positions.
+    const start = sheet.name === 'العميل غير الصحيح' || sheet.name === 'الدعاوى الأخرى' ? 24 : 23;
+    sheet.eachRow((row, number) => {
+      if (number === 1) return;
+      for (let column = start; column < start + 5; column += 1) {
+        const cell = row.getCell(column);
+        if (!cellHasUserContent(cell)) continue;
+        if (start === 23 && column === 24 && cell.text === NOT_APPLICABLE_DISPLAY) continue;
+        entered.push({ reviewId: row.getCell(1).text, column: column - start, value: cell.text });
+      }
+    });
+  }
+  if (entered.length !== 1 || entered[0]!.reviewId !== 'M-000063' || entered[0]!.column !== 1)
+    fail('historical workbook must contain only the inspected Sigma selection');
+  const selected = entered[0]!;
+  const identityRows = workbook.getWorksheet(IDENTITY_SHEET)!.getRows(8, 382)!;
+  const identities = identityRows.filter((row) => row.getCell(2).text === selected.reviewId);
+  if (identities.length !== 1) fail('historical selection identity is ambiguous');
+  const identity = identities[0]!;
+  const current = prepareReviewRows(snapshot).filter(
+    (row) => row.reviewId === selected.reviewId && row.sourceRecordKey === identity.getCell(6).text,
+  );
+  const lookups = workbook.getWorksheet(LOOKUP_SHEET)!.getRows(2, 685)!;
+  const protectedTargets = lookups.filter(
+    (row) =>
+      row.getCell(1).text === 'client' &&
+      row.getCell(4).text === selected.value &&
+      row.getCell(5).text === 'true',
+  );
+  if (current.length !== 1 || protectedTargets.length !== 1)
+    fail('historical selection lacks a unique durable identity or protected client association');
+  const clientId = protectedTargets[0]!.getCell(2).text;
+  const client = snapshot.lookups.find((row) => row.kind === 'client' && row.id === clientId);
+  if (
+    clientId !== '197' ||
+    client?.legacyId !== '188' ||
+    client.label !== protectedTargets[0]!.getCell(3).text ||
+    current[0]!.currentClientId !== clientId
+  )
+    fail('historical Sigma selection no longer matches the current stored client identity');
+  return { reviewId: current[0]!.reviewId, sourceRecordKey: current[0]!.sourceRecordKey, clientId };
+}
+
+/** D39 creates workbook answers only. It does not apply a branch or release a row. */
+export function populateD39WorkbookAnswers(
+  workbook: ExcelJS.Workbook,
+  snapshot: HighImpactReviewSnapshot,
+  transferred: HistoricalClientSelection,
+): {
+  matters: Array<{ reviewId: string; legacyId: string; clientId: string; hearings: number }>;
+  hearings: number;
+} {
+  if (validateHighImpactWorkbook(workbook, snapshot).answered !== 0)
+    fail('D39 population requires an unanswered successor');
+  const rows = prepareReviewRows(snapshot);
+  const matters = snapshot.matters.filter((row) => row.reason_codes.includes('separate_client'));
+  const expectedMatterIds = [
+    '425',
+    '514',
+    '529',
+    '530',
+    '629',
+    '653',
+    '971',
+    '1079',
+    '1139',
+    '1156',
+    '1194',
+    '1364',
+    '1511',
+    '1549',
+  ];
+  const actualMatterIds = matters
+    .map((row) => row.legacy_matter_id)
+    .sort((a, b) => Number(a) - Number(b));
+  if (canonicalJson(actualMatterIds) !== canonicalJson(expectedMatterIds))
+    fail('D39 matter inventory changed');
+  const branches = new Map([
+    [
+      'سيجما للصناعات الدوائية',
+      { legacyId: '188', id: '197', label: 'شركة سيجما للصناعات الدوائية' },
+    ],
+    [
+      'سيجما للإعلام (تليفزيون الحياة)',
+      { legacyId: '188', id: '197', label: 'شركة سيجما للصناعات الدوائية' },
+    ],
+    ['ألفا مصر للتجارة', { legacyId: '2', id: '11', label: 'الفطيم' }],
+  ]);
+  const approved = matters.map((matter) => {
+    const parent = branches.get(matter.source_branch ?? '');
+    const review = rows.find(
+      (row) => row.kind === 'matter' && row.sourceRecordKey === matter.src_record_key,
+    )!;
+    const client = snapshot.lookups.find((row) => row.kind === 'client' && row.id === parent?.id);
+    if (
+      parent === undefined ||
+      client === undefined ||
+      client.legacyId !== parent.legacyId ||
+      client.label !== parent.label ||
+      matter.source_client_id !== parent.legacyId ||
+      review.currentClientId !== parent.id
+    )
+      fail('D39 branch/parent identity changed; no answer may be inferred');
+    return { matter, review, client };
+  });
+  if (
+    approved.filter((row) => row.client.id === '197').length !== 13 ||
+    approved.filter((row) => row.client.id === '11').length !== 1
+  )
+    fail('D39 must retain thirteen Sigma and one Al-Futtaim associations');
+  const transfer = approved.find(
+    (row) =>
+      row.review.reviewId === transferred.reviewId &&
+      row.review.sourceRecordKey === transferred.sourceRecordKey,
+  );
+  if (
+    transfer === undefined ||
+    transferred.reviewId !== 'M-000063' ||
+    transferred.clientId !== transfer.client.id
+  )
+    fail('transferred selection does not match the D39 durable identity and protected target');
+  const parentIds = new Set(approved.map((row) => row.review.reviewId));
+  const dependent = rows.filter(
+    (row) => row.kind === 'hearing' && parentIds.has(row.parentMatterReviewId ?? ''),
+  );
+  if (
+    dependent.length !== 161 ||
+    dependent.some(
+      (row) => row.reasonCodes.length !== 1 || row.reasonCodes[0] !== 'parent_matter_quarantined',
+    )
+  )
+    fail('D39 requires exactly 161 sole-parent-reason hearings; stop before populating answers');
+  for (const { matter, review } of approved) {
+    if (
+      dependent.filter((row) => row.parentMatterReviewId === review.reviewId).length !==
+      matter.linked_quarantined_hearings
+    )
+      fail('D39 per-parent hearing reconciliation changed');
+  }
+  const locate = (review: PreparedReviewRow): ExcelJS.Row => {
+    const sheet = workbook.getWorksheet(review.sheet)!;
+    const matches: ExcelJS.Row[] = [];
+    sheet.eachRow((row, number) => {
+      if (number > 1 && row.getCell(1).text === review.reviewId) matches.push(row);
+    });
+    if (matches.length !== 1) fail('D39 successor review identity is missing or duplicated');
+    return matches[0]!;
+  };
+  const write = (
+    review: PreparedReviewRow,
+    decision: string,
+    target: string | null,
+    note: string,
+  ): void => {
+    const row = locate(review);
+    const columns = answerColumnIndexes(review.kind);
+    row.getCell(columns.decision).value = decision;
+    if (target !== null) row.getCell(columns.target).value = target;
+    row.getCell(columns.reviewer).value = 'خالد حلمي';
+    row.getCell(columns.date).value = new Date('2026-09-04T00:00:00.000Z');
+    row.getCell(columns.note).value = note;
+    const widths = review.kind === 'matter' ? MATTER_WIDTHS : HEARING_WIDTHS;
+    row.height = calculatedHeight(
+      widths.map((_, index) => row.getCell(index + 1).text),
+      widths,
+    );
+  };
+  for (const { review, client } of approved) {
+    write(
+      review,
+      CURRENT_CLIENT_CONFIRMED,
+      clientChoice(client),
+      `D39: الفرع تابع للعميل الحالي ${client.label}؛ يبقى الارتباط دون تغيير.`,
+    );
+  }
+  for (const review of dependent) {
+    write(
+      review,
+      PARENT_DECISION_STATUSES[0],
+      null,
+      `D39: يتبع قرار الدعوى ${review.parentMatterReviewId}؛ سبب الحجز الوحيد هو حجز الدعوى الأصلية.`,
+    );
+  }
+  const result = validateHighImpactWorkbook(workbook, snapshot);
+  if (
+    result.completed !== 175 ||
+    result.incomplete !== 207 ||
+    result.invalid !== 0 ||
+    result.answered !== 175
+  )
+    fail('D39 populated answer reconciliation failed');
+  return {
+    matters: approved.map(({ matter, review, client }) => ({
+      reviewId: review.reviewId,
+      legacyId: matter.legacy_matter_id!,
+      clientId: client.id,
+      hearings: matter.linked_quarantined_hearings,
+    })),
+    hearings: dependent.length,
   };
 }

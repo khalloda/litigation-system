@@ -7,6 +7,7 @@
 
 import 'dotenv/config';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import ExcelJS from 'exceljs';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import {
@@ -16,14 +17,19 @@ import {
   assertReadOnlyTransactionSql,
   assertWorkbookArtifactSafety,
   buildHighImpactWorkbook,
+  clientChoice,
+  CURRENT_CLIENT_CONFIRMED,
   DECISION_STATUSES,
   HIGH_IMPACT_SHA256_PATH,
   HIGH_IMPACT_WORKBOOK_PATH,
+  HISTORICAL_WORKBOOK_PATH,
   HighImpactWorkbookError,
   IDENTITY_SHEET,
   LOOKUP_SHEET,
   PARENT_DECISION_STATUSES,
   readHighImpactReviewSnapshot,
+  readHistoricalClientSelection,
+  populateD39WorkbookAnswers,
   validateHighImpactWorkbook,
   VISIBLE_SHEETS,
   type TargetKind,
@@ -177,6 +183,254 @@ async function main(): Promise<void> {
     );
     console.log(
       '  ok    correct unanswered workbook passes structurally but cannot be called complete',
+    );
+
+    const excelNamedReferences = await cloneWorkbook(firstBuffer);
+    const referencedNames = new Set<string>();
+    excelNamedReferences.eachSheet((sheet) =>
+      sheet.eachRow((row) =>
+        row.eachCell((cell) => {
+          if (cell.dataValidation?.type !== 'list') return;
+          const formula = cell.dataValidation.formulae[0] as string;
+          assert.ok(/^=[A-Za-z]+$/u.test(formula));
+          referencedNames.add(formula.slice(1));
+          cell.dataValidation = { ...cell.dataValidation, formulae: [formula.slice(1)] };
+        }),
+      ),
+    );
+    assert.equal(referencedNames.size, 9);
+    assert.equal(validateHighImpactWorkbook(excelNamedReferences, snapshot).invalid, 0);
+    console.log(
+      '  ok    all nine exact named validation references pass with or without one leading equals',
+    );
+    for (const formula of [
+      'CourtChoices',
+      '=CourtChoices',
+      '__lookups!$D$2:$D$319',
+      '=INDIRECT("ClientChoices")',
+      ' ClientChoices',
+      'ClientChoices ',
+      '= ClientChoices',
+      '==ClientChoices',
+      '"ClientChoices"',
+      '="ClientChoices"',
+      '=ClientChoices&""',
+      'clientchoices',
+    ]) {
+      const workbook = await cloneWorkbook(firstBuffer);
+      const location = reviewLocationForTargetKind(workbook, 'client');
+      const cell = location.sheet.getCell(location.row, location.columns.target);
+      cell.dataValidation = { ...cell.dataValidation, formulae: [formula] };
+      expectContractFailure(
+        () => validateHighImpactWorkbook(workbook, snapshot),
+        'target: data-validation contract changed',
+      );
+      console.log(`  ok    unsafe validation reference ${JSON.stringify(formula)} rejected`);
+    }
+    const missingList = await cloneWorkbook(firstBuffer);
+    const missingListLocation = reviewLocationForTargetKind(missingList, 'client');
+    missingListLocation.sheet.getCell(
+      missingListLocation.row,
+      missingListLocation.columns.target,
+    ).dataValidation = {} as ExcelJS.DataValidation;
+    expectContractFailure(
+      () => validateHighImpactWorkbook(missingList, snapshot),
+      'target: data-validation contract changed',
+    );
+    console.log('  ok    absent ClientChoices validation is rejected');
+
+    const currentClient = snapshot.lookups.find(
+      (lookup) => lookup.kind === 'client' && lookup.id === '197',
+    )!;
+    assert.equal(currentClient.legacyId, '188');
+    assert.equal(
+      clientChoice(currentClient),
+      'Access 188 | النظام الجديد 197 | شركة سيجما للصناعات الدوائية',
+    );
+    const confirmCurrent = (workbook: ExcelJS.Workbook) => {
+      const location = completeCorrection(workbook, 'client');
+      location.sheet.getCell(location.row, location.columns.decision).value =
+        CURRENT_CLIENT_CONFIRMED;
+      location.sheet.getCell(location.row, location.columns.target).value =
+        clientChoice(currentClient);
+      return location;
+    };
+    const confirmed = await cloneWorkbook(firstBuffer);
+    confirmCurrent(confirmed);
+    assert.equal(validateHighImpactWorkbook(confirmed, snapshot).completed, 1);
+    console.log(
+      '  ok    current-client confirmation with exact protected ID, reviewer and date completes',
+    );
+    for (const [label, column, value, issue] of [
+      ['missing current target', 'target', '', 'هدف تأكيد العميل الحالي مطلوب'],
+      [
+        'different client',
+        'target',
+        clientChoice(snapshot.lookups.find((row) => row.kind === 'client' && row.id !== '197')!),
+        'المعرّف المحمي',
+      ],
+      ['label without protected ID', 'target', currentClient.label, 'المعرّف المحمي'],
+      ['missing reviewer', 'reviewer', '', 'اسم المراجع وتاريخ المراجعة مطلوبان'],
+      ['missing date', 'date', '', 'اسم المراجع وتاريخ المراجعة مطلوبان'],
+    ] as const) {
+      const workbook = await cloneWorkbook(firstBuffer);
+      const location = confirmCurrent(workbook);
+      location.sheet.getCell(location.row, location.columns[column]).value = value;
+      const result = validateHighImpactWorkbook(workbook, snapshot);
+      assert.equal(result.completed, 0);
+      assert.ok(result.issues.some((item) => item.includes(issue)));
+      console.log(`  ok    current-client confirmation rejects ${label} as a completed decision`);
+    }
+    for (const kind of [
+      'court',
+      'category',
+      'type',
+      'importance',
+      'branch',
+      'circuit',
+      'text',
+      'parent',
+    ] as const) {
+      const workbook = await cloneWorkbook(firstBuffer);
+      const location = reviewLocationForTargetKind(workbook, kind);
+      location.sheet.getCell(location.row, location.columns.decision).value =
+        CURRENT_CLIENT_CONFIRMED;
+      const result = validateHighImpactWorkbook(workbook, snapshot);
+      assert.equal(result.invalid, 1);
+      assert.ok(
+        result.issues.some((issue) => issue.includes('حالة القرار ليست من القائمة المعتمدة')),
+      );
+      console.log(`  ok    current-client status prohibited for ${kind}`);
+    }
+    const changedIdSnapshot = structuredClone(snapshot);
+    changedIdSnapshot.lookups.find((row) => row.kind === 'client' && row.id === '197')!.id =
+      '98765';
+    const independentIds = await buildHighImpactWorkbook(changedIdSnapshot);
+    const independentRow = independentIds.reviewRows.find((row) => row.reviewId === 'M-000063')!;
+    assert.equal(independentRow.currentClientId, '98765');
+    assert.ok(independentRow.evidence[6]!.includes('Access 188 | النظام الجديد 98765'));
+    const independentLocation = completeCorrection(independentIds.workbook, 'client');
+    independentLocation.sheet.getCell(
+      independentLocation.row,
+      independentLocation.columns.decision,
+    ).value = CURRENT_CLIENT_CONFIRMED;
+    independentLocation.sheet.getCell(
+      independentLocation.row,
+      independentLocation.columns.target,
+    ).value = clientChoice(changedIdSnapshot.lookups.find((row) => row.id === '98765')!);
+    assert.equal(
+      validateHighImpactWorkbook(independentIds.workbook, changedIdSnapshot).completed,
+      1,
+    );
+    console.log('  ok    deliberately non-arithmetic stored IDs resolve without an offset rule');
+    for (const sourceIds of [
+      ['206', '298'],
+      ['289', '292'],
+    ]) {
+      const clients = snapshot.lookups.filter(
+        (row) => row.kind === 'client' && sourceIds.includes(row.legacyId ?? ''),
+      );
+      assert.equal(clients.length, 2);
+      assert.equal(clients[0]!.label, clients[1]!.label);
+      assert.notEqual(clientChoice(clients[0]!), clientChoice(clients[1]!));
+    }
+    console.log(
+      '  ok    both duplicate-name client pairs remain distinct by actual source/system IDs',
+    );
+    const alteredCurrentIdentity = await cloneWorkbook(firstBuffer);
+    alteredCurrentIdentity.getWorksheet(IDENTITY_SHEET)!.getCell(8, 16).value = '"11"';
+    expectContractFailure(
+      () => validateHighImpactWorkbook(alteredCurrentIdentity, snapshot),
+      'identity manifest digest mismatch',
+    );
+    const alteredLegacyId = await cloneWorkbook(firstBuffer);
+    const alteredLegacySheet = alteredLegacyId.getWorksheet(LOOKUP_SHEET)!;
+    const clientLookupRow = alteredLegacySheet
+      .getRows(2, alteredLegacySheet.rowCount - 1)!
+      .find((row) => row.getCell(1).text === 'client')!;
+    clientLookupRow.getCell(6).value = '"999999"';
+    expectContractFailure(
+      () => validateHighImpactWorkbook(alteredLegacyId, snapshot),
+      'lookup manifest digest mismatch',
+    );
+    console.log('  ok    protected current-client and legacy-ID association tampering rejected');
+
+    const historicalBytes = readFileSync(HISTORICAL_WORKBOOK_PATH);
+    const transferred = await readHistoricalClientSelection(historicalBytes, snapshot);
+    assert.equal(transferred.reviewId, 'M-000063');
+    assert.equal(transferred.clientId, '197');
+    await assert.rejects(
+      () =>
+        readHistoricalClientSelection(
+          Buffer.concat([historicalBytes, Buffer.from('changed')]),
+          snapshot,
+        ),
+      /historical workbook changed/u,
+    );
+    const successor = await cloneWorkbook(firstBuffer);
+    const successorSheet = successor.getWorksheet(VISIBLE_SHEETS[1])!;
+    for (let column = 1; column <= successorSheet.columnCount; column += 1) {
+      const value = successorSheet.getCell(2, column).value;
+      successorSheet.getCell(2, column).value = successorSheet.getCell(3, column).value;
+      successorSheet.getCell(3, column).value = value;
+    }
+    expectContractFailure(
+      () => populateD39WorkbookAnswers(successor, snapshot, { ...transferred, clientId: '11' }),
+      'transferred selection',
+    );
+    const populated = populateD39WorkbookAnswers(successor, snapshot, transferred);
+    assert.equal(populated.matters.length, 14);
+    assert.equal(populated.hearings, 161);
+    const approvedIds = new Set(populated.matters.map((row) => row.reviewId));
+    const assertOnlyD39Answers = (workbook: ExcelJS.Workbook) => {
+      const result = validateHighImpactWorkbook(workbook, snapshot);
+      assert.deepEqual(
+        [result.completed, result.incomplete, result.invalid, result.answered],
+        [175, 207, 0, 175],
+      );
+      for (const review of first.reviewRows) {
+        const sheet = workbook.getWorksheet(review.sheet)!;
+        const matches = sheet
+          .getRows(2, sheet.rowCount - 1)!
+          .filter((row) => row.getCell(1).text === review.reviewId);
+        assert.equal(matches.length, 1);
+        const row = matches[0]!;
+        const columns = answerColumnIndexes(review.kind);
+        const approved =
+          approvedIds.has(review.reviewId) || approvedIds.has(review.parentMatterReviewId ?? '');
+        if (approved) {
+          assert.equal(
+            row.getCell(columns.decision).text,
+            review.kind === 'matter' ? CURRENT_CLIENT_CONFIRMED : PARENT_DECISION_STATUSES[0],
+          );
+          assert.equal(row.getCell(columns.reviewer).text, 'خالد حلمي');
+          assert.equal(
+            (row.getCell(columns.date).value as Date).toISOString(),
+            '2026-09-04T00:00:00.000Z',
+          );
+          assert.ok(row.getCell(columns.note).text.includes('D39'));
+          if (review.kind === 'hearing')
+            assert.ok(row.getCell(columns.note).text.includes(review.parentMatterReviewId!));
+        } else {
+          for (const key of ['decision', 'reviewer', 'date', 'note'] as const)
+            assert.equal(row.getCell(columns[key]).text, '');
+          if (review.targetKind !== 'parent') assert.equal(row.getCell(columns.target).text, '');
+        }
+      }
+    };
+    assertOnlyD39Answers(successor);
+    assertOnlyD39Answers(await cloneWorkbook(await workbookBuffer(successor)));
+    if (process.argv[2]) {
+      const excelSaved = new ExcelJS.Workbook();
+      await excelSaved.xlsx.readFile(process.argv[2]);
+      assertOnlyD39Answers(excelSaved);
+      console.log(
+        '  ok    supplied real-Excel-saved successor retains exactly the authorized 175 answers',
+      );
+    }
+    assert.ok(readFileSync(HISTORICAL_WORKBOOK_PATH).equals(historicalBytes));
+    console.log(
+      '  ok    only D39 14/161 answers populated, transfer follows durable identity after reordering, historical bytes preserved',
     );
 
     const namedRangeSource = await cloneWorkbook(firstBuffer);

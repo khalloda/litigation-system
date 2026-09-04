@@ -6,12 +6,13 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 3 September 2026:** Task 3.3B's three-commit chain is
+**Current checkpoint — 4 September 2026:** Task 3.3B's three-commit chain is
 independently accepted and pushed. Task 3.4's four-commit Administrator-only
 user-management chain is also independently accepted and pushed. Task 3.5A's
-read-only high-impact quarantine-review package is prepared locally for the
-firm. Overall Task 3.5 remains unchecked until explicit answers are completed
-and later applied; Task 3.5B and Stage 4 have not started.
+high-impact quarantine-review package has a D39 successor recording 14
+current-client confirmations and 161 sole-parent-reason hearing decisions.
+There are 207 incomplete decisions. Overall Task 3.5 remains unchecked until
+answers are completed and later applied; Task 3.5B and Stage 4 have not started.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -821,6 +822,11 @@ only ever seen good data is not known to work.
       they belong to** — the firm decides. `npm run db:check` asserts all
       three rules are present so one cannot quietly go missing.
 
+      **Historical rule (b) above is superseded only for these three values by
+      D39, 4 September 2026.** The existing database still retains the original
+      rules and quarantine evidence. Their reviewed branch-parent interpretation
+      is approved, but data application remains deferred to Task 3.5B.
+
       Rule (a) applies here too, for any branch value that reaches a matter.
 
 - [x] **2.7 Transform: matter_lawyers and matter_parties**
@@ -1573,8 +1579,9 @@ only ever seen good data is not known to work.
 
 - [ ] **3.5 High-impact quarantine review checkpoint** — firm review after
       Task 3.4 and before Stage 4 (**D26**). Review all 55 quarantined matters,
-      prioritising the 14 `separate_client` / wrong-client cases, and all 327
-      quarantined hearings, including the 313 held only because their parent
+      prioritising the 14 historical `separate_client` cases (current parent
+      confirmed in **D39**), and all 327 quarantined hearings, including the
+      313 held only because their parent
       matter is quarantined. Apply only explicit firm decisions; never infer a
       missing client, classification, court or other business fact. Re-run the
       applicable reconciliation and permanent invariants after approved
@@ -1584,16 +1591,27 @@ only ever seen good data is not known to work.
       **Task 3.5A — review-package preparation, 3 September 2026.** A
       reproducible read-only Arabic/RTL workbook now presents exactly 55 matter
       decisions and 327 hearing decisions without changing a project row. It
-      separates the 14 wrong-client matters, the other 41 matters, the 313
-      parent-held hearings and the 14 independent hearing issues; protects
+      originally separated the 14 historically labelled wrong-client matters,
+      the other 41 matters, the 313 parent-held hearings and the 14 independent
+      hearing issues; protects
       evidence and durable identity; and validates every answer as complete,
       incomplete or invalid. The ignored workbook is
       `_migration/review/task-3-5-high-impact-quarantine-review-2026-09-03.xlsx`.
       Its preparation evidence is
       [`docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md`](docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md).
-      No answer has been inferred or applied. The next step is firm completion
-      of this workbook; Task 3.5B answer application remains separate and
-      unstarted.
+      **D39 correction, 4 September 2026:** preserve that owner-saved workbook
+      and its original manifest. The separately versioned successor is
+      `_migration/review/task-3-5-high-impact-quarantine-review-2026-09-04.xlsx`.
+      It distinguishes Access / `clients.legacy_id` from new-system `clients.id`,
+      replaces the blanket wrong-client wording, and records the owner's 14
+      current-parent confirmations plus exactly 161 sole-parent-reason hearing
+      decisions: **175 completed, 207 incomplete, zero invalid**. No answer
+      has been applied to PostgreSQL. The next step is independent review of
+      this correction, then firm completion of the remaining successor answers.
+      Task 3.5B remains separate and unstarted. Its reviewed contract must
+      enforce D39 branch-parent compatibility, preserve historical evidence,
+      append truthful events and reconcile every affected matter, hearing,
+      person relationship, administrative task, task step and fee reference.
 
 ---
 
@@ -1698,8 +1716,9 @@ than assuming one rule for every workflow. Test with real volumes.
       Two things to carry into the report: a matter may legitimately have **no**
       branch — including the 14 whose branch was a document heading and was
       discarded — so an "unassigned" grouping is required, never a dropped
-      row; and any matter still quarantined under rule (b) is on the wrong
-      client and must not appear under it.
+      row. Quarantined matters are not yet released for reporting. D39 confirms
+      the existing parents of the 14 historical rule (b) matters; branch mapping
+      and release remain deferred to Task 3.5B, not this report task.
       `تقرير عملاء 2` / `6` / `8` and
       `تقرير عملاء -جميع الدعاوى سارية ومنتهية` are **one parameterised
       report** (D17). Build it once.

@@ -2932,6 +2932,11 @@ Task 3.5A began.
 
 ## Task 3.5A high-impact quarantine-review package — 3 September 2026
 
+**Historical package checkpoint.** Its original wording and generated hashes
+below describe v1. D39 and the 4 September successor correction below now own
+the current client-review interpretation; the owner-saved v1 file and original
+manifest remain preserved.
+
 Task 3.5A prepares the firm's explicit decision surface without resolving or
 changing a quarantined record. The generated workbook and adjacent checksum
 manifest are respectively:
@@ -2976,6 +2981,50 @@ generated workbook therefore reports **0 complete, 382 incomplete, 0 invalid**
 and cannot close Task 3.5. Task 3.5B has not started: the exact next step is
 firm completion of the ignored workbook, followed by a separately authorized
 answer-application phase.
+
+### D39 client-review successor — 4 September 2026
+
+The owner explicitly confirms all 14 existing parent associations: 13 Sigma
+matters retain Access/legacy client 188 → new-system client 197; Alpha retains
+Access/legacy client 2 → new-system client 11. D39 supersedes D19's blanket
+separate-client claim only for its three exact misclassified branch values.
+Migration 0007, all existing crosswalks, payloads and quarantine evidence remain
+unchanged. The current database still has 55 quarantined matters and 327
+quarantined hearings; workbook completion is not data application.
+
+The new ignored artifact is
+`_migration/review/task-3-5-high-impact-quarantine-review-2026-09-04.xlsx`,
+with its own adjacent `.sha256` manifest. Generation refuses to overwrite any
+existing successor or manifest. The inspected owner-saved predecessor hashes
+to `0e9d9fed686e2b158bf4eb73409bedff7fa05e29c80b91be8a5fc2240821a324`;
+its one Sigma target is transferred through durable review/source identity and
+the protected client ID, not row position. A changed predecessor fails closed
+pending a fresh inspection; its original generation manifest is not rewritten.
+
+The v2 protected lookup manifest includes actual `clients.legacy_id` alongside
+`clients.id` and the label. Choices display both namespaces without arithmetic.
+Client-only `الارتباط الحالي صحيح` requires the protected target to equal
+the row's resolved current client, with reviewer and date. Genuine reassignment
+retains `تصحيح معتمد`. Exact approved list references accept either their
+bare name or one leading `=` to survive Microsoft Excel saves. Other formulas,
+names, redirected definitions and changed lookup associations remain rejected.
+
+The successor records 14 owner confirmations and 161 hearings whose sole reason
+is `parent_matter_quarantined` and whose exact parent is one of those matters:
+175 complete, 207 incomplete, zero invalid. Reviewer is `خالد حلمي`, date
+2026-09-04. Hearing notes retain the exact parent review ID. No independently
+problematic hearing is answered. Acceptance and real-Excel evidence are in the
+[Task 3.5A report](task-reports/2026-09-03-task-3-5a-high-impact-review-package.md).
+
+Task 3.5B must first establish the smallest reviewed branch-parent enforcement
+mechanism for the three exact D39 values; a branch must not be paired with an
+unrelated client. It must add decision-aware reconciliation without erasing the
+historical target/quarantine evidence, create truthful audit events and prove
+each released matter, hearing, person relationship, administrative task, task
+step and fee reference. Sigma Tech party text keeps its normal transformation;
+it does not create another branch lookup. No SQL, schema or data application
+is implemented here. The next return point is independent review and remaining
+firm answers, not Task 3.5B or Stage 4.
 
 ## Cutover
 
