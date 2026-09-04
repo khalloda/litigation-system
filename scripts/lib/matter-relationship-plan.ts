@@ -255,17 +255,27 @@ function canonicalRuleSourceFailures(rules: ResolvedRule[], exclusions: Exclusio
   return failures;
 }
 
-export async function buildMatterRelationshipPlan(db: ClientBase): Promise<MatterRelationshipPlan> {
-  const sourceResult = await db.query<SourceRow>(`
+export async function buildMatterRelationshipPlan(
+  db: ClientBase,
+  reviewedParents?: readonly { id: number; legacy_source_record_key: string }[],
+): Promise<MatterRelationshipPlan> {
+  const sourceResult = await db.query<SourceRow>(
+    `
       SELECT m.id AS matter_id,
              s.src_record_key, s.src_extraction_sha256, s.src_file, s.src_row_num,
              s."matterID" AS legacy_matter_id,
              s."lawyerA" AS lawyer_a, s."lawyerB" AS lawyer_b,
              s."client&Cap" AS client_cap, s."opponent&Cap" AS opponent_cap,
              to_jsonb(s) - ARRAY['src_file','src_row_num','src_record_key','src_extraction_sha256'] AS source_payload
-        FROM matters m
+        FROM ${
+          reviewedParents === undefined
+            ? 'matters m'
+            : 'jsonb_to_recordset($1::jsonb) AS m(id integer, legacy_source_record_key text)'
+        }
         JOIN staging."الدعاوى" s ON s.src_record_key = m.legacy_source_record_key
-       ORDER BY s.src_record_key`);
+       ORDER BY s.src_record_key`,
+    reviewedParents === undefined ? [] : [JSON.stringify(reviewedParents)],
+  );
   const ruleResult = await db.query<RuleRow>(`
       SELECT r.id, r.raw_value, r.occurrences, r.reviewer_note,
              m.person_name, m.person_id, m.ordinal

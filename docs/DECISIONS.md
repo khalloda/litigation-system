@@ -945,3 +945,37 @@ prerequisites remain. All 382 records still await separately authorized,
 implemented and reconciled Task 3.5B work. Historical source values, crosswalks,
 quarantine evidence and all earlier decisions remain intact. No PostgreSQL
 write, migration, Task 3.5B or Stage 4 work is part of this approval.
+
+## D41 — Exact hearing destinations for D40's prosecution note
+
+**Approved explicitly by Khaled on 4 September 2026 in the Task 3.5B
+unblocking instruction.** This is owner-supplied legal-record evidence, not
+an inferred association. It supplements D40 by resolving the previously
+unspecified hearing destinations.
+
+Every hearing in this exact set receives the exact note
+`وكيل نيابة/ أسامة الطنطاوي`:
+
+| Matter review ID | Access matter ID | Access hearing IDs |
+|---|---|---|
+| M-000064 | 467 | 7072, 7071, 7237, 7383, 7451 |
+| M-000065 | 468 | 7073, 7070, 7219, 7351 |
+| M-000067 | 515 | 7129, 7159, 7382 |
+
+The instruction applies individually to all twelve hearings, not to only
+one hearing per matter and not merely to a matter-level note. It authorizes
+no hearing outside this set. The court remains exactly
+`نيابة الشئون المالية والتجارية`. Existing source text, including circuit
+text, is preserved; this clarification does not authorize another correction.
+
+Application must fail closed if a listed hearing is missing, duplicated,
+belongs to a different matter, or if an additional hearing would receive
+the note. The contract and permanent tests must bind the exact set, note,
+court and approved D40 workbook identity together.
+
+The D40 workbook is not modified, resaved or replaced: filename
+`task-3-5-high-impact-quarantine-review-2026-09-04-d40.xlsx`, 172,273 bytes,
+SHA-256 `0dc23134639e0bc6477fe1f39613bd7575b56cdcd0085d2f2831a96693f2376b`.
+This instruction authorizes implementation and disposable-database proof
+only. Real application still awaits independent review and owner approval;
+Task 3.5B is not fully complete and Stage 4 must not start.

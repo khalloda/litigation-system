@@ -14,7 +14,9 @@ owner decisions, including the preserved D39 14/161 decisions and all 313
 dependent hearings. Zero owner decisions are incomplete or invalid. Two court
 approvals await lookup creation; D39 branch prerequisites remain. Overall Task
 3.5 stays unchecked until reviewed answers are applied and reconciled;
-Task 3.5B and Stage 4 have not started.
+Task 3.5B is implemented and disposable-tested, with real application
+pending independent review and separate owner approval. D41 resolves the exact
+twelve hearing-note destinations. Stage 4 has not started.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1614,12 +1616,19 @@ only ever seen good data is not known to work.
       The external v3 successor records all 382 owner decisions, including ten
       intentional NULL branches, two approved new-court values awaiting creation,
       the exact circuit/note corrections and 152 newly covered dependent hearings.
-      All 175 baseline decisions remain unchanged. The next step is independent
-      review of this integration, not data application.
-      Task 3.5B remains separate and unstarted. Its reviewed contract must
-      enforce D39 branch-parent compatibility, preserve historical evidence,
-      append truthful events and reconcile every affected matter, hearing,
-      person relationship, administrative task, task step and fee reference.
+      All 175 baseline decisions remain unchanged. The integration was independently
+      accepted and pushed as `33e9ac6`.
+      **Task 3.5B preparation, 4 September 2026:** D41 explicitly authorizes the
+      exact twelve hearing-note destinations. Implementation and proof are
+      confined to disposable databases. The real database remains at 59
+      migrations; migration 60 and the application require independent review
+      and separate owner approval before real deployment. The application
+      defaults to dry-run and currently refuses application outside task-specific
+      disposable databases. Historical quarantine evidence is retained, not
+      overwritten or deleted. See the Task 3.5B report for exact projected
+      additions, the append-only ledger, compatibility enforcement and proofs.
+      **Return point:** independent review of Task 3.5B preparation; not real
+      application, completion of Task 3.5, Stage 4 or cutover.
 
 ---
 

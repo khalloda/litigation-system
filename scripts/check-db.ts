@@ -10,6 +10,12 @@
  */
 
 import 'dotenv/config';
+import { verifyHighImpactApplication } from './lib/high-impact-application';
+import { D39_BRANCHES } from './lib/high-impact-application-contract';
+import {
+  historicalHighImpactSql,
+  historicalHighImpactClient,
+} from './lib/high-impact-application-state';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -100,6 +106,22 @@ function sqlLiteral(value: string): string {
 
 async function main() {
   const db = await migrationDbReady;
+  const highImpactState = await withApprovedMigrationClient(async (current) => {
+    const verified = await verifyHighImpactApplication(current);
+    if (verified.state !== null)
+      record(
+        'Task 3.5B current release and protected historical partition',
+        '382 exact dispositions; D41 twelve-hearing set; all fields, evidence, 808 events and protected rows exact',
+        'verified separately from frozen Stage 2 checkpoint counts',
+        true,
+      );
+    return verified.state;
+  });
+  const appliedBranches = highImpactState === null ? [] : D39_BRANCHES.map((row) => row.label);
+  if (highImpactState !== null)
+    console.log(
+      'Task 3.5B current additions are verified above. Stage 2 matter/relationship/hearing counts below describe the frozen historical partition, not current totals.',
+    );
   // 1. Can we connect at all?
   const { version } = one(
     await db.$queryRaw<{ version: string }[]>`
@@ -164,7 +186,7 @@ async function main() {
     //  27 + 4: the firm ruled that four of the seven "not a court" values are
     //  destinations. See sql/court-wrong-destinations.sql.
     ['matter_destination', () => db.lookupMatterDestination.count(), 32],
-    ['client_branch', () => db.lookupClientBranch.count(), 15],
+    ['client_branch', () => db.lookupClientBranch.count(), 15 + appliedBranches.length],
   ];
 
   let lookupTotal = 0;
@@ -176,9 +198,9 @@ async function main() {
   }
   record(
     'Lookup lists (9)',
-    '135 rows',
+    `${135 + appliedBranches.length} rows`,
     wrong.length === 0 ? `${lookupTotal} rows` : wrong.join(', '),
-    wrong.length === 0 && lookupTotal === 135,
+    wrong.length === 0 && lookupTotal === 135 + appliedBranches.length,
   );
 
   // The default matter type is what a matter falls back to. Exactly one.
@@ -252,6 +274,7 @@ async function main() {
     'المنطقة الحرة',
     'فرع المنصورة',
     'فرع الإسكندرية',
+    ...appliedBranches,
   ];
   const branchesPresent = await db.lookupClientBranch.count({
     where: { labelAr: { in: approvedBranches } },
@@ -278,18 +301,24 @@ async function main() {
           'ألفا مصر للتجارة',
           'أولاً: طلب وشكوى أمام الهيئة العامة للاستثمار',
           'ثانياً: النزاعات القضائية المقامة من وضد شركتي الإمارات هايتس ويافا ماك',
-        ],
+        ].filter((label) => !appliedBranches.includes(label as (typeof appliedBranches)[number])),
       },
     },
   });
   record(
-    'Client branch: the 15 approved sites',
-    'all 15 present by name, 0 non-branches',
-    branchesPresent === 15 && branchTotal === 15 && notBranches === 0 && freeZone === 1
-      ? 'all 15 present by name'
-      : `${branchesPresent}/15 approved present, ${branchTotal} rows in total, ` +
+    'Client branch: exact D19 baseline plus applied D39 approvals',
+    `all ${approvedBranches.length} present by name, 0 non-branches`,
+    branchesPresent === approvedBranches.length &&
+      branchTotal === approvedBranches.length &&
+      notBranches === 0 &&
+      freeZone === 1
+      ? `all ${approvedBranches.length} present by name`
+      : `${branchesPresent}/${approvedBranches.length} approved present, ${branchTotal} rows in total, ` +
           `${notBranches} non-branches, free zone ${freeZone === 1 ? 'kept' : 'MISSING'}`,
-    branchesPresent === 15 && branchTotal === 15 && notBranches === 0 && freeZone === 1,
+    branchesPresent === approvedBranches.length &&
+      branchTotal === approvedBranches.length &&
+      notBranches === 0 &&
+      freeZone === 1,
   );
 
   //    The crosswalk is what lets Stage 2 map the old text. Every rule that
@@ -409,6 +438,14 @@ async function main() {
   //    The firm's review was consistent; the generator was not. It holds
   //    however a value reached the list: a KEEP, a merge target, or a split.
   const chainSources = crosswalk.filter((c) => {
+    // These three frozen D19 markers remain evidence. D39's exact later
+    // client/branch compatibility and application are checked separately.
+    if (
+      c.sourceField === 'client_branch' &&
+      c.targetField === 'separate_client' &&
+      appliedBranches.includes(c.sourceValue as (typeof appliedBranches)[number])
+    )
+      return false;
     const list = listTargets[c.sourceField];
     return list !== undefined && list.has(c.sourceValue);
   });
@@ -427,9 +464,9 @@ async function main() {
   const courtRules = crosswalk.filter((c) => c.sourceField === 'court').length;
   record(
     'Court list and crosswalk',
-    '308 courts, 94 rules',
+    `${highImpactState === null ? 308 : 309} courts, 94 rules`,
     `${courts} courts, ${courtRules} rules`,
-    courts === 308 && courtRules === 94,
+    courts === (highImpactState === null ? 308 : 309) && courtRules === 94,
   );
 
   //    `26` IS A CIRCUIT, COURT UNKNOWN — the firm's correction, 23 Aug 2026,
@@ -2040,237 +2077,22 @@ async function main() {
   //     Rebuild the expected destinations from the reviewed rows. This is
   //     deliberately independent of the one-time transform transaction: a
   //     count can agree while a matter points at the wrong category or court.
-  const matterResult = one(
-    await db.$queryRaw<
-      {
-        source_rows: bigint;
-        target_rows: bigint;
-        quarantine_rows: bigint;
-        missing_or_duplicate: bigint;
-        stale_target: bigint;
-        stale_quarantine: bigint;
-        target_payload_mismatch: bigint;
-        quarantine_payload_mismatch: bigint;
-        raw_mismatch: bigint;
-        client_mismatch: bigint;
-        mapping_mismatch: bigint;
-        mapping_coverage: bigint;
-        mapping_key_collisions: bigint;
-        separate_client_in_target: bigint;
-        conflicts_in_target: bigint;
-        unsafe_court_in_target: bigint;
-      }[]
-    >`
-      WITH classification_split AS (
-        SELECT s.src_record_key,
-               btrim(substring(cw.target_value FROM 'category=([^+]+)')) AS category_part,
-               btrim(substring(cw.target_value FROM 'distination=(.*)$')) AS destination_part
-          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
-            ON cw.source_field = 'matterCategory' AND cw.target_field = 'SPLIT'
-           AND _migration.reviewed_text_key(cw.source_value)
-               = _migration.reviewed_text_key(s."matterCategory")
-      ), rule_output AS (
-        SELECT s.src_record_key, cw.target_field, cw.target_value
-          FROM staging."الدعاوى" s
-         CROSS JOIN LATERAL (VALUES ('matterCategory'::text, s."matterCategory"),
-                                    ('matterDegree', s."matterDegree")) source(source_field, raw_value)
-          JOIN migration_crosswalk cw ON cw.source_field = source.source_field
-           AND _migration.reviewed_text_key(cw.source_value)
-               = _migration.reviewed_text_key(source.raw_value)
-         WHERE source.raw_value IS NOT NULL
-           AND cw.target_field IN ('matter_type','matter_category','degree','venue','importance')
-        UNION ALL
-        SELECT split.src_record_key, nested.target_field, nested.target_value
-          FROM classification_split split JOIN migration_crosswalk nested
-            ON nested.source_field = 'matterCategory'
-           AND _migration.reviewed_text_key(nested.source_value)
-               = _migration.reviewed_text_key(split.category_part)
-         WHERE nested.target_field IN ('matter_type','matter_category','degree','venue','importance')
-        UNION ALL
-        SELECT split.src_record_key, 'venue', substring(nested.reviewer_note FROM 'Venue=([^ ]+)')
-          FROM classification_split split JOIN migration_crosswalk nested
-            ON nested.source_field = 'matterCategory'
-           AND _migration.reviewed_text_key(nested.source_value)
-               = _migration.reviewed_text_key(split.category_part)
-         WHERE nested.reviewer_note LIKE '%Venue=%'
-        UNION ALL
-        SELECT src_record_key, 'matter_destination', destination_part FROM classification_split
-        UNION ALL
-        SELECT s.src_record_key, 'importance', l.label_ar
-          FROM staging."الدعاوى" s JOIN lookup_importance l ON l.label_ar = s."matterImportance"
-        UNION ALL
-        SELECT s.src_record_key, 'matter_destination', l.label_ar
-          FROM staging."الدعاوى" s JOIN lookup_matter_destination l
-            ON l.label_ar = s."matterDistination"
-        UNION ALL
-        SELECT s.src_record_key, 'branch', l.label_ar
-          FROM staging."الدعاوى" s JOIN lookup_client_branch l
-            ON _migration.reviewed_text_key(l.label_ar)
-               = _migration.reviewed_text_key(s."clientBranch")
-        UNION ALL
-        SELECT s.src_record_key, cw.target_field, cw.target_value
-          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
-            ON cw.source_field = 'client_branch'
-           AND _migration.reviewed_text_key(cw.source_value)
-               = _migration.reviewed_text_key(s."clientBranch")
-         WHERE cw.target_field IN ('matter_type','matter_category','degree')
-        UNION ALL
-        SELECT s.src_record_key, 'court', l.label_ar
-          FROM staging."الدعاوى" s JOIN lookup_court l
-            ON _migration.reviewed_text_key(l.label_ar)
-               = _migration.reviewed_text_key(s."matterCourt")
-         WHERE NOT EXISTS (SELECT 1 FROM migration_crosswalk cw
-                 WHERE cw.source_field = 'court'
-                   AND _migration.reviewed_text_key(cw.source_value)
-                       = _migration.reviewed_text_key(s."matterCourt"))
-        UNION ALL
-        SELECT s.src_record_key, 'court', cw.target_value
-          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
-            ON cw.source_field = 'court' AND cw.target_field IN ('court','SPLIT')
-           AND _migration.reviewed_text_key(cw.source_value)
-               = _migration.reviewed_text_key(s."matterCourt")
-        UNION ALL
-        SELECT s.src_record_key, 'matter_destination', cw.target_value
-          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
-            ON cw.source_field = 'court' AND cw.target_field = 'matter_destination'
-           AND _migration.reviewed_text_key(cw.source_value)
-               = _migration.reviewed_text_key(s."matterCourt")
-        UNION ALL
-        SELECT s.src_record_key, 'circuit', substring(cw.reviewer_note FROM $REGEX$circuit='([^']+)'$REGEX$)
-          FROM staging."الدعاوى" s JOIN migration_crosswalk cw
-            ON cw.source_field = 'court' AND cw.target_field = 'SPLIT'
-           AND cw.reviewer_note LIKE '%circuit=%'
-           AND _migration.reviewed_text_key(cw.source_value)
-               = _migration.reviewed_text_key(s."matterCourt")
-        UNION ALL
-        SELECT src_record_key, 'circuit', "matterCircut" FROM staging."الدعاوى"
-         WHERE "matterCircut" IS NOT NULL
-      ), expected AS (
-        SELECT src_record_key,
-               max(target_value) FILTER (WHERE target_field = 'matter_type') matter_type,
-               max(target_value) FILTER (WHERE target_field = 'matter_category') matter_category,
-               max(target_value) FILTER (WHERE target_field = 'degree') degree,
-               max(target_value) FILTER (WHERE target_field = 'venue') venue,
-               max(target_value) FILTER (WHERE target_field = 'importance') importance,
-               max(target_value) FILTER (WHERE target_field = 'matter_destination') destination,
-               max(target_value) FILTER (WHERE target_field = 'branch') branch,
-               max(target_value) FILTER (WHERE target_field = 'court') court,
-               max(target_value) FILTER (WHERE target_field = 'circuit') circuit
-          FROM rule_output GROUP BY src_record_key
-      ), conflicts AS (
-        SELECT src_record_key, target_field FROM rule_output
-         GROUP BY src_record_key, target_field HAVING count(DISTINCT target_value) > 1
-      )
-      SELECT
-        (SELECT count(*) FROM staging."الدعاوى") AS source_rows,
-        (SELECT count(*) FROM matters WHERE legacy_source_record_key IS NOT NULL) AS target_rows,
-        (SELECT count(*) FROM quarantine.matter_transform) AS quarantine_rows,
-        (SELECT count(*) FROM staging."الدعاوى" s
-          WHERE (SELECT count(*) FROM matters m WHERE m.legacy_source_record_key = s.src_record_key)
-              + (SELECT count(*) FROM quarantine.matter_transform q WHERE q.src_record_key = s.src_record_key) <> 1)
-          AS missing_or_duplicate,
-        (SELECT count(*) FROM matters m WHERE m.legacy_source_record_key IS NOT NULL
-          AND NOT EXISTS (SELECT 1 FROM staging."الدعاوى" s
-                           WHERE s.src_record_key = m.legacy_source_record_key)) AS stale_target,
-        (SELECT count(*) FROM quarantine.matter_transform q
-          WHERE NOT EXISTS (SELECT 1 FROM staging."الدعاوى" s
-                             WHERE s.src_record_key = q.src_record_key)) AS stale_quarantine,
-        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
-            ON s.src_record_key = m.legacy_source_record_key
-          WHERE m.legacy_source_payload IS DISTINCT FROM
-                to_jsonb(s) - ARRAY['src_file','src_row_num','src_record_key','src_extraction_sha256'])
-          AS target_payload_mismatch,
-        (SELECT count(*) FROM quarantine.matter_transform q JOIN staging."الدعاوى" s
-            ON s.src_record_key = q.src_record_key
-          WHERE q.source_payload IS DISTINCT FROM
-                to_jsonb(s) - ARRAY['src_file','src_row_num','src_record_key','src_extraction_sha256'])
-          AS quarantine_payload_mismatch,
-        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
-            ON s.src_record_key = m.legacy_source_record_key
-          WHERE m.legacy_category_raw IS DISTINCT FROM s."matterCategory"
-             OR m.legacy_degree_raw IS DISTINCT FROM s."matterDegree"
-             OR m.legacy_branch_raw IS DISTINCT FROM s."clientBranch"
-             OR m.legacy_court_raw IS DISTINCT FROM s."matterCourt") AS raw_mismatch,
-        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
-            ON s.src_record_key = m.legacy_source_record_key
-          LEFT JOIN clients c ON c.id = m.client_id
-          WHERE c.legacy_id::text IS DISTINCT FROM s."clientID") AS client_mismatch,
-        (SELECT count(*) FROM matters m JOIN expected e
-            ON e.src_record_key = m.legacy_source_record_key
-          LEFT JOIN lookup_matter_type mt ON mt.id = m.matter_type_id
-          LEFT JOIN lookup_matter_category mc ON mc.id = m.matter_category_id
-          LEFT JOIN lookup_degree d ON d.id = m.degree_id
-          LEFT JOIN lookup_venue v ON v.id = m.venue_id
-          LEFT JOIN lookup_importance i ON i.id = m.importance_id
-          LEFT JOIN lookup_matter_destination md ON md.id = m.destination_id
-          LEFT JOIN lookup_client_branch b ON b.id = m.branch_id
-          LEFT JOIN lookup_court c ON c.id = m.court_id
-          WHERE mt.label_ar IS DISTINCT FROM coalesce(e.matter_type,
-                    (SELECT label_ar FROM lookup_matter_type WHERE is_default))
-             OR mc.label_ar IS DISTINCT FROM e.matter_category
-             OR d.label_ar IS DISTINCT FROM e.degree
-             OR v.label_ar IS DISTINCT FROM e.venue
-             OR i.label_ar IS DISTINCT FROM e.importance
-             OR md.label_ar IS DISTINCT FROM e.destination
-             OR b.label_ar IS DISTINCT FROM e.branch
-             OR c.label_ar IS DISTINCT FROM e.court
-             OR m.circuit IS DISTINCT FROM e.circuit) AS mapping_mismatch,
-        (SELECT count(*) FROM staging."الدعاوى" s
-          CROSS JOIN LATERAL (VALUES ('matterCategory'::text, s."matterCategory"),
-                                     ('matterDegree', s."matterDegree")) source(source_field, raw_value)
-          WHERE source.raw_value IS NOT NULL
-            AND (SELECT count(*) FROM migration_crosswalk cw
-                  WHERE cw.source_field = source.source_field
-                    AND _migration.reviewed_text_key(cw.source_value)
-                        = _migration.reviewed_text_key(source.raw_value)) <> 1) AS mapping_coverage,
-        (SELECT count(*) FROM (
-           SELECT source_field, _migration.reviewed_text_key(source_value)
-             FROM migration_crosswalk GROUP BY 1,2 HAVING count(*) > 1) collision)
-          AS mapping_key_collisions,
-        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
-            ON s.src_record_key = m.legacy_source_record_key JOIN migration_crosswalk cw
-            ON cw.source_field = 'client_branch' AND cw.target_field = 'separate_client'
-           AND _migration.reviewed_text_key(cw.source_value)
-               = _migration.reviewed_text_key(s."clientBranch")) AS separate_client_in_target,
-        (SELECT count(*) FROM matters m JOIN conflicts c
-            ON c.src_record_key = m.legacy_source_record_key) AS conflicts_in_target,
-        (SELECT count(*) FROM matters m JOIN staging."الدعاوى" s
-            ON s.src_record_key = m.legacy_source_record_key JOIN migration_crosswalk cw
-            ON cw.source_field = 'court'
-           AND _migration.reviewed_text_key(cw.source_value)
-               = _migration.reviewed_text_key(s."matterCourt")
-          WHERE (cw.target_field = 'SPLIT' AND cw.reviewer_note LIKE '%hearing_note=%')
-             OR cw.target_field = 'circuit') AS unsafe_court_in_target`,
-    'matter transform reconciliation',
-  );
-  const matterProblems =
-    matterResult.missing_or_duplicate +
-    matterResult.stale_target +
-    matterResult.stale_quarantine +
-    matterResult.target_payload_mismatch +
-    matterResult.quarantine_payload_mismatch +
-    matterResult.raw_mismatch +
-    matterResult.client_mismatch +
-    matterResult.mapping_mismatch +
-    matterResult.mapping_coverage +
-    matterResult.mapping_key_collisions +
-    matterResult.separate_client_in_target +
-    matterResult.conflicts_in_target +
-    matterResult.unsafe_court_in_target;
-  record(
-    'Every staged matter has one safe destination',
-    '1,744 = 1,689 transformed + 55 quarantined; 0 defects',
-    `${matterResult.source_rows} = ${matterResult.target_rows} + ${matterResult.quarantine_rows}; ` +
-      `${matterProblems} defects`,
-    matterResult.source_rows === 1744n &&
-      matterResult.target_rows === 1689n &&
-      matterResult.quarantine_rows === 55n &&
-      matterProblems === 0n,
-  );
-
+  // Frozen Stage 2 partition plus the separately verified current release.
   const permanentMatterResult = one(
-    await db.$queryRawUnsafe<MatterReconciliationRow[]>(MATTER_RECONCILIATION_SQL),
+    await db.$queryRawUnsafe<MatterReconciliationRow[]>(
+      historicalHighImpactSql(MATTER_RECONCILIATION_SQL, highImpactState),
+    ),
     'permanent matter target and quarantine reconciliation',
+  );
+  const matterProblems = matterReconciliationFailures(permanentMatterResult);
+  record(
+    'Every staged matter has one safe destination (historical partition)',
+    '1,744 = 1,689 historical targets + 55 preserved quarantine records; 0 defects',
+    `${permanentMatterResult.source_rows} = ${permanentMatterResult.target_rows} + ${permanentMatterResult.quarantine_rows}; ${matterProblems.length} defects`,
+    asBigInt(permanentMatterResult.source_rows) === 1744n &&
+      asBigInt(permanentMatterResult.target_rows) === 1689n &&
+      asBigInt(permanentMatterResult.quarantine_rows) === 55n &&
+      matterProblems.length === 0,
   );
   const permanentMatterFailures = matterReconciliationFailures(permanentMatterResult);
   record(
@@ -2292,7 +2114,8 @@ async function main() {
   // every expected lawyer, party, role, exclusion and quarantine row from
   // staging plus the reviewed database tables. It does not import or call the
   // transform's TypeScript planner/parser.
-  await withApprovedMigrationClient(async (relationshipDb) => {
+  await withApprovedMigrationClient(async (currentRelationshipDb) => {
+    const relationshipDb = historicalHighImpactClient(currentRelationshipDb, highImpactState);
     const relationshipResult = await reconcileMatterRelationships(relationshipDb);
     record(
       'Matter lawyers and parties reconcile to source',
@@ -2357,7 +2180,7 @@ async function main() {
       structureFailures.length === 0,
     );
 
-    const attendeeAudit = await reconcileAttendeeAudit(relationshipDb);
+    const attendeeAudit = await reconcileAttendeeAudit(currentRelationshipDb);
     record(
       'Attendee source cells and spans reconcile',
       '12,732 cells; every byte, span, answer, person and quarantine item exact',

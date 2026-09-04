@@ -978,6 +978,27 @@ values to 15 — a branch is a site or subsidiary of a client and nothing else
 
 ## Known data-quality issues
 
+### Task 3.5B prepared release model — not deployed to the real database
+
+Migration 60 introduces three private `_migration` tables, not runtime-facing
+Prisma models: `client_branch_compatibility`, `high_impact_application` and
+`high_impact_resolution`. An explicit client/branch pair register permits only
+evidenced associations; it does not assume an unapproved universal rule that a
+branch can belong to only one client. A fixed-search-path database trigger
+enforces every non-NULL matter branch against that register. Runtime users
+cannot read or alter it. D19's existing associations and D39's three approved
+new associations have distinct provenance.
+
+The append-only application/resolution ledger records the exact D40 artifact,
+approved plan, durable source identities, created targets and truthful migration
+actor. Original quarantines remain immutable historical evidence even when the
+ledger records a release. Current release fields are rebuilt and compared on
+every permanent check; frozen Stage 2 checks separately verify the original
+partition. See the Task 3.5B report for counts and D41's exact twelve-hearing
+note contract. No new runtime/authentication/authorization model is introduced.
+
+### Historical Stage 2 observations
+
 These are **expected**. Load them; do not try to fix them silently.
 
 | Issue | Count |

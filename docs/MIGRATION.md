@@ -3098,3 +3098,42 @@ longer a risk to daily work**, and no step in this plan depends on it.
 It stays in the record because it is evidence, not a task: a store that grew
 fifty-fold in wasted space with no warning, until it was one save away from
 refusing new records, is one of the reasons for this migration.
+
+## Task 3.5B preparation — disposable application, real deployment pending
+
+D39/D40's exact approved successor workbook is pinned by filename, byte size
+and SHA-256. D41 supplements it with twelve individually authorized hearing-note
+destinations; the workbook itself is unchanged. The application contract and
+verification record are in
+`docs/task-reports/2026-09-04-task-3-5b-quarantine-application.md`.
+
+`npm run review:high-impact:apply` defaults to a non-writing plan. An explicit
+`-- --apply` is required for application, and this preparation phase additionally
+refuses any database outside the session-created `litigation_task35b_fixture_`
+namespace. It does not authorize real deployment or provide a safety override.
+Use process-local migration URLs for the disposable proof; never edit `.env`.
+`npm run test:high-impact-application` owns and removes its exact fixture databases.
+
+Migration 60 establishes a normalized client/branch compatibility register and
+append-only batch/resolution evidence. It does not release any business record.
+On the historical full-state clone it registers fifteen already evidenced pairs,
+with fifteen truthful new configuration events, not fabricated historical events.
+The application atomically creates four lookups, 382 released records and their
+required downstream relationships, appends the ledger and 808 application events,
+and preserves all prior rows. Thirty-seven newly encountered unresolved
+relationship values are parked with complete source evidence. Previously
+quarantined administrative works, steps and fee references remain unreleased.
+
+The permanent checks distinguish the frozen Stage 2/Task 3.3 partition from the
+separately rebuilt current release. A narrow read-only historical projection
+excludes only the exact recorded created identities; it is never used by runtime
+code or writers. The current checker first binds the ledger to the approved
+artifact/plan, compares each target field, guards and audit event, and verifies
+every retained historical table fingerprint. This is not permission to suppress
+a new business field or rewrite an old checkpoint.
+
+Rollback covers business/configuration rows, relationships, resolutions and
+events. PostgreSQL sequence allocations can leave gaps after a rollback; IDs
+are neither reset nor reused. A second correct application is an exact row/event
+no-op. Migration 60 and real application remain pending independent review and
+separate owner approval. Task 3.5 is unchecked; Stage 4 and cutover remain unstarted.

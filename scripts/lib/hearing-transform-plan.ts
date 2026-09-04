@@ -172,7 +172,18 @@ function addReason(
   reasons.set(code, detail);
 }
 
-export async function buildHearingTransformPlan(db: ClientBase): Promise<HearingTransformPlan> {
+export type ReviewedHearingRelease = {
+  expectedReasons: readonly string[];
+  matterId: number | null;
+  courtId?: number | null;
+  circuit?: string;
+  note?: string;
+};
+
+export async function buildHearingTransformPlan(
+  db: ClientBase,
+  releases: ReadonlyMap<string, ReviewedHearingRelease> = new Map(),
+): Promise<HearingTransformPlan> {
   const source = await db.query<SourceRow>(`
     SELECT h.src_record_key, h.src_extraction_sha256, h.src_file, h.src_row_num,
            h."ID_hearings" legacy_hearing_id,
@@ -391,6 +402,27 @@ export async function buildHearingTransformPlan(db: ClientBase): Promise<Hearing
       });
     }
 
+    const release = releases.get(row.src_record_key);
+    if (release !== undefined) {
+      assert.ok(reasons.size > 0, 'review release does not identify a quarantined hearing');
+      assert.deepEqual(
+        [...reasons.keys()].sort(),
+        [...release.expectedReasons].sort(),
+        'review release reasons differ from independently rebuilt source reasons',
+      );
+      assert.ok(
+        [...reasons.keys()].every((reason) =>
+          ['parent_matter_quarantined', 'court_circuit_conflict', 'unmapped_court'].includes(
+            reason,
+          ),
+        ),
+        'review cannot release another hearing defect',
+      );
+      matterId = release.matterId;
+      if (release.courtId !== undefined) courtId = release.courtId;
+      reasons.clear();
+    }
+
     if (reasons.size > 0 || legacyId === null) {
       const ordered = [...reasons.entries()].sort(([left], [right]) =>
         left < right ? -1 : left > right ? 1 : 0,
@@ -427,9 +459,9 @@ export async function buildHearingTransformPlan(db: ClientBase): Promise<Hearing
       destinationId,
       legacyDestinationRaw: row.destination_raw,
       nextAttendanceRaw: row.next_attendance_raw,
-      circuit: row.circuit_raw ?? reviewedCircuit,
+      circuit: release?.circuit ?? row.circuit_raw ?? reviewedCircuit,
       legacyCircuitRaw: row.circuit_raw,
-      notes: row.notes_raw ?? reviewedNote,
+      notes: release?.note ?? row.notes_raw ?? reviewedNote,
       legacyNotesRaw: row.notes_raw,
       clientNotified,
       shortDecision: row.short_decision,
@@ -440,6 +472,10 @@ export async function buildHearingTransformPlan(db: ClientBase): Promise<Hearing
 
   assert.equal(targets.length + quarantine.length, source.rows.length);
   assert.equal(targetKeys.size, targets.length);
+  assert.ok(
+    [...releases.keys()].every((key) => targetKeys.has(key)),
+    'review release source is missing or duplicated',
+  );
   assert.equal(quarantineKeys.size, quarantine.length);
   assert.ok([...targetKeys].every((key) => !quarantineKeys.has(key)));
 

@@ -465,7 +465,9 @@ async function runFixture() {
       );
       await assert.rejects(
         db.query('TRUNCATE quarantine.matter_transform'),
-        /migration evidence; resolve rows, never delete or truncate them/,
+        // Migration 60's resolution FK refuses TRUNCATE before the original
+        // erasure trigger. Its exact trigger definition is still checked above.
+        /migration evidence; resolve rows, never delete or truncate them|cannot truncate a table referenced in a foreign key constraint/,
       );
       console.log('  ok    quarantine evidence refuses both DELETE and TRUNCATE');
 

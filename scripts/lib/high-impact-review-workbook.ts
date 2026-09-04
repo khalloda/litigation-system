@@ -618,39 +618,39 @@ export async function readHighImpactReviewSnapshot(
   assertReadOnlyTransactionSql(READ_ONLY_TRANSACTION_SQL);
   await database.query(READ_ONLY_TRANSACTION_SQL);
   try {
-    const matters = await selectRows<MatterDatabaseRow>(database, MATTER_QUERY, 'matter review');
-    const hearings = await selectRows<HearingDatabaseRow>(
-      database,
-      HEARING_QUERY,
-      'hearing review',
-    );
-    const lookups = await selectRows<DatabaseLookup>(database, LOOKUP_QUERY, 'review lookups');
-    const evidence = await selectRows<DigestRow>(
-      database,
-      EVIDENCE_DIGEST_QUERY,
-      'quarantine evidence digest',
-    );
-    const lookupDigest = await selectRows<DigestRow>(
-      database,
-      LOOKUP_DIGEST_QUERY,
-      'lookup digest',
-    );
-    if (evidence.length !== 1 || lookupDigest.length !== 1)
-      fail('database digest query was incomplete');
-    const snapshot: HighImpactReviewSnapshot = {
-      matters,
-      hearings,
-      lookups,
-      databaseEvidenceSha256: evidence[0]!.digest,
-      databaseLookupSha256: lookupDigest[0]!.digest,
-    };
-    validateSnapshot(snapshot);
+    const snapshot = await readHighImpactReviewSnapshotInTransaction(database);
     await database.query('COMMIT');
     return snapshot;
   } catch (error) {
     await database.query('ROLLBACK').catch(() => undefined);
     throw error;
   }
+}
+
+/** The application caller owns its serializable transaction and lock. */
+export async function readHighImpactReviewSnapshotInTransaction(
+  database: ClientBase,
+): Promise<HighImpactReviewSnapshot> {
+  const matters = await selectRows<MatterDatabaseRow>(database, MATTER_QUERY, 'matter review');
+  const hearings = await selectRows<HearingDatabaseRow>(database, HEARING_QUERY, 'hearing review');
+  const lookups = await selectRows<DatabaseLookup>(database, LOOKUP_QUERY, 'review lookups');
+  const evidence = await selectRows<DigestRow>(
+    database,
+    EVIDENCE_DIGEST_QUERY,
+    'quarantine evidence digest',
+  );
+  const lookupDigest = await selectRows<DigestRow>(database, LOOKUP_DIGEST_QUERY, 'lookup digest');
+  if (evidence.length !== 1 || lookupDigest.length !== 1)
+    fail('database digest query was incomplete');
+  const snapshot: HighImpactReviewSnapshot = {
+    matters,
+    hearings,
+    lookups,
+    databaseEvidenceSha256: evidence[0]!.digest,
+    databaseLookupSha256: lookupDigest[0]!.digest,
+  };
+  validateSnapshot(snapshot);
+  return snapshot;
 }
 
 function canonicalValue(value: unknown): unknown {
