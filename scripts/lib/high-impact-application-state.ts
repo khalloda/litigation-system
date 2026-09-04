@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { ClientBase } from 'pg';
 import { assertReadOnlyQuery } from './high-impact-review-workbook';
-import { applicationDigest, type Fields } from './high-impact-application-plan';
+import { type Fields } from './high-impact-application-plan';
 
 export const APPLICATION_KEY = 'task-3-5b-d39-d40-d41';
 export const APPROVED_PLAN_SHA256 =
@@ -17,7 +17,19 @@ export const CREATED_TABLES = [
   'hearing_attendees',
   'quarantine.matter_relationship_transform',
 ] as const;
-export type CreatedRow = { table: string; key: string; id: number; sha256: string };
+export type CreatedRow = {
+  table: string;
+  key: string;
+  id: number;
+  sha256: string;
+  initial: Fields;
+};
+export type SourceEvidence = {
+  table: string;
+  keys: string[];
+  columns: string[];
+  rows: { key: Fields; sha256: string }[];
+};
 export type InventoryRow = { schema: string; table: string; count: number; digest: string };
 export type ApplicationState = {
   application_key: string;
@@ -27,6 +39,13 @@ export type ApplicationState = {
   created_rows: CreatedRow[];
   before_inventory: InventoryRow[];
   audit_event_ids: string[];
+  evidence: {
+    plan: import('./high-impact-application-plan').HighImpactApplicationPlan;
+    events: { id: string; sha256: string }[];
+    sources: SourceEvidence[];
+    historicalIds: Record<string, number[]>;
+  };
+  applied_at: Date;
   applied_by: number;
 };
 
@@ -68,6 +87,11 @@ export function assertStateIdentity(state: ApplicationState): void {
   }
   assert.equal(state.audit_event_ids.length, 808);
   assert.equal(new Set(state.audit_event_ids).size, 808, 'duplicate event ledger identity');
+  for (let i = 1; i < state.audit_event_ids.length; i++)
+    assert.ok(
+      BigInt(state.audit_event_ids[i]!) > BigInt(state.audit_event_ids[i - 1]!),
+      'application event identities are not in numeric sequence',
+    );
   assert.equal(state.applied_by, 1, 'incorrect application actor');
 }
 
@@ -80,15 +104,15 @@ export function historicalHighImpactSql(sql: string, state: ApplicationState | n
   assertReadOnlyQuery(sql, 'historical checkpoint query');
   let result = sql;
   for (const table of CREATED_TABLES) {
-    const ids = state.created_rows.filter((row) => row.table === table).map((row) => row.id);
-    if (ids.length === 0) continue;
+    const ids = state.evidence.historicalIds[table];
+    assert.ok(ids, 'missing historical partition identities');
     const qualified = table.includes('.') ? table.replace('.', '\\.') : `(?:public\\.)?${table}`;
     // Exact FROM/JOIN table tokens only: not column names, catalog strings or arbitrary identifiers.
     const pattern = new RegExp(`\\b(FROM|JOIN)\\s+${qualified}\\b`, 'gi');
     result = result.replace(
       pattern,
       (_, keyword: string) =>
-        `${keyword} (SELECT * FROM ${tableName(table)} WHERE id NOT IN (${ids.join(',')}))`,
+        `${keyword} (SELECT * FROM ${tableName(table)} WHERE id IN (${ids.join(',') || 'NULL'}))`,
     );
   }
   return result;
@@ -113,7 +137,7 @@ export async function applicationInventory(
   const tables = (
     await db.query<{ schemaname: string; tablename: string }>(
       `SELECT schemaname,tablename FROM pg_tables WHERE schemaname IN ('public','staging','quarantine','_migration')
-     AND tablename NOT IN ('high_impact_application','high_impact_resolution') ORDER BY schemaname,tablename`,
+     AND tablename NOT IN ('high_impact_application','high_impact_resolution','high_impact_row_proof') ORDER BY schemaname,tablename`,
     )
   ).rows;
   const result: InventoryRow[] = [];
@@ -148,6 +172,7 @@ export async function assertProjectedRow(
   table: string,
   id: number,
   fields: Fields,
+  initial?: Fields,
 ): Promise<void> {
   assert.ok((CREATED_TABLES as readonly string[]).includes(table));
   const columns = Object.keys(fields);
@@ -155,9 +180,9 @@ export async function assertProjectedRow(
     .map((key) => `actual.${identifier(key)} IS NOT DISTINCT FROM expected.${identifier(key)}`)
     .join(' AND ');
   const result = await db.query<{ matches: boolean }>(
-    `SELECT (${comparisons}) matches FROM ${tableName(table)} actual,
+    `SELECT (${comparisons}) matches FROM ${initial ? `jsonb_populate_record(NULL::${tableName(table)},$3::jsonb)` : tableName(table)} actual,
      jsonb_populate_record(NULL::${tableName(table)},$1::jsonb) expected WHERE actual.id=$2`,
-    [JSON.stringify(fields), id],
+    initial ? [JSON.stringify(fields), id, JSON.stringify(initial)] : [JSON.stringify(fields), id],
   );
   assert.equal(result.rowCount, 1, `missing/duplicate applied ${table}`);
   assert.equal(
@@ -168,6 +193,19 @@ export async function assertProjectedRow(
 }
 
 export async function rowDigest(db: ClientBase, table: string, id: number): Promise<string> {
+  return databaseJsonDigest(db, await readInitialRow(db, table, id));
+}
+
+export async function databaseJsonDigest(db: ClientBase, row: Fields): Promise<string> {
+  return (
+    await db.query<{ sha256: string }>(
+      "SELECT encode(sha256(convert_to($1::jsonb::text,'UTF8')),'hex') sha256",
+      [JSON.stringify(row)],
+    )
+  ).rows[0]!.sha256;
+}
+
+export async function readInitialRow(db: ClientBase, table: string, id: number): Promise<Fields> {
   const rows = (
     await db.query<{ row: Fields }>(
       `SELECT to_jsonb(t) row FROM ${tableName(table)} t WHERE id=$1`,
@@ -175,5 +213,5 @@ export async function rowDigest(db: ClientBase, table: string, id: number): Prom
     )
   ).rows;
   assert.equal(rows.length, 1, `missing created ${table}`);
-  return applicationDigest(rows[0]!.row);
+  return rows[0]!.row;
 }

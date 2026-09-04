@@ -56,6 +56,29 @@ function fixtureRuntimeUrl(ownerUrl: URL): URL {
 }
 
 async function removeTask33B(db: Client): Promise<void> {
+  // This session-owned canonical fixture includes later migration 60. Remove
+  // its empty schema first so the Task 3.3B failed-migration fixture still
+  // tests the intended boundary rather than a later foreign-key dependency.
+  await db.query(`
+    DROP TRIGGER matters_client_branch_compatibility ON matters;
+    DROP TRIGGER zz_task35b_row_proof ON lookup_client_branch;
+    DROP TRIGGER zz_task35b_row_proof ON lookup_court;
+    DROP TRIGGER zz_task35b_row_proof ON matters;
+    DROP TRIGGER zz_task35b_row_proof ON hearings;
+    DROP TRIGGER zz_task35b_row_proof ON matter_lawyers;
+    DROP TRIGGER zz_task35b_row_proof ON matter_parties;
+    DROP TRIGGER zz_task35b_row_proof ON matter_party_roles;
+    DROP TRIGGER zz_task35b_row_proof ON hearing_attendees;
+    DROP TABLE _migration.high_impact_row_proof;
+    DROP TABLE _migration.high_impact_resolution;
+    DROP TABLE _migration.high_impact_application;
+    DROP TABLE _migration.client_branch_compatibility;
+    DROP FUNCTION _migration.capture_high_impact_row_proof();
+    DROP FUNCTION _migration.check_high_impact_completeness();
+    DROP FUNCTION _migration.audit_branch_compatibility();
+    DROP FUNCTION _migration.enforce_client_branch_compatibility();
+    DROP FUNCTION _migration.refuse_high_impact_evidence_change();
+    DELETE FROM _prisma_migrations WHERE migration_name='20260904180000_prepare_high_impact_application'`);
   const tables = (
     await db.query<{ entity_table: string }>(
       `SELECT entity_table FROM audit_event_table_rules ORDER BY entity_table`,

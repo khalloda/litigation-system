@@ -111,7 +111,7 @@ async function main() {
     if (verified.state !== null)
       record(
         'Task 3.5B current release and protected historical partition',
-        '382 exact dispositions; D41 twelve-hearing set; all fields, evidence, 808 events and protected rows exact',
+        '382 exact dispositions; D41 twelve-hearing set; initial values/events exact; immutable evidence and authorized full-value continuity',
         'verified separately from frozen Stage 2 checkpoint counts',
         true,
       );

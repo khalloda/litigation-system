@@ -423,8 +423,14 @@ export async function buildHighImpactApplicationPlan(
     'quarantine.matter_relationship_transform': 37,
     hearing_attendees: 229,
   });
-  const digest = applicationDigest({
-    dispositions: dispositions.map(
+  const plan = { dispositions, rows, lookupCreations, counts };
+  return { ...plan, digest: approvedPlanDigest(plan) };
+}
+
+/** The frozen approved projection identity; independent of an external file. */
+export function approvedPlanDigest(plan: Omit<HighImpactApplicationPlan, 'digest'>): string {
+  return applicationDigest({
+    dispositions: plan.dispositions.map(
       ({ reviewId, sourceRecordKey, extractionSha256, reasonCodes, status, target }) => ({
         reviewId,
         sourceRecordKey,
@@ -434,9 +440,8 @@ export async function buildHighImpactApplicationPlan(
         target,
       }),
     ),
-    rows,
-    lookupCreations,
+    rows: plan.rows,
+    lookupCreations: plan.lookupCreations,
     d41: D41_DESTINATIONS,
   });
-  return { dispositions, rows, lookupCreations, digest, counts };
 }

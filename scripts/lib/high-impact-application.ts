@@ -14,6 +14,8 @@ import {
 } from './high-impact-application-contract';
 import {
   buildHighImpactApplicationPlan,
+  approvedPlanDigest,
+  applicationDigest,
   type Fields,
   type HighImpactApplicationPlan,
 } from './high-impact-application-plan';
@@ -24,14 +26,29 @@ import {
   applicationInventory,
   assertProjectedRow,
   assertStateIdentity,
-  historicalHighImpactClient,
   identifier,
   readApplicationState,
   rowDigest,
+  readInitialRow,
   tableName,
   type ApplicationState,
   type CreatedRow,
 } from './high-impact-application-state';
+import {
+  captureHistoricalIds,
+  captureSourceEvidence,
+  eventFingerprints,
+  verifyCompatibility,
+  verifyRowContinuity,
+  verifySourceEvidence,
+} from './high-impact-operational-proof';
+import {
+  assertRealApplicationRequest,
+  assertRealPreconditions,
+  collectRealPreconditions,
+  checkRealInvariantsReadOnly,
+  type RealApplicationOptions,
+} from './high-impact-real-gate';
 
 export const APPLICATION_PATH = `_migration/review/${APPROVED_APPLICATION_FILE}`;
 
@@ -94,23 +111,36 @@ async function insertRow(db: ClientBase, table: string, fields: Fields): Promise
   return Number(result.rows[0]!.id);
 }
 
-export async function verifyHighImpactApplication(
-  db: ClientBase,
-  bytes = readFileSync(APPLICATION_PATH),
-): Promise<{
+export async function verifyHighImpactApplication(db: ClientBase): Promise<{
   state: ApplicationState | null;
   plan: HighImpactApplicationPlan | null;
 }> {
-  assertApprovedApplicationBytes(APPLICATION_PATH, bytes);
-  await assertHighImpactStructure(db);
+  const prepared = await assertHighImpactStructure(db);
   const state = await readApplicationState(db);
+  if (prepared) await verifyCompatibility(db, state);
   if (state === null) return { state: null, plan: null };
   assertStateIdentity(state);
   assert.equal(state.workbook_sha256, APPROVED_APPLICATION_SHA256);
   assert.equal(state.workbook_bytes, APPROVED_APPLICATION_BYTES);
-  const historical = historicalHighImpactClient(db, state);
-  const plan = await buildHighImpactApplicationPlan(historical, APPLICATION_PATH, bytes);
+  const anchor = (
+    await db.query<{ event_metadata: Record<string, unknown> }>(
+      'SELECT event_metadata FROM audit_events WHERE id=$1',
+      [state.audit_event_ids.at(-1)],
+    )
+  ).rows[0];
+  assert.ok(anchor, 'missing application audit event');
+  assert.equal(
+    anchor.event_metadata.application_evidence_sha256,
+    applicationEvidenceDigest(state.created_rows, state.before_inventory, {
+      ...state.evidence,
+      events: state.evidence.events.slice(0, -1),
+    }),
+    'immutable application evidence changed',
+  );
+  const plan = state.evidence.plan;
   assert.equal(plan.digest, APPROVED_PLAN_SHA256, 'approved source plan drift');
+  assert.equal(approvedPlanDigest(plan), APPROVED_PLAN_SHA256, 'stored approved plan drift');
+  await verifySourceEvidence(db, state.evidence.sources);
   const expectedCreated = [
     ...plan.lookupCreations.map((row) => ({ table: row.table, key: row.label })),
     ...plan.rows.map(({ table, key }) => ({ table, key })),
@@ -125,20 +155,21 @@ export async function verifyHighImpactApplication(
     const target = state.created_rows.find(
       (item) => item.table === row.table && item.key === row.key,
     )!;
-    await assertProjectedRow(db, row.table, target.id, resolveFields(row.fields, refs));
+    await assertProjectedRow(
+      db,
+      row.table,
+      target.id,
+      resolveFields(row.fields, refs),
+      target.initial,
+    );
   }
   for (const row of plan.lookupCreations) {
     const target = state.created_rows.find(
       (item) => item.table === row.table && item.key === row.label,
     )!;
-    await assertProjectedRow(db, row.table, target.id, { label_ar: row.label });
+    await assertProjectedRow(db, row.table, target.id, { label_ar: row.label }, target.initial);
   }
-  for (const row of state.created_rows)
-    assert.equal(
-      await rowDigest(db, row.table, row.id),
-      row.sha256,
-      'created row changed after application checkpoint',
-    );
+  await verifyRowContinuity(db, state);
   const resolutions = (
     await db.query<{
       review_id: string;
@@ -150,6 +181,8 @@ export async function verifyHighImpactApplication(
       hearing_quarantine_id: string | null;
       d41_note: boolean;
       resolved_by: number;
+      resolved_at: Date;
+      application_key: string;
     }>('SELECT * FROM _migration.high_impact_resolution ORDER BY review_id')
   ).rows;
   assert.equal(resolutions.length, 382, 'partial resolution ledger');
@@ -172,6 +205,17 @@ export async function verifyHighImpactApplication(
     );
     assert.equal(row.d41_note, decision.kind === 'hearing' && d41.has(Number(decision.legacyId)));
     assert.equal(row.resolved_by, 1);
+    assert.equal(row.application_key, APPLICATION_KEY);
+    assert.equal(
+      row.resolved_at.getTime(),
+      state.applied_at.getTime(),
+      'resolution timestamp changed',
+    );
+    assert.equal(
+      decision.quarantineId,
+      String(Number(decision.reviewId.slice(2))),
+      'stored resolution identity changed',
+    );
   }
   const pairs = (
     await db.query<{ client_id: number; branch_id: number; authority: string }>(
@@ -250,11 +294,19 @@ export async function verifyHighImpactApplication(
   );
   assert.ok(lastMatter < firstHearing, 'hearing creation preceded parent creation');
   assert.deepEqual(
-    await applicationInventory(db, state),
-    state.before_inventory,
-    'historical/protected/lower-impact row inventory changed',
+    await eventFingerprints(db, state.audit_event_ids),
+    state.evidence.events,
+    'altered application event contents/context/sequence',
   );
   return { state, plan };
+}
+
+function applicationEvidenceDigest(
+  created: CreatedRow[],
+  before: ApplicationState['before_inventory'],
+  evidence: ApplicationState['evidence'],
+): string {
+  return applicationDigest({ created, before, evidence });
 }
 
 export async function runHighImpactApplication(
@@ -262,6 +314,7 @@ export async function runHighImpactApplication(
     apply?: boolean;
     databaseUrl?: string;
     forceLateFailure?: boolean;
+    real?: RealApplicationOptions;
   } = {},
 ): Promise<{
   mode: 'dry-run' | 'applied' | 'no-op';
@@ -270,6 +323,13 @@ export async function runHighImpactApplication(
 }> {
   const bytes = readFileSync(APPLICATION_PATH);
   assertApprovedApplicationBytes(APPLICATION_PATH, bytes);
+  assert.ok(
+    !(options.real && options.apply),
+    'fixture and real application modes cannot be combined',
+  );
+  assert.ok(!(options.real && options.forceLateFailure), 'real mode cannot run a failure fixture');
+  if (options.real) assertRealApplicationRequest(options.real, options.databaseUrl);
+  const write = Boolean(options.apply || options.real);
   return withApprovedMigrationClient(
     async (db) => {
       const name = (await db.query<{ name: string }>('SELECT current_database() name')).rows[0]!
@@ -281,23 +341,47 @@ export async function runHighImpactApplication(
           'this reviewed preparation phase permits application only to task-specific disposable databases',
         );
       await db.query(
-        options.apply
+        write
           ? 'BEGIN ISOLATION LEVEL SERIALIZABLE'
           : 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
       );
       try {
-        if (options.apply) {
+        if (options.real) {
+          // Lock only this target's tables. No row write occurs before every
+          // gate passes; readers remain allowed for the read-only invariant run.
+          const targets = (
+            await db.query<{ schema: string; table: string }>(
+              "SELECT schemaname schema,tablename \"table\" FROM pg_tables WHERE schemaname IN ('public','staging','quarantine','_migration') ORDER BY schemaname,tablename",
+            )
+          ).rows;
+          await db.query(
+            `LOCK TABLE ${targets.map((t) => `${identifier(t.schema)}.${identifier(t.table)}`).join(',')} IN SHARE ROW EXCLUSIVE MODE`,
+          );
+          const lockedPlan = await buildHighImpactApplicationPlan(db, APPLICATION_PATH, bytes);
+          const invariantCount = checkRealInvariantsReadOnly(options.databaseUrl);
+          assertRealPreconditions(
+            await collectRealPreconditions(
+              db,
+              bytes,
+              APPLICATION_PATH,
+              lockedPlan.digest,
+              invariantCount,
+            ),
+            options.real.expectedRevision,
+          );
+        }
+        if (write) {
           await setMaintenanceAuditContext(db, 'task-3-5b-owner-decisions');
           await db.query("SELECT pg_advisory_xact_lock(hashtext('task-3-5b-owner-decisions'))");
         }
-        const existing = await verifyHighImpactApplication(db, bytes);
+        const existing = await verifyHighImpactApplication(db);
         if (existing.state !== null) {
           await db.query('ROLLBACK');
           return { mode: 'no-op', digest: existing.plan!.digest, counts: existing.plan!.counts };
         }
         const plan = await buildHighImpactApplicationPlan(db, APPLICATION_PATH, bytes);
         assert.equal(plan.digest, APPROVED_PLAN_SHA256, 'dry-run plan is not the approved plan');
-        if (!options.apply) {
+        if (!write) {
           await db.query('ROLLBACK');
           return { mode: 'dry-run', digest: plan.digest, counts: plan.counts };
         }
@@ -316,6 +400,12 @@ export async function runHighImpactApplication(
           plan.digest,
         );
         const before = await applicationInventory(db);
+        const evidence: ApplicationState['evidence'] = {
+          plan,
+          sources: await captureSourceEvidence(db),
+          historicalIds: await captureHistoricalIds(db),
+          events: [],
+        };
         const eventFloor = (
           await db.query<{ id: string }>('SELECT coalesce(max(id),0)::text id FROM audit_events')
         ).rows[0]!.id;
@@ -327,6 +417,7 @@ export async function runHighImpactApplication(
             key: lookup.label,
             id,
             sha256: await rowDigest(db, lookup.table, id),
+            initial: await readInitialRow(db, lookup.table, id),
           });
         }
         for (const branch of D39_BRANCHES)
@@ -348,24 +439,44 @@ export async function runHighImpactApplication(
             key: row.key,
             id,
             sha256: await rowDigest(db, row.table, id),
+            initial: await readInitialRow(db, row.table, id),
           });
         }
+        evidence.events = await eventFingerprints(
+          db,
+          (
+            await db.query<{ id: string }>(
+              'SELECT id::text FROM audit_events WHERE id>$1 ORDER BY audit_events.id',
+              [eventFloor],
+            )
+          ).rows.map((r) => r.id),
+        );
+        assert.equal(
+          evidence.events.length,
+          807,
+          'unexpected application row/configuration events',
+        );
         await db.query(
           `SELECT public.audit_write_event('record_created','succeeded',NULL,NULL,NULL,
         ARRAY[]::text[],'{}','{}',NULL,NULL,'task-3-5b:application-ledger','{}','owner_decisions_applied',
-        jsonb_build_object('workbook_sha256',$1::text,'plan_sha256',$2::text,'resolution_count',382,'authority','D39/D40/D41'))`,
-          [APPROVED_APPLICATION_SHA256, plan.digest],
+        jsonb_build_object('workbook_sha256',$1::text,'plan_sha256',$2::text,'resolution_count',382,'authority','D39/D40/D41','application_evidence_sha256',$3::text))`,
+          [
+            APPROVED_APPLICATION_SHA256,
+            plan.digest,
+            applicationEvidenceDigest(created, before, evidence),
+          ],
         );
         const eventIds = (
           await db.query<{ id: string }>(
-            'SELECT id::text FROM audit_events WHERE id>$1 ORDER BY id',
+            'SELECT id::text FROM audit_events WHERE id>$1 ORDER BY audit_events.id',
             [eventFloor],
           )
         ).rows.map((row) => row.id);
         assert.equal(eventIds.length, 808, 'unexpected/missing application audit events');
+        evidence.events = await eventFingerprints(db, eventIds);
         await db.query(
           `INSERT INTO _migration.high_impact_application(application_key,workbook_sha256,workbook_bytes,
-        plan_sha256,created_rows,before_inventory,audit_event_ids) VALUES($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::bigint[])`,
+        plan_sha256,created_rows,before_inventory,audit_event_ids,evidence) VALUES($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::bigint[],$8::jsonb)`,
           [
             APPLICATION_KEY,
             APPROVED_APPLICATION_SHA256,
@@ -374,6 +485,7 @@ export async function runHighImpactApplication(
             JSON.stringify(created),
             JSON.stringify(before),
             eventIds,
+            JSON.stringify(evidence),
           ],
         );
         const d41 = new Set<number>(D41_DESTINATIONS.map(([hearing]) => hearing));
@@ -402,7 +514,12 @@ export async function runHighImpactApplication(
           );
         }
         await db.query('SET CONSTRAINTS ALL IMMEDIATE');
-        await verifyHighImpactApplication(db, bytes);
+        const verified = await verifyHighImpactApplication(db);
+        assert.deepEqual(
+          await applicationInventory(db, verified.state),
+          before,
+          'application-time historical/protected/lower-impact inventory changed',
+        );
         if (options.forceLateFailure) throw new Error('fixture forced late Task 3.5B failure');
         await db.query('COMMIT');
         return { mode: 'applied', digest: plan.digest, counts: plan.counts };

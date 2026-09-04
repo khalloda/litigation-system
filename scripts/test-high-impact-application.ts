@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import ExcelJS from 'exceljs';
 import { withApprovedMigrationClient } from './lib/migration-principal';
@@ -26,6 +27,14 @@ import {
   assertHighImpactStructure,
   HIGH_IMPACT_MIGRATION,
 } from './lib/high-impact-application-structure';
+import {
+  assertRealApplicationRequest,
+  assertRealPreconditions,
+  realApplicationConfirmation,
+  REAL_MIGRATION_SHA256,
+  REAL_PROTECTED_SHA256,
+  type RealPreconditions,
+} from './lib/high-impact-real-gate';
 import {
   readGate4RepositoryMigrationInventory,
   reconcileGate4Migrations,
@@ -62,6 +71,90 @@ async function staticFixtures(): Promise<void> {
   assert.deepEqual(parseHighImpactApplicationArgs(['--apply']), { apply: true });
   assert.throws(() => parseHighImpactApplicationArgs(['--dry-run', '--apply']), /conflicting/);
   assert.throws(() => parseHighImpactApplicationArgs(['--force']), /unknown/);
+  const revision = 'a'.repeat(40);
+  const real = { expectedRevision: revision, confirmation: realApplicationConfirmation(revision) };
+  assert.deepEqual(
+    parseHighImpactApplicationArgs([
+      '--apply-real',
+      `--expected-revision=${revision}`,
+      `--confirm=${real.confirmation}`,
+    ]),
+    { apply: false, real },
+  );
+  assert.throws(() => parseHighImpactApplicationArgs(['--apply-real']), /exactly three/);
+  assert.throws(
+    () =>
+      assertRealApplicationRequest(
+        { ...real, confirmation: 'yes' },
+        process.env['MIGRATION_DATABASE_URL'],
+      ),
+    /confirmation/,
+  );
+  assert.throws(
+    () => assertRealApplicationRequest(real, 'postgresql://litigation@localhost:5433/other'),
+    /target database/,
+  );
+  assert.throws(
+    () =>
+      assertRealApplicationRequest(
+        real,
+        'postgresql://litigation@localhost:5433/litigation?options=unsafe',
+      ),
+    /URL options/,
+  );
+  assertRealApplicationRequest(real, process.env['MIGRATION_DATABASE_URL']);
+  const gate: RealPreconditions = {
+    branch: 'main',
+    head: revision,
+    remote: revision,
+    remoteHead: revision,
+    clean: true,
+    gitIdle: true,
+    database: 'litigation',
+    cluster: '123',
+    containerCluster: '123',
+    principal: 'litigation',
+    sessionPrincipal: 'litigation',
+    superuser: true,
+    runtimeSessions: 0,
+    migrationCount: 60,
+    migrationSha256: REAL_MIGRATION_SHA256,
+    migrationDefects: [],
+    migrationProfile: 'historical-live',
+    pendingMigrations: 0,
+    priorRows: 0,
+    protectedSha256: REAL_PROTECTED_SHA256,
+    baselineSha256: 'cb5507511715e332e28a7b749eac417c709ef84295b40112d8cea721e0a5167d',
+    eventCount: 16,
+    workbookSha256: '0dc23134639e0bc6477fe1f39613bd7575b56cdcd0085d2f2831a96693f2376b',
+    workbookBytes: 172273,
+    planSha256: '4a1fee01d011b960f48204102e28ed71731a5f1d682006141749460828e33da3',
+    unresolved: 0,
+    invariantCount: 92,
+  };
+  assertRealPreconditions(gate, revision);
+  for (const key of Object.keys(gate) as (keyof RealPreconditions)[]) {
+    if (['cluster', 'containerCluster'].includes(key)) continue;
+    const bad = {
+      ...gate,
+      [key]:
+        key === 'clean' || key === 'gitIdle' || key === 'superuser'
+          ? false
+          : key === 'migrationDefects'
+            ? ['fixture']
+            : key === 'branch'
+              ? 'other'
+              : null,
+    };
+    assert.throws(
+      () => assertRealPreconditions(bad as RealPreconditions, revision),
+      /real application refused/,
+    );
+  }
+  assert.throws(
+    () => assertRealPreconditions({ ...gate, containerCluster: '999' }, revision),
+    /target differs/,
+  );
   const notes = D41_DESTINATIONS.map(([legacyId, legacyMatterId]) => ({
     legacyId,
     legacyMatterId,
@@ -130,6 +223,23 @@ function checkDisposableDatabase(databaseUrl: string): void {
       .filter((line) => /All .* checks passed/.test(line))
       .join('\n'),
   );
+}
+function checkWithoutWorkbook(databaseUrl: string): void {
+  const result = spawnSync(
+    process.execPath,
+    ['node_modules/tsx/dist/cli.mjs', 'scripts/test-high-impact-workbook-absence.ts'],
+    {
+      env: {
+        ...process.env,
+        MIGRATION_DATABASE_URL: databaseUrl,
+        PGOPTIONS: '-c default_transaction_read_only=on',
+      },
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024,
+    },
+  );
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  console.log(result.stdout.trim());
 }
 
 async function proveProvenance(
@@ -294,6 +404,20 @@ async function main(): Promise<void> {
             fixtureName,
           );
           await proveProvenance(fixture, 'historical-live');
+          assert.equal(
+            applicationDigest(
+              (await applicationInventory(fixture)).filter(
+                (row) =>
+                  !(
+                    row.schema === 'public' &&
+                    ['audit_events', '_prisma_migrations'].includes(row.table)
+                  ) &&
+                  !(row.schema === '_migration' && row.table === 'client_branch_compatibility'),
+              ),
+            ),
+            REAL_PROTECTED_SHA256,
+            'real gate protected pre-application snapshot changed',
+          );
           const before = await applicationInventory(fixture);
           const dryRun = await runHighImpactApplication({ databaseUrl: fixtureUrl.toString() });
           assert.equal(dryRun.mode, 'dry-run');
@@ -375,19 +499,49 @@ async function main(): Promise<void> {
             /client\/branch pair/,
           );
           await rejectChange(
+            'unaudited released-row mutation',
+            "ALTER TABLE matters DISABLE TRIGGER audit_event_capture; UPDATE matters SET notes_1='__task35b_unaudited_fixture__' WHERE legacy_id=467",
+            /lacks its audit event/,
+          );
+          await rejectChange(
+            'extra D19 compatibility evidence',
+            "INSERT INTO _migration.client_branch_compatibility(client_id,branch_id,authority) VALUES(197,1,'D19-existing-association')",
+            /D19 exact relationship inventory/,
+          );
+          await rejectChange(
+            'missing D19 compatibility evidence',
+            "ALTER TABLE _migration.client_branch_compatibility DISABLE TRIGGER client_branch_compatibility_append_only; DELETE FROM _migration.client_branch_compatibility WHERE authority='D19-existing-association' AND ctid=(SELECT min(ctid) FROM _migration.client_branch_compatibility WHERE authority='D19-existing-association'); ALTER TABLE _migration.client_branch_compatibility ENABLE TRIGGER client_branch_compatibility_append_only",
+            /D19 exact relationship inventory/,
+          );
+          await rejectChange(
+            'wrong-parent D19 compatibility evidence',
+            "ALTER TABLE _migration.client_branch_compatibility DISABLE TRIGGER client_branch_compatibility_append_only; UPDATE _migration.client_branch_compatibility p SET client_id=(SELECT min(c.id) FROM clients c WHERE NOT EXISTS(SELECT 1 FROM _migration.client_branch_compatibility x WHERE x.client_id=c.id AND x.branch_id=p.branch_id)) WHERE p.authority='D19-existing-association' AND p.ctid=(SELECT min(ctid) FROM _migration.client_branch_compatibility WHERE authority='D19-existing-association'); ALTER TABLE _migration.client_branch_compatibility ENABLE TRIGGER client_branch_compatibility_append_only",
+            /D19 exact relationship inventory/,
+          );
+          await rejectChange(
+            'duplicate D19 compatibility evidence',
+            "INSERT INTO _migration.client_branch_compatibility(client_id,branch_id,authority) SELECT client_id,branch_id,authority FROM _migration.client_branch_compatibility WHERE authority='D19-existing-association' LIMIT 1",
+            /duplicate key/,
+          );
+          await rejectChange(
+            'wrongly attributed D19 compatibility event',
+            "ALTER TABLE audit_events DISABLE TRIGGER audit_events_no_change; UPDATE audit_events SET actor_id=2,actor_key_snapshot='system_authentication' WHERE id=(SELECT registration_event_id FROM _migration.client_branch_compatibility WHERE authority='D19-existing-association' ORDER BY client_id,branch_id LIMIT 1); ALTER TABLE audit_events ENABLE TRIGGER audit_events_no_change",
+            /altered compatibility event|incorrect compatibility event actor/,
+          );
+          await rejectChange(
             'incorrect Sigma parent with branch cleared',
             'UPDATE matters SET client_id=142,branch_id=NULL WHERE legacy_id=425',
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'incorrect Alpha parent',
             'UPDATE matters SET client_id=197,branch_id=NULL WHERE legacy_id=1549',
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'generic court substitution',
             'UPDATE hearings SET court_id=123 WHERE legacy_id=15778',
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'invented court ID',
@@ -397,37 +551,37 @@ async function main(): Promise<void> {
           await rejectChange(
             'intentional NULL branch replaced',
             'UPDATE matters SET client_id=111,branch_id=1 WHERE legacy_id=87',
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'weekday circuit changed',
             "UPDATE hearings SET circuit='جنح العجوزة' WHERE legacy_id=2396",
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'D41 note changed',
             'UPDATE hearings SET notes=NULL WHERE legacy_id=7072',
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'D41 court changed',
             'UPDATE matters SET court_id=123 WHERE legacy_id=467',
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'additional hearing note destination',
             `UPDATE hearings SET notes='${D41_NOTE}' WHERE legacy_id=15778`,
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'Masters parent changed',
             'UPDATE matters SET client_id=197 WHERE legacy_id=1777',
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'dependent-hearing parent changed',
             'UPDATE hearings SET matter_id=(SELECT id FROM matters WHERE legacy_id=468) WHERE legacy_id=7072',
-            /values differ/,
+            /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
             'immutable hearing source evidence',
@@ -494,6 +648,62 @@ async function main(): Promise<void> {
           assert.deepEqual(await applicationInventory(fixture), after);
           console.log(
             'PASS all adversarial transactions rolled back without changing the proven disposable result',
+          );
+          const permanent = async () => {
+            assert.ok((await verifyHighImpactApplication(fixture)).state);
+          };
+          const human = async () => {
+            await fixture.query('SELECT audit_set_human_context(2)');
+            await fixture.query('SELECT audit_set_event_context($1,$2,$3,NULL,$4,$5)', [
+              randomUUID(),
+              randomUUID(),
+              randomUUID(),
+              'task35b-operational-positive',
+              'desktop',
+            ]);
+          };
+          await fixture.query('BEGIN');
+          await human();
+          await fixture.query(
+            "SELECT audit_write_event('report_executed','succeeded',NULL,NULL,NULL,ARRAY[]::text[],'{}','{}',NULL,NULL,'fixture:later-report','{}',NULL,'{}')",
+          );
+          await permanent();
+          await fixture.query('COMMIT');
+          const released = (
+            await fixture.query<{ id: number }>(
+              'SELECT matter_id id FROM _migration.high_impact_resolution WHERE matter_id IS NOT NULL ORDER BY review_id LIMIT 1',
+            )
+          ).rows[0]!.id;
+          await fixture.query('BEGIN');
+          await human();
+          await fixture.query('SET LOCAL ROLE litigation_runtime');
+          await fixture.query(
+            "UPDATE matters SET notes_1='__task35b_authorized_operational_fixture__' WHERE id=$1",
+            [released],
+          );
+          await fixture.query('RESET ROLE');
+          await permanent();
+          await fixture.query('COMMIT');
+          await fixture.query('BEGIN');
+          await human();
+          await fixture.query('SET LOCAL ROLE litigation_runtime');
+          await fixture.query(
+            "INSERT INTO matters(subject,updated_at) VALUES('__task35b_native_operational_fixture__',CURRENT_TIMESTAMP)",
+          );
+          await fixture.query('RESET ROLE');
+          await permanent();
+          await fixture.query('COMMIT');
+          await fixture.query(
+            'CREATE TABLE public.task35b_future_unrelated_fixture(id integer PRIMARY KEY)',
+          );
+          await permanent();
+          await fixture.query(
+            "INSERT INTO _prisma_migrations(id,checksum,migration_name,started_at,finished_at,applied_steps_count) VALUES(gen_random_uuid()::text,repeat('a',64),'20990101000000_unrelated_fixture',now(),now(),1)",
+          );
+          await permanent();
+          checkWithoutWorkbook(fixtureUrl.toString());
+          console.log(
+            'PASS later semantic event, authorized audited edit, native row, unrelated table/migration and workbook-absent permanent verification',
           );
         } finally {
           await fixture.end();

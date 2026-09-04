@@ -78,6 +78,17 @@ export function migrationDatabaseTarget(rawUrl?: string): MigrationDatabaseTarge
   };
 }
 
+/** Parsed non-secret URL options for destructive-operation gates. */
+export function migrationDatabaseUrlOptions(
+  rawUrl?: string,
+): Readonly<{ search: string; hash: string }> {
+  const parsed = parsePostgreSqlUrl(
+    rawUrl ?? process.env['MIGRATION_DATABASE_URL'],
+    'MIGRATION_DATABASE_URL',
+  );
+  return { search: parsed.search, hash: parsed.hash };
+}
+
 export async function withApprovedMigrationClient<T>(
   run: (database: Client) => Promise<T>,
   options: Readonly<{

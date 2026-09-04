@@ -32,6 +32,7 @@ const TASK33A_FINAL_ACCEPTANCE_MIGRATION = '20260902120000_finalize_task33a_enfo
 const TASK33B_MIGRATION = '20260902180000_append_only_audit_events';
 const TASK33B_CORRECTION_MIGRATION = '20260903100000_close_task33b_review_gaps';
 const TASK34_MIGRATION = '20260903160000_secure_user_account_lifecycle';
+const TASK35B_MIGRATION = '20260904180000_prepare_high_impact_application';
 
 function identifier(value: string): string {
   assert.match(value, /^[a-z0-9_]+$/u);
@@ -346,6 +347,7 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
           TASK33B_MIGRATION,
           TASK33B_CORRECTION_MIGRATION,
           TASK34_MIGRATION,
+          TASK35B_MIGRATION,
         ],
       );
     } finally {
@@ -1205,6 +1207,7 @@ async function main(): Promise<void> {
           TASK33B_MIGRATION,
           TASK33B_CORRECTION_MIGRATION,
           TASK34_MIGRATION,
+          TASK35B_MIGRATION,
         ],
       );
       assert.deepEqual(await auditStructureFailures(owner), []);

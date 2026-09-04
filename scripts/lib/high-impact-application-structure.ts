@@ -10,7 +10,7 @@ export async function assertHighImpactStructure(db: ClientBase): Promise<boolean
   const tables = (
     await db.query<{ name: string }>(
       `SELECT tablename name FROM pg_tables WHERE schemaname='_migration'
-     AND tablename IN ('client_branch_compatibility','high_impact_application','high_impact_resolution') ORDER BY tablename`,
+     AND tablename IN ('client_branch_compatibility','high_impact_application','high_impact_resolution','high_impact_row_proof') ORDER BY tablename`,
     )
   ).rows.map((row) => row.name);
   const migrations = (
@@ -22,7 +22,12 @@ export async function assertHighImpactStructure(db: ClientBase): Promise<boolean
   if (tables.length === 0 && migrations.length === 0) return false;
   assert.deepEqual(
     tables,
-    ['client_branch_compatibility', 'high_impact_application', 'high_impact_resolution'],
+    [
+      'client_branch_compatibility',
+      'high_impact_application',
+      'high_impact_resolution',
+      'high_impact_row_proof',
+    ],
     'incomplete Task 3.5B schema',
   );
   // During the migration transaction Prisma has not marked it finished yet;
@@ -40,7 +45,7 @@ export async function assertHighImpactStructure(db: ClientBase): Promise<boolean
       /CREATE FUNCTION _migration\.([a-z_]+)\(\) RETURNS trigger\s+LANGUAGE plpgsql( SECURITY DEFINER)? SET search_path=([^\n]+) AS \$\$([\s\S]*?)\$\$;/g,
     ),
   ];
-  assert.equal(expected.length, 4);
+  assert.equal(expected.length, 5);
   const functions = (
     await db.query<{
       name: string;
@@ -58,7 +63,7 @@ export async function assertHighImpactStructure(db: ClientBase): Promise<boolean
       [expected.map((match) => match[1])],
     )
   ).rows;
-  assert.equal(functions.length, 4, 'missing Task 3.5B guard function');
+  assert.equal(functions.length, 5, 'missing Task 3.5B guard function');
   for (const match of expected) {
     const actual = functions.find((row) => row.name === match[1])!;
     assert.equal(
@@ -92,10 +97,10 @@ export async function assertHighImpactStructure(db: ClientBase): Promise<boolean
          JOIN pg_attribute a ON a.attrelid=t.tgrelid AND a.attnum=x.attnum ORDER BY x.position) columns
      FROM pg_trigger t WHERE NOT t.tgisinternal AND (t.tgrelid IN (
        '_migration.client_branch_compatibility'::regclass,'_migration.high_impact_application'::regclass,
-       '_migration.high_impact_resolution'::regclass) OR t.tgname='matters_client_branch_compatibility') ORDER BY t.tgname`,
+       '_migration.high_impact_resolution'::regclass,'_migration.high_impact_row_proof'::regclass) OR t.tgname IN ('matters_client_branch_compatibility','zz_task35b_row_proof')) ORDER BY t.tgname,t.tgrelid`,
     )
   ).rows;
-  assert.equal(triggers.length, 7, 'Task 3.5B trigger inventory changed');
+  assert.equal(triggers.length, 16, 'Task 3.5B trigger inventory changed');
   assert.ok(
     triggers.every((row) => row.enabled === 'O'),
     'disabled Task 3.5B guard',
@@ -112,7 +117,7 @@ export async function assertHighImpactStructure(db: ClientBase): Promise<boolean
     ],
     [
       'client_branch_compatibility_audit',
-      ['_migration.client_branch_compatibility', '_migration.audit_branch_compatibility', 5, false],
+      ['_migration.client_branch_compatibility', '_migration.audit_branch_compatibility', 7, false],
     ],
     [
       'high_impact_application_complete',
@@ -128,11 +133,30 @@ export async function assertHighImpactStructure(db: ClientBase): Promise<boolean
     ]),
   ]);
   for (const trigger of triggers) {
-    assert.deepEqual(
-      [trigger.relation, trigger.routine, trigger.type, trigger.deferrable],
-      expectedTriggers.get(trigger.name),
-      'Task 3.5B trigger definition changed',
-    );
+    if (trigger.name === 'zz_task35b_row_proof') {
+      assert.ok(
+        [
+          'lookup_client_branch',
+          'lookup_court',
+          'matters',
+          'hearings',
+          'matter_lawyers',
+          'matter_parties',
+          'matter_party_roles',
+          'hearing_attendees',
+        ].includes(trigger.relation),
+        'proof trigger on wrong relation',
+      );
+      assert.deepEqual(
+        [trigger.routine, trigger.type, trigger.deferrable],
+        ['_migration.capture_high_impact_row_proof', 17, false],
+      );
+    } else
+      assert.deepEqual(
+        [trigger.relation, trigger.routine, trigger.type, trigger.deferrable],
+        expectedTriggers.get(trigger.name),
+        'Task 3.5B trigger definition changed',
+      );
     assert.equal(trigger.qualifier, null, 'conditional Task 3.5B trigger');
     assert.equal(trigger.arguments, 0, 'unexpected Task 3.5B trigger arguments');
     assert.deepEqual(
@@ -153,7 +177,7 @@ export async function assertHighImpactStructure(db: ClientBase): Promise<boolean
     await db.query<{ bad: number }>(
       `SELECT count(*)::integer bad FROM pg_constraint WHERE conrelid IN (
        '_migration.client_branch_compatibility'::regclass,'_migration.high_impact_application'::regclass,
-       '_migration.high_impact_resolution'::regclass) AND NOT convalidated`,
+       '_migration.high_impact_resolution'::regclass,'_migration.high_impact_row_proof'::regclass) AND NOT convalidated`,
     )
   ).rows[0]!.bad;
   assert.equal(constraints, 0, 'unvalidated Task 3.5B constraint');
@@ -164,12 +188,12 @@ export async function assertHighImpactStructure(db: ClientBase): Promise<boolean
       ORDER BY c.conrelid::regclass::text COLLATE "C",c.conname COLLATE "C"),'UTF8')),'hex') digest
     FROM pg_constraint c WHERE c.conrelid IN (
       '_migration.client_branch_compatibility'::regclass,'_migration.high_impact_application'::regclass,
-      '_migration.high_impact_resolution'::regclass)`)
+      '_migration.high_impact_resolution'::regclass,'_migration.high_impact_row_proof'::regclass)`)
   ).rows[0]!;
-  assert.equal(constraintInventory.count, 31, 'Task 3.5B constraint inventory changed');
+  assert.equal(constraintInventory.count, 40, 'Task 3.5B constraint inventory changed');
   assert.equal(
     constraintInventory.digest,
-    'a0310468acf5caa18c64a488d0fe24d42ff22c282a58d64b69907ad48a5b4bc7',
+    'bb51a7722a741fefbb25f8d023ad299e308512695d9db156d54a18e04e2d223c',
     'Task 3.5B constraint definitions changed',
   );
   return true;

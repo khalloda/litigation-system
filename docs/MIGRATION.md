@@ -3114,8 +3114,9 @@ namespace. It does not authorize real deployment or provide a safety override.
 Use process-local migration URLs for the disposable proof; never edit `.env`.
 `npm run test:high-impact-application` owns and removes its exact fixture databases.
 
-Migration 60 establishes a normalized client/branch compatibility register and
-append-only batch/resolution evidence. It does not release any business record.
+Migration 60 establishes a normalized client/branch compatibility register,
+append-only batch/resolution evidence and private full-value continuity proof.
+It does not release any business record.
 On the historical full-state clone it registers fifteen already evidenced pairs,
 with fifteen truthful new configuration events, not fabricated historical events.
 The application atomically creates four lookups, 382 released records and their
@@ -3124,13 +3125,21 @@ and preserves all prior rows. Thirty-seven newly encountered unresolved
 relationship values are parked with complete source evidence. Previously
 quarantined administrative works, steps and fee references remain unreleased.
 
-The permanent checks distinguish the frozen Stage 2/Task 3.3 partition from the
-separately rebuilt current release. A narrow read-only historical projection
-excludes only the exact recorded created identities; it is never used by runtime
-code or writers. The current checker first binds the ledger to the approved
-artifact/plan, compares each target field, guards and audit event, and verifies
-every retained historical table fingerprint. This is not permission to suppress
-a new business field or rewrite an old checkpoint.
+Application retains the complete pre-state inventory for rollback proof.
+Permanent verification does not compare it to an operational database forever:
+it reads the approved plan from the ledger without an XLSX and checks initial
+rows/events, immutable source rows, exact ledgers and full-value audit/hash
+continuity. New source evidence, native rows, audit events and unrelated
+migrations therefore do not invalidate Task 3.5B. Planning, dry-run and
+application still require the exact workbook bytes. Frozen Stage 2 checks select
+the exact baseline IDs rather than every row present later.
+
+D19 is independently derived as exactly 15 historical pairs (zero on clean
+replay); D39 is an exact separate three. Extra, missing, duplicate, wrong-parent
+or wrong-attribution evidence fails. A distinct dormant `--apply-real` mode adds
+exact confirmation, target/Compose-cluster, synchronized reviewed Git revision,
+migration/artifact/plan, 92-invariant, protected-state, empty-state, principal and
+session gates. Ordinary `--apply` stays fixture-only. The real mode was not run.
 
 Rollback covers business/configuration rows, relationships, resolutions and
 events. PostgreSQL sequence allocations can leave gaps after a rollback; IDs

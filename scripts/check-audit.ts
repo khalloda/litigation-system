@@ -12,7 +12,7 @@ import {
 } from './lib/audit-source-inventory';
 
 const D35_MIGRATION_GATEWAY_SHA256 =
-  '367d66befd52abc7a30afb7462b43d4d6ffd6900b3872956aaef035447d8b3f3';
+  '27b40537dfbb97fd3beec9e6729934914fd61eda44a083b7c05cb0fe40bc9940';
 
 function source(filePath: string): string {
   return readFileSync(resolve(filePath), 'utf8');

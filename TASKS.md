@@ -1627,6 +1627,12 @@ only ever seen good data is not known to work.
       disposable databases. Historical quarantine evidence is retained, not
       overwritten or deleted. See the Task 3.5B report for exact projected
       additions, the append-only ledger, compatibility enforcement and proofs.
+      **Operational verification correction:** application/rollback retains the
+      full before-inventory, while permanent checks preserve immutable ledgers,
+      source provenance, initial rows/events and audited full-value update
+      continuity without freezing legitimate later operation. D19 is exactly 15
+      historical pairs (zero on clean replay); D39 remains a separate exact three.
+      Ordinary checking needs no XLSX. A guarded real mode is dormant and unrun.
       **Return point:** independent review of Task 3.5B preparation; not real
       application, completion of Task 3.5, Stage 4 or cutover.
 

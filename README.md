@@ -11,7 +11,7 @@ high-impact quarantine-review package now has a 4 September D40 successor:
 382 owner decisions complete, zero incomplete or invalid. Two court approvals
 await lookup creation; D39 branch prerequisites also remain. Task 3.5 stays open:
 no answer has been applied to the real project database. Task 3.5B is implemented
-and disposable-tested; D41 supplies the exact twelve hearing
+and disposable-tested, including operational permanent verification; D41 supplies the exact twelve hearing
 destinations for D40's prosecution note. Real application requires independent
 review and separate owner approval. Stage 4 has not started.
 The owner-readable

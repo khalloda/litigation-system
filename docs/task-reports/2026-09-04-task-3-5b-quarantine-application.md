@@ -51,11 +51,11 @@ contract and the deferred database completeness guard bind these identities.
 
 ## Application and enforcement
 
-One new forward migration:
+One corrected, still-unpushed and real-unapplied forward migration:
 `20260904180000_prepare_high_impact_application` (migration 60), SHA-256
-`6ce69e1be077c93e9f103132af6f019fb685dff678a4060916852a99f124c807`.
+`7921c9b168549928185bfd0b915ccc725ba363787158990c614420e0e3bbbee5`.
 Migrations 1–59 are unchanged. No public Prisma model changes are needed for the
-three private `_migration` evidence tables.
+four private `_migration` evidence tables.
 
 - `client_branch_compatibility`: explicit normalized client/branch pairs,
   restricted foreign keys, append-only provenance and a fixed-search-path
@@ -70,13 +70,18 @@ three private `_migration` evidence tables.
   foreign keys to retained quarantine evidence and actual targets. Deferred
   constraints reject partial batches and enforce D41. Updates, deletion and
   truncation of the new evidence are refused.
+- `high_impact_row_proof`: append-only full-value hashes for later updates to
+  released rows, each linked to the existing audit event and checked against
+  human role permission and request context. It is not a second audit taxonomy.
 
 The command defaults to dry-run, rejects unknown/conflicting arguments, and
 pins filename, size and SHA-256 before parsing. Even a same-size readable XLSX
-with changed ZIP metadata is rejected. Application requires `--apply`; the
-preparation command additionally refuses databases outside the task-specific
-disposable namespace. Real application requires a separately authorized step,
-not an override or an implied permission from this implementation.
+with changed ZIP metadata is rejected. Application requires `--apply`; that path
+remains restricted to task-specific disposable databases. A distinct dormant
+`--apply-real` path additionally needs the exact long Task/workbook/plan/revision
+confirmation, target and Compose cluster, clean synchronized reviewed Git,
+migration, artifact, empty/protected state, principal, sessions and 92 invariants.
+Its successful write path was deliberately not executed. Preparation is not approval.
 
 Application uses a serializable transaction, advisory lock and rebuilt plan
 comparison. The stable approved plan digest is
@@ -142,14 +147,24 @@ batch-ledger fact. Raw workbook contents are not placed in audit payloads.
 Parent matter events precede hearing events, and all application events share
 one explicit request context.
 
-Current verification reconstructs the pinned approved plan, compares every
-projected field through PostgreSQL's native types, verifies all created-row
-digests, 382 ledger links, event existence/actor/order and every retained table
-fingerprint. Exact new constraint, function and trigger definitions are checked.
+Application keeps the complete pre-state inventory as immutable rollback
+evidence. Permanent verification instead reads the approved plan from the
+append-only ledger, so ordinary checking needs no ignored XLSX. It checks initial
+values/digests, 382 links, full application-event contents/context, immutable
+source provenance and later full-value audit/hash continuity. Legitimate new
+events, authorized audited edits, native rows, unrelated tables/migrations and
+appended lower-impact evidence are allowed. Exact guards remain checked.
 The frozen Stage 2 and Task 3.3 checks separately examine their original
-partition through a narrow read-only projection excluding only recorded created
-IDs. Those historical counts are explicitly labelled and are not current totals.
+partition through the exact recorded baseline IDs. Those historical counts are
+explicitly labelled and are not current totals.
 The current release check cannot be replaced by a matching row count.
+
+Disposable clones of the pre-correction implementation reproduced every review finding: the former
+checker rejected a valid semantic event, authorized audited edit, native matter
+and unrelated table/migration; it tried to read the XLSX; and it accepted extra,
+missing or D39-misclassified D19 evidence before a batch. Corrected fixtures cover
+all positive cases and XLSX refusal, plus extra, missing, duplicate, wrong-parent
+and wrong-attribution D19 rejection.
 
 A deliberately forced late failure, after inserts and reconciliation, rolls
 back business rows, lookup/configuration rows, relationships, ledger and events.
@@ -166,7 +181,7 @@ approved plan digest above.
 - Read-only preflight: real database 59 migrations / 93 tables / 92 invariants.
 - Disposable historical-live clone: migration 60 deployment/status and Gate 4
   provenance; failed-migration atomicity; full application; 93/93 permanent
-  invariants across 96 tables; late rollback; exact no-op; repeat reconciliation.
+  invariants across 97 tables; late rollback; exact no-op; repeat reconciliation.
 - Disposable canonical clean replay: all 60 migrations and exact new schema,
   zero release rows, zero guessed compatibility pairs, accepted provenance.
   No pre-existing runtime session was interrupted; shared role state was verified
@@ -205,6 +220,20 @@ approved plan digest above.
   unrelated Gate 4 audit directory dated 30 August was preserved, not deleted.
 
 ## Real-database preservation evidence
+
+### Operational-verification correction
+
+The correction suite replayed all 60 migrations on historical/full-state and
+canonical-clean disposable databases. Application, 93/93 post-application
+checks, forced late rollback, exact no-op, exact D19/D39 negatives, guard/event
+tampering, operational positives and workbook refusal passed; the final repeat
+reconciliation digest was
+`ab5f9b569797c3cccb591ac0a2e5a3f7f746305d050b10778c90982e5b54ee40`.
+The digest includes generated IDs/times and is evidence of that run, not a new
+approved-plan identity. Permission, authentication, both audit suites, Gate 4,
+matter/relationship/hearing transformation suites, the full source checks,
+production build, SQL verifier and real 92/92 invariant check passed. Migration
+60 remained pending and the dormant real-write path was not executed.
 
 The before- and after-state schema SHA-256 is identical:
 `7c9b816b5d90dcf70e3675d2d1aae6169f76a508b953d35bc91d9130bdafcce8`;

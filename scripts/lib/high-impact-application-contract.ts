@@ -102,7 +102,24 @@ export function assertD41Destinations(rows: readonly D41Hearing[]): void {
   assert.equal(seen.size, 12, 'missing D41 hearing');
 }
 
-export function parseHighImpactApplicationArgs(args: readonly string[]): { apply: boolean } {
+export function parseHighImpactApplicationArgs(args: readonly string[]): {
+  apply: boolean;
+  real?: { expectedRevision: string; confirmation: string };
+} {
+  if (args.includes('--apply-real')) {
+    assert.equal(args.length, 3, 'real application requires exactly three explicit arguments');
+    const revision = args.filter((a) => a.startsWith('--expected-revision='));
+    const confirmation = args.filter((a) => a.startsWith('--confirm='));
+    assert.equal(revision.length, 1, 'one explicit reviewed revision required');
+    assert.equal(confirmation.length, 1, 'one exact real confirmation required');
+    return {
+      apply: false,
+      real: {
+        expectedRevision: revision[0]!.slice('--expected-revision='.length),
+        confirmation: confirmation[0]!.slice('--confirm='.length),
+      },
+    };
+  }
   assert.ok(args.length <= 1, 'conflicting or duplicate application arguments');
   assert.ok(
     args.every((arg) => arg === '--dry-run' || arg === '--apply'),
