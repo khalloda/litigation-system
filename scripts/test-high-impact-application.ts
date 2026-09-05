@@ -472,6 +472,19 @@ async function main(): Promise<void> {
           console.log(
             `PASS complete disposable application, byte-identical repeat reconciliation and exact no-op: ${applied.digest}`,
           );
+          const permanent = async () => {
+            assert.ok((await verifyHighImpactApplication(fixture)).state);
+          };
+          const human = async () => {
+            await fixture.query('SELECT audit_set_human_context(2)');
+            await fixture.query('SELECT audit_set_event_context($1,$2,$3,NULL,$4,$5)', [
+              randomUUID(),
+              randomUUID(),
+              randomUUID(),
+              'task35b-operational-positive',
+              'desktop',
+            ]);
+          };
           const rejectChange = async (
             label: string,
             sql: string,
@@ -492,6 +505,24 @@ async function main(): Promise<void> {
               await fixture.query('ROLLBACK');
             }
             console.log(`PASS disposable rejection: ${label}`);
+          };
+          const rejectAuthorizedChange = async (
+            label: string,
+            sql: string,
+            values: unknown[],
+            expected: RegExp,
+          ): Promise<void> => {
+            await fixture.query('BEGIN');
+            try {
+              await human();
+              await fixture.query('SET LOCAL ROLE litigation_runtime');
+              await fixture.query(sql, values);
+              await fixture.query('RESET ROLE');
+              await assert.rejects(permanent, expected, label);
+            } finally {
+              await fixture.query('ROLLBACK');
+            }
+            console.log(`PASS disposable authorized rejection: ${label}`);
           };
           await rejectChange(
             'unrelated client/branch pair',
@@ -559,28 +590,8 @@ async function main(): Promise<void> {
             /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
-            'D41 note changed',
-            'UPDATE hearings SET notes=NULL WHERE legacy_id=7072',
-            /values differ|unauthorized released-row mutation/,
-          );
-          await rejectChange(
-            'D41 court changed',
-            'UPDATE matters SET court_id=123 WHERE legacy_id=467',
-            /values differ|unauthorized released-row mutation/,
-          );
-          await rejectChange(
-            'additional hearing note destination',
-            `UPDATE hearings SET notes='${D41_NOTE}' WHERE legacy_id=15778`,
-            /values differ|unauthorized released-row mutation/,
-          );
-          await rejectChange(
             'Masters parent changed',
             'UPDATE matters SET client_id=197 WHERE legacy_id=1777',
-            /values differ|unauthorized released-row mutation/,
-          );
-          await rejectChange(
-            'dependent-hearing parent changed',
-            'UPDATE hearings SET matter_id=(SELECT id FROM matters WHERE legacy_id=468) WHERE legacy_id=7072',
             /values differ|unauthorized released-row mutation/,
           );
           await rejectChange(
@@ -638,30 +649,51 @@ async function main(): Promise<void> {
             `ALTER TABLE _migration.high_impact_resolution DISABLE TRIGGER high_impact_resolution_append_only;
              DELETE FROM _migration.high_impact_resolution WHERE review_id='H-000004';
              ALTER TABLE _migration.high_impact_resolution ENABLE TRIGGER high_impact_resolution_append_only`,
-            /partial resolution ledger/,
+            /missing D41 hearing/,
           );
           await rejectChange(
             'stale staged hearing evidence',
             `UPDATE staging."الجلسات" SET "ملاحظات"='__task35b_stale_fixture__' WHERE "ID_hearings"='7072'`,
             /stale quarantine\/source evidence|immutable/,
           );
+          const otherReviewedHearing = (
+            await fixture.query<{ id: number; legacy_id: number }>(`
+              SELECT h.id,h.legacy_id
+              FROM _migration.high_impact_resolution r
+              JOIN hearings h ON h.id=r.hearing_id
+              WHERE r.hearing_id IS NOT NULL AND NOT r.d41_note
+              ORDER BY r.review_id
+              LIMIT 1`)
+          ).rows;
+          assert.equal(otherReviewedHearing.length, 1);
+          await rejectAuthorizedChange(
+            'a different released historical hearing cannot become a thirteenth D41 destination',
+            'UPDATE hearings SET matter_id=NULL,notes=$1 WHERE id=$2',
+            [D41_NOTE, otherReviewedHearing[0]!.id],
+            /additional hearing would receive D41 note/,
+          );
+          await rejectAuthorizedChange(
+            'an approved D41 note destination cannot be removed',
+            'UPDATE hearings SET notes=NULL WHERE legacy_id=7072',
+            [],
+            /D41 note text changed/,
+          );
+          await rejectAuthorizedChange(
+            'an approved D41 destination cannot move to a different matter',
+            'UPDATE hearings SET matter_id=(SELECT id FROM matters WHERE legacy_id=468) WHERE legacy_id=7072',
+            [],
+            /D41 hearing belongs to wrong matter/,
+          );
+          await rejectAuthorizedChange(
+            'the approved D41 court cannot change',
+            'UPDATE matters SET court_id=123 WHERE legacy_id=467',
+            [],
+            /D41 matter court changed/,
+          );
           assert.deepEqual(await applicationInventory(fixture), after);
           console.log(
             'PASS all adversarial transactions rolled back without changing the proven disposable result',
           );
-          const permanent = async () => {
-            assert.ok((await verifyHighImpactApplication(fixture)).state);
-          };
-          const human = async () => {
-            await fixture.query('SELECT audit_set_human_context(2)');
-            await fixture.query('SELECT audit_set_event_context($1,$2,$3,NULL,$4,$5)', [
-              randomUUID(),
-              randomUUID(),
-              randomUUID(),
-              'task35b-operational-positive',
-              'desktop',
-            ]);
-          };
           await fixture.query('BEGIN');
           await human();
           await fixture.query(
@@ -687,10 +719,24 @@ async function main(): Promise<void> {
           await fixture.query('BEGIN');
           await human();
           await fixture.query('SET LOCAL ROLE litigation_runtime');
-          await fixture.query(
-            "INSERT INTO matters(subject,updated_at) VALUES('__task35b_native_operational_fixture__',CURRENT_TIMESTAMP)",
+          const nativeMatter = await fixture.query<{ id: number }>(
+            "INSERT INTO matters(subject,updated_at) VALUES('__task35b_native_operational_fixture__',CURRENT_TIMESTAMP) RETURNING id",
+          );
+          const nativeHearing = await fixture.query<{ id: number; legacy_id: number | null }>(
+            'INSERT INTO hearings(matter_id,notes,updated_at) VALUES($1,$2,CURRENT_TIMESTAMP) RETURNING id,legacy_id',
+            [nativeMatter.rows[0]!.id, D41_NOTE],
           );
           await fixture.query('RESET ROLE');
+          assert.equal(nativeHearing.rows[0]!.legacy_id, null);
+          assert.equal(
+            (
+              await fixture.query<{ count: number }>(
+                'SELECT count(*)::integer count FROM _migration.high_impact_resolution WHERE hearing_id=$1',
+                [nativeHearing.rows[0]!.id],
+              )
+            ).rows[0]!.count,
+            0,
+          );
           await permanent();
           await fixture.query('COMMIT');
           await fixture.query(
@@ -701,9 +747,26 @@ async function main(): Promise<void> {
             "INSERT INTO _prisma_migrations(id,checksum,migration_name,started_at,finished_at,applied_steps_count) VALUES(gen_random_uuid()::text,repeat('a',64),'20990101000000_unrelated_fixture',now(),now(),1)",
           );
           await permanent();
+          const exactD41 = (
+            await fixture.query<{
+              legacyId: number;
+              legacyMatterId: number;
+              note: string | null;
+              court: string | null;
+            }>(`
+              SELECT h.legacy_id "legacyId",m.legacy_id "legacyMatterId",h.notes note,c.label_ar court
+              FROM _migration.high_impact_resolution r
+              JOIN hearings h ON h.id=r.hearing_id
+              JOIN matters m ON m.id=h.matter_id
+              LEFT JOIN lookup_court c ON c.id=h.court_id
+              WHERE r.d41_note
+              ORDER BY r.review_id`)
+          ).rows;
+          assert.equal(exactD41.length, 12);
+          assertD41Destinations(exactD41);
           checkWithoutWorkbook(fixtureUrl.toString());
           console.log(
-            'PASS later semantic event, authorized audited edit, native row, unrelated table/migration and workbook-absent permanent verification',
+            'PASS later semantic event, authorized audited edit, native matter/hearing with shared note, exact D41 set, unrelated table/migration and workbook-absent permanent verification',
           );
         } finally {
           await fixture.end();

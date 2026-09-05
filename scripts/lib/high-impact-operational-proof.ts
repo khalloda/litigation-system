@@ -3,7 +3,7 @@ import type { ClientBase } from 'pg';
 import { hasPermission } from '../../src/lib/auth/permissions';
 import { auditEventStructureFailures } from './audit-event-structure';
 import { applicationDigest, type Fields } from './high-impact-application-plan';
-import { D39_BRANCHES, assertD41Destinations, D41_NOTE } from './high-impact-application-contract';
+import { D39_BRANCHES, assertD41Destinations } from './high-impact-application-contract';
 import {
   CREATED_TABLES,
   databaseJsonDigest,
@@ -302,9 +302,12 @@ export async function verifyRowContinuity(db: ClientBase, state: ApplicationStat
     }>(
       `
     SELECT h.legacy_id "legacyId",m.legacy_id "legacyMatterId",h.notes note,c.label_ar court
-    FROM hearings h JOIN matters m ON m.id=h.matter_id LEFT JOIN lookup_court c ON c.id=h.court_id
-    WHERE h.id IN(SELECT hearing_id FROM _migration.high_impact_resolution) OR h.notes=$1`,
-      [D41_NOTE],
+    FROM _migration.high_impact_resolution r
+    JOIN hearings h ON h.id=r.hearing_id
+    LEFT JOIN matters m ON m.id=h.matter_id
+    LEFT JOIN lookup_court c ON c.id=h.court_id
+    WHERE r.hearing_id IS NOT NULL
+    ORDER BY r.review_id`,
     )
   ).rows;
   assertD41Destinations(hearings);

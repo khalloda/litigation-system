@@ -176,6 +176,41 @@ The final disposable run produced the same SHA-256 on both reads:
 This result digest includes generated IDs and timestamps; it is not the stable
 approved plan digest above.
 
+### Final D41 operational-verification correction
+
+Before this correction, permanent verification selected every hearing carrying
+the recovered D41 note, including future application-native records. A
+disposable post-application fixture created a new matter and hearing through
+valid human/runtime audit context, gave that hearing the truthful exact note
+`وكيل نيابة/ أسامة الطنطاوي`, and reproduced the false rejection as an
+additional D41 destination.
+
+Permanent D41 verification now examines exactly the 327 reviewed hearing rows
+identified by `_migration.high_impact_resolution`. Within that historical
+release, the twelve D41 identities, parents, note and court remain exact, and a
+different reviewed hearing cannot become a thirteenth destination without a
+later owner decision. A future application-native hearing outside the resolution
+ledger may truthfully use the same text. The note is not globally reserved in
+`hearings`. Migration 60, D39–D41, the approved workbook, the 382 decisions,
+the application-time exact-twelve proof, initial evidence, audit/hash continuity
+and the application-plan digest are unchanged.
+
+The focused disposable suite passed the exact twelve static and database
+fixtures; authorized missing-note, wrong-parent, changed-court and thirteenth
+historical-destination rejections; the audited future-native hearing positive;
+workbook-absence verification; forced late rollback; exact no-op and repeat
+reconciliation; 93/93 post-application invariants; and canonical clean replay.
+The run-specific repeat reconciliation digest was
+`fa8dce5a516deddd5201f5e27c0b4d363a6f921e21f17542aaf560c214980054`;
+the approved plan digest remains unchanged. `npm run check`, the production
+build, final read-only `db:verify` and real 92/92 `db:check` passed. Repeat
+normalized logical dumps were stable at schema SHA-256
+`901213c903cd9915172a3e61c16e27507c71c3331e29262569950fd85e5530dc`
+and data SHA-256
+`19654f7adc4e916cca10b188941bcf6dd802ac977984b55ddc7073870262b599`.
+The real database remains at 59 applied migrations; the dormant `--apply-real`
+gate is unchanged and was not executed.
+
 ## Verification record
 
 - Read-only preflight: real database 59 migrations / 93 tables / 92 invariants.
