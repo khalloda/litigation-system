@@ -94,12 +94,29 @@ active search. A result matched through an alias says so. Paging is
 deterministic and returns each person once.
 
 A controlled canonical Arabic rename preserves the same person identity and
-adds the former canonical spelling as an alias. Imported aliases are immutable
+adds the former canonical spelling as an alias. The stable internal
+`people.id` is mandatory for identity, URLs, authorization, mutations,
+relationships, auditing, concurrency control and D43 reconciliation; a
+submitted name is never a mutation identity. Imported aliases are immutable
 migration evidence. Application-created aliases may be retired or restored
-only with a reason, an audit event and collision checks. New staff require a
-sufficiently complete official Arabic name; numeric substitutes and staff IDs
-are refused. If two real people have exactly the same full official Arabic name,
-creation stops for a new owner decision rather than inventing a discriminator.
+only with a reason, an audit event and collision checks, and a current primary
+alias of either provenance cannot be retired directly. At transaction
+completion every person, including each external person outside the editing
+interface, has exactly one active primary alias matching the current canonical
+Arabic name; Task 4.0a does not mutate an external person merely to enforce or
+test that invariant. New staff require a sufficiently complete official Arabic
+name. Task 4.0a refuses an invented number or other artificial suffix in the
+displayed name and introduces no new owner-managed or business-facing staff
+number; it does not replace the mandatory internal `people.id`. If two real
+people have exactly the same full official Arabic name, creation stops for a
+new owner decision rather than inventing a discriminator.
+
+Every current non-null person email remains unique. Accepted email is trimmed
+of surrounding whitespace and normalized for case, with uniqueness of the
+normalized non-null value enforced at the database boundary so concurrent
+duplicates are rejected. Task 4.0a must not weaken or remove the existing
+unique constraint. Supporting shared addresses requires a future owner
+decision.
 
 Person and login lifecycles remain separate but coordinated. Deactivating a
 person atomically disables any linked account and invalidates its sessions;

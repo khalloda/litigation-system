@@ -3215,17 +3215,29 @@ protected digest.
 Stable `people.id`, alias identity and the durable Access/source keys from D43
 remain the reconciliation anchors. A canonical rename changes the current
 label on the same person and adds the prior spelling as an alias; it never
-creates a replacement identity. Imported aliases are immutable and may not be
-retired, deleted, reassigned or rewritten. Application-created aliases carry
-separate provenance and may later be retired/restored with a reason and audit
-fact. A retired application alias remains historical evidence but is excluded
-from ordinary active search.
+creates a replacement identity. For every imported alias, the spelling, person
+ownership, source provenance, continued existence and history remain immutable:
+it may not be deleted, rewritten, retired or reassigned. Its current
+`is_primary` value may be demoted only within the same atomic D45 controlled
+rename; the immutable boundary snapshot preserves its original primary status.
+A current primary alias of either provenance cannot retire directly. The
+controlled rename must install the new active primary before completion and
+commit with exactly one active primary matching the current canonical name.
+Only a non-primary application-created alias may later be retired/restored with
+a reason and audit fact. A retired application alias remains historical
+evidence but is excluded from ordinary active search.
 
 The future forward migration must add database-enforced application-native and
-application-modification provenance, serialized canonical/alias collision
-checks, exactly one matching primary alias per roster person at transaction
-completion, stale-row versioning and any normalized email uniqueness retained
-by the product. It must also encode the D46 account consequence and D48 reviewer
+application-modification provenance and serialized canonical/alias collision
+checks. The permanent primary-alias invariant covers every person, including
+the 71 external people, although external people remain outside Task 4.0a
+editing and must not be mutated merely to enforce or test it. The migration
+must preserve the existing uniqueness of every non-null person email: trim
+surrounding whitespace and normalize case for accepted values, enforce the
+normalized non-null value at the database boundary, reject concurrent
+duplicates, and never weaken or remove the existing unique constraint. Shared
+addresses require a future owner decision. It must also add stale-row
+versioning and encode the D46 account consequence and D48 reviewer
 eligibility/reassignment rules without allowing runtime deletion. Permanent
 checks, rather than migration-only assertions, own every invariant that must
 remain true.

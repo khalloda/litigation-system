@@ -1695,12 +1695,25 @@ than assuming one rule for every workflow. Test with real volumes.
         without freezing the live roster. Add database-enforced provenance for
         application-native people, application modification provenance and a
         row version for stale-write rejection. Serialize canonical-name and
-        alias collision checks; at transaction completion every staff identity
-        must have exactly one primary alias matching its canonical Arabic name.
-        Preserve imported aliases as immutable evidence; allow only
+        alias collision checks. The permanent primary-alias invariant covers
+        every row in `people`, including all 71 external people: at transaction
+        completion each person must have exactly one active primary alias
+        matching the current canonical Arabic name. Do not mutate an external
+        person merely to enforce or test that invariant. Preserve every
+        imported alias's spelling, person ownership, source provenance,
+        continued existence and history as immutable evidence. Its current
+        `is_primary` designation may be demoted only inside the same atomic D45
+        controlled-rename transaction, while the immutable boundary snapshot
+        retains its original primary status. A current primary alias of either
+        provenance cannot be retired directly; the controlled rename must
+        install the new primary before completion. Allow only non-primary
         application-created aliases to retire or restore, with a reason and
-        audit event. Enforce normalized email uniqueness if email remains a
-        unique staff field. Implement the D46 person/account transaction:
+        audit event. Preserve the existing uniqueness of every non-null person
+        email: trim surrounding whitespace and normalize case on acceptance,
+        enforce uniqueness of the normalized non-null value at the database
+        boundary, reject concurrent duplicates, and never weaken or remove the
+        existing unique constraint. Shared addresses require a future owner
+        decision. Implement the D46 person/account transaction:
         person deactivation must disable a linked account, clear lockout state,
         increment `session_version`, invalidate sessions and append the required
         lifecycle audit facts atomically; person reactivation must never enable

@@ -212,10 +212,10 @@ The required contract is:
   - alias-to-alias normalized collisions across different people.
 
 - Permit multiple spelling variants that normalize identically only when they belong to the same person.
-- Enforce exactly one primary alias equal to the canonical name at transaction completion.
+- Enforce exactly one active primary alias equal to the current canonical name for every person, including all 71 external people, at transaction completion. External people remain outside Task 4.0a editing and must not be mutated merely to enforce or test this invariant.
 - Create the person and primary alias in one transaction.
-- Never reassign an imported alias from one person to another.
-- Preserve the old canonical spelling when a rename succeeds.
+- Preserve every imported alias's spelling, person ownership, source provenance, continued existence and history. Its current `is_primary` designation may be demoted only within the same atomic D45 controlled rename, while the immutable boundary snapshot retains its original primary status.
+- Never retire a current primary alias of either provenance directly. A controlled rename installs the new primary before completion and preserves the old canonical spelling as an active alias.
 - Never reintroduce the former global `J → ق` fold. The corrective migration explicitly proves `140J` does not match `140ق` at [remove_j_to_qaf_fold](../../prisma/migrations/20260823073815_remove_j_to_qaf_fold/migration.sql).
 - Do not auto-merge identities or append invented numeric suffixes. A collision requiring human identification must stop with a clear conflict response.
 
@@ -357,8 +357,8 @@ A new Task 4.0a migration is required before the write UI. It should:
 3. Add database-supported application mutation provenance—recommended fields are a DB-maintained row version and application-modified timestamp.
 4. Ensure runtime-created staff are always `is_application_native=true`; the present column default is false and is unsafe if a service forgets to set it.
 5. Add the identity collision lock/guards.
-6. Enforce the primary-alias invariant transactionally.
-7. Add case-normalized email uniqueness if email remains unique.
+6. Enforce the primary-alias invariant transactionally for every person, including the 71 external people, without mutating an external person merely to enforce or test it.
+7. Preserve the existing uniqueness of every non-null person email: trim surrounding whitespace and normalize case on acceptance, enforce the normalized non-null value at the database boundary, reject concurrent duplicates, and never weaken or remove the current unique constraint. Supporting shared addresses requires a future owner decision.
 8. Add reviewer eligibility/deactivation guards after question 5 is answered.
 9. Add alias lifecycle columns if question 4 approves retiring application-native aliases.
 10. Preserve the existing runtime no-delete and audit constraints.
@@ -577,6 +577,29 @@ contracts recorded in the canonical decision log:
 - [D50 — Local browser interaction testing](../DECISIONS.md#d50--local-browser-interaction-testing):
   local browser evidence is authorized and required, with mutations restricted
   to an isolated disposable database and no project data leaving the machine.
+
+The approved contract also records these compatibility clarifications:
+
+- D45 and D47 keep every imported alias's spelling, person ownership, source
+  provenance, continued existence and history immutable. Its current
+  `is_primary` designation may be demoted only within the same atomic controlled
+  rename; the immutable boundary snapshot preserves the original primary
+  status. A current primary alias of either provenance cannot be retired
+  directly. The rename installs the new primary before completion and commits
+  with exactly one active primary matching the current canonical name. That
+  invariant covers every person, including all 71 external people, but Task
+  4.0a does not mutate an external person merely to enforce or test it.
+- Stable internal `people.id` remains mandatory for identity, URLs,
+  authorization, mutations, relationships, auditing, concurrency control and
+  D43 reconciliation; a submitted name is never a mutation identity. D49 rejects
+  only a new owner-managed or business-facing staff-number system and invented
+  suffixes in displayed names. A genuine identical complete official Arabic
+  name still fails closed for a new owner decision.
+- Every current non-null person email remains unique. Accepted email is trimmed
+  of surrounding whitespace and normalized for case; uniqueness of the
+  normalized non-null value is enforced at the database boundary and concurrent
+  duplicates are rejected. Task 4.0a never weakens or removes the existing
+  unique constraint. Shared addresses require a future owner decision.
 
 The individual decision estimates overlap and are already incorporated into the
 audit's overall **7–11 development-day** estimate; they must not be added

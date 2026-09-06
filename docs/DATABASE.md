@@ -483,13 +483,25 @@ runtime gateways and permanent checks.
 - Reuse stable `people.id`, alias identity, source fingerprints and the D43
   durable Access/source keys. A rename changes a canonical label, not the
   person's identity.
-- Serialize the canonical-name/alias normalized collision domain. At transaction
-  completion each roster person has exactly one primary alias matching the
-  canonical Arabic name. Imported aliases are immutable; only
-  application-created aliases may retire/restore, with reason and audit.
+- Serialize the canonical-name/alias normalized collision domain. The
+  permanent invariant covers every person, including the 71 external people:
+  at transaction completion each person has exactly one active primary alias
+  matching the current canonical Arabic name. External people remain outside
+  Task 4.0a editing and must not be mutated merely to enforce or test this
+  invariant.
+- Keep every imported alias's spelling, person ownership, source provenance,
+  continued existence and history immutable. Its current `is_primary` value
+  may be demoted only in the same atomic D45 controlled rename, while the
+  immutable boundary snapshot preserves its original primary status. A current
+  primary alias of either provenance cannot retire directly; install the new
+  primary before the rename completes. Only a non-primary application-created
+  alias may retire/restore, with reason and audit.
 - Add row-version stale-write rejection and application modification
-  provenance. If non-null staff email remains unique, enforce the normalized
-  form in PostgreSQL rather than relying on a one-time check.
+  provenance. Preserve the existing uniqueness of every non-null person email:
+  trim surrounding whitespace and normalize case on acceptance, enforce the
+  normalized non-null value in PostgreSQL, reject concurrent duplicates, and
+  never weaken or remove the current unique constraint. Shared addresses need
+  a future owner decision.
 - Implement person deactivation and linked-account disablement as one
   transaction: lock the person/account and relevant Administrator set, clear
   lockout, increment `session_version`, invalidate sessions and append the

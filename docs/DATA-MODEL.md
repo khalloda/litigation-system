@@ -67,31 +67,47 @@ boundary must be snapshotted immutably when Task 4.0a begins; later native hires
 join the roster through database-enforced `is_application_native` provenance,
 not by altering the historical snapshot.
 
-The current `people.id` remains the stable identity. A canonical Arabic rename
-updates `name_ar` on that same row and preserves the old canonical value as an
-alias. At transaction completion, every roster person must have exactly one
-primary alias and that alias must match `name_ar`. Canonical names and aliases
-share one serialized, normalized collision domain so two concurrent requests
-cannot create ambiguous search results. New staff require a sufficiently
-complete official Arabic name and fail closed if a true identical full name is
-encountered pending a new owner decision. The approved Arabic normalization
-continues to fold hamza and diacritics but must not fold Latin `J` to Arabic
-`ق`.
+The current `people.id` remains the mandatory stable internal value for
+identity, URLs, authorization, mutations, relationships, auditing, concurrency
+control and D43 reconciliation. A submitted Arabic name is a label, never a
+mutation identity. A canonical Arabic rename updates `name_ar` on that
+same row and preserves the old canonical value as an alias. The permanent
+primary-alias invariant covers every person, including all 71 external people:
+at transaction completion each person must have exactly one active primary
+alias and that alias must match the current `name_ar`. External people remain
+outside Task 4.0a editing and must not be mutated merely to enforce or test the
+invariant. Canonical names and aliases share one serialized, normalized
+collision domain so two concurrent requests cannot create ambiguous search
+results. New staff require a sufficiently complete official Arabic name and
+fail closed if a true identical full name is encountered pending a new owner
+decision. The approved Arabic normalization continues to fold hamza and
+diacritics but must not fold Latin `J` to Arabic `ق`.
 
-Imported aliases remain immutable migration evidence: they cannot be retired,
-deleted, reassigned or have their spelling rewritten. Task 4.0a may add
-application-created alias provenance and lifecycle fields so those later
-aliases can be retired/restored with a required reason and audit event. Retired
-application aliases remain retained history and evidence but leave ordinary
-active search. Existing source IDs, source fingerprints and D43 durable Access
-identities remain unchanged.
+For every imported alias, its spelling, person ownership, source provenance,
+continued existence and historical evidence remain immutable migration
+evidence: it cannot be deleted, rewritten, retired or reassigned. Its current
+`is_primary` designation may be demoted only inside the same atomic D45
+controlled-rename transaction, while the immutable boundary snapshot retains
+the original primary status. A current primary alias of either provenance
+cannot be retired directly. The controlled rename must install the new
+canonical spelling as the new active primary before completion and commit only
+with exactly one active primary matching the current canonical name. Task 4.0a
+may add application-created alias provenance and lifecycle fields so a
+non-primary application-created alias can be retired/restored with a required
+reason and audit event. Retired application aliases remain retained history
+and evidence but leave ordinary active search. Existing source IDs, source
+fingerprints and D43 durable Access identities remain unchanged.
 
-The Phase 1 schema is expected to add a row version for stale-write rejection,
-application modification provenance and any normalized email key needed to
-enforce one non-null email per staff identity. Those names and representations
-are implementation choices, not current columns; this section records the
-invariants. No migration, column, constraint or runtime gateway for them exists
-yet.
+The Phase 1 schema is expected to add a row version for stale-write rejection
+and application modification provenance. It must also preserve the existing
+uniqueness of every non-null person email: accepted email is trimmed of
+surrounding whitespace and normalized for case, the normalized non-null value
+is unique at the database boundary, and concurrent duplicates are rejected.
+The existing unique constraint may not be weakened or removed. Supporting
+shared addresses requires a future owner decision. The exact names and
+representations are implementation choices, not current columns; this section
+records the invariants. No migration, column, constraint or runtime gateway for
+the new representations exists yet.
 
 Person and account lifecycle must be atomic where they meet. Deactivating a
 person with an account also disables the account, clears lockout state,

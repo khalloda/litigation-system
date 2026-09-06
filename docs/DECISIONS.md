@@ -1076,7 +1076,16 @@ An Administrator may correct the canonical Arabic name of an imported or
 application-native staff member only when the record remains the same human
 identity. The imported application-boundary value remains immutable evidence;
 the former canonical spelling becomes a retained alias; and the new canonical
-spelling becomes the person's single primary alias.
+spelling becomes the person's one current active primary alias. For every
+imported alias, its spelling, person ownership, source provenance, continued
+existence and history are immutable. Its current `is_primary` designation may
+be demoted only within the same atomic controlled-rename transaction, while the
+immutable boundary snapshot retains its original primary status.
+
+A current primary alias of either provenance cannot be retired directly. The
+controlled rename installs the new primary before completion, demotes the old
+primary if necessary, and commits only when the person has exactly one active
+primary alias matching the current canonical Arabic name.
 
 A rename must serialize and check canonical names and aliases across both
 tables. Any ambiguous identity or collision with another person fails closed
@@ -1140,16 +1149,25 @@ days. Infrastructure and licensing cost: **zero**.
 **Approved explicitly by Khaled Helmy on 6 September 2026 through the Task
 4.0a readiness-audit resolution.**
 
-Imported aliases are immutable. They may never be deleted, rewritten,
-retired, or reassigned. An Administrator may retire or restore only an
-application-created alias and must supply a reason. Retirement is reversible,
-fully audited, and removes the alias from ordinary active search without
-removing its row, history, or evidence. Restoration repeats every current
-identity-collision check.
+For every imported alias, its spelling, person ownership, source provenance,
+continued existence and history are immutable. It may never be deleted,
+rewritten, retired or reassigned. Its current `is_primary` designation may be
+demoted only within the same atomic D45 controlled rename, while the immutable
+boundary snapshot retains its original primary status. An Administrator may
+retire or restore only a non-primary application-created alias and must supply
+a reason. Retirement is reversible, fully audited, and removes the alias from
+ordinary active search without removing its row, history, or evidence.
+Restoration repeats every current identity-collision check.
 
 No alias, imported or application-created, may ever be physically deleted or
-moved to another person. A controlled canonical rename under D45 preserves the
-former canonical spelling as an active alias rather than retiring it.
+moved to another person. A current primary alias of either provenance cannot
+be retired directly. A controlled canonical rename under D45 first installs
+the new canonical spelling as the new active primary, preserves the former
+canonical spelling as an active alias rather than retiring it, and completes
+only with exactly one active primary alias matching the current canonical name.
+That permanent invariant covers every person, including all 71 external
+people. External people remain outside Task 4.0a editing and must not be mutated
+merely to enforce or test the invariant.
 
 **Rationale and practical example:** a newly entered misspelling can stop
 affecting search without being erased, while an imported alias explaining
@@ -1206,12 +1224,24 @@ licensing cost: **zero**.
 When shorter staff names normalize identically, the firm supplies a
 sufficiently complete official Arabic name that distinguishes the people. The
 application never appends invented numbers or other artificial text and Task
-4.0a does not introduce a staff-number system.
+4.0a does not introduce a new owner-managed or business-facing staff-number
+system. This rejects a new staff-number field and invented suffixes in the
+displayed name; it does not reject the existing internal identity. Stable
+`people.id` remains mandatory for identity, URLs, authorization, mutations,
+relationships, auditing, concurrency control and D43 reconciliation. A
+submitted Arabic name is never a mutation identity.
 
 If two genuine staff members have identical complete official Arabic names,
 the second identity must not be created under this contract. The operation
 fails closed and requires a new owner decision about a durable
 disambiguation model.
+
+Task 4.0a also preserves the existing uniqueness of every non-null person
+email. Accepted email is trimmed of surrounding whitespace and normalized for
+case; uniqueness of the normalized non-null value is enforced at the database
+boundary and concurrent duplicates are rejected. The existing unique
+constraint must never be weakened or removed. Supporting shared addresses
+requires a future owner decision.
 
 **Rationale and practical example:** two people commonly called `أحمد محمد`
 must be entered using their fuller official names. That preserves the present
