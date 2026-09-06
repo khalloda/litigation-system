@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { ClientBase } from 'pg';
+import {
+  staffBoundaryApplied,
+  STAFF_ROSTER_TABLES,
+  STAFF_RUNTIME_GATEWAYS,
+} from './staff-roster-checkpoint';
 
 export const AUDITED_TABLES = [
   'admin_tasks',
@@ -334,6 +339,12 @@ export async function runtimeRoleBoundaryFailures(
   roleName = RUNTIME_DATABASE_ROLE,
 ): Promise<string[]> {
   const failures: string[] = [];
+  const staffBoundary = await staffBoundaryApplied(db);
+  const rosterLocked = (table: string) => staffBoundary && STAFF_ROSTER_TABLES.includes(table);
+  const approvedDefiners: readonly string[] = [
+    ...APPROVED_RUNTIME_SECURITY_DEFINERS,
+    ...(staffBoundary ? STAFF_RUNTIME_GATEWAYS : []),
+  ];
   if (!/^[a-z][a-z0-9_]*$/u.test(roleName)) return ['runtime role name is invalid'];
 
   const role = await db.query<{
@@ -575,11 +586,12 @@ export async function runtimeRoleBoundaryFailures(
   for (const row of relations.rows) {
     const approved =
       row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never);
-    const insertApproved = approved && row.relation_name !== 'user_accounts';
+    const insertApproved =
+      approved && row.relation_name !== 'user_accounts' && !rosterLocked(row.relation_name);
     if (
       row.select_ok !== approved ||
       row.insert_ok !== insertApproved ||
-      row.update_ok !== approved ||
+      row.update_ok !== (approved && !rosterLocked(row.relation_name)) ||
       row.delete_ok ||
       row.truncate_ok ||
       row.references_ok ||
@@ -644,9 +656,11 @@ export async function runtimeRoleBoundaryFailures(
       .map((acl) => acl.privilege_type)
       .sort();
     const expected = approved
-      ? relation.relation_name === 'user_accounts'
-        ? ['SELECT', 'UPDATE']
-        : ['INSERT', 'SELECT', 'UPDATE']
+      ? rosterLocked(relation.relation_name)
+        ? ['SELECT']
+        : relation.relation_name === 'user_accounts'
+          ? ['SELECT', 'UPDATE']
+          : ['INSERT', 'SELECT', 'UPDATE']
       : [];
     if (!same(direct, expected)) {
       failures.push(
@@ -676,11 +690,12 @@ export async function runtimeRoleBoundaryFailures(
   for (const row of columnPrivileges.rows) {
     const approved =
       row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never);
-    const insertApproved = approved && row.relation_name !== 'user_accounts';
+    const insertApproved =
+      approved && row.relation_name !== 'user_accounts' && !rosterLocked(row.relation_name);
     if (
       row.select_ok !== approved ||
       row.insert_ok !== insertApproved ||
-      row.update_ok !== approved ||
+      row.update_ok !== (approved && !rosterLocked(row.relation_name)) ||
       row.references_ok
     ) {
       failures.push(`${row.schema_name}.${row.relation_name}: effective column grants differ`);
@@ -722,7 +737,9 @@ export async function runtimeRoleBoundaryFailures(
   );
   const approvedSequenceOids = new Set(
     approvedSequences.rows.flatMap((row) =>
-      row.oid === null || row.table_name === 'user_accounts' ? [] : [row.oid],
+      row.oid === null || row.table_name === 'user_accounts' || rosterLocked(row.table_name)
+        ? []
+        : [row.oid],
     ),
   );
   const sequences = await db.query<{
@@ -816,7 +833,7 @@ export async function runtimeRoleBoundaryFailures(
   if (
     !same(
       executableDefiners.rows.map((row) => row.signature),
-      [...APPROVED_RUNTIME_SECURITY_DEFINERS].sort(),
+      [...approvedDefiners].sort(),
     )
   ) {
     failures.push('runtime executable SECURITY DEFINER inventory differs');
@@ -850,7 +867,7 @@ export async function runtimeRoleBoundaryFailures(
     }
     if (
       acl.grantee_name === roleName &&
-      (!APPROVED_RUNTIME_SECURITY_DEFINERS.includes(acl.signature as never) ||
+      (!approvedDefiners.includes(acl.signature) ||
         acl.privilege_type !== 'EXECUTE' ||
         acl.grantor_name !== acl.owner_name ||
         acl.is_grantable)
@@ -858,7 +875,7 @@ export async function runtimeRoleBoundaryFailures(
       failures.push(`${acl.signature}: runtime SECURITY DEFINER ACL provenance differs`);
     }
   }
-  for (const signature of APPROVED_RUNTIME_SECURITY_DEFINERS) {
+  for (const signature of approvedDefiners) {
     if (
       definerAcls.rows.filter(
         (acl) =>

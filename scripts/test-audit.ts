@@ -1,4 +1,12 @@
 import 'dotenv/config';
+import { assertDisposableFixtureSource } from './lib/isolated-postgres-fixture';
+import { prepareHistoricalAuditFixture } from './lib/legacy-audit-fixture-checkpoint';
+import { migrateFixtureThroughCheckpoint } from './lib/fixture-migration-checkpoint';
+import {
+  STAFF_MIGRATION,
+  STAFF_RUNTIME_GATEWAYS,
+  staffBoundaryApplied,
+} from './lib/staff-roster-checkpoint';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -21,6 +29,7 @@ import {
 } from './lib/migration-principal';
 import {
   readGate4RepositoryMigrationInventory,
+  gate4MigrationIdentityDigest,
   reconcileGate4Migrations,
   type Gate4MigrationHistoryRow,
 } from './lib/gate4-migrations';
@@ -100,7 +109,7 @@ async function setFixtureEventContext(db: Client): Promise<void> {
   ]);
 }
 
-async function gate4MigrationEvidence(db: Client) {
+async function gate4MigrationEvidence(db: Client, checkpoint: 60 | 61 = 61) {
   const migrationRows = await db.query<{
     migration_name: string;
     checksum: string;
@@ -119,7 +128,18 @@ async function gate4MigrationEvidence(db: Client) {
     rolledBackAt: row.rolled_back_at,
     appliedStepsCount: row.applied_steps_count,
   }));
-  return reconcileGate4Migrations(migrationHistory, await readGate4RepositoryMigrationInventory());
+  const repository = await readGate4RepositoryMigrationInventory();
+  if (checkpoint === 60) {
+    assert.equal(repository.migrations.length, 61);
+    assert.equal(repository.migrations.at(-1)?.name, STAFF_MIGRATION);
+    const migrations = repository.migrations.slice(0, 60);
+    return reconcileGate4Migrations(migrationHistory, {
+      ...repository,
+      migrations,
+      digest: gate4MigrationIdentityDigest(migrations),
+    });
+  }
+  return reconcileGate4Migrations(migrationHistory, repository);
 }
 
 async function protectedGuardState(db: Client): Promise<unknown[]> {
@@ -291,11 +311,12 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
       ).rows[0]?.count,
       '0',
     );
-    await admin.query(`CREATE DATABASE ${identifier(fixtureName)} TEMPLATE litigation`);
+    await admin.query(`CREATE DATABASE ${identifier(fixtureName)} TEMPLATE template0`);
     created = true;
     const fixture = new Client({ connectionString: fixtureUrl.toString() });
     await fixture.connect();
     try {
+      await prepareHistoricalAuditFixture(fixture, fixtureUrl);
       const protectedBefore = await protectedAuditExcludedDigest(fixture);
       assert.equal(protectedBefore, TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST);
       guardsBefore = await protectedGuardState(fixture);
@@ -321,7 +342,7 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
       await fixture.end();
     }
 
-    await migrate(fixtureUrl.toString());
+    await migrateFixtureThroughCheckpoint(fixtureUrl.toString(), 60);
     const upgraded = new Client({ connectionString: fixtureUrl.toString() });
     await upgraded.connect();
     try {
@@ -333,7 +354,7 @@ async function proveHistoricalUpgrade(admin: Client, source: URL): Promise<void>
       assert.deepEqual(await auditStructureFailures(upgraded), []);
       assert.deepEqual(await runtimeRoleBoundaryFailures(upgraded), []);
       assert.deepEqual(await auditDataFailures(upgraded), []);
-      const evidence = await gate4MigrationEvidence(upgraded);
+      const evidence = await gate4MigrationEvidence(upgraded, 60);
       assert.deepEqual(evidence.defects, []);
       assert.equal(evidence.acceptedDatabaseProfile, 'historical-live');
       assert.deepEqual(
@@ -368,13 +389,14 @@ async function grantProbeRuntimeBoundary(
   fixtureName: string,
   roleName: string,
 ): Promise<void> {
+  const staff = await staffBoundaryApplied(owner);
   await owner.query(
     `GRANT CONNECT ON DATABASE ${identifier(fixtureName)} TO ${identifier(roleName)}`,
   );
   await owner.query(`GRANT USAGE ON SCHEMA public TO ${identifier(roleName)}`);
   for (const table of AUDITED_TABLES) {
     await owner.query(
-      `GRANT SELECT,UPDATE${table === 'user_accounts' ? '' : ',INSERT'} ON TABLE public.${identifier(table)} TO ${identifier(roleName)}`,
+      `GRANT ${staff && ['people', 'person_name_alias', 'lookup_team'].includes(table) ? 'SELECT' : `SELECT,UPDATE${table === 'user_accounts' ? '' : ',INSERT'}`} ON TABLE public.${identifier(table)} TO ${identifier(roleName)}`,
     );
   }
   const sequences = await owner.query<{ schema_name: string; sequence_name: string }>(
@@ -389,6 +411,13 @@ async function grantProbeRuntimeBoundary(
   );
   for (const sequence of sequences.rows) {
     if (sequence.sequence_name === 'user_accounts_id_seq') continue;
+    if (
+      staff &&
+      ['people_id_seq', 'person_name_alias_id_seq', 'lookup_team_id_seq'].includes(
+        sequence.sequence_name,
+      )
+    )
+      continue;
     await owner.query(
       `GRANT USAGE,SELECT ON SEQUENCE ${identifier(sequence.schema_name)}.${identifier(sequence.sequence_name)} TO ${identifier(roleName)}`,
     );
@@ -411,6 +440,9 @@ async function grantProbeRuntimeBoundary(
   await owner.query(
     `GRANT EXECUTE ON FUNCTION public.create_user_account_with_actor(integer,text,text,text) TO ${identifier(roleName)}`,
   );
+  if (staff)
+    for (const signature of STAFF_RUNTIME_GATEWAYS)
+      await owner.query(`GRANT EXECUTE ON FUNCTION ${signature} TO ${identifier(roleName)}`);
 }
 
 async function proveRoleBoundaryAdversarial(
@@ -453,6 +485,10 @@ async function proveRoleBoundaryAdversarial(
       `GRANT INSERT ON public.user_accounts TO ${identifier(probeRole)};
        GRANT USAGE,SELECT ON SEQUENCE public.user_accounts_id_seq TO ${identifier(probeRole)}`,
     );
+    const staffBoundary = await staffBoundaryApplied(owner);
+    if (staffBoundary)
+      await owner.query(`GRANT INSERT,UPDATE ON people,person_name_alias,lookup_team TO ${identifier(probeRole)};
+      GRANT USAGE,SELECT ON SEQUENCE people_id_seq,person_name_alias_id_seq,lookup_team_id_seq TO ${identifier(probeRole)}`);
 
     // Execute the exact forward migration with only its reviewed runtime-role
     // identifier substituted for this disposable probe. An unexpected PUBLIC
@@ -474,7 +510,13 @@ async function proveRoleBoundaryAdversarial(
         "'public.audit_set_human_context(integer)'::regprocedure,\n" +
           "        'public.audit_set_event_context(uuid,uuid,uuid,inet,text,text)'::regprocedure,\n" +
           "        'public.audit_append_semantic_event_for_account(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb)'::regprocedure,\n" +
-          "        'public.create_user_account_with_actor(integer,text,text,text)'::regprocedure",
+          "        'public.create_user_account_with_actor(integer,text,text,text)'::regprocedure" +
+          (staffBoundary
+            ? STAFF_RUNTIME_GATEWAYS.map(
+                (signature) =>
+                  ",\n        '" + signature.replace(/\bp_[a-z_]+ /gu, '') + "'::regprocedure",
+              ).join('')
+            : ''),
       );
 
     const activeRuntimeUrl = new URL(fixtureOwnerUrl);
@@ -506,6 +548,9 @@ async function proveRoleBoundaryAdversarial(
          GRANT EXECUTE ON FUNCTION public.create_user_account_with_actor(integer,text,text,text)
            TO ${identifier(probeRole)}`,
       );
+      if (staffBoundary)
+        await owner.query(`REVOKE INSERT,UPDATE ON people,person_name_alias,lookup_team FROM ${identifier(probeRole)};
+        REVOKE ALL ON SEQUENCE people_id_seq,person_name_alias_id_seq,lookup_team_id_seq FROM ${identifier(probeRole)}`);
       await assert.rejects(
         activeRuntime.query('SELECT 1'),
         /terminating connection|Connection terminated|connection is closed|connection error|not queryable/u,
@@ -1115,7 +1160,7 @@ async function main(): Promise<void> {
   assert.ok(sourceUrl, 'MIGRATION_DATABASE_URL is required');
   const source = new URL(sourceUrl);
   assert.ok(['localhost', '127.0.0.1'].includes(source.hostname));
-  assert.equal(source.port, '5433');
+  await assertDisposableFixtureSource(source);
   const fixtureName = `litigation_task33a_fixture_${process.pid}_${Date.now()}`;
   const fixtureOwnerUrl = new URL(source);
   fixtureOwnerUrl.pathname = `/${fixtureName}`;
@@ -1208,6 +1253,7 @@ async function main(): Promise<void> {
           TASK33B_CORRECTION_MIGRATION,
           TASK34_MIGRATION,
           TASK35B_MIGRATION,
+          STAFF_MIGRATION,
         ],
       );
       assert.deepEqual(await auditStructureFailures(owner), []);

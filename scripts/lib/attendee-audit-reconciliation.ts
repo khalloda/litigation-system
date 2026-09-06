@@ -1,4 +1,4 @@
-import type { Client } from 'pg';
+import type { ClientBase } from 'pg';
 import { readAttendeeSourceSnapshot } from './attendee-audit-plan';
 import {
   ATTENDEE_AUDIT_BASELINE,
@@ -30,7 +30,7 @@ export const APPROVED_ATTENDEE_AUDIT_RECONCILIATION_BASELINE = Object.freeze({
   audit: ATTENDEE_AUDIT_BASELINE,
 });
 
-async function count(db: Client, sql: string): Promise<number> {
+async function count(db: ClientBase, sql: string): Promise<number> {
   const result = await db.query<{ count: string }>(sql);
   return Number(result.rows[0]?.count ?? Number.NaN);
 }
@@ -63,7 +63,7 @@ const SOURCE_CELLS = `
    WHERE v.original_cell IS NOT NULL AND v.original_cell <> ''`;
 
 export async function reconcileAttendeeAudit(
-  db: Client,
+  db: ClientBase,
   baseline: AttendeeAuditReconciliationBaseline | null = APPROVED_ATTENDEE_AUDIT_RECONCILIATION_BASELINE,
 ): Promise<AttendeeAuditReconciliation> {
   const defects: string[] = [];
@@ -366,7 +366,7 @@ export async function reconcileAttendeeAudit(
   });
 }
 
-export async function attendeeAuditResultDigest(db: Client): Promise<string> {
+export async function attendeeAuditResultDigest(db: ClientBase): Promise<string> {
   const result = await db.query<{ digest: string }>(`
     SELECT encode(sha256(convert_to(string_agg(payload, E'\\n' ORDER BY kind, identity), 'UTF8')), 'hex') digest
       FROM (

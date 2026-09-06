@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { setFixtureStaffActive } from './lib/staff-roster-test-adapter';
+import { assertDisposableFixtureSource } from './lib/isolated-postgres-fixture';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -101,7 +103,7 @@ async function main(): Promise<void> {
   assert.ok(sourceUrl, 'MIGRATION_DATABASE_URL is required');
   const parsed = new URL(sourceUrl);
   assert.ok(['localhost', '127.0.0.1'].includes(parsed.hostname));
-  assert.equal(parsed.port, '5433');
+  await assertDisposableFixtureSource(parsed);
   const fixtureName = `litigation_auth_fixture_${process.pid}_${Date.now()}`;
   const fixtureUrl = new URL(parsed);
   fixtureUrl.pathname = `/${fixtureName}`;
@@ -766,11 +768,13 @@ async function main(): Promise<void> {
             updatedAt: reactivatedAt,
           },
         });
-        await transaction.person.update({
-          where: { id: beforeDisable.personId },
-          data: { isActive: false, updatedAt: clock },
-        });
       });
+      await setFixtureStaffActive(
+        database,
+        secondaryAdministrator.id,
+        beforeDisable.personId,
+        false,
+      );
       assert.equal(
         await authenticateCredentials(
           { username: 'KHelmy', password: replacementPassword },
@@ -778,17 +782,23 @@ async function main(): Promise<void> {
         ),
         null,
       );
-      await withMaintenanceContext(migrationDatabase, (transaction) =>
-        transaction.person.update({
-          where: { id: beforeDisable.personId },
-          data: { isActive: true, updatedAt: clock },
-        }),
+      await setFixtureStaffActive(
+        database,
+        secondaryAdministrator.id,
+        beforeDisable.personId,
+        true,
       );
       assert.equal(
         (await database.person.findUniqueOrThrow({ where: { id: beforeDisable.personId } }))
           .canLogin,
-        true,
+        false,
       );
+      assert.equal(
+        (await database.userAccount.findUniqueOrThrow({ where: { id: beforeDisable.id } }))
+          .isEnabled,
+        false,
+      );
+      assert.equal(await validateSessionClaims(replacementClaims, { database, now: clock }), null);
 
       const nonInteractive = spawnSync(
         process.execPath,

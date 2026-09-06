@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { setFixtureStaffActive } from './lib/staff-roster-test-adapter';
+import { assertDisposableFixtureSource } from './lib/isolated-postgres-fixture';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -262,7 +264,7 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
   assert.ok(sourceUrl, 'MIGRATION_DATABASE_URL is required');
   const parsed = new URL(sourceUrl);
   assert.ok(['localhost', '127.0.0.1'].includes(parsed.hostname));
-  assert.equal(parsed.port, '5433');
+  await assertDisposableFixtureSource(parsed);
   const fixtureName = `litigation_permissions_fixture_${process.pid}_${Date.now()}`;
   const fixtureUrl = new URL(parsed);
   fixtureUrl.pathname = `/${fixtureName}`;
@@ -417,11 +419,8 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
             updatedAt: reactivatedAt,
           },
         });
-        await transaction.person.update({
-          where: { id: account.personId },
-          data: { isActive: false, updatedAt: new Date() },
-        });
       });
+      await setFixtureStaffActive(database, secondaryAdministrator.id, account.personId, false);
       const inactiveState = await database.userAccount.findUniqueOrThrow({
         where: { id: account.id },
         select: { sessionVersion: true },

@@ -1287,3 +1287,19 @@ user-facing behavior unproved.
 **Development, testing and cost:** approximately **0.5–1 overlapping day**,
 already included in the overall 7–11 days. Infrastructure and licensing cost:
 **zero**; the existing local browser-test stack is used.
+
+### Task 4.0a Phase 1 implementation checkpoint — no new decision
+
+On 6 September 2026 the owner-authorized database foundation implementing
+D44–D49 was completed locally as migration 61. It was tested only in a separate
+disposable PostgreSQL 17.11 cluster; the project database remains unchanged at
+migration 60. The owner additionally approved independently mandatory
+`historical-full-state-upgrade` and `canonical-clean-replay` verification
+profiles: 93 original checks before / 107 after historical upgrade and 89 after
+canonical replay, with a fail-closed inventory naming every historical-only
+artifact. This classifies verification, not business policy or a relaxation of
+frozen evidence. No decision ID is added. The
+[Phase 1 report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
+and [inventory](testing/task-4-0a-phase1-invariants.md) record proof and limits.
+Service/UI evidence remains Phase 2/3, browser accessibility remains Phase 4,
+and Access remains in use. Task 4.0a itself is not complete.

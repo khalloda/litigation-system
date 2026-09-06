@@ -1685,9 +1685,10 @@ than assuming one rule for every workflow. Test with real volumes.
       roster data. Account controls remain exclusively under `/users`; the
       staff detail may show an Administrator-only account-existence/status link
       but must not create, enable, disable, reset or otherwise manage accounts.
-      No phase below has started.
+      Only Phase 1 is complete locally. Migration 61 remains unapplied to the
+      current project database; Phases 2–4 and Task 4.1 have not started.
 
-  - [ ] **Phase 1 — database boundary and operational invariants.** Preserve an
+  - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
         roster boundary, while allowing later application-created staff to be
         classified truthfully. Reuse the stable person, alias, source and
@@ -1722,6 +1723,17 @@ than assuming one rule for every workflow. Test with real volumes.
         guard. Enforce D48 reviewer eligibility and require reassignment before
         reviewer deactivation. Prohibit physical deletion, keep full audit and
         source evidence, and prove both historical upgrade and clean replay.
+
+        **Completed locally, 6 September 2026:** migration 61
+        `20260906180000_staff_roster_database_boundary`; historical 93 before /
+        107 after, canonical 89 after, 22 mutation groups per profile, rollback
+        on both profiles, hybrid rejection, authentication/448-permission/account
+        and audit/principal regressions. Project database, schema, roles,
+        protected data and 54 logo files are unchanged at migration 60; migration
+        61 is intentionally pending. No deployment, staff route/UI, Access
+        cutover or later-phase work. See the
+        [Phase 1 report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
+        and [107-entry invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
 
   - [ ] **Phase 2 — read-only roster and detail.** Implement `/staff` and the
         read-only state of `/staff/[id]` with server-enforced authorization,
@@ -1759,8 +1771,7 @@ than assuming one rule for every workflow. Test with real volumes.
         volume and browser evidence, then update the canonical docs and task
         report without marking earlier phases complete retrospectively.
 
-      **Return point:** Task 4.0a Phase 1 — database boundary and operational
-      invariants, approved but not started.
+      **Return point:** Task 4.0a Phase 2—read-only roster, not started.
 
 - [ ] **4.1 Clients** — list, detail, contacts, logo
 

@@ -469,12 +469,15 @@ unchanged. The live invariant count is 92.
 The 92 count above is the Task 3.4 checkpoint. Task 3.5B adds the current
 93rd permanent invariant described below.
 
-## Task 4.0a Phase 1 approved database contract — not implemented
+## Task 4.0a Phase 1 database boundary — implemented locally, not deployed
 
-Task 4.0a must begin at the database boundary before any staff screen is made
-mutable. Nothing in this section is present in migration 60 or the current
-93-invariant set; it is the approved contract for a later forward migration,
-runtime gateways and permanent checks.
+The database foundation below is implemented by migration 61,
+`20260906180000_staff_roster_database_boundary`, SHA-256
+`588f23fdecaa497599773eacec8c302fbbca426dc0c888151fef5f2e64f89959`.
+It was deployed **only** to the separate disposable PostgreSQL 17.11 instance.
+The project container/database remains unchanged at migration 60, with 93
+passing permanent checks; migration 61 is the sole intentionally pending
+repository migration. No staff route, service action or UI has been built.
 
 - Snapshot the exact imported roster boundary immutably: 64 protected Stage 2
   staff, separate from 71 external people. Preserve the two existing
@@ -516,11 +519,45 @@ runtime gateways and permanent checks.
   use a narrow server-authorized gateway, validated human actor context,
   append-only row and semantic events, and fail-closed outcome shapes.
 
-The implementation proof must cover historical upgrade and clean replay,
+The completed database proof covers historical upgrade and clean replay,
 concurrent duplicate name/alias attempts, stale forms, account/person atomicity,
 last-Administrator races, reviewer deactivation, permissions, rollback and
 full-value audit continuity. D44–D49 define the product/data choices; D50 adds
 local browser evidence after the database and server boundary exists.
+
+### Explicit acceptance profiles and permanent inventory
+
+`historical-full-state-upgrade` requires the complete original extraction,
+744 review answers, Task 3.5B release and protected history. The exact 97-table
+clone passed all 93 original checks before 61, then all 93 preserved/relocated
+checks plus 14 new checks: **107**. `canonical-clean-replay` requires exact
+Git-owned state and explicit absence of non-Git historical payload; it passed
+75 universal original checks plus 14 new checks: **89**. Neither substitutes
+for the other. All 18 historical-only classifications identify a concrete
+missing non-Git artifact; no security or schema check is demoted.
+
+The [complete 107-entry inventory and commands](testing/task-4-0a-phase1-invariants.md)
+are fail closed. Both profiles passed 22 mutation groups, including all four
+canonical/alias collision directions at three isolation levels, Cairo-session
+continuity, reviewer/Administrator/account races, and late audit rollback.
+Migration atomicity passed on both; a canonical/historical hybrid was refused.
+Existing authentication, 448-permission, account, audit and principal suites
+passed. The original 583 audit-field classifications and frozen digests remain
+exact; only seven explicitly named classifications are added.
+
+Runtime has SELECT only on `people`, `person_name_alias` and `lookup_team`, no
+direct sequence access for them, and EXECUTE on exactly six public `staff_*`
+gateways. Private snapshots, mutex, change ledger and helper functions are
+inaccessible to runtime/PUBLIC. The existing account-derived login trigger keeps
+its exact body but executes as its definer after direct roster UPDATE is revoked.
+
+Cluster-mutating regression scripts must run through the isolated harness;
+direct invocation against project port 5433 is rejected. The temporary exact
+migration-56/60 fixture mirror uses the ordinary D35 runner, verifies every
+copied SQL/config byte and the isolated target, and is deleted after use.
+Source copying is read-only and memory-only. No project roles, sessions,
+networks, volumes or container configuration are changed. See the
+[Phase 1 acceptance report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md).
 
 ## Task 3.5B accepted database state
 

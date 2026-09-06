@@ -100,7 +100,7 @@ function addCountDefect(defects: string[], label: string, value: Count, expected
   if (actual !== expected) defects.push(`${label}: ${actual}/${expected}`);
 }
 
-async function storedRuleSourceFailures(db: ClientBase): Promise<string[]> {
+export async function storedRuleSourceFailures(db: ClientBase): Promise<string[]> {
   const rulesResult = await db.query<StoredRuleRow>(`
       SELECT r.id, r.raw_value, r.occurrences, r.reviewer_note,
              member.person_name, member.ordinal

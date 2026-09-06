@@ -1,5 +1,6 @@
 import type { ClientBase } from 'pg';
 import { AUDITED_TABLES, RUNTIME_DATABASE_ROLE } from './audit-structure';
+import { staffBoundaryApplied, STAFF_FIELD_RULES } from './staff-roster-checkpoint';
 
 export const TASK33B_MIGRATION = '20260902180000_append_only_audit_events';
 export const TASK33B_CORRECTION_MIGRATION = '20260903100000_close_task33b_review_gaps';
@@ -141,6 +142,38 @@ export async function auditEventStructureFailures(
   runtimeRole = RUNTIME_DATABASE_ROLE,
 ): Promise<string[]> {
   const failures: string[] = [];
+  const staffBoundary = await staffBoundaryApplied(db);
+  // Exact new identities only: classifying an old field with a new-looking
+  // reason must never remove it from the frozen historical digest.
+  const newFieldPredicate = staffBoundary
+    ? `(entity_schema='public' AND (entity_table,field_name) IN (${STAFF_FIELD_RULES.map(([table, field]) => `('${table}','${field}')`).join(',')}))`
+    : 'false';
+  if (staffBoundary) {
+    const rules = (
+      await db.query<{
+        entity_table: string;
+        field_name: string;
+        max_text_characters: number;
+        capture_mode: string;
+        classification_reason: string;
+      }>(
+        `SELECT entity_table,field_name,max_text_characters,capture_mode,classification_reason FROM audit_event_fields WHERE ${newFieldPredicate} ORDER BY entity_table,field_name`,
+      )
+    ).rows;
+    const expected = STAFF_FIELD_RULES.map(
+      ([entity_table, field_name, max_text_characters, classification_reason]) => ({
+        entity_table,
+        field_name,
+        max_text_characters,
+        capture_mode: 'value',
+        classification_reason,
+      }),
+    ).sort((a, b) =>
+      `${a.entity_table}.${a.field_name}`.localeCompare(`${b.entity_table}.${b.field_name}`),
+    );
+    if (JSON.stringify(rules) !== JSON.stringify(expected))
+      failures.push('Phase 1 audit classification identities or rules differ');
+  }
 
   const tables = await db.query<{ table_name: string }>(`
     SELECT table_name FROM information_schema.tables
@@ -310,7 +343,8 @@ export async function auditEventStructureFailures(
        OR (f.capture_mode IN ('entity_key','structural','excluded')
            AND f.max_text_characters<>0)
        OR (f.capture_mode IN ('value','redacted')
-           AND f.classification_reason<>'frozen_task_3_3b_baseline_rule')`);
+           AND f.classification_reason<>'frozen_task_3_3b_baseline_rule'
+           AND NOT (${newFieldPredicate.replaceAll('entity_schema', 'f.entity_schema').replaceAll('entity_table', 'f.entity_table').replaceAll('field_name', 'f.field_name')}))`);
   if (unsafeFields.rows[0]?.count !== '0') failures.push('audit field classification is unsafe');
   const coverage = await db.query<{ unclassified: string; stale: string }>(`
     SELECT
@@ -353,7 +387,7 @@ export async function auditEventStructureFailures(
         max_text_characters::text||E'\\x1f'||capture_mode||E'\\x1f'||classification_reason,
         E'\\n' ORDER BY entity_schema,entity_table,field_name),'UTF8')),'hex')
         classification_digest
-      FROM audit_event_fields`);
+      FROM audit_event_fields WHERE NOT (${newFieldPredicate})`);
   const fieldEvidence = fieldShape.rows[0];
   if (
     fieldEvidence?.field_count !== '583' ||

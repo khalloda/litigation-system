@@ -10,15 +10,18 @@
 
 import { migrationDbReady } from './migration-db';
 import type { AliasLink, CrosswalkLink } from './reviewed-links';
+import type { RosterBaseline } from './staff-roster-baseline';
 
-export async function readLinksFromDatabase(): Promise<{
+export async function readLinksFromDatabase(roster?: RosterBaseline): Promise<{
   aliases: AliasLink[];
   crosswalk: CrosswalkLink[];
 }> {
   const db = await migrationDbReady;
-  const aliasRows = await db.personNameAlias.findMany({
-    select: { aliasAr: true, person: { select: { nameAr: true } } },
-  });
+  const aliasRows =
+    roster?.aliases ??
+    (await db.personNameAlias.findMany({
+      select: { aliasAr: true, person: { select: { nameAr: true } } },
+    }));
   const crosswalkRows = await db.migrationCrosswalk.findMany({
     select: {
       sourceField: true,

@@ -103,7 +103,7 @@ refused. The database also prevents any account or later person mutation from
 leaving zero usable Administrators. Disable/reactivate replaces deletion, and
 staff roster editing remains future Task 4.0a work.
 
-## Staff roster — approved Task 4.0a contract, not implemented
+## Staff roster — database foundation implemented; routes not started
 
 `/staff` and `/staff/[id]` require `staffRoster / view`; the existing 448-entry
 matrix grants that permission to Administrator, Litigation Assistant, Lawyer
@@ -127,8 +127,16 @@ alias. Deactivation of a linked account is an atomic safety consequence of
 person deactivation, not an additional staff-screen account permission;
 person reactivation never grants access. Self-deactivation and any operation
 that would remove the last usable Administrator are refused. The detailed
-identity, alias, team and reviewer contract is D44–D50 and remains unimplemented
-until the unchecked Task 4.0a phases are completed.
+identity, alias, team and reviewer contract is D44–D50. Migration 61 implements
+its database boundary, verified only in a separate disposable instance and not
+deployed to the current project database. Runtime direct INSERT/UPDATE/DELETE/
+TRUNCATE on the three roster tables and their sequence access are revoked;
+six narrow public gateways require a current usable human Administrator, audit
+context and (for existing records) the expected row version. Private evidence
+and helper access remain denied. No new staff route or permission entry point
+exists yet: Phase 2/3 must supply independent server authorization and negative
+route/action tests. The existing 448 decisions and `/users` boundary passed
+regression unchanged. See the [Phase 1 report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md).
 
 ## Audit access — approved UI/capability, not implemented
 

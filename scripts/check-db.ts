@@ -10,6 +10,17 @@
  */
 
 import 'dotenv/config';
+import {
+  assertStaffCheckpoint,
+  historicalStaffClient,
+  type StaffProfile,
+} from './lib/staff-roster-checkpoint';
+import { assertStaffBoundary } from './lib/staff-roster-structure';
+import { readRosterBaseline } from './lib/staff-roster-baseline';
+import {
+  permanentInvariant,
+  requiredPermanentInvariants,
+} from './lib/permanent-invariant-inventory';
 import { verifyHighImpactApplication } from './lib/high-impact-application';
 import { D39_BRANCHES } from './lib/high-impact-application-contract';
 import {
@@ -32,7 +43,10 @@ import {
 } from './lib/matter-reconciliation';
 import { readLinksFromDatabase } from './lib/read-links';
 import { additions, compare, readBaseline } from './lib/reviewed-links';
-import { reconcileMatterRelationships } from './lib/matter-relationship-reconciliation';
+import {
+  reconcileMatterRelationships,
+  storedRuleSourceFailures,
+} from './lib/matter-relationship-reconciliation';
 import { correctedMultiPersonRules } from './lib/matter-relationship-rules';
 import { matterRelationshipStructureFailures } from './lib/matter-relationship-structure';
 import {
@@ -76,12 +90,14 @@ import {
   auditEventStructureFailures,
 } from './lib/audit-event-structure';
 
-type Check = { name: string; expected: string; actual: string; ok: boolean };
+type Check = { id: string; name: string; expected: string; actual: string; ok: boolean };
 
 const checks: Check[] = [];
 
 function record(name: string, expected: string, actual: string, ok: boolean) {
-  checks.push({ name, expected, actual, ok });
+  const { id } = permanentInvariant(name);
+  assert.ok(!checks.some((check) => check.id === id), 'Duplicate permanent check: ' + id);
+  checks.push({ id, name, expected, actual, ok });
 }
 
 /*
@@ -105,6 +121,33 @@ function sqlLiteral(value: string): string {
 }
 
 async function main() {
+  const profile: StaffProfile =
+    process.argv[2] === '--profile=canonical-clean-replay'
+      ? 'canonical-clean-replay'
+      : 'historical-full-state-upgrade';
+  assert.ok(
+    process.argv.length === 2 ||
+      (process.argv.length === 3 &&
+        ['--profile=canonical-clean-replay', '--profile=historical-full-state-upgrade'].includes(
+          process.argv[2]!,
+        )),
+    'use an explicit accepted database profile',
+  );
+  const historical = profile === 'historical-full-state-upgrade';
+  const { staffBoundary, rosterBaseline, staffChecks } = await withApprovedMigrationClient(
+    async (current) => {
+      const checkpoint = await assertStaffCheckpoint(current, profile);
+      const staffChecks = checkpoint === 61 ? await assertStaffBoundary(current, profile) : [];
+      return {
+        staffBoundary: checkpoint === 61,
+        rosterBaseline: await readRosterBaseline(current, checkpoint === 61),
+        staffChecks,
+      };
+    },
+  );
+  console.log(
+    `Verification profile: ${profile}; migration ${staffBoundary ? 61 : 60}${staffBoundary ? '' : ' (migration 61 intentionally pending)'}`,
+  );
   const db = await migrationDbReady;
   const highImpactState = await withApprovedMigrationClient(async (current) => {
     const verified = await verifyHighImpactApplication(current);
@@ -115,6 +158,19 @@ async function main() {
         'verified separately from frozen Stage 2 checkpoint counts',
         true,
       );
+    else {
+      assert.equal(
+        historical,
+        false,
+        'Historical full-state profile is missing its approved release',
+      );
+      record(
+        'Task 3.5B current release and protected historical partition',
+        'Canonical: exact dormant release schema and explicit absence of all non-Git release payload',
+        'release structure verified; all three release ledgers empty',
+        true,
+      );
+    }
     return verified.state;
   });
   const appliedBranches = highImpactState === null ? [] : D39_BRANCHES.map((row) => row.label);
@@ -531,7 +587,7 @@ async function main() {
   //     The baseline records every pair the firm reviewed. Adding links is
   //     allowed; changing one is not. See scripts/lib/reviewed-links.ts.
   const baseline = readBaseline();
-  const links = await readLinksFromDatabase();
+  const links = await readLinksFromDatabase(rosterBaseline);
   const drift = compare(baseline, links);
   const added = additions(baseline, links);
   record(
@@ -557,40 +613,27 @@ async function main() {
   //    once already: merging two duplicate people changed five numbers at
   //    once, one was corrected and four were left stale, and the assertion
   //    written at the time would have failed on correct data.
-  const protectedRosterNames = [...new Set(baseline.aliases.map((link) => link.person))];
-  const protectedRoster = { nameAr: { in: protectedRosterNames } };
+  const protectedPeople = rosterBaseline.people.filter((person) => !person.isApplicationNative);
   const roster: Array<[string, number, number]> = [
-    ['people', await db.person.count({ where: protectedRoster }), 135],
+    ['people', protectedPeople.length, 135],
     [
       'reviewed aliases',
       baseline.counts.aliases - drift.filter((d) => d.kind === 'alias').length,
       348,
     ],
-    ['staff', await db.person.count({ where: { ...protectedRoster, isStaff: true } }), 64],
-    [
-      'current',
-      await db.person.count({ where: { ...protectedRoster, isStaff: true, isActive: true } }),
-      21,
-    ],
-    [
-      'former',
-      await db.person.count({ where: { ...protectedRoster, isStaff: true, isActive: false } }),
-      43,
-    ],
-    ['external', await db.person.count({ where: { ...protectedRoster, isStaff: false } }), 71],
-    ['teams', await db.lookupTeam.count(), 2],
+    ['staff', protectedPeople.filter((p) => p.isStaff).length, 64],
+    ['current', protectedPeople.filter((p) => p.isStaff && p.isActive).length, 21],
+    ['former', protectedPeople.filter((p) => p.isStaff && !p.isActive).length, 43],
+    ['external', protectedPeople.filter((p) => !p.isStaff).length, 71],
+    ['teams', rosterBaseline.teams.length, 2],
     [
       'current with a team',
-      await db.person.count({
-        where: { ...protectedRoster, isStaff: true, isActive: true, teamId: { not: null } },
-      }),
+      protectedPeople.filter((p) => p.isStaff && p.isActive && p.teamId !== null).length,
       5,
     ],
     [
       'current without a team',
-      await db.person.count({
-        where: { ...protectedRoster, isStaff: true, isActive: true, teamId: null },
-      }),
+      protectedPeople.filter((p) => p.isStaff && p.isActive && p.teamId === null).length,
       16,
     ],
   ];
@@ -616,18 +659,15 @@ async function main() {
   ];
   const hamzaProblems: string[] = [];
   for (const [variant, canonical] of hamzaPairs) {
-    const asPerson = await db.person.count({ where: { nameAr: variant } });
+    const asPerson = rosterBaseline.people.filter((p) => p.nameAr === variant).length;
     if (asPerson !== 0) hamzaProblems.push(`${variant} is a person again`);
 
-    const canonicalCount = await db.person.count({ where: { nameAr: canonical } });
+    const canonicalCount = rosterBaseline.people.filter((p) => p.nameAr === canonical).length;
     if (canonicalCount !== 1) {
       hamzaProblems.push(`${canonical} appears ${canonicalCount} times, expected 1`);
     }
 
-    const resolved = await db.personNameAlias.findUnique({
-      where: { aliasAr: variant },
-      include: { person: true },
-    });
+    const resolved = rosterBaseline.aliases.find((a) => a.aliasAr === variant);
     if (resolved?.person.nameAr !== canonical) {
       hamzaProblems.push(`${variant} does not resolve to ${canonical}`);
     }
@@ -725,14 +765,7 @@ async function main() {
   //
   //     Membership is compared as a SET, not counted. "4 members" is
   //     satisfied by four of the wrong people.
-  const teams = await db.lookupTeam.findMany({
-    select: {
-      labelAr: true,
-      reviewer: { select: { nameAr: true } },
-      members: { select: { nameAr: true } },
-    },
-    orderBy: { labelAr: 'asc' },
-  });
+  const teams = rosterBaseline.teams;
   //     Both teams have the SAME reviewer — ناجي رمضان — which is what Access
   //     recorded and what sql/lookups-part2-and-teams.sql carries. It looks
   //     like an error and is not one. (Access "team 3" had a different
@@ -1490,12 +1523,14 @@ async function main() {
       }),
     )
   ).filter((problem): problem is string => problem !== null);
-  const stagingFingerprint = one(
-    await db.$queryRaw<{ fingerprint: string }[]>`
+  const stagingFingerprint = historical
+    ? one(
+        await db.$queryRaw<{ fingerprint: string }[]>`
       SELECT _migration.current_staging_fingerprint() AS fingerprint`,
-    'staging fingerprint',
-  ).fingerprint;
-  if (!/^[0-9A-F]{64}$/.test(stagingFingerprint)) {
+        'staging fingerprint',
+      ).fingerprint
+    : 'absent in the explicitly verified canonical profile';
+  if (historical && !/^[0-9A-F]{64}$/.test(stagingFingerprint)) {
     identityProblems.push('the extraction fingerprint is malformed');
   }
   if (identityIndex.indexes !== 20n) {
@@ -1561,13 +1596,13 @@ async function main() {
          (SELECT count(*) FROM quarantine.exclusion
            WHERE src_record_key !~ '^[0-9a-f]{64}:[0-9]{6}$'))                  AS malformed_identity,
         ((SELECT count(*) FROM quarantine.finding
-           WHERE extraction_sha256 <> _migration.current_staging_fingerprint())
+           WHERE extraction_sha256 IS DISTINCT FROM ${historical ? stagingFingerprint : null}::text)
          +
          (SELECT count(*) FROM quarantine.exclusion
-           WHERE extraction_sha256 <> _migration.current_staging_fingerprint())
+           WHERE extraction_sha256 IS DISTINCT FROM ${historical ? stagingFingerprint : null}::text)
          +
          (SELECT count(*) FROM quarantine.review_value
-           WHERE extraction_sha256 <> _migration.current_staging_fingerprint())) AS wrong_fingerprint`,
+           WHERE extraction_sha256 IS DISTINCT FROM ${historical ? stagingFingerprint : null}::text)) AS wrong_fingerprint`,
     'quarantine schema',
   );
 
@@ -1842,10 +1877,12 @@ async function main() {
     legacyProblems.push('identity protection function no longer locks recorded mappings');
   }
   if (
-    legacyIdentity.value_mappings !== BigInt(REVIEW_ANSWER_BASELINE.valueAnswers) ||
-    legacyIdentity.finding_mappings !== BigInt(REVIEW_ANSWER_BASELINE.findingAnswers) ||
+    legacyIdentity.value_mappings !==
+      (historical ? BigInt(REVIEW_ANSWER_BASELINE.valueAnswers) : 0n) ||
+    legacyIdentity.finding_mappings !==
+      (historical ? BigInt(REVIEW_ANSWER_BASELINE.findingAnswers) : 0n) ||
     legacyIdentity.value_mappings + legacyIdentity.finding_mappings !==
-      BigInt(REVIEW_ANSWER_BASELINE.totalAnswers)
+      (historical ? BigInt(REVIEW_ANSWER_BASELINE.totalAnswers) : 0n)
   ) {
     legacyProblems.push(
       `${legacyIdentity.value_mappings} + ${legacyIdentity.finding_mappings} of ` +
@@ -1856,27 +1893,28 @@ async function main() {
   if (legacyIdentity.unanswered_mappings !== 0n) {
     legacyProblems.push(`${legacyIdentity.unanswered_mappings} unanswered rows carry a legacy id`);
   }
-  if (legacyIdentity.digest !== REVIEW_ANSWER_BASELINE.mappingDigest) {
+  if (legacyIdentity.digest !== (historical ? REVIEW_ANSWER_BASELINE.mappingDigest : null)) {
     legacyProblems.push(`mapping digest is ${legacyIdentity.digest}`);
   }
   record(
     'Historic workbook identities cannot drift',
     '744 exact, immutable and unique answer associations',
     legacyProblems.length === 0
-      ? `${String(REVIEW_ANSWER_BASELINE.valueAnswers)} + ` +
-          `${String(REVIEW_ANSWER_BASELINE.findingAnswers)}, digest ${legacyIdentity.digest}`
+      ? `${String(legacyIdentity.value_mappings)} + ` +
+          `${String(legacyIdentity.finding_mappings)}, digest ${legacyIdentity.digest}`
       : legacyProblems.join('; '),
     legacyProblems.length === 0,
   );
 
-  const answerBaseline = one(
-    await db.$queryRaw<
-      {
-        value_answers: bigint;
-        finding_answers: bigint;
-        digest: string;
-      }[]
-    >`
+  if (historical) {
+    const answerBaseline = one(
+      await db.$queryRaw<
+        {
+          value_answers: bigint;
+          finding_answers: bigint;
+          digest: string;
+        }[]
+      >`
       SELECT
         (SELECT count(*) FROM quarantine.review_value WHERE answered_at IS NOT NULL) AS value_answers,
         (SELECT count(*) FROM quarantine.finding WHERE answered_at IS NOT NULL) AS finding_answers,
@@ -1899,26 +1937,27 @@ async function main() {
           FROM quarantine.finding
          WHERE answered_at IS NOT NULL
       ) answered`,
-    'review answer baseline',
-  );
-  const answerBaselineOk =
-    answerBaseline.value_answers === BigInt(REVIEW_ANSWER_BASELINE.valueAnswers) &&
-    answerBaseline.finding_answers === BigInt(REVIEW_ANSWER_BASELINE.findingAnswers) &&
-    answerBaseline.value_answers + answerBaseline.finding_answers ===
-      BigInt(REVIEW_ANSWER_BASELINE.totalAnswers) &&
-    answerBaseline.digest === REVIEW_ANSWER_BASELINE.answerDigest;
-  record(
-    "The firm's original 744 answers remain attached to the same values",
-    '668 value answers + 76 finding answers, exact reviewed payload',
-    `${answerBaseline.value_answers} + ${answerBaseline.finding_answers}, digest ${answerBaseline.digest}`,
-    answerBaselineOk,
-  );
+      'review answer baseline',
+    );
+    const answerBaselineOk =
+      answerBaseline.value_answers === BigInt(REVIEW_ANSWER_BASELINE.valueAnswers) &&
+      answerBaseline.finding_answers === BigInt(REVIEW_ANSWER_BASELINE.findingAnswers) &&
+      answerBaseline.value_answers + answerBaseline.finding_answers ===
+        BigInt(REVIEW_ANSWER_BASELINE.totalAnswers) &&
+      answerBaseline.digest === REVIEW_ANSWER_BASELINE.answerDigest;
+    record(
+      "The firm's original 744 answers remain attached to the same values",
+      '668 value answers + 76 finding answers, exact reviewed payload',
+      `${answerBaseline.value_answers} + ${answerBaseline.finding_answers}, digest ${answerBaseline.digest}`,
+      answerBaselineOk,
+    );
 
-  // ---- clients and contacts, task 2.5 --------------------------------------
-  //
-  //  These compare the target against STAGING, not against a figure written
-  //  down here. 318 and 188 drift with the firm's file; "the target equals
-  //  what was staged" does not.
+    // ---- clients and contacts, task 2.5 --------------------------------------
+    //
+    //  These compare the target against STAGING, not against a figure written
+    //  down here. 318 and 188 drift with the firm's file; "the target equals
+    //  what was staged" does not.
+  }
   const transformed = one(
     await db.$queryRaw<
       {
@@ -2078,66 +2117,70 @@ async function main() {
   //     deliberately independent of the one-time transform transaction: a
   //     count can agree while a matter points at the wrong category or court.
   // Frozen Stage 2 partition plus the separately verified current release.
-  const permanentMatterResult = one(
-    await db.$queryRawUnsafe<MatterReconciliationRow[]>(
-      historicalHighImpactSql(MATTER_RECONCILIATION_SQL, highImpactState),
-    ),
-    'permanent matter target and quarantine reconciliation',
-  );
-  const matterProblems = matterReconciliationFailures(permanentMatterResult);
-  record(
-    'Every staged matter has one safe destination (historical partition)',
-    '1,744 = 1,689 historical targets + 55 preserved quarantine records; 0 defects',
-    `${permanentMatterResult.source_rows} = ${permanentMatterResult.target_rows} + ${permanentMatterResult.quarantine_rows}; ${matterProblems.length} defects`,
-    asBigInt(permanentMatterResult.source_rows) === 1744n &&
-      asBigInt(permanentMatterResult.target_rows) === 1689n &&
-      asBigInt(permanentMatterResult.quarantine_rows) === 55n &&
-      matterProblems.length === 0,
-  );
-  const permanentMatterFailures = matterReconciliationFailures(permanentMatterResult);
-  record(
-    'Matter target fields and quarantine evidence reconcile',
-    '1,744 = 1,689 transformed + 55 quarantined; every target field and quarantine value exact',
-    `${asBigInt(permanentMatterResult.source_rows)} = ` +
-      `${asBigInt(permanentMatterResult.target_rows)} + ` +
-      `${asBigInt(permanentMatterResult.quarantine_rows)}; ` +
-      (permanentMatterFailures.length === 0
-        ? 'all target fields, reasons and evidence exact'
-        : permanentMatterFailures.join(', ')),
-    asBigInt(permanentMatterResult.source_rows) === 1744n &&
-      asBigInt(permanentMatterResult.target_rows) === 1689n &&
-      asBigInt(permanentMatterResult.quarantine_rows) === 55n &&
-      permanentMatterFailures.length === 0,
-  );
-
-  // 2.7 — execute the standalone SQL oracle which independently rebuilds
-  // every expected lawyer, party, role, exclusion and quarantine row from
-  // staging plus the reviewed database tables. It does not import or call the
-  // transform's TypeScript planner/parser.
-  await withApprovedMigrationClient(async (currentRelationshipDb) => {
-    const relationshipDb = historicalHighImpactClient(currentRelationshipDb, highImpactState);
-    const relationshipResult = await reconcileMatterRelationships(relationshipDb);
+  if (historical) {
+    const permanentMatterResult = one(
+      await db.$queryRawUnsafe<MatterReconciliationRow[]>(
+        historicalHighImpactSql(MATTER_RECONCILIATION_SQL, highImpactState),
+      ),
+      'permanent matter target and quarantine reconciliation',
+    );
+    const matterProblems = matterReconciliationFailures(permanentMatterResult);
     record(
-      'Matter lawyers and parties reconcile to source',
-      '33 rules + 84 ordered members + 38 exclusions; every source cell exact',
-      relationshipResult.defects.length === 0
-        ? `${relationshipResult.allSourceCells} cells = ` +
-            `${relationshipResult.transformedParentCells} transformed-parent + ` +
-            `${relationshipResult.parentQuarantinedCells} parent-quarantined; ` +
-            `${relationshipResult.actualLawyers} lawyers, ` +
-            `${relationshipResult.actualParties} parties, ` +
-            `${relationshipResult.actualPartyRoles} roles, ` +
-            `${relationshipResult.actualEvidence} exclusions/quarantines`
-        : relationshipResult.defects.slice(0, 5).join('; '),
-      relationshipResult.defects.length === 0,
+      'Every staged matter has one safe destination (historical partition)',
+      '1,744 = 1,689 historical targets + 55 preserved quarantine records; 0 defects',
+      `${permanentMatterResult.source_rows} = ${permanentMatterResult.target_rows} + ${permanentMatterResult.quarantine_rows}; ${matterProblems.length} defects`,
+      asBigInt(permanentMatterResult.source_rows) === 1744n &&
+        asBigInt(permanentMatterResult.target_rows) === 1689n &&
+        asBigInt(permanentMatterResult.quarantine_rows) === 55n &&
+        matterProblems.length === 0,
+    );
+    const permanentMatterFailures = matterReconciliationFailures(permanentMatterResult);
+    record(
+      'Matter target fields and quarantine evidence reconcile',
+      '1,744 = 1,689 transformed + 55 quarantined; every target field and quarantine value exact',
+      `${asBigInt(permanentMatterResult.source_rows)} = ` +
+        `${asBigInt(permanentMatterResult.target_rows)} + ` +
+        `${asBigInt(permanentMatterResult.quarantine_rows)}; ` +
+        (permanentMatterFailures.length === 0
+          ? 'all target fields, reasons and evidence exact'
+          : permanentMatterFailures.join(', ')),
+      asBigInt(permanentMatterResult.source_rows) === 1744n &&
+        asBigInt(permanentMatterResult.target_rows) === 1689n &&
+        asBigInt(permanentMatterResult.quarantine_rows) === 55n &&
+        permanentMatterFailures.length === 0,
     );
 
-    const occurrenceRows = await relationshipDb.query<{
-      raw_value: string;
-      poa_occurrences: string;
-      matter_occurrences: string;
-    }>(
-      `
+    // 2.7 — execute the standalone SQL oracle which independently rebuilds
+    // every expected lawyer, party, role, exclusion and quarantine row from
+    // staging plus the reviewed database tables. It does not import or call the
+    // transform's TypeScript planner/parser.
+  }
+  await withApprovedMigrationClient(async (currentRelationshipDb) => {
+    const relationshipDb = historicalHighImpactClient(currentRelationshipDb, highImpactState);
+    const historicalRosterDb = historicalStaffClient(relationshipDb, staffBoundary);
+    if (historical) {
+      const relationshipResult = await reconcileMatterRelationships(historicalRosterDb);
+      record(
+        'Matter lawyers and parties reconcile to source',
+        '33 rules + 84 ordered members + 38 exclusions; every source cell exact',
+        relationshipResult.defects.length === 0
+          ? `${relationshipResult.allSourceCells} cells = ` +
+              `${relationshipResult.transformedParentCells} transformed-parent + ` +
+              `${relationshipResult.parentQuarantinedCells} parent-quarantined; ` +
+              `${relationshipResult.actualLawyers} lawyers, ` +
+              `${relationshipResult.actualParties} parties, ` +
+              `${relationshipResult.actualPartyRoles} roles, ` +
+              `${relationshipResult.actualEvidence} exclusions/quarantines`
+          : relationshipResult.defects.slice(0, 5).join('; '),
+        relationshipResult.defects.length === 0,
+      );
+
+      const occurrenceRows = await relationshipDb.query<{
+        raw_value: string;
+        poa_occurrences: string;
+        matter_occurrences: string;
+      }>(
+        `
       SELECT r.raw_value,
              (SELECT count(*)::text FROM staging."التوكيلات" p
                WHERE position(r.raw_value in p."المحامون الصادر لهم التوكيل") > 0) poa_occurrences,
@@ -2147,30 +2190,32 @@ async function main() {
         FROM migration_multi_person_rule r
        WHERE r.raw_value = ANY($1::text[])
        ORDER BY array_position($1::text[], r.raw_value)`,
-      [correctedMultiPersonRules.map((rule) => rule.rawValue)],
-    );
-    const expectedOccurrences = [
-      { poa: '8', matters: '0' },
-      { poa: '0', matters: '0' },
-      { poa: '1', matters: '0' },
-    ];
-    const occurrenceOk =
-      occurrenceRows.rows.length === 3 &&
-      occurrenceRows.rows.every(
-        (row, index) =>
-          row.poa_occurrences === expectedOccurrences[index]!.poa &&
-          row.matter_occurrences === expectedOccurrences[index]!.matters,
+        [correctedMultiPersonRules.map((rule) => rule.rawValue)],
       );
-    record(
-      'Corrected-rule current extraction evidence',
-      'POA 8/0/1; matter lawyers 0/0/0',
-      occurrenceRows.rows
-        .map((row) => `${row.poa_occurrences}/${row.matter_occurrences}`)
-        .join(', '),
-      occurrenceOk,
-    );
-
+      const expectedOccurrences = [
+        { poa: '8', matters: '0' },
+        { poa: '0', matters: '0' },
+        { poa: '1', matters: '0' },
+      ];
+      const occurrenceOk =
+        occurrenceRows.rows.length === 3 &&
+        occurrenceRows.rows.every(
+          (row, index) =>
+            row.poa_occurrences === expectedOccurrences[index]!.poa &&
+            row.matter_occurrences === expectedOccurrences[index]!.matters,
+        );
+      record(
+        'Corrected-rule current extraction evidence',
+        'POA 8/0/1; matter lawyers 0/0/0',
+        occurrenceRows.rows
+          .map((row) => `${row.poa_occurrences}/${row.matter_occurrences}`)
+          .join(', '),
+        occurrenceOk,
+      );
+    }
     const structureFailures = await matterRelationshipStructureFailures(relationshipDb);
+    // Git-owned reviewed rules are universal; source-cell occurrences are not.
+    structureFailures.push(...(await storedRuleSourceFailures(relationshipDb)));
     record(
       'Matter relationship constraints and evidence guards',
       '3 exact CHECKs, 5 exact unique indexes, 4 exact foreign keys, 2 exact triggers/functions',
@@ -2180,20 +2225,24 @@ async function main() {
       structureFailures.length === 0,
     );
 
-    const attendeeAudit = await reconcileAttendeeAudit(currentRelationshipDb);
-    record(
-      'Attendee source cells and spans reconcile',
-      '12,732 cells; every byte, span, answer, person and quarantine item exact',
-      attendeeAudit.defects.length === 0
-        ? `${attendeeAudit.auditCells} cells, ${attendeeAudit.spans} spans, ` +
-            `${attendeeAudit.personSpans} person spans, ` +
-            `${attendeeAudit.ambiguousSpans} quarantined ambiguous spans`
-        : attendeeAudit.defects.join('; '),
-      attendeeAudit.sourceCells === ATTENDEE_AUDIT_BASELINE.cells &&
-        attendeeAudit.auditCells === ATTENDEE_AUDIT_BASELINE.cells &&
-        attendeeAudit.auditDigest === ATTENDEE_AUDIT_BASELINE.digest &&
-        attendeeAudit.defects.length === 0,
-    );
+    if (historical) {
+      const attendeeAudit = await reconcileAttendeeAudit(
+        historicalStaffClient(currentRelationshipDb, staffBoundary),
+      );
+      record(
+        'Attendee source cells and spans reconcile',
+        '12,732 cells; every byte, span, answer, person and quarantine item exact',
+        attendeeAudit.defects.length === 0
+          ? `${attendeeAudit.auditCells} cells, ${attendeeAudit.spans} spans, ` +
+              `${attendeeAudit.personSpans} person spans, ` +
+              `${attendeeAudit.ambiguousSpans} quarantined ambiguous spans`
+          : attendeeAudit.defects.join('; '),
+        attendeeAudit.sourceCells === ATTENDEE_AUDIT_BASELINE.cells &&
+          attendeeAudit.auditCells === ATTENDEE_AUDIT_BASELINE.cells &&
+          attendeeAudit.auditDigest === ATTENDEE_AUDIT_BASELINE.digest &&
+          attendeeAudit.defects.length === 0,
+      );
+    }
     const attendeeStructure = await attendeeAuditStructureFailures(relationshipDb);
     record(
       'Attendee audit constraints and evidence guards',
@@ -2204,22 +2253,24 @@ async function main() {
       attendeeStructure.length === 0,
     );
 
-    const hearingResult = await reconcileHearings(relationshipDb);
-    record(
-      'Hearings, attendees and quarantine reconcile',
-      '13,382 = 13,055 transformed + 327 quarantined; 8,884 attendees; every value and evidence item exact',
-      hearingResult.defects.length === 0
-        ? `${hearingResult.sourceHearings} = ${hearingResult.transformedHearings} + ` +
-            `${hearingResult.quarantinedHearings}; ${hearingResult.attendees} attendees; ` +
-            `${hearingResult.auditCells} audit cells partitioned`
-        : hearingResult.defects.join('; '),
-      hearingResult.sourceHearings === 13_382 &&
-        hearingResult.transformedHearings === 13_055 &&
-        hearingResult.quarantinedHearings === 327 &&
-        hearingResult.attendees === 8_884 &&
-        hearingResult.auditCells === 12_732 &&
-        hearingResult.defects.length === 0,
-    );
+    if (historical) {
+      const hearingResult = await reconcileHearings(historicalRosterDb);
+      record(
+        'Hearings, attendees and quarantine reconcile',
+        '13,382 = 13,055 transformed + 327 quarantined; 8,884 attendees; every value and evidence item exact',
+        hearingResult.defects.length === 0
+          ? `${hearingResult.sourceHearings} = ${hearingResult.transformedHearings} + ` +
+              `${hearingResult.quarantinedHearings}; ${hearingResult.attendees} attendees; ` +
+              `${hearingResult.auditCells} audit cells partitioned`
+          : hearingResult.defects.join('; '),
+        hearingResult.sourceHearings === 13_382 &&
+          hearingResult.transformedHearings === 13_055 &&
+          hearingResult.quarantinedHearings === 327 &&
+          hearingResult.attendees === 8_884 &&
+          hearingResult.auditCells === 12_732 &&
+          hearingResult.defects.length === 0,
+      );
+    }
     const hearingStructure = await hearingStructureFailures(relationshipDb);
     record(
       'Hearing transform constraints and evidence guards',
@@ -2230,32 +2281,34 @@ async function main() {
       hearingStructure.length === 0,
     );
 
-    const adminResult = await reconcileAdminWorks(relationshipDb, {
-      creationDateBaseline: ADMIN_TASK_CREATION_DATE_BASELINE,
-    });
-    record(
-      'Administrative works and task steps reconcile',
-      'every staged task and step is exactly transformed or quarantined',
-      adminResult.defects.length === 0
-        ? `${String(adminResult.row['task_source'])} tasks = ` +
-            `${String(adminResult.row['actual_tasks'])} transformed + ` +
-            `${String(adminResult.row['actual_task_q'])} quarantined; ` +
-            `${String(adminResult.row['action_source'])} steps = ` +
-            `${String(adminResult.row['actual_actions'])} transformed + ` +
-            `${String(adminResult.row['actual_action_q'])} quarantined`
-        : adminResult.defects.join('; '),
-      adminResult.defects.length === 0,
-    );
-    record(
-      'Administrative task business creation dates',
-      '3,694 migrated tasks: 1,906 source dates, 1,788 genuine nulls, range 2018-02-22 to 2026-08-18; never created_at',
-      `${String(adminResult.row['creation_date_populated'])} dated + ` +
-        `${String(adminResult.row['creation_date_null'])} null; ` +
-        `${String(adminResult.row['creation_date_minimum'])} to ` +
-        `${String(adminResult.row['creation_date_maximum'])}; ` +
-        `${String(adminResult.row['creation_date_created_at_substitution'])} created_at substitutions`,
-      adminResult.defects.length === 0,
-    );
+    if (historical) {
+      const adminResult = await reconcileAdminWorks(historicalRosterDb, {
+        creationDateBaseline: ADMIN_TASK_CREATION_DATE_BASELINE,
+      });
+      record(
+        'Administrative works and task steps reconcile',
+        'every staged task and step is exactly transformed or quarantined',
+        adminResult.defects.length === 0
+          ? `${String(adminResult.row['task_source'])} tasks = ` +
+              `${String(adminResult.row['actual_tasks'])} transformed + ` +
+              `${String(adminResult.row['actual_task_q'])} quarantined; ` +
+              `${String(adminResult.row['action_source'])} steps = ` +
+              `${String(adminResult.row['actual_actions'])} transformed + ` +
+              `${String(adminResult.row['actual_action_q'])} quarantined`
+          : adminResult.defects.join('; '),
+        adminResult.defects.length === 0,
+      );
+      record(
+        'Administrative task business creation dates',
+        '3,694 migrated tasks: 1,906 source dates, 1,788 genuine nulls, range 2018-02-22 to 2026-08-18; never created_at',
+        `${String(adminResult.row['creation_date_populated'])} dated + ` +
+          `${String(adminResult.row['creation_date_null'])} null; ` +
+          `${String(adminResult.row['creation_date_minimum'])} to ` +
+          `${String(adminResult.row['creation_date_maximum'])}; ` +
+          `${String(adminResult.row['creation_date_created_at_substitution'])} created_at substitutions`,
+        adminResult.defects.length === 0,
+      );
+    }
     const adminStructure = await adminWorkStructureFailures(relationshipDb);
     record(
       'Administrative transform constraints and evidence guards',
@@ -2265,28 +2318,30 @@ async function main() {
         : adminStructure.join('; '),
       adminStructure.length === 0,
     );
-    const adminCourt26 = (
-      await relationshipDb.query<{ rows: string; exact: string }>(`
+    if (historical) {
+      const adminCourt26 = (
+        await relationshipDb.query<{ rows: string; exact: string }>(`
         SELECT count(*)::text rows,
                count(*) FILTER (WHERE circuit='26' AND court_id IS NULL)::text exact
           FROM admin_tasks WHERE legacy_source_record_key IS NOT NULL
             AND legacy_court_raw='26'`)
-    ).rows[0]!;
-    record(
-      'Administrative court `26` remains circuit-only',
-      'the one reviewed row has circuit 26, no court, and raw court 26',
-      `${adminCourt26.exact} of ${adminCourt26.rows} exact`,
-      adminCourt26.rows === '1' && adminCourt26.exact === '1',
-    );
-    const poaResult = await reconcilePowersOfAttorney(relationshipDb);
-    record(
-      'Powers of attorney reconcile to source and reviewed relationships',
-      '752 source records; every value, typed field, reviewed member and evidence row exact',
-      poaResult.defects.length === 0
-        ? `${poaResult.sourceCount} = ${poaResult.targetCount} transformed + ${poaResult.transformQuarantineCount} quarantined; ${poaResult.lawyerCount} reviewed lawyers; ${poaResult.relationshipEvidenceCount} relationship evidence rows`
-        : poaResult.defects.join('; '),
-      poaResult.defects.length === 0,
-    );
+      ).rows[0]!;
+      record(
+        'Administrative court `26` remains circuit-only',
+        'the one reviewed row has circuit 26, no court, and raw court 26',
+        `${adminCourt26.exact} of ${adminCourt26.rows} exact`,
+        adminCourt26.rows === '1' && adminCourt26.exact === '1',
+      );
+      const poaResult = await reconcilePowersOfAttorney(historicalRosterDb);
+      record(
+        'Powers of attorney reconcile to source and reviewed relationships',
+        '752 source records; every value, typed field, reviewed member and evidence row exact',
+        poaResult.defects.length === 0
+          ? `${poaResult.sourceCount} = ${poaResult.targetCount} transformed + ${poaResult.transformQuarantineCount} quarantined; ${poaResult.lawyerCount} reviewed lawyers; ${poaResult.relationshipEvidenceCount} relationship evidence rows`
+          : poaResult.defects.join('; '),
+        poaResult.defects.length === 0,
+      );
+    }
     const poaStructure = await poaStructureFailures(relationshipDb);
     record(
       'POA constraints and evidence guards',
@@ -2296,15 +2351,17 @@ async function main() {
         : poaStructure.join('; '),
       poaStructure.length === 0,
     );
-    const documentResult = await reconcileDocuments(relationshipDb);
-    record(
-      'Paper documents reconcile to source and reviewed relationships',
-      '407 source records; every scalar, typed value, raw value, link and evidence row exact',
-      documentResult.defects.length === 0
-        ? `${documentResult.sourceCount} = ${documentResult.targetCount} transformed + ${documentResult.quarantineCount} quarantined; ${documentResult.evidenceCount} field evidence rows`
-        : documentResult.defects.join('; '),
-      documentResult.defects.length === 0,
-    );
+    if (historical) {
+      const documentResult = await reconcileDocuments(historicalRosterDb);
+      record(
+        'Paper documents reconcile to source and reviewed relationships',
+        '407 source records; every scalar, typed value, raw value, link and evidence row exact',
+        documentResult.defects.length === 0
+          ? `${documentResult.sourceCount} = ${documentResult.targetCount} transformed + ${documentResult.quarantineCount} quarantined; ${documentResult.evidenceCount} field evidence rows`
+          : documentResult.defects.join('; '),
+        documentResult.defects.length === 0,
+      );
+    }
     const documentStructure = await documentStructureFailures(relationshipDb);
     record(
       'Document constraints and evidence guards',
@@ -2314,29 +2371,31 @@ async function main() {
         : documentStructure.join('; '),
       documentStructure.length === 0,
     );
-    const feeResult = await reconcileFeeLetters(relationshipDb);
-    record(
-      'Fee letters and both matter-link directions reconcile',
-      '331 fee letters; 288 forward links; 412 reverse references; every value, rule and evidence row exact',
-      feeResult.defects.length === 0
-        ? `${feeResult.feeSourceCount} = ${feeResult.feeTargetCount} transformed + ${feeResult.feeQuarantineCount} quarantined; ` +
-            `${feeResult.forwardSourceCount} = ${feeResult.forwardTargetCount} forward links + ${feeResult.forwardQuarantineCount} quarantined; ` +
-            `${feeResult.reverseSourceCount} = ${feeResult.reverseTargetCount} reverse links + ${feeResult.reverseQuarantineCount} quarantined; ` +
-            `${feeResult.contractReferences}/${feeResult.mfilesReferences} contract/M-Files references`
-        : feeResult.defects.join('; '),
-      feeResult.feeSourceCount === 331 &&
-        feeResult.feeTargetCount === 331 &&
-        feeResult.feeQuarantineCount === 0 &&
-        feeResult.forwardSourceCount === 288 &&
-        feeResult.forwardTargetCount === 231 &&
-        feeResult.forwardQuarantineCount === 57 &&
-        feeResult.reverseSourceCount === 412 &&
-        feeResult.reverseTargetCount === 393 &&
-        feeResult.reverseQuarantineCount === 19 &&
-        feeResult.contractReferences === 289 &&
-        feeResult.mfilesReferences === 123 &&
-        feeResult.defects.length === 0,
-    );
+    if (historical) {
+      const feeResult = await reconcileFeeLetters(historicalRosterDb);
+      record(
+        'Fee letters and both matter-link directions reconcile',
+        '331 fee letters; 288 forward links; 412 reverse references; every value, rule and evidence row exact',
+        feeResult.defects.length === 0
+          ? `${feeResult.feeSourceCount} = ${feeResult.feeTargetCount} transformed + ${feeResult.feeQuarantineCount} quarantined; ` +
+              `${feeResult.forwardSourceCount} = ${feeResult.forwardTargetCount} forward links + ${feeResult.forwardQuarantineCount} quarantined; ` +
+              `${feeResult.reverseSourceCount} = ${feeResult.reverseTargetCount} reverse links + ${feeResult.reverseQuarantineCount} quarantined; ` +
+              `${feeResult.contractReferences}/${feeResult.mfilesReferences} contract/M-Files references`
+          : feeResult.defects.join('; '),
+        feeResult.feeSourceCount === 331 &&
+          feeResult.feeTargetCount === 331 &&
+          feeResult.feeQuarantineCount === 0 &&
+          feeResult.forwardSourceCount === 288 &&
+          feeResult.forwardTargetCount === 231 &&
+          feeResult.forwardQuarantineCount === 57 &&
+          feeResult.reverseSourceCount === 412 &&
+          feeResult.reverseTargetCount === 393 &&
+          feeResult.reverseQuarantineCount === 19 &&
+          feeResult.contractReferences === 289 &&
+          feeResult.mfilesReferences === 123 &&
+          feeResult.defects.length === 0,
+      );
+    }
     const feeStructure = await feeLetterStructureFailures(relationshipDb);
     record(
       'Fee-letter constraints and evidence guards',
@@ -2346,35 +2405,37 @@ async function main() {
         : feeStructure.join('; '),
       feeStructure.length === 0,
     );
-    const billingResult = await reconcileBillingHistory(relationshipDb);
-    const billingCanonical = await billingCanonicalState(relationshipDb);
-    record(
-      'Billing history and immutable evidence reconcile',
-      '543 invoices; 597 payments; 47 allocation rows in 15 exact-one groups; no source loss',
-      billingResult.defects.length === 0
-        ? `${billingResult.invoiceSourceCount} = ${billingResult.invoiceTargetCount} invoices + ${billingResult.invoiceQuarantineCount} quarantined; ` +
-            `${billingResult.paymentSourceCount} = ${billingResult.paymentTargetCount} payments + ${billingResult.paymentQuarantineCount} quarantined; ` +
-            `${billingResult.allocationSourceCount} = ${billingResult.allocationTargetCount} allocations + ${billingResult.allocationQuarantineCount} quarantined; ` +
-            `${billingResult.allocationGroupCount} groups, ${billingResult.distinctAllocationPeople} people, ${billingResult.referenceOnlyCount} reference-only rows; ` +
-            `canonical rows ${billingCanonical.completeRowDigest}, ids/times ${billingCanonical.identityTimestampDigest}`
-        : billingResult.defects.join('; '),
-      billingResult.invoiceSourceCount === 543 &&
-        billingResult.invoiceTargetCount === 543 &&
-        billingResult.invoiceQuarantineCount === 0 &&
-        billingResult.paymentSourceCount === 597 &&
-        billingResult.paymentTargetCount === 597 &&
-        billingResult.paymentQuarantineCount === 0 &&
-        billingResult.allocationSourceCount === 47 &&
-        billingResult.allocationTargetCount === 47 &&
-        billingResult.allocationQuarantineCount === 0 &&
-        billingResult.allocationGroupCount === 15 &&
-        billingResult.distinctAllocationPeople === 9 &&
-        billingResult.referenceOnlyCount === 0 &&
-        billingCanonical.completeRowDigest === BILLING_CANONICAL_BASELINE.completeRowDigest &&
-        billingCanonical.identityTimestampDigest ===
-          BILLING_CANONICAL_BASELINE.identityTimestampDigest &&
-        billingResult.defects.length === 0,
-    );
+    if (historical) {
+      const billingResult = await reconcileBillingHistory(historicalRosterDb);
+      const billingCanonical = await billingCanonicalState(relationshipDb);
+      record(
+        'Billing history and immutable evidence reconcile',
+        '543 invoices; 597 payments; 47 allocation rows in 15 exact-one groups; no source loss',
+        billingResult.defects.length === 0
+          ? `${billingResult.invoiceSourceCount} = ${billingResult.invoiceTargetCount} invoices + ${billingResult.invoiceQuarantineCount} quarantined; ` +
+              `${billingResult.paymentSourceCount} = ${billingResult.paymentTargetCount} payments + ${billingResult.paymentQuarantineCount} quarantined; ` +
+              `${billingResult.allocationSourceCount} = ${billingResult.allocationTargetCount} allocations + ${billingResult.allocationQuarantineCount} quarantined; ` +
+              `${billingResult.allocationGroupCount} groups, ${billingResult.distinctAllocationPeople} people, ${billingResult.referenceOnlyCount} reference-only rows; ` +
+              `canonical rows ${billingCanonical.completeRowDigest}, ids/times ${billingCanonical.identityTimestampDigest}`
+          : billingResult.defects.join('; '),
+        billingResult.invoiceSourceCount === 543 &&
+          billingResult.invoiceTargetCount === 543 &&
+          billingResult.invoiceQuarantineCount === 0 &&
+          billingResult.paymentSourceCount === 597 &&
+          billingResult.paymentTargetCount === 597 &&
+          billingResult.paymentQuarantineCount === 0 &&
+          billingResult.allocationSourceCount === 47 &&
+          billingResult.allocationTargetCount === 47 &&
+          billingResult.allocationQuarantineCount === 0 &&
+          billingResult.allocationGroupCount === 15 &&
+          billingResult.distinctAllocationPeople === 9 &&
+          billingResult.referenceOnlyCount === 0 &&
+          billingCanonical.completeRowDigest === BILLING_CANONICAL_BASELINE.completeRowDigest &&
+          billingCanonical.identityTimestampDigest ===
+            BILLING_CANONICAL_BASELINE.identityTimestampDigest &&
+          billingResult.defects.length === 0,
+      );
+    }
     const billingStructure = await billingStructureFailures(relationshipDb);
     record(
       'Billing constraints and evidence guards',
@@ -2384,20 +2445,22 @@ async function main() {
         : billingStructure.join('; '),
       billingStructure.length === 0,
     );
-    const attendanceResult = await reconcileAttendance(relationshipDb);
-    record(
-      'Staff attendance reconciles to the leave register',
-      '4,022 source rows; every exact value, alias, date and provenance field has one target or quarantine outcome',
-      attendanceResult.defects.length === 0
-        ? `${attendanceResult.sourceCount} = ${attendanceResult.targetCount} transformed + ${attendanceResult.quarantineCount} quarantined; ${attendanceResult.distinctPeople} people; source ${ATTENDANCE_SOURCE_BASELINE.digest}; result ${attendanceResult.resultDigest}`
-        : attendanceResult.defects.join('; '),
-      attendanceResult.sourceCount === ATTENDANCE_SOURCE_BASELINE.rows &&
-        attendanceResult.targetCount === ATTENDANCE_RESULT_BASELINE.targetRows &&
-        attendanceResult.quarantineCount === ATTENDANCE_RESULT_BASELINE.quarantineRows &&
-        attendanceResult.distinctPeople === ATTENDANCE_RESULT_BASELINE.distinctPeople &&
-        attendanceResult.resultDigest === ATTENDANCE_RESULT_BASELINE.digest &&
-        attendanceResult.defects.length === 0,
-    );
+    if (historical) {
+      const attendanceResult = await reconcileAttendance(historicalRosterDb);
+      record(
+        'Staff attendance reconciles to the leave register',
+        '4,022 source rows; every exact value, alias, date and provenance field has one target or quarantine outcome',
+        attendanceResult.defects.length === 0
+          ? `${attendanceResult.sourceCount} = ${attendanceResult.targetCount} transformed + ${attendanceResult.quarantineCount} quarantined; ${attendanceResult.distinctPeople} people; source ${ATTENDANCE_SOURCE_BASELINE.digest}; result ${attendanceResult.resultDigest}`
+          : attendanceResult.defects.join('; '),
+        attendanceResult.sourceCount === ATTENDANCE_SOURCE_BASELINE.rows &&
+          attendanceResult.targetCount === ATTENDANCE_RESULT_BASELINE.targetRows &&
+          attendanceResult.quarantineCount === ATTENDANCE_RESULT_BASELINE.quarantineRows &&
+          attendanceResult.distinctPeople === ATTENDANCE_RESULT_BASELINE.distinctPeople &&
+          attendanceResult.resultDigest === ATTENDANCE_RESULT_BASELINE.digest &&
+          attendanceResult.defects.length === 0,
+      );
+    }
     const attendanceStructure = await attendanceStructureFailures(relationshipDb);
     record(
       'Attendance constraints and evidence guards',
@@ -2407,27 +2470,29 @@ async function main() {
         : attendanceStructure.join('; '),
       attendanceStructure.length === 0,
     );
-    const logoRoot = process.env['CLIENT_LOGO_ROOT'];
-    assert.ok(logoRoot, 'CLIENT_LOGO_ROOT is required for Task 2.11 reconciliation');
-    const sourceRoot = resolve('_migration', 'attachments', 'العملاء__logo');
-    const logoResult = await reconcileClientLogos(relationshipDb, {
-      logoRoot,
-      sourceRoot: existsSync(sourceRoot) ? sourceRoot : undefined,
-    });
-    record(
-      'Migrated client logos reconcile to source and files',
-      '54 immutable import rows, 54 clients, exact source/result digests and every referenced file valid',
-      logoResult.defects.length === 0
-        ? `${logoResult.sourceRows} source; ${logoResult.auditRows} import audit; ${logoResult.currentRows} current; ${logoResult.distinctClients} clients; ${logoResult.totalBytes} bytes; source ${logoResult.sourceDigest}; result ${logoResult.resultDigest}`
-        : logoResult.defects.join('; '),
-      logoResult.sourceRows === CLIENT_LOGO_SOURCE_BASELINE.rows &&
-        logoResult.auditRows === CLIENT_LOGO_RESULT_BASELINE.auditRows &&
-        logoResult.distinctClients === CLIENT_LOGO_RESULT_BASELINE.distinctClients &&
-        logoResult.totalBytes === CLIENT_LOGO_RESULT_BASELINE.totalBytes &&
-        logoResult.sourceDigest === CLIENT_LOGO_SOURCE_BASELINE.digest &&
-        logoResult.resultDigest === CLIENT_LOGO_RESULT_BASELINE.digest &&
-        logoResult.defects.length === 0,
-    );
+    if (historical) {
+      const logoRoot = process.env['CLIENT_LOGO_ROOT'];
+      assert.ok(logoRoot, 'CLIENT_LOGO_ROOT is required for Task 2.11 reconciliation');
+      const sourceRoot = resolve('_migration', 'attachments', 'العملاء__logo');
+      const logoResult = await reconcileClientLogos(relationshipDb, {
+        logoRoot,
+        sourceRoot: existsSync(sourceRoot) ? sourceRoot : undefined,
+      });
+      record(
+        'Migrated client logos reconcile to source and files',
+        '54 immutable import rows, 54 clients, exact source/result digests and every referenced file valid',
+        logoResult.defects.length === 0
+          ? `${logoResult.sourceRows} source; ${logoResult.auditRows} import audit; ${logoResult.currentRows} current; ${logoResult.distinctClients} clients; ${logoResult.totalBytes} bytes; source ${logoResult.sourceDigest}; result ${logoResult.resultDigest}`
+          : logoResult.defects.join('; '),
+        logoResult.sourceRows === CLIENT_LOGO_SOURCE_BASELINE.rows &&
+          logoResult.auditRows === CLIENT_LOGO_RESULT_BASELINE.auditRows &&
+          logoResult.distinctClients === CLIENT_LOGO_RESULT_BASELINE.distinctClients &&
+          logoResult.totalBytes === CLIENT_LOGO_RESULT_BASELINE.totalBytes &&
+          logoResult.sourceDigest === CLIENT_LOGO_SOURCE_BASELINE.digest &&
+          logoResult.resultDigest === CLIENT_LOGO_RESULT_BASELINE.digest &&
+          logoResult.defects.length === 0,
+      );
+    }
     const logoStructure = await clientLogoStructureFailures(relationshipDb);
     record(
       'Client-logo constraints and import evidence guards',
@@ -2483,7 +2548,7 @@ async function main() {
         : runtimeBoundary.join('; '),
       runtimeBoundary.length === 0,
     );
-    const auditData = await auditDataFailures(relationshipDb, { historicalLive: true });
+    const auditData = await auditDataFailures(relationshipDb, { historicalLive: historical });
     record(
       'Task 3.3A/3.4 truthful actor registry and current attribution',
       'three exact system actors; four exact original human actors; one immutable human actor per current account; frozen 45,463 migration creations; at most four original update actors unknown',
@@ -2492,25 +2557,27 @@ async function main() {
         : auditData.join('; '),
       auditData.length === 0,
     );
-    const protectedDigest = await protectedAuditExcludedDigest(relationshipDb);
-    record(
-      'Protected 5,209-row business and timestamp projection',
-      TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
-      protectedDigest,
-      protectedDigest === TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
-    );
-    const attributionBaseline = await relationshipDb.query<{ digest: string | null }>(`
+    if (historical) {
+      const protectedDigest = await protectedAuditExcludedDigest(relationshipDb);
+      record(
+        'Protected 5,209-row business and timestamp projection',
+        TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
+        protectedDigest,
+        protectedDigest === TASK33A_PROTECTED_AUDIT_EXCLUDED_DIGEST,
+      );
+      const attributionBaseline = await relationshipDb.query<{ digest: string | null }>(`
       SELECT event_metadata->>'attribution_digest' digest
         FROM public.audit_events
        WHERE action='audit_baseline_established'
        ORDER BY id LIMIT 1`);
-    const attributionDigest = attributionBaseline.rows[0]?.digest ?? null;
-    record(
-      'Frozen Task 3.3A audit-attribution projection',
-      TASK33A_ATTRIBUTION_DIGEST,
-      attributionDigest ?? 'missing',
-      attributionDigest === TASK33A_ATTRIBUTION_DIGEST,
-    );
+      const attributionDigest = attributionBaseline.rows[0]?.digest ?? null;
+      record(
+        'Frozen Task 3.3A audit-attribution projection',
+        TASK33A_ATTRIBUTION_DIGEST,
+        attributionDigest ?? 'missing',
+        attributionDigest === TASK33A_ATTRIBUTION_DIGEST,
+      );
+    }
     const auditEventStructure = await auditEventStructureFailures(relationshipDb);
     record(
       'Task 3.3B append-only event structure',
@@ -2521,7 +2588,7 @@ async function main() {
       auditEventStructure.length === 0,
     );
     const auditEventData = await auditEventDataFailures(relationshipDb, {
-      historicalLive: true,
+      historicalLive: historical,
     });
     record(
       'Task 3.3B truthful baseline checkpoint',
@@ -2534,6 +2601,21 @@ async function main() {
   });
 
   // ---- report --------------------------------------------------------------
+  assert.deepEqual(
+    checks.map((check) => check.id).sort(),
+    requiredPermanentInvariants(profile)
+      .map((check) => check.id)
+      .sort(),
+    'Permanent invariant coverage differs from the explicit profile inventory',
+  );
+  for (const invariant of staffChecks)
+    checks.push({
+      id: invariant.id,
+      name: invariant.description,
+      expected: 'Exact Phase 1 database boundary',
+      actual: 'verified',
+      ok: true,
+    });
   const width = Math.max(...checks.map((c) => c.name.length));
   for (const c of checks) {
     console.log(`${c.ok ? 'OK  ' : 'FAIL'}  ${c.name.padEnd(width)}  ${c.actual}`);

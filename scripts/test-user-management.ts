@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { assertDisposableFixtureSource } from './lib/isolated-postgres-fixture';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -130,7 +131,7 @@ async function main(): Promise<void> {
   assert.ok(source, 'MIGRATION_DATABASE_URL is required');
   const parsed = new URL(source);
   assert.ok(['localhost', '127.0.0.1'].includes(parsed.hostname));
-  assert.equal(parsed.port, '5433');
+  await assertDisposableFixtureSource(parsed);
   const fixtureName = `litigation_task34_fixture_${process.pid}_${Date.now()}`;
   const fixtureUrl = new URL(parsed);
   fixtureUrl.pathname = `/${fixtureName}`;
@@ -195,26 +196,45 @@ async function main(): Promise<void> {
         name: '__TASK34_INACTIVE_STAFF__',
         active: false,
       });
-      const externalId = await addPerson(owner, {
-        name: '__TASK34_EXTERNAL_PERSON__',
-        staff: false,
-      });
-      const ambiguousId = await addPerson(owner, {
-        name: '__TASK34_AMBIGUOUS_STAFF__',
-        primaryAlias: false,
-      });
-      const mismatchedAliasId = await addPerson(owner, {
-        name: '__TASK34_MISMATCHED_ALIAS_STAFF__',
-        primaryAlias: false,
-      });
-      await withMigrationContext(owner, (transaction) =>
-        transaction.personNameAlias.create({
-          data: {
-            personId: mismatchedAliasId,
-            aliasAr: '__TASK34_DIFFERENT_PRIMARY_ALIAS__',
-            isPrimary: true,
+      const externalId = (
+        await owner.person.findFirstOrThrow({
+          where: { isStaff: false },
+          orderBy: { id: 'asc' },
+          select: { id: true },
+        })
+      ).id;
+      // Phase 1 moves these exclusions to the durable database boundary:
+      // malformed native identities cannot be committed merely to test a picker.
+      await assert.rejects(
+        addPerson(owner, {
+          name: '__TASK34_AMBIGUOUS_STAFF__',
+          primaryAlias: false,
+        }),
+        /exactly one active primary/iu,
+      );
+      await assert.rejects(
+        withMigrationContext(owner, async (transaction) => {
+          const p = await transaction.person.create({
+            data: { nameAr: '__TASK34_MISMATCHED_ALIAS_STAFF__', isApplicationNative: true },
+            select: { id: true },
+          });
+          await transaction.personNameAlias.create({
+            data: {
+              personId: p.id,
+              aliasAr: '__TASK34_DIFFERENT_PRIMARY_ALIAS__',
+              isPrimary: true,
+            },
+          });
+        }),
+        /Primary alias must match/iu,
+      );
+      assert.equal(
+        await owner.person.count({
+          where: {
+            nameAr: { in: ['__TASK34_AMBIGUOUS_STAFF__', '__TASK34_MISMATCHED_ALIAS_STAFF__'] },
           },
         }),
+        0,
       );
 
       const snapshot = await listUserManagementSnapshot(runtime);
@@ -222,8 +242,6 @@ async function main(): Promise<void> {
       assert.ok(snapshot.eligibleStaff.some((person) => person.id === eligibleId));
       assert.ok(!snapshot.eligibleStaff.some((person) => person.id === inactiveId));
       assert.ok(!snapshot.eligibleStaff.some((person) => person.id === externalId));
-      assert.ok(!snapshot.eligibleStaff.some((person) => person.id === ambiguousId));
-      assert.ok(!snapshot.eligibleStaff.some((person) => person.id === mismatchedAliasId));
 
       const directPrivileges = (
         await catalog.query<{
@@ -315,7 +333,6 @@ async function main(): Promise<void> {
       );
       for (const [personId, username] of [
         [externalId, 'ExternalUser'],
-        [ambiguousId, 'AmbiguousUser'],
         [999999, 'MissingUser'],
         [eligibleId, 'AlreadyLinked'],
       ] as const) {

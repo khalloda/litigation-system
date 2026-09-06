@@ -75,7 +75,13 @@ there is no account deletion, self-disablement, self-demotion or
 self-administrative reset. Staff roster and identity maintenance remain the
 separate future Task 4.0a; Task 3.4 never creates or edits a person or alias.
 
-### Staff roster — approved Task 4.0a contract, not implemented
+### Staff roster — Phase 1 database foundation complete; screens not started
+
+Migration 61 implements the database portions below and is verified locally,
+but remains unapplied to the unchanged migration-60 project database. No staff
+routes, service actions or UI exist yet. Task 4.0a remains incomplete; the next
+return point is **Task 4.0a Phase 2—read-only roster, not started.** See the
+[Phase 1 report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md).
 
 Task 4.0a covers the 66 internal staff identities now in PostgreSQL: 23 active
 and 43 inactive. The 71 external people stay available to historical legal

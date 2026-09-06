@@ -10,10 +10,14 @@ PostgreSQL database, producing 1,744 matters and 13,382 hearings while retaining
 the original quarantine and source evidence. This was not the final Access
 cutover; the Litigation Department continues to use Access. Task 4.0's
 structural Arabic/RTL checker is complete, but no core Stage 4 screen has
-started. The owner-approved Task 4.0a staff-roster contract is recorded in
-D44–D50, but the task and all of its prerequisites remain unimplemented. The
-exact return point is **Task 4.0a Phase 1 — database boundary and operational
-invariants, approved but not started.**
+started. Task 4.0a Phase 1's D44–D49 database foundation is implemented and
+verified locally; migration 61 remains **unapplied** to the project database,
+which is unchanged at migration 60 with 93 passing invariants. Historical
+upgrade passed 93 checks before and 107 after; canonical replay passed 89.
+Task 4.0a itself and Phases 2–4 remain incomplete; no staff route/UI exists.
+The exact return point is **Task 4.0a Phase 2—read-only roster, not started.**
+See the [Phase 1 report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
+and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
 The owner-readable
 migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);

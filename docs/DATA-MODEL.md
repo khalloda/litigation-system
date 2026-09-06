@@ -57,13 +57,13 @@ own name**, which rule 15 depends on: matching through the alias table only
 works if every name is in it. Samy Khattab's exact self-alias was already
 present from task 1.2a and is asserted rather than duplicated.
 
-### Task 4.0a approved people/alias contract — not implemented
+### Task 4.0a people/alias contract — Phase 1 implemented, not deployed
 
 The application staff roster is the 66 internal identities: the 64 protected
 Stage 2 staff plus the two application-native staff added in Task 3.1. That is
 23 active and 43 inactive. The 71 `is_staff = false` external people remain
 valid relationship targets but are outside roster queries. The imported
-boundary must be snapshotted immutably when Task 4.0a begins; later native hires
+boundary is snapshotted immutably by migration 61; later native hires
 join the roster through database-enforced `is_application_native` provenance,
 not by altering the historical snapshot.
 
@@ -98,16 +98,35 @@ reason and audit event. Retired application aliases remain retained history
 and evidence but leave ordinary active search. Existing source IDs, source
 fingerprints and D43 durable Access identities remain unchanged.
 
-The Phase 1 schema is expected to add a row version for stale-write rejection
-and application modification provenance. It must also preserve the existing
+The Phase 1 schema adds a row version for stale-write rejection
+and database-owned application modification provenance. It preserves the existing
 uniqueness of every non-null person email: accepted email is trimmed of
 surrounding whitespace and normalized for case, the normalized non-null value
 is unique at the database boundary, and concurrent duplicates are rejected.
 The existing unique constraint may not be weakened or removed. Supporting
 shared addresses requires a future owner decision. The exact names and
-representations are implementation choices, not current columns; this section
-records the invariants. No migration, column, constraint or runtime gateway for
-the new representations exists yet.
+representations are now `people.row_version`, `alias_epoch`,
+`application_modified_at` and `application_modified_by` (an immutable human
+audit-actor reference); `person_name_alias.is_retired` and `retirement_reason`;
+and `lookup_team.row_version`. They exist in the repository schema and tested
+migration 61, **not** in the current migration-60 project database.
+
+Four private immutable snapshots preserve all 137 original people (135 imported
+and two native), all 350 aliases (348 imported), both teams and the source
+boundary. A private serialization row and append-only full-row change ledger
+separate current operations from historical evidence. UTC-canonical JSON makes
+new full-row/event hashes independent of a caller's timezone without changing
+stored timestamps. Runtime has SELECT-only access to the three roster tables;
+six fixed-path `staff_*` gateways own mutations and optimistic version checks.
+Versions may advance more than once in an atomic rename because alias changes
+also advance the person version; callers use the returned final version.
+No-op operations leave rows, timestamps, versions and events unchanged.
+
+The historical alias sequence consumed one value: the last imported alias and
+two original native aliases retain IDs 349/350/351 there, versus 348/349/350 on
+canonical replay. Each profile preserves its actual identities; no renumbering
+or name-based identity substitution is permitted. See the
+[Phase 1 report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md).
 
 Person and account lifecycle must be atomic where they meet. Deactivating a
 person with an account also disables the account, clears lockout state,

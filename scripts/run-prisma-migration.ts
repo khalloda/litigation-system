@@ -2,6 +2,7 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { assertApprovedMigrationPrincipalUrl } from './lib/migration-principal';
+import { validateFixtureMigrationConfig } from './lib/fixture-migration-checkpoint';
 
 const commands = new Map([
   ['dev', ['migrate', 'dev']],
@@ -15,11 +16,17 @@ const commands = new Map([
 
 async function main(): Promise<void> {
   const command = process.argv[2];
-  assert.ok(command && process.argv.length === 3, 'use dev, deploy, resolve-task33a or status');
-  const prismaArguments = commands.get(command as 'dev' | 'deploy' | 'resolve-task33a' | 'status');
+  const fixture = command === 'deploy-fixture-checkpoint';
+  assert.ok(
+    command && process.argv.length === (fixture ? 4 : 3),
+    'use dev, deploy, resolve-task33a, status, or the owned fixture checkpoint',
+  );
+  await assertApprovedMigrationPrincipalUrl();
+  const prismaArguments = fixture
+    ? ['migrate', 'deploy', '--config', await validateFixtureMigrationConfig(process.argv[3]!)]
+    : commands.get(command as 'dev' | 'deploy' | 'resolve-task33a' | 'status');
   assert.ok(prismaArguments, 'use dev, deploy, resolve-task33a or status');
 
-  await assertApprovedMigrationPrincipalUrl();
   const result = spawnSync(
     process.execPath,
     ['node_modules/prisma/build/index.js', ...prismaArguments],

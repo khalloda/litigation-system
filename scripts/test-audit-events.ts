@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { assertDisposableFixtureSource } from './lib/isolated-postgres-fixture';
+import { migrateFixtureThroughCheckpoint } from './lib/fixture-migration-checkpoint';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -16,8 +18,6 @@ import {
   auditEventDataFailures,
   auditEventDigest,
   auditEventStructureFailures,
-  TASK33B_CORRECTION_MIGRATION,
-  TASK33B_MIGRATION,
 } from './lib/audit-event-structure';
 
 function identifier(value: string): string {
@@ -55,69 +55,6 @@ function fixtureRuntimeUrl(ownerUrl: URL): URL {
   return runtime;
 }
 
-async function removeTask33B(db: Client): Promise<void> {
-  // This session-owned canonical fixture includes later migration 60. Remove
-  // its empty schema first so the Task 3.3B failed-migration fixture still
-  // tests the intended boundary rather than a later foreign-key dependency.
-  await db.query(`
-    DROP TRIGGER matters_client_branch_compatibility ON matters;
-    DROP TRIGGER zz_task35b_row_proof ON lookup_client_branch;
-    DROP TRIGGER zz_task35b_row_proof ON lookup_court;
-    DROP TRIGGER zz_task35b_row_proof ON matters;
-    DROP TRIGGER zz_task35b_row_proof ON hearings;
-    DROP TRIGGER zz_task35b_row_proof ON matter_lawyers;
-    DROP TRIGGER zz_task35b_row_proof ON matter_parties;
-    DROP TRIGGER zz_task35b_row_proof ON matter_party_roles;
-    DROP TRIGGER zz_task35b_row_proof ON hearing_attendees;
-    DROP TABLE _migration.high_impact_row_proof;
-    DROP TABLE _migration.high_impact_resolution;
-    DROP TABLE _migration.high_impact_application;
-    DROP TABLE _migration.client_branch_compatibility;
-    DROP FUNCTION _migration.capture_high_impact_row_proof();
-    DROP FUNCTION _migration.check_high_impact_completeness();
-    DROP FUNCTION _migration.audit_branch_compatibility();
-    DROP FUNCTION _migration.enforce_client_branch_compatibility();
-    DROP FUNCTION _migration.refuse_high_impact_evidence_change();
-    DELETE FROM _prisma_migrations WHERE migration_name='20260904180000_prepare_high_impact_application'`);
-  const tables = (
-    await db.query<{ entity_table: string }>(
-      `SELECT entity_table FROM audit_event_table_rules ORDER BY entity_table`,
-    )
-  ).rows;
-  await db.query('BEGIN');
-  try {
-    for (const { entity_table: table } of tables) {
-      assert.match(table, /^[a-z_]+$/u);
-      await db.query(`DROP TRIGGER audit_event_capture ON public.${table}`);
-    }
-    await db.query(`
-      DROP TABLE audit_event_checkpoints;
-      DROP TABLE audit_events;
-      DROP TABLE audit_event_fields;
-      DROP TABLE audit_event_table_rules;
-      DROP FUNCTION audit_capture_row_event();
-      DROP FUNCTION audit_append_semantic_event_for_account(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb);
-      DROP FUNCTION audit_append_semantic_event(text,text,text,text,jsonb,integer,text,text,jsonb,text,jsonb);
-      DROP FUNCTION audit_write_event(text,text,text,text,jsonb,text[],jsonb,jsonb,integer,text,text,jsonb,text,jsonb);
-      DROP FUNCTION audit_ensure_event_context();
-      DROP FUNCTION audit_set_event_context(uuid,uuid,uuid,inet,text,text);
-      DROP FUNCTION audit_safe_flat_object(jsonb);
-      DROP FUNCTION audit_bound_json_value(jsonb,integer,text);
-      DROP FUNCTION audit_contains_secret_pattern(text);
-      DROP FUNCTION refuse_audit_event_change()`);
-    const removed = await db.query(
-      `DELETE FROM _prisma_migrations WHERE migration_name=ANY($1::text[])
-       RETURNING migration_name`,
-      [[TASK33B_MIGRATION, TASK33B_CORRECTION_MIGRATION]],
-    );
-    assert.equal(removed.rowCount, 2);
-    await db.query('COMMIT');
-  } catch (error) {
-    await db.query('ROLLBACK');
-    throw error;
-  }
-}
-
 async function proveFailedMigrationAtomic(admin: Client, source: URL): Promise<void> {
   const fixtureName = `litigation_task33b_failed_${process.pid}_${Date.now()}`;
   const fixtureUrl = new URL(source);
@@ -126,11 +63,10 @@ async function proveFailedMigrationAtomic(admin: Client, source: URL): Promise<v
   try {
     await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
     created = true;
-    migrate(fixtureUrl.toString());
+    await migrateFixtureThroughCheckpoint(fixtureUrl.toString(), 56);
     const fixture = new Client({ connectionString: fixtureUrl.toString() });
     await fixture.connect();
     try {
-      await removeTask33B(fixture);
       await fixture.query('CREATE TABLE audit_events(conflict_marker text)');
     } finally {
       await fixture.end();
@@ -215,12 +151,11 @@ async function main(): Promise<void> {
   assert.ok(sourceText, 'MIGRATION_DATABASE_URL is required');
   const source = new URL(sourceText);
   assert.ok(['localhost', '127.0.0.1'].includes(source.hostname));
-  assert.equal(source.port, '5433');
+  await assertDisposableFixtureSource(source);
   const adminUrl = new URL(source);
   adminUrl.pathname = '/postgres';
   const admin = new Client({ connectionString: adminUrl.toString() });
   await admin.connect();
-  await proveFailedMigrationAtomic(admin, source);
 
   const fixtureName = `litigation_task33b_fixture_${process.pid}_${Date.now()}`;
   const fixtureUrl = new URL(source);
@@ -228,6 +163,7 @@ async function main(): Promise<void> {
   const runtimeUrl = fixtureRuntimeUrl(fixtureUrl);
   let created = false;
   try {
+    await proveFailedMigrationAtomic(admin, source);
     await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
     created = true;
     migrate(fixtureUrl.toString());
@@ -580,6 +516,10 @@ async function main(): Promise<void> {
             CURRENT_TIMESTAMP,true
           ) RETURNING id`)
       ).rows[0]!.id;
+      await owner.query(
+        'INSERT INTO person_name_alias(person_id,alias_ar,is_primary) SELECT id,name_ar,true FROM people WHERE id=$1',
+        [futurePersonId],
+      );
       const futureAccountId = (
         await owner.query<{ id: number }>(
           `

@@ -190,6 +190,11 @@ history remains Task 4.9.
 
 ## 8. Staff roster — approved Task 4.0a direction, not implemented
 
+This section still describes future screens. Task 4.0a Phase 1 completed only
+the local database foundation; migration 61 is undeployed, and no staff route,
+layout, interaction or browser evidence exists. The exact return point is
+**Task 4.0a Phase 2—read-only roster, not started.** D50 evidence remains Phase 4.
+
 The Arabic-first RTL route set is `/staff`, `/staff/new`, `/staff/[id]` and
 `/staff/[id]/edit`. The roster defaults to the 23 active internal staff and can
 switch to former or all 66. Team/unassigned and trainee filters stay visible

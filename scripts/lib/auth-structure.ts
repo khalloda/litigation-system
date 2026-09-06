@@ -1,4 +1,5 @@
 import type { ClientBase } from 'pg';
+import { staffBoundaryApplied } from './staff-roster-checkpoint';
 
 type ConstraintRow = {
   name: string;
@@ -198,6 +199,7 @@ function same(left: readonly string[], right: readonly string[]): boolean {
 
 export async function authStructureFailures(db: ClientBase): Promise<string[]> {
   const failures: string[] = [];
+  const staffBoundary = await staffBoundaryApplied(db);
   const constraints = await db.query<ConstraintRow>(`
     SELECT con.conname name,ns.nspname schema_name,rel.relname table_name,
            con.contype::text type,con.convalidated validated,con.connoinherit no_inherit,
@@ -358,7 +360,7 @@ export async function authStructureFailures(db: ClientBase): Promise<string[]> {
       row.function_kind !== 'f' ||
       row.volatility !== 'v' ||
       row.strict ||
-      row.security_definer ||
+      row.security_definer !== (staffBoundary && name === 'sync_user_account_person_login') ||
       row.leakproof ||
       row.parallel_safety !== 'u' ||
       !same(row.configuration ?? [], ['search_path=pg_catalog, public']) ||
@@ -371,6 +373,11 @@ export async function authStructureFailures(db: ClientBase): Promise<string[]> {
 }
 
 export async function authDataFailures(db: ClientBase): Promise<string[]> {
+  const staffBoundary = await staffBoundaryApplied(db);
+  const identityPeople = staffBoundary ? '_migration.staff_roster_person' : 'public.people';
+  const identityAliases = staffBoundary
+    ? '_migration.staff_roster_alias'
+    : 'public.person_name_alias';
   const result = await db.query<{ defect: string }>(`
     WITH expected(original_username,name_ar,email,native,person_id) AS (VALUES
       ('KHelmy','خالد حلمي','khelmy@sarieldin.com',true,NULL::integer),
@@ -383,8 +390,8 @@ export async function authDataFailures(db: ClientBase): Promise<string[]> {
         ON actor.actor_kind='human'
        AND actor.identity_label=e.original_username||' (account '||actor.user_account_id::text||')'
       LEFT JOIN user_accounts u ON u.id=actor.user_account_id
-      LEFT JOIN people p ON p.id=u.person_id
-      LEFT JOIN person_name_alias a ON a.person_id=p.id AND a.alias_ar=e.name_ar
+      LEFT JOIN ${identityPeople} p ON p.id=u.person_id
+      LEFT JOIN ${identityAliases} a ON a.person_id=p.id AND a.alias_ar=e.name_ar
       WHERE u.id IS NULL OR p.name_ar IS DISTINCT FROM e.name_ar
          OR p.email IS DISTINCT FROM e.email
          OR p.is_application_native IS DISTINCT FROM e.native
@@ -392,10 +399,10 @@ export async function authDataFailures(db: ClientBase): Promise<string[]> {
          OR a.person_id IS NULL
       UNION ALL
       SELECT 'protected canonical roster no longer has 135 people'
-       WHERE (SELECT count(*) FROM people WHERE NOT is_application_native) <> 135
+       WHERE (SELECT count(*) FROM ${identityPeople} WHERE NOT is_application_native) <> 135
       UNION ALL
       SELECT 'the two Task 3.1 native people are not exact'
-       WHERE (SELECT count(*) FROM people WHERE is_application_native
+       WHERE (SELECT count(*) FROM ${identityPeople} WHERE is_application_native
                AND name_ar IN ('خالد حلمي','محمد حسين')) <> 2
       UNION ALL
       SELECT 'people.can_login differs from active enabled-account eligibility'

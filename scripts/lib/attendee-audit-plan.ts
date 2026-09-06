@@ -116,7 +116,9 @@ export function attendeeSourceSnapshot(rows: readonly SourceCellRow[]): Attendee
   return Object.freeze({ cells: rows.length, digest: attendeeSourceDigest(rows) });
 }
 
-export async function readAttendeeSourceSnapshot(db: Client): Promise<AttendeeSourceSnapshot> {
+export async function readAttendeeSourceSnapshot(
+  db: Pick<Client, 'query'>,
+): Promise<AttendeeSourceSnapshot> {
   const result = await db.query<SourceCellRow>(`
     SELECT h.src_row_num, v.source_column, v.source_column_ordinal, v.original_cell
       FROM staging."الجلسات" h

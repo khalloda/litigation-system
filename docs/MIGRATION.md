@@ -3199,10 +3199,11 @@ share normalized output SHA-256
 `7a5abffde3e7111095c35f406aa78ca43b4ed03f0546807e70bb2cdfb3bb61f5`,
 and return the approved plan digest above. Task 3.5 and Stage 3 are complete.
 No core Stage 4 screen has started. Task 4.0 was subsequently completed and
-D44–D50 now record the approved Task 4.0a contract, without implementing it.
+D44–D50 subsequently recorded the approved Task 4.0a contract; Phase 1's
+local-only database implementation is described below.
 Access remains in operational use and no final cutover occurred.
 
-## Task 4.0a migration boundary — approved, not implemented
+## Task 4.0a migration boundary — Phase 1 implemented locally, not deployed
 
 Task 4.0a must preserve two truths at once: the imported roster is historical
 evidence, while the application roster must keep changing after go-live. Phase
@@ -3227,7 +3228,7 @@ Only a non-primary application-created alias may later be retired/restored with
 a reason and audit fact. A retired application alias remains historical
 evidence but is excluded from ordinary active search.
 
-The future forward migration must add database-enforced application-native and
+Migration 61 adds database-enforced application-native and
 application-modification provenance and serialized canonical/alias collision
 checks. The permanent primary-alias invariant covers every person, including
 the 71 external people, although external people remain outside Task 4.0a
@@ -3242,14 +3243,46 @@ eligibility/reassignment rules without allowing runtime deletion. Permanent
 checks, rather than migration-only assertions, own every invariant that must
 remain true.
 
-Both paths need proof: upgrading the accepted 60-migration/93-invariant state,
-and replaying cleanly from migration 1 through the new migration. The upgrade
-must keep the protected historical counts and digests unchanged; clean replay
-must produce the same boundary, provenance and constraints. A later Access
+Both independently mandatory paths passed: historical full-state upgrade
+matched all 97 source-table fingerprints, passed 93 checks before migration 61
+and 107 afterward; canonical replay through 61 passed 89 checks. Both enforce
+the same operational identity, provenance, privilege and concurrency rules.
+Canonical replay explicitly lacks non-Git extraction/review/release payload;
+historical upgrade requires the exact original payload and frozen digests.
+The original alias IDs are preserved separately for each profile, including
+the known one-value historical sequence gap. No frozen profile digest was
+changed or regenerated. A later Access
 cutover still uses D43's source-identity differential reconciliation: unchanged
 source rows are not duplicated, changed rows reconcile through durable identity,
 and unresolved identities stop for review rather than being guessed.
 
-No Task 4.0a migration, schema change, fixture or database write was made when
-this contract was recorded. The exact return point is **Task 4.0a Phase 1 —
-database boundary and operational invariants, approved but not started.**
+No implementation was made when the readiness contract was recorded. The
+subsequent Phase 1 migration is
+`20260906180000_staff_roster_database_boundary`, SHA-256
+`588f23fdecaa497599773eacec8c302fbbca426dc0c888151fef5f2e64f89959`.
+It snapshots 137 original people, 350 aliases and both teams, adds seven
+operational metadata columns and seven audit classifications, serializes staff
+and account writes, and exposes six narrow runtime mutation gateways.
+Historical assertions use the verified immutable snapshot; current operational
+rules use live rows and their audited change ledger. Neither is a generic
+filter for a failed reconciliation.
+
+All migration, role and mutation testing occurred only inside a uniquely owned,
+separate PostgreSQL 17.11 cluster. Both profiles passed 22 mutation groups,
+forced late migration rollback and invalid-prestate refusal. A copied source
+row in canonical state was rejected as a hybrid. Every original table value
+and timestamp stayed unchanged across migration 61 except the explicit new
+migration ledger entry and seven new audit-field rules. Legitimate subsequent
+fixture edits remained in place while permanent checks passed.
+
+The current project database is still at 60 applied migrations with 93 passing
+invariants, unchanged schema, roles, table fingerprints, protected data and
+54 logo files. Migration 61 is the only intentionally pending migration and
+must not be deployed without separate owner authorization. No dump file was
+written; the read-only dump buffer was zeroed. All disposable databases,
+roles, containers, volumes, networks, migration mirrors and test processes were
+removed. The [complete invariant inventory](testing/task-4-0a-phase1-invariants.md)
+and [Phase 1 report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
+record the evidence and explicit limits.
+
+The exact return point is **Task 4.0a Phase 2—read-only roster, not started.**

@@ -472,6 +472,14 @@ model Person {
   /// inferred from ids or timestamps.
   isApplicationNative Boolean @default(false) @map("is_application_native")
 
+  /// Phase 1 database-maintained metadata. Mutations use staff_* gateways;
+  /// callers never assign versions, native provenance or modification actors.
+  rowVersion                 BigInt      @default(1) @map("row_version")
+  aliasEpoch                 BigInt      @default(0) @map("alias_epoch")
+  applicationModifiedAt      DateTime?   @map("application_modified_at") @db.Timestamptz(6)
+  applicationModifiedBy      Int?        @map("application_modified_by")
+  applicationModifiedByActor AuditActor? @relation("PersonApplicationModifiedBy", fields: [applicationModifiedBy], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
   /// Which work team. NULL is valid and common — 16 of the 21 current staff
   /// have none. Team-grouped reports must show those under an "unassigned"
   /// heading, never drop them. Deliberately NOT on the matter (D6).
@@ -530,7 +538,7 @@ model Person {
 model PersonNameAlias {
   id                Int     @id @default(autoincrement())
   personId          Int     @map("person_id")
-  person            Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  person            Person  @relation(fields: [personId], references: [id], onDelete: Restrict)
   /// The spelling exactly as it appeared. Unique across the whole roster: one
   /// spelling cannot belong to two people.
   aliasAr           String  @unique @map("alias_ar")
@@ -539,6 +547,8 @@ model PersonNameAlias {
   /// would include it in every INSERT and PostgreSQL refuses that.
   aliasArNormalised String? @map("alias_ar_normalised")
   isPrimary         Boolean @default(false) @map("is_primary")
+  isRetired         Boolean @default(false) @map("is_retired")
+  retirementReason  String? @map("retirement_reason")
 
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
@@ -591,6 +601,7 @@ model AuditActor {
   lookupClientBranchUpdated       LookupClientBranch[]       @relation("LookupClientBranchUpdatedBy")
   personCreated                   Person[]                   @relation("PersonCreatedBy")
   personUpdated                   Person[]                   @relation("PersonUpdatedBy")
+  personApplicationModified       Person[]                   @relation("PersonApplicationModifiedBy")
   userAccountCreated              UserAccount[]              @relation("UserAccountCreatedBy")
   userAccountUpdated              UserAccount[]              @relation("UserAccountUpdatedBy")
   lookupTeamCreated               LookupTeam[]               @relation("LookupTeamCreatedBy")
@@ -824,6 +835,7 @@ model MigrationBillingCurrencyRule {
 /// and had a different reviewer — an abandoned duplicate, deliberately not
 /// created.
 model LookupTeam {
+  rowVersion  BigInt  @default(1) @map("row_version")
   id          Int     @id @default(autoincrement()) @db.SmallInt
   code        String?
   labelAr     String  @unique @map("label_ar")
