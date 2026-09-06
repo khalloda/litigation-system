@@ -3061,6 +3061,14 @@ await separately authorized Task 3.5B application and reconciliation. Task
 
 The Access file is in daily use. A stale copy drifted **325 rows in a few days**.
 
+The accepted Task 3.5B application is **not** this cutover. The Litigation
+Department continues using Access. Under **D43**, the final controlled snapshot
+is reconciled by durable source identity: unchanged previously migrated records
+are not duplicated; only genuinely new or changed records are considered;
+changed, deleted, ambiguous or conflicting records are reconciled or
+quarantined rather than blindly overwriting PostgreSQL. The final snapshot,
+freeze window and differential plan remain future controlled work.
+
 ```
 T-14d  Full dry run on a copy. All gates pass. Six reports reconciled.
 T-8d   ANNOUNCE the date to the whole firm. A week's notice, not a surprise.
@@ -3146,3 +3154,49 @@ events. PostgreSQL sequence allocations can leave gaps after a rollback; IDs
 are neither reset nor reused. A second correct application is an exact row/event
 no-op. Migration 60 and real application remain pending independent review and
 separate owner approval. Task 3.5 is unchecked; Stage 4 and cutover remain unstarted.
+
+## Task 3.5B accepted real application — 5–6 September 2026
+
+The preparation section above remains the dated pre-application record. After
+independent review and explicit owner authorization, migration 60 and the exact
+real-application command each executed once against the local `litigation`
+database on port 5433. The application used approved plan digest
+`4a1fee01d011b960f48204102e28ed71731a5f1d682006141749460828e33da3`.
+Post-application migration status is 60 applied with zero pending or unfinished;
+`db:verify` passes on PostgreSQL 17.11 and permanent checks pass 93/93.
+
+The accepted current counts are 18 client branches, 309 courts, 1,744 matters,
+13,382 hearings, 968 matter-lawyer links, 2,695 parties, 2,267 party roles,
+9,113 hearing attendees, 963 relationship-quarantine evidence rows, 18
+compatibility pairs, one application batch, 382 resolutions and 824 audit
+events. The 382 resolutions comprise 55 matters and 327 hearings. All 313
+dependent hearings match their reviewed parents; D41's exact twelve hearings
+have no missing, unexpected, wrong-note or wrong-court outcome; the 13 Sigma and
+one Alpha decisions have zero parent mismatch; one `أسرة مصر الجديدة` court is
+used by two approved hearings; and ten branches are intentionally NULL.
+
+Workbook-independent and append-only verification passed. Lower-impact data and
+the protected historical state remained unchanged at
+`323f2bf1bae96d02af78b51eb7c14d8d54e8d8997eee171e15216e62896706b9`.
+The original 55 matter and 327 hearing quarantine/source records remain
+preserved. Post-application `high_impact_row_proof` is correctly zero because no
+released row was subsequently modified; immutable initial snapshots and hashes
+remain stored in the application evidence.
+
+Accepted external evidence is the logical directory
+`2026-09-05-task-3-5b-application-v1`:
+
+| File | Bytes | SHA-256 |
+|---|---:|---|
+| `01-preflight.json` | 3,047 | `08477f5933ff70d853c982f3b3f43f45474be9eeb1917db7ee4514048c9005fe` |
+| `02-application-and-verification.json` | 8,190 | `2326196cee564440b536b54764c8d2f674313be8ba2d974d8296a94be01b2892` |
+| `03-evidence-manifest.json` | 623 | `5d0be2a7237f1d524bbd7f353f8ca6cc355294f35e306e2090caf5c44a92b244` |
+
+The manifest intentionally excludes itself and its entries match the first two
+files. The two accepted default non-writing reconciliations are byte-identical,
+share normalized output SHA-256
+`7a5abffde3e7111095c35f406aa78ca43b4ed03f0546807e70bb2cdfb3bb61f5`,
+and return the approved plan digest above. Task 3.5 and Stage 3 are complete.
+Stage 4 remains unstarted; the exact return point is Task 4.0, the structural
+RTL-checker correction—not Task 4.0a or Task 4.1. Access remains in operational
+use and no final cutover occurred.

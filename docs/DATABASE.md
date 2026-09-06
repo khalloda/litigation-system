@@ -466,6 +466,34 @@ business rows and their digest, current attribution digest, four roles, 448
 authorization decisions, one baseline event and 583 field classifications are
 unchanged. The live invariant count is 92.
 
+The 92 count above is the Task 3.4 checkpoint. Task 3.5B adds the current
+93rd permanent invariant described below.
+
+## Task 3.5B accepted database state
+
+Migration 60, `20260904180000_prepare_high_impact_application`, and the
+owner-authorized real application each executed exactly once on 5 September
+2026. The migration's applied checksum is
+`7921c9b168549928185bfd0b915ccc725ba363787158990c614420e0e3bbbee5`;
+the application plan digest is
+`4a1fee01d011b960f48204102e28ed71731a5f1d682006141749460828e33da3`.
+The project database now has 60 applied migrations, one application batch, 382
+resolutions, 824 audit events and 93/93 passing permanent invariants.
+
+The current business totals are 18 client branches, 309 courts, 1,744 matters,
+13,382 hearings, 968 matter-lawyer links, 2,695 parties, 2,267 party roles and
+9,113 hearing attendees. The original 55 matter and 327 hearing
+quarantine/source rows remain immutable evidence. The protected historical
+state still has digest
+`323f2bf1bae96d02af78b51eb7c14d8d54e8d8997eee171e15216e62896706b9`.
+Default `npm run review:high-impact:apply` is a non-writing verifier and now
+returns `mode: no-op` with the approved plan digest.
+
+This state is an accepted migration checkpoint, not the final Access cutover.
+Access remains in operational use. Future final cutover work follows D43's
+source-identity differential reconciliation and must not repeat this application
+or duplicate unchanged Access records.
+
 ### Local setup and upgrade
 
 For an existing development `.env` that still has the old privileged

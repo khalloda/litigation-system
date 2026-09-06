@@ -979,3 +979,54 @@ SHA-256 `0dc23134639e0bc6477fe1f39613bd7575b56cdcd0085d2f2831a96693f2376b`.
 This instruction authorizes implementation and disposable-database proof
 only. Real application still awaits independent review and owner approval;
 Task 3.5B is not fully complete and Stage 4 must not start.
+
+## D42 — Task 3.5 high-impact quarantine application is accepted
+
+**Applied on 5 September 2026 after Khaled Helmy's explicit authorization and
+accepted through the 6 September 2026 documentation checkpoint.** The
+independent evidence review is accepted. Migration 60
+(`20260904180000_prepare_high_impact_application`) and the exact approved
+Task 3.5B real-application command each executed once against the local project
+PostgreSQL database. The approved plan digest is
+`4a1fee01d011b960f48204102e28ed71731a5f1d682006141749460828e33da3`.
+
+All 55 reviewed matters and 327 reviewed hearings are current target rows. The
+382 source-to-target resolutions, the application batch, initial values and
+hashes, and 808 application events are retained in append-only evidence. The
+original 55 matter and 327 hearing quarantine/source rows remain preserved as
+historical evidence; release does not rewrite or delete them. Lower-impact
+administrative, task-action, fee-link, relationship and ambiguous-attendee
+evidence is not implicitly released.
+
+Permanent verification passes 93/93. All 313 dependent hearings match their
+reviewed parents; the exact twelve D41 destinations have no missing, unexpected,
+wrong-note or wrong-court result; the 13 Sigma and one Alpha parent decisions
+have zero mismatch; one distinct `أسرة مصر الجديدة` court serves exactly two
+approved hearings; and exactly ten reviewed matters retain an intentional NULL
+branch. The current application ledger correctly contains zero
+`high_impact_row_proof` rows because no released row has subsequently been
+modified; immutable initial snapshots and hashes remain stored. This decision
+completes Task 3.5 and Stage 3. It does not start Stage 4.
+
+## D43 — Final Access cutover uses source-identity differential reconciliation
+
+**Approved explicitly by Khaled Helmy on 6 September 2026.** The Task 3.5B
+application was not the final Access cutover. The Litigation Department
+continues using Access, and the exact final snapshot and cutover window remain
+future controlled work.
+
+At final cutover, reconciliation is based on durable source identity rather
+than blindly repeating the historical import:
+
+- previously migrated records whose source values are unchanged must not be
+  duplicated;
+- only genuinely new or changed Access records are candidates for import;
+- changed, deleted, ambiguous or conflicting records must be reconciled or
+  quarantined with their original evidence intact, never blindly overwritten;
+- the final source snapshot, freeze, differential plan and cutover execution
+  require their own controlled verification and authorization.
+
+This preserves ordinary Access work performed after the 23 August extraction
+without duplicating the records already present in PostgreSQL. It does not
+request the final Access database now and does not alter the existing Stage 7
+cutover gates.

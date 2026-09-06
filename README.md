@@ -3,17 +3,14 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Status:** Stage 2 migration and Gate 4 reconciliation are complete. Stage 3
-authentication, server-side role permissions, secure actor attribution and the
-Task 3.3B append-only event foundation are implemented and accepted. Task 3.4
-Administrator-only user management is accepted and pushed. Task 3.5A's
-high-impact quarantine-review package now has a 4 September D40 successor:
-382 owner decisions complete, zero incomplete or invalid. Two court approvals
-await lookup creation; D39 branch prerequisites also remain. Task 3.5 stays open:
-no answer has been applied to the real project database. Task 3.5B is implemented
-and disposable-tested, including operational permanent verification; D41 supplies the exact twelve hearing
-destinations for D40's prosecution note. Real application requires independent
-review and separate owner approval. Stage 4 has not started.
+**Status:** Stages 2 and 3 are complete. Task 3.5's high-impact quarantine
+checkpoint is completed and accepted: migration 60 and the approved Task 3.5B
+real application each executed exactly once against the local project
+PostgreSQL database, producing 1,744 matters and 13,382 hearings while retaining
+the original quarantine and source evidence. This was not the final Access
+cutover; the Litigation Department continues to use Access. Stage 4 has not
+started. The exact return point is Task 4.0, the structural right-to-left checker
+correction required before the first core screen—not Task 4.0a or Task 4.1.
 The owner-readable
 migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
@@ -28,7 +25,7 @@ Task 3.4's implementation and verification record is
 [`docs/task-reports/2026-09-03-task-3-4-user-management.md`](docs/task-reports/2026-09-03-task-3-4-user-management.md).
 Task 3.5A's package and validation record is
 [`docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md`](docs/task-reports/2026-09-03-task-3-5a-high-impact-review-package.md).
-Task 3.5B's contract, projected changes and disposable proof are recorded in
+Task 3.5B's contract, disposable proof and accepted application checkpoint are recorded in
 [`docs/task-reports/2026-09-04-task-3-5b-quarantine-application.md`](docs/task-reports/2026-09-04-task-3-5b-quarantine-application.md).
 
 ---

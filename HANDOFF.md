@@ -13,6 +13,9 @@ Use these current authorities instead:
 - [`docs/reviews/2026-09-01-project-continuity-recovery-audit.md`](docs/reviews/2026-09-01-project-continuity-recovery-audit.md)
   — dated continuity evidence, not a current priority authority.
 
-**Current return point:** Task 3.3 has not started and remains the first
-unchecked implementation task. Do not restart Task 2.1 or treat the former
-handoff's obsolete governance instructions as active.
+**Current return point:** Stages 2 and 3, including the accepted Task 3.5
+high-impact quarantine checkpoint, are complete. Stage 4 remains unstarted.
+Resume at Task 4.0, the structural RTL-checker correction required before the
+first core screen—not Task 4.0a or Task 4.1. Access remains in operational use;
+the Task 3.5 application was not the final cutover. Do not restart earlier work
+or treat the former handoff's obsolete governance instructions as active.

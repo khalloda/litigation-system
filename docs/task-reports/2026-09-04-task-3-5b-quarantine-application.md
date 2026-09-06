@@ -297,3 +297,79 @@ Protected counts are 318 clients, 188 contacts, 543 invoices, 597 payments,
 accounts, seven actors and one original audit event. Real migration 60 and the
 382 releases remain pending. The local preparation commit is not permission to
 deploy, apply, push, complete Task 3.5 or start Stage 4.
+
+## Accepted real-application checkpoint — 5–6 September 2026
+
+The report above remains the dated preparation and disposable-proof record. An
+independent evidence review was subsequently accepted. Khaled explicitly
+authorized migration 60 and the real application against the local project
+PostgreSQL database, accepting that migration 60 would remain if application
+failed. Migration 60 and the exact authorized application command each executed
+once; both succeeded. No second application, import or reconciliation write was
+performed.
+
+This was not the final Access cutover. The Litigation Department continues
+using Access. D43 requires the future final snapshot to use source-identity
+differential reconciliation so unchanged records are not duplicated and new,
+changed, deleted, ambiguous or conflicting records are reconciled safely.
+
+### Accepted database result
+
+| Evidence | Accepted value |
+|---|---:|
+| Migrations | 60 |
+| Permanent invariants | 93 |
+| Client branches | 18 |
+| Courts | 309 |
+| Matters | 1,744 |
+| Hearings | 13,382 |
+| Matter lawyers | 968 |
+| Matter parties | 2,695 |
+| Party roles | 2,267 |
+| Hearing attendees | 9,113 |
+| Relationship-quarantine evidence | 963 |
+| Compatibility pairs | 18 |
+| Application batches | 1 |
+| Resolutions | 382 |
+| Audit events | 824 |
+
+The 382 resolutions are exactly 55 matters and 327 hearings. All 313 dependent
+hearings match their reviewed parent. D41's exact twelve hearings have zero
+missing, unexpected, wrong-note or wrong-court result. The D39 parent decisions
+are exactly 13 Sigma plus one Alpha, with zero mismatch. One distinct
+`أسرة مصر الجديدة` court is used by exactly two approved hearings. Exactly ten
+reviewed matters have an intentional NULL branch. Workbook-independent
+verification and append-only evidence verification both passed.
+
+Lower-impact data and protected historical state remained unchanged. The
+original 55 matter and 327 hearing quarantine/source rows remain preserved as
+evidence. Clients/contacts remain 318/188; invoices/payments/allocations/
+attendance remain 543/597/47/4,022; accounts/actors remain 4/7; and all 54
+logos remain unchanged at 1,541,428 bytes. Post-application
+`high_impact_row_proof` is correctly zero because no released row was
+subsequently modified; immutable initial snapshots and hashes remain stored in
+the application evidence. The protected-state digest remains
+`323f2bf1bae96d02af78b51eb7c14d8d54e8d8997eee171e15216e62896706b9`.
+
+### Accepted external evidence
+
+Logical directory: `2026-09-05-task-3-5b-application-v1`.
+
+| File | Bytes | SHA-256 |
+|---|---:|---|
+| `01-preflight.json` | 3,047 | `08477f5933ff70d853c982f3b3f43f45474be9eeb1917db7ee4514048c9005fe` |
+| `02-application-and-verification.json` | 8,190 | `2326196cee564440b536b54764c8d2f674313be8ba2d974d8296a94be01b2892` |
+| `03-evidence-manifest.json` | 623 | `5d0be2a7237f1d524bbd7f353f8ca6cc355294f35e306e2090caf5c44a92b244` |
+
+The evidence manifest intentionally excludes itself; its recorded entries
+match the first two files. The two accepted default non-writing reconciliations
+are byte-identical, with normalized output SHA-256
+`7a5abffde3e7111095c35f406aa78ca43b4ed03f0546807e70bb2cdfb3bb61f5`
+and plan digest
+`4a1fee01d011b960f48204102e28ed71731a5f1d682006141749460828e33da3`.
+
+Post-application migration status reports 60 applied migrations and no pending
+or unfinished migration. PostgreSQL 17.11 `db:verify` passes, and `db:check`
+passes exactly 93/93. Task 3.5 and Stage 3 are complete. Stage 4 remains
+unstarted; the exact return point is Task 4.0, the structural RTL-checker
+correction required before the first core screen—not Task 4.0a or Task 4.1.

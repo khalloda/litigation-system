@@ -269,21 +269,15 @@ through the stored relationship, never an offset or a name. Task 3.5A v2
 choices display both IDs and protect their association with the exact label;
 duplicate-name clients remain distinct.
 
-**D39, approved 4 September 2026, not yet applied:** the 13 Sigma matters retain
-Access/legacy 188 → system client 197, and the Alpha matter retains Access/legacy
-2 → system client 11. Three exact historically misclassified branch values
-must later be added/mapped with parent compatibility enforced in Task 3.5B.
-
-**D40, approved 4 September 2026, not yet applied:** ten exact reviewed matters
-have an intentional NULL branch, not a synthetic lookup. Two exact hearing
-decisions approve the distinct court `أسرة مصر الجديدة`, with no database ID
-until Task 3.5B creates it. M-000111 confirms Access client 133 / system client
-142 (`ماسترز`) despite its blank source client. The circuit and hearing-note
-corrections are recorded in D40. These are workbook decisions only; no schema,
-lookup, relationship or project row changes in Task 3.5A.
-No new branch row, parent constraint, renamed client or released record exists
-as a result of this Task 3.5A workbook correction. The current 15-branch count
-and historical migration evidence below remain unchanged.
+**D39–D42, applied and accepted 5–6 September 2026:** the 13 Sigma matters
+retain Access/legacy 188 → system client 197, and the Alpha matter retains
+Access/legacy 2 → system client 11. Task 3.5B added the three exact approved
+branches and enforces their reviewed parent compatibility. Ten exact matters
+have an intentional NULL branch; the distinct new court `أسرة مصر الجديدة`
+serves exactly two approved hearings; and M-000111 uses Access client 133 /
+system client 142 (`ماسترز`). No existing client was renamed or reassigned.
+The current branch count is 18. Historical Task 3.5A workbook and quarantine
+evidence remain unchanged.
 
 > **Transformed 23 August 2026, task 2.5.** Three columns are deliberately
 > empty and `db:check` asserts they stay that way: `branch_id`,
@@ -372,10 +366,12 @@ Client contact people. Note `Contacts.Attachments` in Access is **empty**.
 
 ## Matters
 
-### `matters` — 1,689 transformed + 55 quarantined from 1,744 source rows
+### `matters` — 1,744 current target rows
 The central table. The extracted source has 38 columns mixing identity, court
-logistics, money, classification and free text. Task 2.6 gives every source
-row exactly one durable outcome; none is discarded.
+logistics, money, classification and free text. The historical Task 2.6
+partition was 1,689 transformed + 55 quarantined from 1,744 source rows. Task
+3.5B released all 55 reviewed matters without deleting or rewriting those
+quarantine/source records; none is discarded.
 
 | Column | Notes |
 |---|---|
@@ -423,7 +419,8 @@ Replaces `lawyerA` / `lawyerB` and the combination strings.
 fingerprint, the exact source field, reviewed split-rule id and ordered member
 position. **At most one `lead` per matter.**
 
-Task 2.7 result: 927 relationships on 708 matters. Another 180 source lawyer
+Task 2.7 historical result: 927 relationships on 708 matters. Task 3.5B added
+41 approved relationships, producing 968 current rows. Another 180 source lawyer
 cells are retained for review because they match neither an exact alias nor a
 reviewed split rule; none was guessed. Migration reconciliation covers only
 rows with non-null legacy provenance, so future lawyer assignments created in
@@ -439,21 +436,26 @@ fragment ordinal.
 `matter_party_roles`: `party_id`, `role_id`, `ordinal`, `legacy_role_raw` —
 several roles per party, with the exact capacity fragment preserved.
 
-Task 2.7 result: 2,615 parties and 2,199 roles. Unreviewed or structurally
-ambiguous source cells remain in `quarantine.matter_relationship_transform`.
-The same legacy-provenance scope applies to parties and their roles.
+Task 2.7 historical result: 2,615 parties and 2,199 roles. Task 3.5B added 80
+parties and 68 roles, producing 2,695 parties and 2,267 roles. Unreviewed or
+structurally ambiguous source cells remain in
+`quarantine.matter_relationship_transform`. The same legacy-provenance scope
+applies to parties and their roles.
 
 Across all staged matters there are 4,576 populated lawyer/party cells: 4,418
-on the 1,689 transformed matters, and 158 on the 55 matters still held in the
-task 2.6 parent quarantine. Those 158 remain in their complete parent payload;
-they do not create relationship rows or duplicate task 2.7 evidence.
+formed Task 2.7's historical transformed-parent partition, while 158 belonged
+to the 55 then-quarantined parents. Task 3.5B accounted for those 158 cells by
+creating the approved relationships and preserving 37 newly exposed unresolved
+values as complete evidence. The original parent payloads remain intact.
 
 ---
 
 ## Hearings
 
-### `hearings` — 13,055 transformed + 327 quarantined from 13,382 source rows
-Largest table. Task 2.8 gives every source row exactly one durable outcome.
+### `hearings` — 13,382 current target rows
+Largest table. The historical Task 2.8 partition was 13,055 transformed + 327
+quarantined from 13,382 source rows. Task 3.5B released all 327 reviewed
+hearings while preserving the original quarantine/source evidence.
 
 `matter_id`, `hearing_date`, `next_hearing_date`, `action_id`, `decision`,
 `report`, `previous_decision`, `outcome` (صالح / ضد), `court_id` +
@@ -492,7 +494,7 @@ column the original text is **unrecoverable** — the merge could never be
 reversed if it were later judged wrong. See D10 and the `_raw` rule in
 `docs/MIGRATION.md`.
 
-### `hearing_attendees` — 8,884 rows across 39 people
+### `hearing_attendees` — 9,113 rows
 Replaces `الحاضر` and `حاضر 1`–`حاضر 4`, which held free text — 373 distinct
 spellings for 135 people, plus multi-person strings with no consistent
 separator.
@@ -502,11 +504,12 @@ extraction fingerprint, exact source column and column order, immutable source
 cell id, immutable person-span id and span sequence. `legacy_name_raw` holds
 the **complete original cell**, not the separated name fragment.
 
-Task 2.8 consumes only Correction B's proved `person` spans; it does not parse
+Task 2.8 consumed only Correction B's proved `person` spans; it did not parse
 the original text again. All 12,732 non-empty source cells remain accounted
-for: 12,432 belong to transformed hearings and 300 to quarantined hearings.
-The latter retain 229 person spans in the immutable audit without creating a
-detached attendee.
+for. Its historical result contained 8,884 attendees, while 300 source cells
+and 229 person spans belonged to the 327 quarantined hearings. Task 3.5B created
+those 229 approved attendee rows with their reviewed parents, producing 9,113
+current rows; the immutable source-cell and span evidence remains intact.
 
 **`**` appears as the complete value of 4,130 cells and means "no attendance
 recorded".** It becomes an
@@ -955,7 +958,7 @@ All are **tables, not enums**, each with `label_ar`, `label_en`, `sort_order`,
 
 `matter_type` (14) · `matter_category` (21) · `degree` (12) · `venue` (7) ·
 `importance` (3) · `party_role` (11) · `hearing_action` (20) ·
-`matter_destination` (32) · `client_branch` (15) — **135 rows total**
+`matter_destination` (32) · `client_branch` (18) — **138 rows total**
 
 `matter_destination` went 27 → 31 on 23 August 2026: four of the seven values
 the court review found to be "not a court" are real places where something
@@ -963,11 +966,12 @@ happened, and that list already holds exactly this kind of value. See
 `sql/court-wrong-destinations.sql`. Task 2.6 added the 32nd destination named
 by the firm's structured matter-category split.
 
-A tenth list, **`lookup_court`**, holds **308** courts and is **not** counted
-in the 135. See below.
+A tenth list, **`lookup_court`**, holds **309** courts and is **not** counted
+in the 138. See below.
 
 Was 150, then 146, then 130 after the branch resolution. Court destinations
-and the structured matter split brought the current total to 135. Four values
+and the structured matter split brought the pre-Task 3.5B total to 135; the
+three D39-approved branches brought the current total to 138. Four values
 were merged on 21 August 2026 after
 three lists were found to have been marked "already clean" without inspection
 (`sql/lookup-corrections.sql`). Then `client_branch` was resolved from 31
@@ -978,7 +982,7 @@ values to 15 — a branch is a site or subsidiary of a client and nothing else
 
 ## Known data-quality issues
 
-### Task 3.5B prepared release model — not deployed to the real database
+### Task 3.5B accepted release model
 
 Migration 60 introduces four private `_migration` tables, not runtime-facing
 Prisma models: `client_branch_compatibility`, `high_impact_application` and
@@ -999,6 +1003,13 @@ audit display values. Frozen Stage 2 checks select exact baseline identities.
 See the Task 3.5B report for D19/D39 and D41. No new runtime authentication or
 authorization model is introduced.
 
+Migration 60 and the approved real application each executed exactly once.
+There is one application batch, 382 resolutions and 824 audit events. The
+post-application `high_impact_row_proof` count is correctly zero because no
+released row has subsequently been modified; the immutable initial snapshots
+and hashes remain in the application evidence. Permanent verification passes
+93/93.
+
 ### Historical Stage 2 observations
 
 These are **expected**. Load them; do not try to fix them silently.
@@ -1011,6 +1022,6 @@ These are **expected**. Load them; do not try to fix them silently.
 | Fee-letter → matter multi-value entries (`خطابات الأتعاب.Matter`) | 288 across 195 parents |
 | Orphan task actions | 36 |
 | Task actions with no parent id | 39 |
-| Transformed matters with no target lawyer relationship | **981 of 1,689** (the earlier 834 of 1,730 was the planning snapshot) |
+| Current matters with no target lawyer relationship | **1,000 of 1,744** (read-only database count after Task 3.5B; the historical Task 2.7 count was 981 of 1,689) |
 | Hearings with no matter | 4 |
 | Powers of attorney with no client | 1 |

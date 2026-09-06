@@ -6,17 +6,14 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 4 September 2026:** Task 3.3B's three-commit chain is
-independently accepted and pushed. Task 3.4's four-commit Administrator-only
-user-management chain is also independently accepted and pushed. Task 3.5A's
-high-impact quarantine-review package has a D40 successor recording all 382
-owner decisions, including the preserved D39 14/161 decisions and all 313
-dependent hearings. Zero owner decisions are incomplete or invalid. Two court
-approvals await lookup creation; D39 branch prerequisites remain. Overall Task
-3.5 stays unchecked until reviewed answers are applied and reconciled;
-Task 3.5B is implemented and disposable-tested, with real application
-pending independent review and separate owner approval. D41 resolves the exact
-twelve hearing-note destinations. Stage 4 has not started.
+**Current checkpoint — 6 September 2026:** Stages 2 and 3 are complete. The
+independent Task 3.5B evidence review is accepted; migration 60 and the approved
+real application each executed exactly once, all 382 decisions reconciled, and
+the permanent invariant set passes 93/93. Task 3.5 is complete. This was not the
+final Access cutover, and the Litigation Department continues using Access.
+Stage 4 has not started. The exact return point is Task 4.0, the structural
+RTL-checker correction required before the first core screen—not Task 4.0a or
+Task 4.1.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1581,7 +1578,7 @@ only ever seen good data is not known to work.
       Its four-commit chain was independently accepted and pushed before Task
       3.5A began.
 
-- [ ] **3.5 High-impact quarantine review checkpoint** — firm review after
+- [x] **3.5 High-impact quarantine review checkpoint** — firm review after
       Task 3.4 and before Stage 4 (**D26**). Review all 55 quarantined matters,
       prioritising the 14 historical `separate_client` cases (current parent
       confirmed in **D39**), and all 327 quarantined hearings, including the
@@ -1636,6 +1633,22 @@ only ever seen good data is not known to work.
       **Return point:** independent review of Task 3.5B preparation; not real
       application, completion of Task 3.5, Stage 4 or cutover.
 
+      **Accepted Task 3.5B application — 5–6 September 2026:** after independent
+      review and explicit owner authorization, migration 60 and the real
+      application each ran exactly once against the local project PostgreSQL
+      database. The accepted plan released all 55 matters and 327 hearings,
+      recorded 382 resolutions, and left the original 55 matter and 327 hearing
+      quarantine/source rows intact as evidence. The resulting current totals
+      are 1,744 matters, 13,382 hearings, 968 matter-lawyer links, 2,695 parties,
+      2,267 party roles and 9,113 hearing attendees. All 313 dependent hearings,
+      the exact twelve D41 hearings, the 13 Sigma plus one Alpha parent
+      decisions, the two hearings using the new `أسرة مصر الجديدة` court, and
+      the ten intentional NULL branches reconcile exactly. Permanent checks
+      pass 93/93 and two accepted non-writing reconciliations are byte-identical.
+      Task 3.5 is complete; Stage 3 is complete; Stage 4 remains unstarted.
+      This application was not the final Access cutover, and Access remains in
+      operational use. **Return point:** Task 4.0—not Task 4.0a or Task 4.1.
+
 ---
 
 ## Stage 4 — Core screens
@@ -1679,14 +1692,15 @@ than assuming one rule for every workflow. Test with real volumes.
       screen, in descending weight — D9 made visible.
       Two new visible strings it introduces, both of which live in
       `src/strings.ts` and never in a component (D12, rule 9):
-      `لم يُكلَّف أحد` for the **981 of 1,689 transformed matters with no target
+      `لم يُكلَّف أحد` for the **1,000 of 1,744 current matters with no target
       lawyer relationship** — **absence is stated, not blank** — and
       `يشمل البحث:` for the alias disclosure, which is the alias table doing
       visible work. The earlier 834 of 1,730 figure was the pre-migration
       planning snapshot.
-- [ ] **4.3 Hearings** — 13,055 current target rows need paging and fast
-      filters; 327 additional source hearings remain quarantined until their
-      parent or reviewed court issue is resolved.
+- [ ] **4.3 Hearings** — 13,382 current target rows need paging and fast
+      filters. The 327 original high-impact quarantine/source rows remain as
+      immutable evidence of the reviewed release; they are not additional
+      pending hearings.
       Attendees as a multi-select of active staff.
 - [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
 - [ ] **4.5 Powers of attorney**
@@ -1733,15 +1747,17 @@ than assuming one rule for every workflow. Test with real volumes.
       branch, lawyer), Excel via ExcelJS with `rightToLeft`, PDF via Playwright
       with bundled fonts and the firm letterhead.
 - [ ] **6.2 Client reports**
-      **`client_branch` is settled — D19, task 1.2c.** A branch is a site or
-      subsidiary of a client. 15 values, all genuine sites. "Filter by branch"
-      can be built as a straightforward report parameter.
+      **`client_branch` is settled — D19, D39 and Task 3.5B.** A branch is a
+      site or subsidiary of a client. The current list has 18 values: the 15
+      historical reviewed sites plus the three D39-approved branches. "Filter
+      by branch" can be built as a straightforward report parameter.
       Two things to carry into the report: a matter may legitimately have **no**
       branch — including the 14 whose branch was a document heading and was
       discarded — so an "unassigned" grouping is required, never a dropped
-      row. Quarantined matters are not yet released for reporting. D39 confirms
-      the existing parents of the 14 historical rule (b) matters; branch mapping
-      and release remain deferred to Task 3.5B, not this report task.
+      row. The 55 reviewed high-impact matters are now current target rows.
+      Their original quarantine/source rows remain immutable evidence. D39's 13
+      Sigma and one Alpha parent decisions and the three approved branch
+      mappings were applied and verified by Task 3.5B.
       `تقرير عملاء 2` / `6` / `8` and
       `تقرير عملاء -جميع الدعاوى سارية ومنتهية` are **one parameterised
       report** (D17). Build it once.
