@@ -188,7 +188,52 @@ This is Task 3.4 evidence, not a universal component specification and not a
 start on Task 4.0. Staff identity maintenance remains Task 4.0a, and audit
 history remains Task 4.9.
 
-## 8. Audit history — owner-approved direction, deferred
+## 8. Staff roster — approved Task 4.0a direction, not implemented
+
+The Arabic-first RTL route set is `/staff`, `/staff/new`, `/staff/[id]` and
+`/staff/[id]/edit`. The roster defaults to the 23 active internal staff and can
+switch to former or all 66. Team/unassigned and trainee filters stay visible
+and understandable without relying on colour. The 71 external people do not
+appear in this area.
+
+At desktop widths, a compact list may expose name, active/former state, trainee
+state and fixed-team assignment. At narrow widths, the same information becomes
+single-column cards in the same logical reading order; this direction does not
+require a specific table or component library. Search covers canonical Arabic
+names, imported aliases and active application-created aliases; a retired
+application alias remains evidence but leaves ordinary active search. When an
+alias produced the match, the result explicitly says so rather than silently
+showing only a different canonical name. Pagination is stable, and the same
+person appears once even when several aliases match.
+
+The detail separates identity, organization, aliases and lifecycle. Imported
+aliases are visibly historical and immutable. Application-created aliases may
+offer labelled retire/restore actions with a required reason; neither action is
+called delete. Canonical rename, create, team/reviewer assignment,
+deactivate/reactivate and alias maintenance are distinct Administrator actions,
+not one ambiguous form. Warnings identify the person and explain real
+consequences before submit. A true identical official Arabic name fails closed
+for a new decision instead of asking the Administrator to invent punctuation or
+an ID suffix.
+
+Account management is visually and functionally separate. An Administrator may
+see whether an account exists, its enabled/disabled state and a link to
+`/users`; other roles do not receive that block. No roster screen includes
+username, role, password, enable, disable or reset controls. Person deactivation
+explains that a linked account will be disabled and sessions invalidated;
+person reactivation explains that access stays disabled until separately
+reactivated in `/users`.
+
+All visible text comes from `src/strings.ts`; layout uses logical properties,
+bundled Arabic fonts and clear RTL source order. Email remains an isolated LTR
+value with an Arabic label. D50 requires local browser evidence for keyboard-only
+use, visible focus, programmatic labels/instructions/errors, an error summary
+with focus movement, announced status, non-colour-only meaning, minimum
+44-by-44 CSS-pixel targets, 200% zoom/reflow, and mobile plus desktop RTL. Any
+browser mutation uses only an isolated disposable database. These are approved
+acceptance requirements, not evidence that the screen exists.
+
+## 9. Audit history — owner-approved direction, deferred
 
 Recovered owner conversation evidence from 31 August 2026 confirms the hybrid
 audit-history direction. It is approved visual/product direction, but nothing
@@ -222,7 +267,7 @@ particular dimensions, spacing and component selections are not automatically
 universal requirements. Re-evaluate those details with the real event volumes,
 screen context and responsive behavior when Task 4.9 begins.
 
-## 9. What this file is not
+## 10. What this file is not
 
 - Not a component library
 - Not a specification anyone should build from without revisiting

@@ -75,6 +75,48 @@ there is no account deletion, self-disablement, self-demotion or
 self-administrative reset. Staff roster and identity maintenance remain the
 separate future Task 4.0a; Task 3.4 never creates or edits a person or alias.
 
+### Staff roster — approved Task 4.0a contract, not implemented
+
+Task 4.0a covers the 66 internal staff identities now in PostgreSQL: 23 active
+and 43 inactive. The 71 external people stay available to historical legal
+relationships but never appear as staff. All four application roles may view
+the roster and a staff detail; only an Administrator may create or edit a staff
+identity, maintain application-created aliases, assign the two fixed teams and
+their reviewers, or deactivate/reactivate a person. No staff record is
+physically deleted.
+
+The roster defaults to active staff and provides active/former/all,
+team/unassigned and trainee filters. Arabic search covers the canonical name,
+every imported alias and each active application-created alias, using the
+approved hamza/diacritic normalization and never a Latin `J` to Arabic `ق`
+substitution. Retired application aliases remain evidence but leave ordinary
+active search. A result matched through an alias says so. Paging is
+deterministic and returns each person once.
+
+A controlled canonical Arabic rename preserves the same person identity and
+adds the former canonical spelling as an alias. Imported aliases are immutable
+migration evidence. Application-created aliases may be retired or restored
+only with a reason, an audit event and collision checks. New staff require a
+sufficiently complete official Arabic name; numeric substitutes and staff IDs
+are refused. If two real people have exactly the same full official Arabic name,
+creation stops for a new owner decision rather than inventing a discriminator.
+
+Person and login lifecycles remain separate but coordinated. Deactivating a
+person atomically disables any linked account and invalidates its sessions;
+reactivating the person never re-enables that account. Account reactivation,
+password and role work remain exclusively in `/users`. An Administrator may see
+account existence/status and follow a link there from the staff detail, but the
+staff routes contain no account-management controls. Reviewer eligibility,
+reassignment and last-usable-Administrator protection are enforced at the
+database and server boundaries. See D44–D50.
+
+The route contract is `/staff`, `/staff/new`, `/staff/[id]` and
+`/staff/[id]/edit`. It is Arabic-first and RTL, uses centralized strings and
+logical CSS properties, and must pass the D50 local browser checks for keyboard,
+focus, labels, errors, status announcements, colour independence, target size,
+zoom/reflow and mobile/desktop layout. Browser mutations use only an isolated
+disposable database; project data does not leave the machine.
+
 ### Audit and accountability
 
 The old Access system cannot say who changed a record or reconstruct a sequence

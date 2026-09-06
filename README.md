@@ -10,8 +10,10 @@ PostgreSQL database, producing 1,744 matters and 13,382 hearings while retaining
 the original quarantine and source evidence. This was not the final Access
 cutover; the Litigation Department continues to use Access. Task 4.0's
 structural Arabic/RTL checker is complete, but no core Stage 4 screen has
-started. The exact return point is Task 4.0a, staff roster management—not Task
-4.1.
+started. The owner-approved Task 4.0a staff-roster contract is recorded in
+D44–D50, but the task and all of its prerequisites remain unimplemented. The
+exact return point is **Task 4.0a Phase 1 — database boundary and operational
+invariants, approved but not started.**
 The owner-readable
 migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
@@ -20,6 +22,11 @@ continuity evidence is preserved separately in
 [`docs/reviews/2026-09-01-project-continuity-recovery-audit.md`](docs/reviews/2026-09-01-project-continuity-recovery-audit.md),
 and the approved Task 3.3 contract and its readiness evidence are in
 [`docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md`](docs/reviews/2026-09-01-task-3.3-implementation-readiness-and-scope-reconciliation-audit.md).
+The complete Task 4.0a readiness evidence, recommendations and owner-resolution
+map are preserved in
+[`docs/reviews/2026-09-06-task-4-0a-staff-roster-readiness-audit.md`](docs/reviews/2026-09-06-task-4-0a-staff-roster-readiness-audit.md);
+that dated review is evidence, while `docs/DECISIONS.md` and `TASKS.md` remain
+the canonical decision and work-order authorities.
 Task 3.3B's implementation and verification record is
 [`docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md`](docs/task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md).
 Task 3.4's implementation and verification record is

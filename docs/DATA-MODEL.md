@@ -57,6 +57,59 @@ own name**, which rule 15 depends on: matching through the alias table only
 works if every name is in it. Samy Khattab's exact self-alias was already
 present from task 1.2a and is asserted rather than duplicated.
 
+### Task 4.0a approved people/alias contract — not implemented
+
+The application staff roster is the 66 internal identities: the 64 protected
+Stage 2 staff plus the two application-native staff added in Task 3.1. That is
+23 active and 43 inactive. The 71 `is_staff = false` external people remain
+valid relationship targets but are outside roster queries. The imported
+boundary must be snapshotted immutably when Task 4.0a begins; later native hires
+join the roster through database-enforced `is_application_native` provenance,
+not by altering the historical snapshot.
+
+The current `people.id` remains the stable identity. A canonical Arabic rename
+updates `name_ar` on that same row and preserves the old canonical value as an
+alias. At transaction completion, every roster person must have exactly one
+primary alias and that alias must match `name_ar`. Canonical names and aliases
+share one serialized, normalized collision domain so two concurrent requests
+cannot create ambiguous search results. New staff require a sufficiently
+complete official Arabic name and fail closed if a true identical full name is
+encountered pending a new owner decision. The approved Arabic normalization
+continues to fold hamza and diacritics but must not fold Latin `J` to Arabic
+`ق`.
+
+Imported aliases remain immutable migration evidence: they cannot be retired,
+deleted, reassigned or have their spelling rewritten. Task 4.0a may add
+application-created alias provenance and lifecycle fields so those later
+aliases can be retired/restored with a required reason and audit event. Retired
+application aliases remain retained history and evidence but leave ordinary
+active search. Existing source IDs, source fingerprints and D43 durable Access
+identities remain unchanged.
+
+The Phase 1 schema is expected to add a row version for stale-write rejection,
+application modification provenance and any normalized email key needed to
+enforce one non-null email per staff identity. Those names and representations
+are implementation choices, not current columns; this section records the
+invariants. No migration, column, constraint or runtime gateway for them exists
+yet.
+
+Person and account lifecycle must be atomic where they meet. Deactivating a
+person with an account also disables the account, clears lockout state,
+increments `session_version`, invalidates existing sessions and appends the
+person/account semantic events in one transaction. Person reactivation never
+enables an account; `/users` remains the only account-reactivation path.
+Self-deactivation and removal of the last usable Administrator are prohibited
+under concurrent execution.
+
+The two existing team rows are fixed organizational choices: Task 4.0a manages
+membership and reviewer assignment but provides no team create/rename/delete
+workflow. A reviewer must be active, internal and not a trainee; the reviewer
+need not belong to that team and one person may review both. An assigned
+reviewer must be replaced before that person can be deactivated. `team_id =
+NULL` remains a valid unassigned staff state. Physical deletion of people or
+aliases is prohibited. See D44–D49; D50 owns the browser-accessibility evidence
+required after implementation.
+
 ### `user_accounts`
 One username/password account per person. Usernames keep their approved display
 case but are matched through a separately stored lowercase value with a unique

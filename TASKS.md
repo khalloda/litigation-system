@@ -12,8 +12,10 @@ real application each executed exactly once, all 382 decisions reconciled, and
 the permanent invariant set passes 93/93. Task 3.5 is complete. This was not the
 final Access cutover, and the Litigation Department continues using Access.
 Task 4.0's structural Arabic/RTL checker is complete. No core Stage 4 screen has
-started. The exact return point is Task 4.0a, staff roster management—not Task
-4.1.
+started. The owner-approved Task 4.0a contract is recorded in D44–D50 and its
+dated readiness audit is preserved as evidence, but no implementation or
+prerequisite phase has started. The exact return point is **Task 4.0a Phase 1 —
+database boundary and operational invariants, approved but not started.**
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1675,10 +1677,77 @@ than assuming one rule for every workflow. Test with real volumes.
       without any `src` edit. No core Stage 4 screen has started. **Return
       point:** Task 4.0a—not Task 4.1.
 
-- [ ] **4.0a Staff roster management** — future reviewed contract for new
-      hires and staff identity maintenance before go-live (**D36**). Do not
-      create accounts here: Task 3.4 only links accounts to eligible existing
-      active staff. This task remains unstarted.
+- [ ] **4.0a Staff roster management** — approved contract for the 66 internal
+      staff identities (23 active and 43 inactive), new hires and identity
+      maintenance before go-live (**D36, D44–D50**). The 71 external people
+      remain available to historical relationships but are outside the staff
+      roster. All four roles may view staff; only Administrators may mutate
+      roster data. Account controls remain exclusively under `/users`; the
+      staff detail may show an Administrator-only account-existence/status link
+      but must not create, enable, disable, reset or otherwise manage accounts.
+      No phase below has started.
+
+  - [ ] **Phase 1 — database boundary and operational invariants.** Preserve an
+        immutable snapshot of which imported people are inside the application
+        roster boundary, while allowing later application-created staff to be
+        classified truthfully. Reuse the stable person, alias, source and
+        durable Access identities proved by D43; protect all Stage 2 evidence
+        without freezing the live roster. Add database-enforced provenance for
+        application-native people, application modification provenance and a
+        row version for stale-write rejection. Serialize canonical-name and
+        alias collision checks; at transaction completion every staff identity
+        must have exactly one primary alias matching its canonical Arabic name.
+        Preserve imported aliases as immutable evidence; allow only
+        application-created aliases to retire or restore, with a reason and
+        audit event. Enforce normalized email uniqueness if email remains a
+        unique staff field. Implement the D46 person/account transaction:
+        person deactivation must disable a linked account, clear lockout state,
+        increment `session_version`, invalidate sessions and append the required
+        lifecycle audit facts atomically; person reactivation must never enable
+        the account. Keep account reactivation in `/users`, prohibit self-
+        deactivation and preserve the concurrent last-usable-Administrator
+        guard. Enforce D48 reviewer eligibility and require reassignment before
+        reviewer deactivation. Prohibit physical deletion, keep full audit and
+        source evidence, and prove both historical upgrade and clean replay.
+
+  - [ ] **Phase 2 — read-only roster and detail.** Implement `/staff` and the
+        read-only state of `/staff/[id]` with server-enforced authorization,
+        deterministic distinct pagination and query plans tested at real
+        volumes. Default to active staff and provide active/former/all,
+        team/unassigned and trainee filters. Search the canonical Arabic name
+        and every imported or active application-created alias with the approved
+        Arabic normalization, disclose an alias match, exclude retired
+        application aliases from ordinary search, and never reintroduce the
+        rejected `J → ق` fold. Keep the route contract for `/staff`,
+        `/staff/new`, `/staff/[id]` and
+        `/staff/[id]/edit`, although mutation routes remain Phase 3.
+
+  - [ ] **Phase 3 — Administrator roster mutations.** Implement `/staff/new`
+        and `/staff/[id]/edit` for create, canonical Arabic rename, application
+        alias add/retire/restore, fixed-team membership and reviewer assignment,
+        deactivate and reactivate. Renaming retains the same person identity,
+        records the prior name as an alias, and fails closed on any canonical or
+        alias collision. A new identity requires a sufficiently complete
+        official Arabic name; a true identical-full-name case stops for a new
+        owner decision. Each action gets independent server authorization,
+        concurrency protection and append-only audit facts. There is no delete
+        action and no account-management control.
+
+  - [ ] **Phase 4 — browser interaction, accessibility and final evidence.** Use
+        centralized strings, Arabic-first RTL layout and logical CSS properties.
+        Under D50, run local browser testing for keyboard-only operation, visible
+        focus, programmatic labels/instructions/errors, error summary and focus
+        movement, confirmation focus restoration, status announcements,
+        non-colour-only meaning, 44-by-44 CSS pixel targets, 200% zoom,
+        320-CSS-pixel reflow, mobile and desktop RTL, and correct LTR treatment
+        for email. Browser mutations may use only an isolated disposable
+        database created for the test; no project data may leave the machine.
+        Complete static, database, permission, concurrency, audit,
+        volume and browser evidence, then update the canonical docs and task
+        report without marking earlier phases complete retrospectively.
+
+      **Return point:** Task 4.0a Phase 1 — database boundary and operational
+      invariants, approved but not started.
 
 - [ ] **4.1 Clients** — list, detail, contacts, logo
 

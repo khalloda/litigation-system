@@ -103,6 +103,33 @@ refused. The database also prevents any account or later person mutation from
 leaving zero usable Administrators. Disable/reactivate replaces deletion, and
 staff roster editing remains future Task 4.0a work.
 
+## Staff roster — approved Task 4.0a contract, not implemented
+
+`/staff` and `/staff/[id]` require `staffRoster / view`; the existing 448-entry
+matrix grants that permission to Administrator, Litigation Assistant, Lawyer
+and Paralegal. `/staff/new`, `/staff/[id]/edit` and every create, rename,
+alias, team, reviewer, deactivate or reactivate mutation require
+`staffRoster / manage`, which is Administrator-only. Hiding a control is not
+authorization: each page, action and route must validate the server session
+independently before reading protected roster data or mutating anything.
+
+The permission applies only to the 66 internal staff identities (23 active and
+43 inactive). The 71 external people are not roster results. All roles may see
+staff identity, active/former state, trainee state and roster organization
+needed for their legal work. Account existence/status and the link to `/users`
+are Administrator-only; other roles receive neither those fields nor a hidden
+client-side copy. No staff route may create, enable, disable, reset, rename or
+change the role of a user account.
+
+Staff records and imported aliases are never deleted. Only an Administrator
+may deactivate/reactivate a person or retire/restore an application-created
+alias. Deactivation of a linked account is an atomic safety consequence of
+person deactivation, not an additional staff-screen account permission;
+person reactivation never grants access. Self-deactivation and any operation
+that would remove the last usable Administrator are refused. The detailed
+identity, alias, team and reviewer contract is D44–D50 and remains unimplemented
+until the unchecked Task 4.0a phases are completed.
+
 ## Audit access — approved UI/capability, not implemented
 
 Decision **D31** does not change the current four roles or the 448 explicit

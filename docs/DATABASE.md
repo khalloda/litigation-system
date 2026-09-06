@@ -469,6 +469,47 @@ unchanged. The live invariant count is 92.
 The 92 count above is the Task 3.4 checkpoint. Task 3.5B adds the current
 93rd permanent invariant described below.
 
+## Task 4.0a Phase 1 approved database contract — not implemented
+
+Task 4.0a must begin at the database boundary before any staff screen is made
+mutable. Nothing in this section is present in migration 60 or the current
+93-invariant set; it is the approved contract for a later forward migration,
+runtime gateways and permanent checks.
+
+- Snapshot the exact imported roster boundary immutably: 64 protected Stage 2
+  staff, separate from 71 external people. Preserve the two existing
+  application-native staff and allow later native hires through
+  database-enforced provenance. Do not rewrite frozen migration evidence.
+- Reuse stable `people.id`, alias identity, source fingerprints and the D43
+  durable Access/source keys. A rename changes a canonical label, not the
+  person's identity.
+- Serialize the canonical-name/alias normalized collision domain. At transaction
+  completion each roster person has exactly one primary alias matching the
+  canonical Arabic name. Imported aliases are immutable; only
+  application-created aliases may retire/restore, with reason and audit.
+- Add row-version stale-write rejection and application modification
+  provenance. If non-null staff email remains unique, enforce the normalized
+  form in PostgreSQL rather than relying on a one-time check.
+- Implement person deactivation and linked-account disablement as one
+  transaction: lock the person/account and relevant Administrator set, clear
+  lockout, increment `session_version`, invalidate sessions and append the
+  ordered semantic lifecycle facts. Person reactivation never enables the
+  account. Preserve self-deactivation and concurrent last-usable-Administrator
+  guards.
+- Keep the two team rows fixed and `team_id IS NULL` valid. Enforce that a
+  reviewer is active, internal and not a trainee; membership in the reviewed
+  team is not required and the same reviewer may serve both teams. Reassignment
+  is required before reviewer deactivation.
+- Deny runtime delete/truncate paths for people and aliases. Every mutation must
+  use a narrow server-authorized gateway, validated human actor context,
+  append-only row and semantic events, and fail-closed outcome shapes.
+
+The implementation proof must cover historical upgrade and clean replay,
+concurrent duplicate name/alias attempts, stale forms, account/person atomicity,
+last-Administrator races, reviewer deactivation, permissions, rollback and
+full-value audit continuity. D44–D49 define the product/data choices; D50 adds
+local browser evidence after the database and server boundary exists.
+
 ## Task 3.5B accepted database state
 
 Migration 60, `20260904180000_prepare_high_impact_application`, and the

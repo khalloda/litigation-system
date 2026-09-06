@@ -63,6 +63,7 @@ reconciliation instead of duplicating its tables and report datasets.
 | Task 3.3B acceptance and correction | [`2026-09-02-task-3-3b-append-only-event-foundation.md`](task-reports/2026-09-02-task-3-3b-append-only-event-foundation.md) | Tracked dated evidence | Frozen migration 57 baseline plus forward correction migration 58; immutable event store; exhaustive 38-table/583-column classification; truthful one-event baseline; authentication integration; adversarial proof and exact Task 3.4 return point |
 | Task 3.4 acceptance | [`2026-09-03-task-3-4-user-management.md`](task-reports/2026-09-03-task-3-4-user-management.md) | Tracked dated evidence | Migration 59, Administrator-only lifecycle gateway and Arabic/RTL management interface; independently accepted four-commit chain |
 | Task 3.5A review package | [`2026-09-03-task-3-5a-high-impact-review-package.md`](task-reports/2026-09-03-task-3-5a-high-impact-review-package.md) | Tracked generator, validator and dated evidence; raw workbook ignored | Read-only 382-row decision package, durable row identity, protected lookup associations and fail-closed completion validation; no firm answer applied |
+| Task 4.0a readiness and approved contract | [`2026-09-06-task-4-0a-staff-roster-readiness-audit.md`](reviews/2026-09-06-task-4-0a-staff-roster-readiness-audit.md) | Tracked dated evidence; not a priority authority | Complete pre-implementation roster/lifecycle evidence, 15-section audit, owner decisions D44–D50 and exact Phase 1 return point; no schema, migration or application change |
 
 Ignored source material and workbooks are never committed. Their hashes,
 fingerprints, protected outcomes and reproduction procedures are the durable
@@ -3197,6 +3198,46 @@ files. The two accepted default non-writing reconciliations are byte-identical,
 share normalized output SHA-256
 `7a5abffde3e7111095c35f406aa78ca43b4ed03f0546807e70bb2cdfb3bb61f5`,
 and return the approved plan digest above. Task 3.5 and Stage 3 are complete.
-Stage 4 remains unstarted; the exact return point is Task 4.0, the structural
-RTL-checker correction—not Task 4.0a or Task 4.1. Access remains in operational
-use and no final cutover occurred.
+No core Stage 4 screen has started. Task 4.0 was subsequently completed and
+D44–D50 now record the approved Task 4.0a contract, without implementing it.
+Access remains in operational use and no final cutover occurred.
+
+## Task 4.0a migration boundary — approved, not implemented
+
+Task 4.0a must preserve two truths at once: the imported roster is historical
+evidence, while the application roster must keep changing after go-live. Phase
+1 therefore snapshots the exact imported boundary (64 protected Stage 2 staff
+and 71 external people) immutably and separately recognizes the two existing
+application-native staff plus later native hires. It does not redefine, delete
+or rewrite any Stage 2 row, alias, crosswalk, source fingerprint, audit row or
+protected digest.
+
+Stable `people.id`, alias identity and the durable Access/source keys from D43
+remain the reconciliation anchors. A canonical rename changes the current
+label on the same person and adds the prior spelling as an alias; it never
+creates a replacement identity. Imported aliases are immutable and may not be
+retired, deleted, reassigned or rewritten. Application-created aliases carry
+separate provenance and may later be retired/restored with a reason and audit
+fact. A retired application alias remains historical evidence but is excluded
+from ordinary active search.
+
+The future forward migration must add database-enforced application-native and
+application-modification provenance, serialized canonical/alias collision
+checks, exactly one matching primary alias per roster person at transaction
+completion, stale-row versioning and any normalized email uniqueness retained
+by the product. It must also encode the D46 account consequence and D48 reviewer
+eligibility/reassignment rules without allowing runtime deletion. Permanent
+checks, rather than migration-only assertions, own every invariant that must
+remain true.
+
+Both paths need proof: upgrading the accepted 60-migration/93-invariant state,
+and replaying cleanly from migration 1 through the new migration. The upgrade
+must keep the protected historical counts and digests unchanged; clean replay
+must produce the same boundary, provenance and constraints. A later Access
+cutover still uses D43's source-identity differential reconciliation: unchanged
+source rows are not duplicated, changed rows reconcile through durable identity,
+and unresolved identities stop for review rather than being guessed.
+
+No Task 4.0a migration, schema change, fixture or database write was made when
+this contract was recorded. The exact return point is **Task 4.0a Phase 1 —
+database boundary and operational invariants, approved but not started.**

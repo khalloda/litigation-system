@@ -1030,3 +1030,230 @@ This preserves ordinary Access work performed after the 23 August extraction
 without duplicating the records already present in PostgreSQL. It does not
 request the final Access database now and does not alter the existing Stage 7
 cutover gates.
+
+## D44 — Task 4.0a manages firm staff only
+
+**Approved explicitly by Khaled Helmy on 6 September 2026 through the Task
+4.0a readiness-audit resolution.** The approved evidence and all seven owner
+questions are preserved in
+[`2026-09-06-task-4-0a-staff-roster-readiness-audit.md`](reviews/2026-09-06-task-4-0a-staff-roster-readiness-audit.md).
+
+Task 4.0a manages the **66 firm-staff identities: 23 active and 43
+former/inactive**. The 71 external people remain preserved in the single
+people table and visible wherever their historical work is relevant, but they
+are outside this editing interface. External-person maintenance requires a
+separately reviewed future task.
+
+All four roles may view the staff roster. Only an Administrator may create,
+edit, rename, maintain aliases or teams, deactivate, or reactivate staff.
+Staff management never creates or manages login accounts; it may show an
+Administrator whether a linked account exists and direct them to `/users`.
+
+**Rationale and practical example:** staff employment and external-counsel
+identity are different workflows. A former external lawyer remains visible on
+the power of attorney where that person acted, but does not appear as an
+editable employee. Keeping account controls in `/users` preserves D36's rule
+that an authentication account links to an already reviewed staff identity
+rather than becoming a second roster.
+
+**Accepted disadvantage and rejected alternative:** correcting an external
+identity later needs a separate reviewed task. The owner accepts that narrower
+scope and rejects one combined 137-person maintenance screen, which would mix
+employment, external counsel, account eligibility and migration evidence.
+
+**Development, testing and cost:** this choice is included in Task 4.0a's
+overall **7–11 development-day** estimate. It requires staff-only query and
+mutation guards plus negative external-person fixtures, but no separate data
+cleanup. Infrastructure and licensing cost: **zero**. All D44–D50 estimates
+overlap inside the 7–11 day total and must not be added together.
+
+## D45 — Controlled canonical Arabic-name correction
+
+**Approved explicitly by Khaled Helmy on 6 September 2026 through the Task
+4.0a readiness-audit resolution.**
+
+An Administrator may correct the canonical Arabic name of an imported or
+application-native staff member only when the record remains the same human
+identity. The imported application-boundary value remains immutable evidence;
+the former canonical spelling becomes a retained alias; and the new canonical
+spelling becomes the person's single primary alias.
+
+A rename must serialize and check canonical names and aliases across both
+tables. Any ambiguous identity or collision with another person fails closed
+for human review. It must never auto-merge people, reassign an identity,
+restore the prohibited Latin `J` to Arabic `ق` normalization, or invent a
+numeric or other artificial suffix.
+
+**Rationale and practical example:** correcting a hamza or completing a
+staff member's official name should not require direct database work or make
+old hearing text unsearchable. The displayed name can change while the former
+spelling continues to resolve to the same stable person and the reviewed
+Stage 2 value remains independently provable.
+
+**Accepted disadvantage and rejected alternative:** permitting correction
+requires the current name-based Stage 2 baseline to be separated from editable
+live state. The owner accepts that work and rejects locking every imported
+canonical name, which would turn ordinary corrections into recurring bespoke
+migrations.
+
+**Development, testing and cost:** approximately **1–2 overlapping days** for
+boundary evidence, transactional rename behavior, collision/concurrency tests
+and historical-search proof, already included in the overall 7–11 days.
+Infrastructure and licensing cost: **zero**.
+
+## D46 — Staff deactivation and linked-account lifecycle
+
+**Approved explicitly by Khaled Helmy on 6 September 2026 through the Task
+4.0a readiness-audit resolution.**
+
+Staff deactivation retains the person and every historical relationship. If
+the person has a linked account, the same atomic transaction must disable the
+account, clear lockout state, increment `session_version`, invalidate existing
+sessions, and record all required structural and semantic audit events.
+
+Reactivating the person restores employment status only. It must not enable a
+linked account. Account reactivation remains exclusively in `/users` and
+requires a fresh temporary password under D38. An Administrator may not
+deactivate their own linked person. Existing last-usable-Administrator
+protection remains mandatory at both service and database boundaries and must
+cover concurrent operations.
+
+**Rationale and practical example:** merely setting a lawyer inactive blocks
+the old JWT while that status remains false, but an unchanged enabled account
+and session version would make that JWT valid again after person reactivation.
+When a lawyer leaves, employment and account access therefore close together;
+if the lawyer returns, employment and login access are deliberately restored
+as two separate steps.
+
+**Accepted disadvantage and rejected alternative:** account access later
+requires a second Administrator action and a temporary password. The owner
+accepts that deliberate friction and rejects leaving the account enabled while
+the person is inactive because it permits stale-session revival.
+
+**Development, testing and cost:** approximately **1–2 overlapping days** for
+the shared lifecycle path, serializable concurrency, self/last-Administrator
+negative fixtures and audit atomicity, already included in the overall 7–11
+days. Infrastructure and licensing cost: **zero**.
+
+## D47 — Alias immutability and retirement
+
+**Approved explicitly by Khaled Helmy on 6 September 2026 through the Task
+4.0a readiness-audit resolution.**
+
+Imported aliases are immutable. They may never be deleted, rewritten,
+retired, or reassigned. An Administrator may retire or restore only an
+application-created alias and must supply a reason. Retirement is reversible,
+fully audited, and removes the alias from ordinary active search without
+removing its row, history, or evidence. Restoration repeats every current
+identity-collision check.
+
+No alias, imported or application-created, may ever be physically deleted or
+moved to another person. A controlled canonical rename under D45 preserves the
+former canonical spelling as an active alias rather than retiring it.
+
+**Rationale and practical example:** a newly entered misspelling can stop
+affecting search without being erased, while an imported alias explaining
+thousands of historical attendee references cannot be silently moved or
+withdrawn. Provenance distinguishes those two cases.
+
+**Accepted disadvantage and rejected alternative:** this requires alias
+provenance, lifecycle state and a reasoned retirement interface. The owner
+accepts that complexity and rejects both physical deletion and a UI with no
+safe way to correct a newly created typo.
+
+**Development, testing and cost:** approximately **1–2 overlapping days** for
+schema semantics, search filtering, retirement/restoration collision tests and
+audit proof, already included in the overall 7–11 days. Infrastructure and
+licensing cost: **zero**.
+
+## D48 — Fixed teams and reviewer maintenance
+
+**Approved explicitly by Khaled Helmy on 6 September 2026 through the Task
+4.0a readiness-audit resolution.**
+
+The two existing teams remain the only teams. Task 4.0a may change staff
+membership and maintain each team's reviewer. Team creation, renaming,
+archiving and deletion remain outside scope. Null staff-team membership is
+valid.
+
+A reviewer must be active, internal firm staff and not a trainee. A reviewer
+need not belong to the reviewed team, and the same person may review both
+teams, preserving the current approved arrangement. A reviewer cannot be
+deactivated until every affected team has first received an eligible
+replacement.
+
+**Rationale and practical example:** the current reviewer is intentionally
+unassigned to either team and reviews both, so a same-team constraint would
+reject correct data. Conversely, allowing that person to become inactive
+without reassignment would leave both teams with an invalid approval path.
+
+**Accepted disadvantage and rejected alternatives:** deactivation may require
+a prior reviewer reassignment. The owner accepts that safety step and rejects
+read-only reviewer data, which could not be maintained when responsibility
+changes, and full team CRUD, which would reopen D6 and expand reporting and
+migration scope.
+
+**Development, testing and cost:** approximately **1–2 overlapping days** for
+eligibility/reassignment enforcement, concurrency tests and the bounded team
+interface, already included in the overall 7–11 days. Infrastructure and
+licensing cost: **zero**.
+
+## D49 — Arabic-name collision policy
+
+**Approved explicitly by Khaled Helmy on 6 September 2026 through the Task
+4.0a readiness-audit resolution.**
+
+When shorter staff names normalize identically, the firm supplies a
+sufficiently complete official Arabic name that distinguishes the people. The
+application never appends invented numbers or other artificial text and Task
+4.0a does not introduce a staff-number system.
+
+If two genuine staff members have identical complete official Arabic names,
+the second identity must not be created under this contract. The operation
+fails closed and requires a new owner decision about a durable
+disambiguation model.
+
+**Rationale and practical example:** two people commonly called `أحمد محمد`
+must be entered using their fuller official names. That preserves the present
+human-readable identity and alias model without pretending that an invented
+suffix is part of either person's name.
+
+**Accepted disadvantage and rejected alternative:** the firm may sometimes
+need to provide additional official name components. The owner accepts that
+operational step and rejects adding a staff-number field, selectors and
+training during Task 4.0a.
+
+**Development, testing and cost:** approximately **0.5–1 overlapping day**
+for fail-closed validation and normalized-collision fixtures, already included
+in the overall 7–11 days. There is no current data-cleanup requirement.
+Infrastructure and licensing cost: **zero**.
+
+## D50 — Local browser interaction testing
+
+**Approved explicitly by Khaled Helmy on 6 September 2026 through the Task
+4.0a readiness-audit resolution.**
+
+Local browser testing is authorized for Task 4.0a. It must cover RTL
+rendering, keyboard order, visible focus, validation focus, confirmation focus
+restoration, Arabic accessible labels, zoom, contrast and 320-CSS-pixel
+reflow. Browser evidence complements rather than replaces database,
+authorization, audit and source checks.
+
+Any browser test that performs a mutation must use an isolated disposable
+database created for that test and must never mutate the real project
+database. No project data may leave the local machine.
+
+**Rationale and practical example:** static source checks can prove logical
+CSS and centralized Arabic strings, but they cannot prove that focus returns
+to the deactivate button after a cancelled confirmation or that the edit form
+remains usable at 320 CSS pixels. The actual local screen must supply that
+evidence.
+
+**Accepted disadvantage and rejected alternative:** this adds a bounded local
+interaction-test step and requires fixture isolation. The owner accepts that
+time and rejects static/database-only acceptance because it would leave the
+user-facing behavior unproved.
+
+**Development, testing and cost:** approximately **0.5–1 overlapping day**,
+already included in the overall 7–11 days. Infrastructure and licensing cost:
+**zero**; the existing local browser-test stack is used.
