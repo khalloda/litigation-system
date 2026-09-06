@@ -6,16 +6,18 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 6 September 2026:** Stages 2 and 3 are complete. The
+**Current checkpoint — 7 September 2026:** Stages 2 and 3 are complete. The
 independent Task 3.5B evidence review is accepted; migration 60 and the approved
 real application each executed exactly once, all 382 decisions reconciled, and
 the permanent invariant set passes 93/93. Task 3.5 is complete. This was not the
 final Access cutover, and the Litigation Department continues using Access.
 Task 4.0's structural Arabic/RTL checker is complete. No core Stage 4 screen has
 started. The owner-approved Task 4.0a contract is recorded in D44–D50 and its
-dated readiness audit is preserved as evidence, but no implementation or
-prerequisite phase has started. The exact return point is **Task 4.0a Phase 1 —
-database boundary and operational invariants, approved but not started.**
+dated readiness audit is preserved as evidence. Phase 1's database foundation
+and bounded operational-drift correction are implemented and tested locally;
+migration 61 remains unapplied to the project database. Task 4.0a overall and
+Phases 2–4 remain unchecked. The current stop is independent correction review;
+the later return point is **Task 4.0a Phase 2—read-only roster, not started.**
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1734,6 +1736,16 @@ than assuming one rule for every workflow. Test with real volumes.
         cutover or later-phase work. See the
         [Phase 1 report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
         and [107-entry invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
+
+        **Bounded correction, 7 September 2026:** valid predeployment login and
+        account activity no longer fails the historical staff preconditions.
+        The exact reviewed 824-event prefix stays fixed; the atomic boundary
+        captures every valid predeployment event through its actual maximum.
+        Derived `can_login` is verified separately and preserved in the full
+        snapshot. Both profiles, mutation/rollback proofs, authentication, all
+        448 permissions, account and both audit suites pass. Original commit
+        `2d25f937` is preserved; one additional local correction commit and patch
+        only. No push, project deployment or later phase is authorized here.
 
   - [ ] **Phase 2 — read-only roster and detail.** Implement `/staff` and the
         read-only state of `/staff/[id]` with server-enforced authorization,

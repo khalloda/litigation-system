@@ -3,11 +3,12 @@
 - Implementation acceptance evidence: 6 September 2026.
 - Model: GPT-6 Astra; reasoning: High; environment: Local.
 - Subagents/delegation: prohibited; none used.
-- Expected usage: High in the original mandate; medium additional usage in the continuation.
+- Expected usage: High in the original mandate, medium in its continuation, High for the bounded correction.
 - Starting commit: `b3500d0403ef15056cce404fb8cb478119f3ccd2`.
-- Final commit: the enclosing commit with subject `feat: enforce staff roster database boundary`. Its full SHA and the external patch checksum are reported after commit creation; a content-addressed commit cannot embed its own SHA.
+- Original implementation commit: `2d25f937b4a70b2d1d478a2ba17818079185fc7f`, preserved unchanged.
+- Correction: the enclosing commit with subject `fix: decouple staff boundary from operational drift`; section 21 records its separate evidence. Its full SHA and patch checksum are reported after creation.
 - Push: prohibited; not pushed.
-- Authorized stop: one reviewed local Phase 1 commit and one full-index binary-safe patch outside Git.
+- Authorized correction stop: one additional local commit and its full-index binary-safe patch outside Git, then independent review. No push or deployment.
 - Exact next return point: **Task 4.0a Phase 2—read-only roster, not started.**
 
 This is fixed implementation/test evidence, not owner acceptance of a deployed
@@ -75,8 +76,9 @@ These were observed failures of the old boundary, not merely inferred risks.
 
 ## 3. Schema and migration design
 
-Migration 61 runs transactionally with UTC interpretation and locks the four
-roster/account tables. It requires the approved direct migration principal,
+Migration 61 runs transactionally with UTC interpretation, locks the four
+roster/account tables and blocks audit-event/actor writers during the snapshot.
+It requires the approved direct migration principal,
 the exact migration-60 ledger/checksum and no partial Phase 1 objects. Independent
 original roster projections and explicit source-profile evidence gate creation.
 
@@ -99,9 +101,16 @@ The snapshot preserves all 137 original people, explicitly distinguishing 135
 imported (64 internal, 71 external) and two existing native people; all 350
 aliases, distinguishing 348 imported and two native; both teams; 20 source-table
 fingerprints; three full roster-source payloads; and the prior audit boundary.
-The historical profile begins at event 824. Every original primary flag is kept.
+The reviewed protected historical prefix ends at event 824. The deployed
+boundary captures the actual valid predeployment maximum, not a fixed total.
+Every original primary flag is kept. `prior_event_count` and
+`prior_events_sha256` freeze every complete pre-boundary event, including its
+timestamp, through `last_prior_event_id`. The full reviewed 824-event prefix is
+independently pinned to SHA-256
+`e49706d35eeae3dcb15bc08f1da8196528924d40495c7e092864ad71393cbf29`.
 
-Historical full-value snapshot SHA-256:
+Original reviewed-state full-value snapshot SHA-256 (operationally changed
+predeployment state has its own actual full-value digest):
 
 | Snapshot | SHA-256 |
 |---|---|
@@ -109,11 +118,15 @@ Historical full-value snapshot SHA-256:
 | Aliases, including imported classification | `476d1a683fec3c9a73072df200beddc6d898308d4f83e31b963fb8af27a081df` |
 | Teams | `901982a8dfe38843eb2e32740368cc420de204ac3db6c6210c32035f53e55eed` |
 
-Independent core projections, excluding run-specific seed timestamps:
+Independent business projections exclude audit metadata; people additionally
+exclude account-derived `can_login`. All those excluded values remain in the
+complete snapshot/digest. Current `can_login` is independently checked against
+active employment and an enabled account; enabled accounts require active
+internal people. No value is reset to make the migration pass.
 
 | Projection | SHA-256 |
 |---|---|
-| People, both profiles | `1c80a3dc7aadbf2ff121de59f0d1a3970d5fcdc323e7f394f1968c24c4b774fd` |
+| People business evidence, both profiles | `073f4cf16867bf56f02366f908ee22fe025d0711a6130159428f2da09c2f2647` |
 | Teams, both profiles | `494f8d73dbe6da5bf4aa1aa0b170f06e21abf40caa7e064c8a6f37a1044bcb60` |
 | Historical aliases | `a7466bda93ea6045822f55bed90e93f00561f3fc60dd2922cbb780d6d799091d` |
 | Canonical aliases | `716fea9249b0faeda9285e3881bce60d9b5f5a73341a77b97d3dbec3e8eda6c8` |
@@ -145,6 +158,13 @@ global Latin J-to-Arabic fold. One real serialization row covers canonical
 creation/rename, aliases/restoration, reviewer and linked account transitions.
 Different owners cannot collide across either table, including inactive and
 external identities. Same-owner equivalent spellings remain allowed.
+
+The statement-level mutex covers **every user-account write**, including
+successful/failed-login state updates, not only staff lifecycle operations.
+It favors race safety and can introduce brief contention between login and
+roster activity. It is retained unchanged for the present firm scale. Measure
+that contention during the later service/UI phase before proposing narrower
+locking; the existing audit benchmark does not measure mutex performance.
 
 Every person must finish with exactly one active primary matching the canonical
 Arabic name. Runtime cannot edit external people. Imported aliases cannot
@@ -348,7 +368,7 @@ No Phase 1 blocker remains. Trusted-process/GUC and superuser limitations are
 explicit in section 9. No claim is made that Phase 1 completes staff services,
 deploys the migration or resolves future owner exceptions.
 
-## 15. Exact changed files
+## 15. Original implementation changed files
 
 ```text
 HANDOFF.md
@@ -394,9 +414,10 @@ scripts/test-user-management.ts
 
 No governance, application `src`, dependency/lockfile, Docker Compose or
 pre-existing migration file changes. The two original uncommitted fixture files
-are included in this same Phase 1 commit, not separately committed.
+were included in original implementation commit `2d25f937`. The correction's
+separate nine-file scope is recorded in section 21.
 
-## 16. Verification commands, outcomes and resolved failures
+## 16. Original implementation verification and resolved failures
 
 All mutation commands below were dispatched through the isolated harness, not
 against project port 5433. The profile flags and exact classification are in
@@ -470,7 +491,11 @@ New migration:
 `20260906180000_staff_roster_database_boundary`
 
 SHA-256:
-`588f23fdecaa497599773eacec8c302fbbca426dc0c888151fef5f2e64f89959`
+`87e04320badc5bc71de1c30eae02c72f82ae0e59f2088b42cb0806f6b25c8904`
+
+The original implementation/pre-edit reproduction used
+`588f23fdecaa497599773eacec8c302fbbca426dc0c888151fef5f2e64f89959`.
+Section 21 distinguishes correction verification from that earlier evidence.
 
 Unchanged migration 60:
 `20260904180000_prepare_high_impact_application`
@@ -483,9 +508,9 @@ separate owner authorization.
 
 ## 18. Commit and review export
 
-Exactly one local commit is authorized, with the subject stated above, after
-the complete unstaged/staged review and final checks. No amend or additional
-commit is authorized. The external binary-safe full-index patch represents
+The correction authorizes exactly one additional local commit after complete
+unstaged/staged review and final checks. Original commit `2d25f937` must not be
+amended, rewritten or replaced. The external binary-safe full-index patch represents
 exactly its parent-to-commit diff. Final SHA, patch absolute path, byte size,
 SHA-256, full-index entry count and `git apply --reverse --check` result are
 reported after creation, outside this self-referential commit record.
@@ -493,8 +518,9 @@ reported after creation, outside this self-referential commit record.
 ## 19. Final Git state
 
 Required handoff state: `main`, clean including untracked files; no active Git
-operation; HEAD exactly one Phase 1 commit above the starting SHA; origin/main
-unchanged at that starting SHA; ahead/behind 1/0. Nothing pushed. The final
+operation; HEAD exactly one correction above original Phase 1 commit `2d25f937`;
+origin/main unchanged at `b3500d0403ef15056cce404fb8cb478119f3ccd2`;
+ahead/behind 2/0. Nothing pushed. The final
 conversation report records the actual full commit and verified state.
 
 ## 20. Exact return point
@@ -503,3 +529,158 @@ conversation report records the actual full commit and verified state.
 
 Only the Phase 1 checkbox is complete. Task 4.0a itself, Phases 2–4 and Task 4.1
 remain unchecked. No staff route, UI, Access cutover or later-phase work started.
+
+## 21. Bounded deployment-readiness correction — 7 September 2026
+
+The owner separately authorized one correction commit, not a rewrite of
+`2d25f937b4a70b2d1d478a2ba17818079185fc7f`. Sections 1–2 and the original test
+records above retain the original Phase 1 evidence; the corrected design,
+checksum and handoff rules are stated in sections 3–4 and 17–19. No owner
+decision was added or modified, and D44–D50 remain unchanged.
+
+### Fresh preflight and mandatory pre-edit reproduction
+
+Authorities were read in the required order. One fetch confirmed clean `main`,
+including untracked files; no active Git operation; HEAD `2d25f937`, parent and
+origin/main `b3500d0403ef15056cce404fb8cb478119f3ccd2`, ahead/behind 1/0;
+exact subject `feat: enforce staff roster database boundary`; original migration
+61 SHA-256 `588f23fdecaa497599773eacec8c302fbbca426dc0c888151fef5f2e64f89959`;
+unchanged migration 60 SHA-256 from section 17; 93/93 read-only source checks.
+All 97 table fingerprints, schema, role/catalog and storage fingerprints matched
+the original preserved state before edits.
+
+Two independent complete migration-60 clones reproduced the defect before any
+repository edit. Each matched all 97 source table fingerprints. The existing
+restricted-runtime services, not fabricated event INSERTs, performed:
+
+| Reproduction | Valid actual change | Old migration 61 refusal |
+|---|---|---|
+| Unknown-username authentication | `authenticateCredentials` returned null and appended one `login_failed` event; 824 → 825 | `Historical profile evidence is absent, partial or unexpected` |
+| Non-Administrator account disable | `disableManagedAccount` disabled the exact account resolved by stored username `IHamdy`, person 4; `can_login` true → false; events 825/826/827 are account row, person row and `account_disabled` | `Original roster identity/state differs; no automatic correction is permitted` |
+
+Both failures were P0001 and left no partial Phase 1 surface. The complete prior
+audit prefix, immutable people business projection, aliases, teams, source
+evidence and every unrelated table remained unchanged. Existing authentication,
+audit structure/data and runtime-principal checks passed before the attempted
+migration. The first clone retained the old people projection; only the second
+changed it. Its independently measured business-only projection was
+`073f4cf16867bf56f02366f908ee22fe025d0711a6130159428f2da09c2f2647`.
+The old projection including derived `can_login` was
+`1c80a3dc7aadbf2ff121de59f0d1a3970d5fcdc323e7f394f1968c24c4b774fd`.
+These are distinct named projections, not a relabeling of a frozen digest.
+The reproduction cluster and all its owned resources were removed.
+
+### Correction contract and permanent proof
+
+Migration 61 pins the reviewed prefix's complete timestamp-inclusive digest;
+checks the existing baseline and installed event constraints; validates later
+actor/target identities, event-time username/role snapshots, bounded classified
+structural fields and the approved semantic action/outcome/target shapes.
+Captured after-values must also connect to the next before-value or the actual
+final row; a known earlier captured value anchors subsequent before-values.
+Timestamp-with-time-zone fields compare instants, not timezone spelling.
+Mutable username/role evidence is resolved at event time, not guessed from the
+current role. Valid later events do not change historical extraction profile
+classification. A shared lock on the audit-event and actor tables blocks writers
+while the four locked roster/account tables and full prior trail are captured.
+Sequence gaps are legal; count and maximum are not conflated.
+
+The immutable boundary stores actual maximum ID, actual event count and a
+complete ordered UTC digest of every prior event. STAFF-03 re-proves that
+digest/count and the independent historical prefix. Existing change-ledger
+guards require a structural event strictly above the captured maximum;
+STAFF-07 independently checks the relationship. STAFF-11 checks current derived
+login eligibility; complete snapshot digests include its actual original value.
+The global statement mutex is unchanged; its login-write contention trade-off
+and deferred measurement are explicit in section 6.
+
+The established trusted-superuser/process limitation remains: these are
+database-enforced and independently checked records, not externally signed
+proof against a superuser capable of forging an entire mutually consistent
+history and supporting state. No claim of that stronger guarantee is made.
+
+### Final corrected acceptance results
+
+All runs below used the final migration-61 checksum in section 17. SQL writes,
+role changes, destructive fixtures and migration replay ran only in separate
+owned PostgreSQL 17.11 clusters with the verified official image, independent
+catalogs/storage/roles/credentials and localhost-only non-5433 ports.
+
+| Command/proof | Result |
+|---|---|
+| Prisma `format`, `validate`, `generate` | Passed with the installed Windows schema engine; no schema/dependency change |
+| `test-staff-roster.ts --profile-acceptance` | Passed: H 93 → 107; C 89; 22 mutation groups each; complete source preservation; exact reviewed-state upgrades |
+| `test-staff-roster.ts --mutation-proof` | Passed separately: both profiles, 22 existing groups each, all new correction cases, both late migration rollbacks and genuine roster-drift rejection |
+| Genuine later login and account operation | H actual boundaries 825 and 827; C 4 and 6 after isolated password initialization; full pre-boundary events preserved, disabled account/person state retained |
+| Genuine rollback/sequence gap | An approved login-event transaction is rolled back before a real login failure; H max 826/count 825 and C max 5/count 4 prove maximum is not mistaken for count |
+| First staff mutation and immutable audit boundary | Passed in both positive cases on both profiles; every change-ledger event strictly later; deliberately rewriting/deleting a later prior event is detected permanently |
+| Corrupted/forged input | Both profiles reject corrupt prefix, forged later `login_succeeded`, a well-shaped structural event with a false `is_enabled` after-value, and inconsistent derived eligibility, without partial migration or automatic repair |
+| `test-staff-roster.ts --regression-proof` | Authentication, all 448 permission decisions and user-management passed against final migration-61 fixtures |
+| `test-staff-roster.ts --audit-regression-proof` | Both audit suites passed, including principal/role/session/ACL attacks and migration-57 atomicity; 45,463-event append 11,587.3 ms, indexed 50-row page 0.107 ms |
+| `npm run check` | TypeScript, lint, format, RTL, authorization, audit/D35, user-management, Git-ignore and encoding checks passed |
+| `npm run build` | Passed, 8 routes; byte-verified disposable mirror, generated unreachable DB credentials, no source environment; original 364 tracked source hashes and Next-output inventory preserved |
+| `git diff --check` | Passed |
+| Read-only source `db:check -- --profile=historical-full-state-upgrade` | All 93 pass; migration 60 applied, 61 intentionally pending |
+| Earlier migration bytes | All 60 SQL files compare byte-for-byte with original commit `2d25f937` |
+
+Prisma's initial sandboxed engine download attempt was refused by the network;
+the installed matching engine was selected explicitly and all three commands
+passed without downloading it. An initial build-mirror preparation stopped on
+a pre-existing Next dev dependency link before creating a mirror. Read-only
+link-target inventory then preserved those original links without following
+them; the successful build and verified owned-link cleanup both passed. Neither
+preliminary attempt was counted as acceptance.
+
+Final self-review additionally identified that bounded structural field shapes
+alone did not prove row continuity. The final SQL checks that continuity, with
+a permanent well-shaped forged-value rejection fixture and legal rolled-back
+sequence-gap fixtures; the corrected test runs supersede preliminary passes
+before that tightening.
+
+### Project preservation and cleanup
+
+The project container ID remains
+`788259eb84a756ef0f7ddb2d8b1984297e04208e118884c5bcf80b448305a929`, running
+since `2026-09-05T07:52:28.565340199Z`, on its original network, volume and
+localhost port 5433. No project role, session, Docker configuration or database
+object was changed. Only read-only source/dump/verification connections were
+opened and closed; no existing project session was terminated. Final other
+client-session inventory is empty, as at preflight.
+
+Exact before/after SHA-256:
+
+| Projection | Unchanged SHA-256 |
+|---|---|
+| All 97 tables, including three release ledgers | `d0f6314f73fded3a0b1de352b4d704f91406ab857b2406df6b6448fafcdc24e0` |
+| Roles, memberships, database ACLs, role/database settings, parameter ACLs | `27fb62b80c3e72acfcd331d4dde46532d8f84fb175985b045738eccb116f3832` |
+| Normalized complete schema dump | `6b3f62da95243e1287a0d16860788bf2e4c328c83ea50bff3db294b7a648b661` |
+| All 54 logo files, 1,541,428 bytes | `7a1ef4943a8f74ace2b001e81f533df083690b179bfb0b3439a1f54604787405` |
+
+All section 13 protected values remain unchanged, including 5,209 protected
+rows, 744 original answers, the 137/350 roster, 60 migrations, 7 actors,
+824 original events and 583 classifications. Each isolated harness compared
+the complete pre-existing Docker resource inventory before/after and removed
+only its verified labeled container, cluster/databases/roles/credentials,
+volume and network. Dumps were memory-only and buffers zeroed; no dump file
+existed. Final labeled-resource and task-test-process inventories are empty.
+Both-profile migration mirrors, the build mirror, its three verified dependency
+links and the temporary build helper were removed. The three pre-existing review
+patches were preserved. The correction patch is the sole new retained review
+artifact; it is deliberately outside Git. No browser, staff UI/service, Access
+cutover, Phase 2–4, Task 4.1, deployment or push occurred.
+
+### Exact correction file scope
+
+- `prisma/migrations/20260906180000_staff_roster_database_boundary/migration.sql`
+- `scripts/lib/staff-roster-structure.ts`
+- `scripts/test-staff-roster.ts`
+- `TASKS.md`
+- `docs/DATA-MODEL.md`
+- `docs/DATABASE.md`
+- `docs/MIGRATION.md`
+- `docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md`
+- `docs/testing/task-4-0a-phase1-invariants.md`
+
+Only Phase 1 remains checked. Overall Task 4.0a, Phases 2–4 and Task 4.1 remain
+unchecked. Stop after the additional local correction commit and its separately
+verified patch for independent review; do not begin the next phase.

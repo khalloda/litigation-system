@@ -24,7 +24,8 @@ export const STAFF_INVARIANTS: readonly StaffInvariant[] = [
   { id: 'STAFF-02', description: 'Immutable imported and native snapshot identity populations' },
   {
     id: 'STAFF-03',
-    description: 'Independent original roster projections and complete snapshot digests',
+    description:
+      'Immutable business projections, actual roster snapshot and complete pre-boundary audit digests',
   },
   {
     id: 'STAFF-04',
@@ -300,7 +301,7 @@ export async function assertStaffBoundary(
   );
   const hashes = (
     await db.query<{ people: string; aliases: string; teams: string; complete: boolean }>(`SELECT
-    (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(p)-${EXCLUDED_AUDIT_COLUMNS} ORDER BY id)::text,'UTF8')),'hex') FROM _migration.staff_roster_person p) people,
+    (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(p)-${EXCLUDED_AUDIT_COLUMNS}-'can_login' ORDER BY id)::text,'UTF8')),'hex') FROM _migration.staff_roster_person p) people,
     (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(a)-${EXCLUDED_AUDIT_COLUMNS}-'is_imported' ORDER BY id)::text,'UTF8')),'hex') FROM _migration.staff_roster_alias a) aliases,
     (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(t)-${EXCLUDED_AUDIT_COLUMNS} ORDER BY id)::text,'UTF8')),'hex') FROM _migration.staff_roster_team t) teams,
     (people_sha256=(SELECT encode(sha256(convert_to(jsonb_agg(_migration.staff_json_row(p) ORDER BY id)::text,'UTF8')),'hex') FROM _migration.staff_roster_person p)
@@ -311,12 +312,25 @@ export async function assertStaffBoundary(
   assert.deepEqual(
     hashes,
     {
-      people: '1c80a3dc7aadbf2ff121de59f0d1a3970d5fcdc323e7f394f1968c24c4b774fd',
+      people: '073f4cf16867bf56f02366f908ee22fe025d0711a6130159428f2da09c2f2647',
       aliases: STAFF_ALIAS_BASELINES[profile],
       teams: '494f8d73dbe6da5bf4aa1aa0b170f06e21abf40caa7e064c8a6f37a1044bcb60',
       complete: true,
     },
     'forged or partial roster snapshot',
+  );
+  await zero(
+    db,
+    `SELECT b.singleton FROM _migration.staff_roster_boundary b WHERE
+      b.prior_event_count<>(SELECT count(*) FROM public.audit_events WHERE id<=b.last_prior_event_id)
+      OR b.last_prior_event_id<>(SELECT max(id) FROM public.audit_events WHERE id<=b.last_prior_event_id)
+      OR b.prior_events_sha256 IS DISTINCT FROM (SELECT encode(sha256(convert_to(string_agg(_migration.staff_json_row(e)::text,chr(10) ORDER BY id),'UTF8')),'hex') FROM public.audit_events e WHERE id<=b.last_prior_event_id)
+      OR b.last_prior_event_id<CASE b.profile WHEN 'historical-full-state-upgrade' THEN 824 ELSE 1 END
+      OR (b.profile='historical-full-state-upgrade' AND (
+        (SELECT count(*) FROM public.audit_events WHERE id<=824)<>824
+        OR (SELECT encode(sha256(convert_to(string_agg(_migration.staff_json_row(e)::text,chr(10) ORDER BY id),'UTF8')),'hex') FROM public.audit_events e WHERE id<=824)
+          IS DISTINCT FROM 'e49706d35eeae3dcb15bc08f1da8196528924d40495c7e092864ad71393cbf29'))`,
+    'protected pre-boundary audit trail changed',
   );
   await zero(
     db,
@@ -373,6 +387,12 @@ export async function assertStaffBoundary(
     WHERE p.id IS NULL OR NOT p.is_staff OR NOT p.is_active OR p.is_trainee
     UNION ALL SELECT u.id FROM public.user_accounts u JOIN public.people p ON p.id=u.person_id WHERE u.is_enabled AND (NOT p.is_active OR NOT p.is_staff)`,
     'reviewer/account eligibility failed',
+  );
+  await zero(
+    db,
+    `SELECT p.id FROM public.people p WHERE p.can_login IS DISTINCT FROM
+      (p.is_active AND EXISTS(SELECT 1 FROM public.user_accounts u WHERE u.person_id=p.id AND u.is_enabled))`,
+    'current account-derived login eligibility differs',
   );
   await zero(
     db,

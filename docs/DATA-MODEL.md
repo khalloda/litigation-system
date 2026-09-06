@@ -122,6 +122,15 @@ Versions may advance more than once in an atomic rename because alias changes
 also advance the person version; callers use the returned final version.
 No-op operations leave rows, timestamps, versions and events unchanged.
 
+The immutable business projection does not pin account-derived `can_login`.
+Its current value must match active employment and an enabled account, and the
+full actual roster snapshot includes it with all timestamps and attribution.
+The reviewed historical audit prefix ends at 824; `last_prior_event_id` captures
+the actual valid predeployment maximum. `prior_event_count` and
+`prior_events_sha256` preserve all events through that maximum, including later
+legitimate authentication/account activity. No pre-boundary event can stand in
+for a new Phase 1 staff mutation.
+
 The historical alias sequence consumed one value: the last imported alias and
 two original native aliases retain IDs 349/350/351 there, versus 348/349/350 on
 canonical replay. Each profile preserves its actual identities; no renumbering

@@ -473,11 +473,21 @@ The 92 count above is the Task 3.4 checkpoint. Task 3.5B adds the current
 
 The database foundation below is implemented by migration 61,
 `20260906180000_staff_roster_database_boundary`, SHA-256
-`588f23fdecaa497599773eacec8c302fbbca426dc0c888151fef5f2e64f89959`.
+`87e04320badc5bc71de1c30eae02c72f82ae0e59f2088b42cb0806f6b25c8904`.
 It was deployed **only** to the separate disposable PostgreSQL 17.11 instance.
 The project container/database remains unchanged at migration 60, with 93
 passing permanent checks; migration 61 is the sole intentionally pending
 repository migration. No staff route, service action or UI has been built.
+
+The reviewed protected historical audit prefix ends at event 824; it is not a
+deployment-time event-count limit. Migration 61 validates that exact full-value
+prefix and the structural/semantic validity of later events, then atomically
+captures their actual maximum ID, count and complete digest in the immutable
+boundary. All pre-boundary events remain protected and cannot supply a later
+staff change-ledger entry. The people business projection excludes only derived
+`can_login` in addition to audit metadata; current account/employment eligibility
+is checked independently, and the complete actual roster is snapshotted without
+resetting any value.
 
 - Snapshot the exact imported roster boundary immutably: 64 protected Stage 2
   staff, separate from 71 external people. Preserve the two existing
@@ -550,6 +560,11 @@ direct sequence access for them, and EXECUTE on exactly six public `staff_*`
 gateways. Private snapshots, mutex, change ledger and helper functions are
 inaccessible to runtime/PUBLIC. The existing account-derived login trigger keeps
 its exact body but executes as its definer after direct roster UPDATE is revoked.
+
+The unchanged statement-level mutex serializes **all** user-account writes,
+including login-related writes, with roster mutations. This favors race safety
+and may introduce brief contention. Retain it for the present firm scale;
+performance measurement belongs to the later service/UI phase.
 
 Cluster-mutating regression scripts must run through the isolated harness;
 direct invocation against project port 5433 is rejected. The temporary exact

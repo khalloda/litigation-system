@@ -58,6 +58,20 @@ continuity. Late migration rollback and invalid-prestate refusal run on both
 profiles. A copied historical source row in canonical state is rejected as
 a hybrid without repair or partial migration surfaces.
 
+Correction fixtures run in both acceptance and mutation-proof modes, separately
+for H and C: real failed login; approved non-Administrator account disable;
+actual boundary maximum/count/full digest; preserved derived `can_login`;
+first genuine staff mutation strictly later; corrupt prefix; forged later
+semantic event; inconsistent derived eligibility; permanent detection of a
+rewritten or deleted later pre-boundary event. Exact reviewed-state upgrade and
+forced late rollback remain independently covered. H pins the complete
+824-event prefix (including timestamps); both profiles freeze every actual
+predeployment event. A legal consumed sequence gap is not treated as a deleted
+event: count and maximum are captured separately.
+Additional fixtures create that gap by rolling back an approved login-event
+transaction and reject a well-shaped structural event whose after-value fails
+continuity with the next captured before-value or actual current row.
+
 Canonical migrations initially leave the approved accounts passwordless.
 Acceptance checks that migration-owned identity/security state, then initializes
 only a generated disposable Administrator password before operational-readiness
@@ -176,7 +190,7 @@ non-Git payload, not an inconvenience in constructing a fixture.
 | DB-093 | Task 3.3B truthful baseline checkpoint | Both | None | One first baseline event, with the exact independently approved historical or canonical aggregates and frozen immutable digests. | Same unchanged historical/canonical audit checkpoint definitions and frozen digests; new events must remain truthful and secret-free. |
 | STAFF-01 | Exact profile and complete migration-60/61 ledger | Both | None | The exact migration-60 profile passes its existing invariants; every migration-61 table, function and column must be absent. | The complete Phase 1 boundary is present and this invariant holds after accepted mutations and rejected adversarial fixtures. |
 | STAFF-02 | Immutable imported and native snapshot identity populations | Both | None | The exact migration-60 profile passes its existing invariants; every migration-61 table, function and column must be absent. | The complete Phase 1 boundary is present and this invariant holds after accepted mutations and rejected adversarial fixtures. |
-| STAFF-03 | Independent original roster projections and complete snapshot digests | Both | None | The exact migration-60 profile passes its existing invariants; every migration-61 table, function and column must be absent. | The complete Phase 1 boundary is present and this invariant holds after accepted mutations and rejected adversarial fixtures. |
+| STAFF-03 | Immutable business projections, actual roster snapshot and complete pre-boundary audit digests | Both | None | The exact migration-60 profile passes its existing invariants; every migration-61 table, function and column must be absent. | The complete Phase 1 boundary is present and this invariant holds after accepted mutations and rejected adversarial fixtures. |
 | STAFF-04 | Imported alias spelling, normalized identity, owner, provenance and existence | Both | None | The exact migration-60 profile passes its existing invariants; every migration-61 table, function and column must be absent. | The complete Phase 1 boundary is present and this invariant holds after accepted mutations and rejected adversarial fixtures. |
 | STAFF-05 | Fixed team identity and original reviewer evidence | Both | None | The exact migration-60 profile passes its existing invariants; every migration-61 table, function and column must be absent. | The complete Phase 1 boundary is present and this invariant holds after accepted mutations and rejected adversarial fixtures. |
 | STAFF-06 | Current native/import classification and stable person identities | Both | None | The exact migration-60 profile passes its existing invariants; every migration-61 table, function and column must be absent. | The complete Phase 1 boundary is present and this invariant holds after accepted mutations and rejected adversarial fixtures. |

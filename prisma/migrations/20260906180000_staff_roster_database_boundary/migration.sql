@@ -2,6 +2,9 @@ BEGIN;
 SET LOCAL TIME ZONE 'UTC';
 
 LOCK TABLE public.people,public.person_name_alias,public.lookup_team,public.user_accounts IN ACCESS EXCLUSIVE MODE;
+-- Block appenders while validating and capturing one atomic roster/event
+-- boundary. A transaction which already wrote an event must finish first.
+LOCK TABLE public.audit_events,public.audit_actors IN SHARE MODE;
 
 -- Task 4.0a Phase 1 only. No business backfill, password provisioning,
 -- external-person rewrite, Access cutover, route or UI is performed here.
@@ -20,13 +23,21 @@ BEGIN
   END IF;
   -- These independently recorded projections are identical on the two
   -- accepted profiles. Timestamps are preserved below, not regenerated.
-  IF (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(p)-ARRAY['created_at','updated_at','created_by','updated_by'] ORDER BY id)::text,'UTF8')),'hex') FROM public.people p)
-       IS DISTINCT FROM '1c80a3dc7aadbf2ff121de59f0d1a3970d5fcdc323e7f394f1968c24c4b774fd'
+  -- can_login is derived by Task 3.1/3.4, not immutable roster evidence.
+  -- Its actual value (and all timestamps/actors) is still snapshotted below.
+  IF (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(p)-ARRAY['created_at','updated_at','created_by','updated_by','can_login'] ORDER BY id)::text,'UTF8')),'hex') FROM public.people p)
+       IS DISTINCT FROM '073f4cf16867bf56f02366f908ee22fe025d0711a6130159428f2da09c2f2647'
      OR (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(a)-ARRAY['created_at','updated_at','created_by','updated_by'] ORDER BY id)::text,'UTF8')),'hex') FROM public.person_name_alias a)
        NOT IN ('a7466bda93ea6045822f55bed90e93f00561f3fc60dd2922cbb780d6d799091d','716fea9249b0faeda9285e3881bce60d9b5f5a73341a77b97d3dbec3e8eda6c8')
      OR (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(t)-ARRAY['created_at','updated_at','created_by','updated_by'] ORDER BY id)::text,'UTF8')),'hex') FROM public.lookup_team t)
        IS DISTINCT FROM '494f8d73dbe6da5bf4aa1aa0b170f06e21abf40caa7e064c8a6f37a1044bcb60' THEN
     RAISE EXCEPTION 'Original roster identity/state differs; no automatic correction is permitted';
+  END IF;
+  IF EXISTS(SELECT 1 FROM public.people p WHERE p.can_login IS DISTINCT FROM
+       (p.is_active AND EXISTS(SELECT 1 FROM public.user_accounts u WHERE u.person_id=p.id AND u.is_enabled)))
+     OR EXISTS(SELECT 1 FROM public.user_accounts u JOIN public.people p ON p.id=u.person_id
+       WHERE u.is_enabled AND (NOT p.is_active OR NOT p.is_staff)) THEN
+    RAISE EXCEPTION 'Current account-derived login eligibility is inconsistent';
   END IF;
 END
 $precondition$;
@@ -56,6 +67,8 @@ CREATE TABLE _migration.staff_roster_boundary (
   aliases_sha256 text NOT NULL,
   teams_sha256 text NOT NULL,
   last_prior_event_id bigint NOT NULL,
+  prior_event_count bigint NOT NULL,
+  prior_events_sha256 text NOT NULL,
   established_at timestamptz NOT NULL DEFAULT statement_timestamp(),
   CHECK((profile='canonical-clean-replay' AND extraction_sha256 IS NULL)
      OR (profile='historical-full-state-upgrade' AND extraction_sha256='40EBF988D4C952A676A4A00A403AE9576D87C18E35D4F7E3BAD0A62DF92D5979'))
@@ -85,8 +98,7 @@ BEGIN
     IF EXISTS(SELECT 1 FROM quarantine.review_value) OR EXISTS(SELECT 1 FROM quarantine.finding)
        OR EXISTS(SELECT 1 FROM _migration.high_impact_application)
        OR EXISTS(SELECT 1 FROM _migration.high_impact_resolution)
-       OR EXISTS(SELECT 1 FROM _migration.high_impact_row_proof)
-       OR (SELECT count(*) FROM public.audit_events)<>1 THEN
+       OR EXISTS(SELECT 1 FROM _migration.high_impact_row_proof) THEN
       RAISE EXCEPTION 'Canonical replay contains unexpected historical artifacts';
     END IF;
   ELSE
@@ -99,8 +111,7 @@ BEGIN
        OR (SELECT count(*) FROM quarantine.review_value WHERE answered_at IS NOT NULL)
           +(SELECT count(*) FROM quarantine.finding WHERE answered_at IS NOT NULL)<>744
        OR (SELECT count(*) FROM _migration.high_impact_application)<>1
-       OR (SELECT count(*) FROM _migration.high_impact_resolution)<>382
-       OR (SELECT count(*) FROM public.audit_events)<>824 THEN
+       OR (SELECT count(*) FROM _migration.high_impact_resolution)<>382 THEN
       RAISE EXCEPTION 'Historical profile evidence is absent, partial or unexpected';
     END IF;
   END IF;
@@ -119,9 +130,202 @@ BEGIN
     (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(p) ORDER BY id)::text,'UTF8')),'hex') FROM _migration.staff_roster_person p),
     (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(a) ORDER BY id)::text,'UTF8')),'hex') FROM _migration.staff_roster_alias a),
     (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(t) ORDER BY id)::text,'UTF8')),'hex') FROM _migration.staff_roster_team t),
-    (SELECT max(id) FROM public.audit_events),statement_timestamp();
+    (SELECT max(id) FROM public.audit_events),
+    (SELECT count(*) FROM public.audit_events),
+    (SELECT encode(sha256(convert_to(string_agg(to_jsonb(e)::text,chr(10) ORDER BY id),'UTF8')),'hex') FROM public.audit_events e),
+    statement_timestamp();
 END
 $boundary$;
+
+-- Positive validation, not a relaxed event-count threshold. The reviewed
+-- historical prefix is fixed INCLUDING timestamps; later rows must obey the
+-- existing structural capture and semantic gateway contracts. Sequence gaps
+-- are legal (rolled-back transactions consume IDs), so max(id) is not a count.
+-- As with D35/D43, the database superuser is trusted: this is not an external
+-- signature capable of proving authenticity against a superuser who forges a
+-- complete, internally consistent history and all its supporting state.
+DO $prior_audit$
+DECLARE
+  boundary _migration.staff_roster_boundary%ROWTYPE;
+  prefix_end bigint; event public.audit_events%ROWTYPE; actor record; target record;
+  rule record; item record; side jsonb; expected_fields text[]; valid boolean;
+  check_rule record; invalid boolean; identity record; expected_value jsonb;
+  actual_value jsonb; timestamp_field boolean;
+BEGIN
+  SELECT * INTO STRICT boundary FROM _migration.staff_roster_boundary;
+  prefix_end:=CASE boundary.profile WHEN 'historical-full-state-upgrade' THEN 824 ELSE 1 END;
+  IF boundary.last_prior_event_id<prefix_end OR EXISTS(SELECT 1 FROM public.audit_events WHERE id<1)
+     OR (SELECT count(*) FROM public.audit_event_checkpoints)<>1
+     OR NOT EXISTS(SELECT 1 FROM public.audit_event_checkpoints c JOIN public.audit_events e ON e.id=c.first_event_id
+       WHERE c.checkpoint_key='task_3_3b_baseline' AND c.event_count=1 AND c.first_event_id=1 AND c.through_event_id=1
+       AND c.baseline_profile=CASE boundary.profile WHEN 'historical-full-state-upgrade' THEN 'historical-live' ELSE 'canonical-clean-replay' END
+       AND c.event_digest=encode(sha256(convert_to((to_jsonb(e)-'occurred_at')::text,'UTF8')),'hex')
+       AND e.action='audit_baseline_established' AND e.actor_key_snapshot='system_migration' AND e.outcome='succeeded'
+       AND e.event_metadata->'access_history_available'='false'::jsonb
+       AND e.event_metadata->'migrations_applied_before'='56'::jsonb)
+     OR (SELECT count(*) FROM public.audit_events WHERE action='audit_baseline_established')<>1 THEN
+    RAISE EXCEPTION 'Protected audit prefix baseline is invalid';
+  END IF;
+  IF boundary.profile='historical-full-state-upgrade' AND (
+       (SELECT count(*) FROM public.audit_events WHERE id<=824)<>824
+       OR (SELECT encode(sha256(convert_to(string_agg(to_jsonb(e)::text,chr(10) ORDER BY id),'UTF8')),'hex') FROM public.audit_events e WHERE id<=824)
+          IS DISTINCT FROM 'e49706d35eeae3dcb15bc08f1da8196528924d40495c7e092864ad71393cbf29') THEN
+    RAISE EXCEPTION 'Protected historical audit prefix differs';
+  END IF;
+  -- Re-evaluate the installed CHECKs as data predicates; invalidity cannot be
+  -- hidden merely by disabling a row trigger during an adversarial fixture.
+  FOR check_rule IN SELECT pg_get_expr(conbin,conrelid) expression FROM pg_constraint
+    WHERE conrelid='public.audit_events'::regclass AND contype='c' LOOP
+    EXECUTE format('SELECT EXISTS(SELECT 1 FROM public.audit_events WHERE (%s) IS FALSE)',check_rule.expression) INTO invalid;
+    IF invalid THEN RAISE EXCEPTION 'Pre-boundary audit event violates structural constraints'; END IF;
+  END LOOP;
+  FOR event IN SELECT * FROM public.audit_events WHERE id>prefix_end ORDER BY id LOOP
+    SELECT a.*,u.person_id,p.name_ar INTO actor FROM public.audit_actors a
+      LEFT JOIN public.user_accounts u ON u.id=a.user_account_id LEFT JOIN public.people p ON p.id=u.person_id WHERE a.id=event.actor_id;
+    SELECT a.*,u.person_id,p.name_ar INTO target FROM public.audit_actors a
+      LEFT JOIN public.user_accounts u ON u.id=a.user_account_id LEFT JOIN public.people p ON p.id=u.person_id WHERE a.id=event.target_actor_id;
+    IF actor.id IS NULL OR event.actor_key_snapshot IS DISTINCT FROM actor.actor_key
+       OR event.actor_display_name_snapshot IS DISTINCT FROM coalesce(actor.name_ar,actor.identity_label)
+       OR (actor.actor_kind<>'human' AND (event.actor_username_snapshot IS NOT NULL OR event.actor_role_snapshot IS NOT NULL))
+       OR (actor.actor_kind='human' AND (event.actor_username_snapshot IS NULL OR event.actor_role_snapshot IS NULL))
+       OR (event.target_actor_id IS NOT NULL AND (target.id IS NULL OR target.actor_kind<>'human'
+         OR event.target_actor_key_snapshot IS DISTINCT FROM target.actor_key
+         OR event.target_display_name_snapshot IS DISTINCT FROM target.name_ar))
+       OR NOT public.audit_safe_flat_object(event.parameters) OR NOT public.audit_safe_flat_object(event.event_metadata)
+       OR public.audit_contains_secret_pattern(concat_ws(' ',event.user_agent,event.attempted_username,event.resource_identifier)) THEN
+      RAISE EXCEPTION 'Pre-boundary audit actor or metadata is invalid at event %',event.id;
+    END IF;
+    -- Resolve mutable username/role at event time, not at deployment time.
+    -- The latest structural after-value wins, otherwise the next before-value,
+    -- otherwise the unchanged account value. No old role is guessed from a
+    -- current Administrator check (an approved later role change is legal).
+    FOR identity IN SELECT * FROM (VALUES
+      (actor.user_account_id,'username',to_jsonb(event.actor_username_snapshot)),
+      (actor.user_account_id,'role_code',to_jsonb(event.actor_role_snapshot)),
+      (target.user_account_id,'username',to_jsonb(event.target_username_snapshot)),
+      (target.user_account_id,'role_code',to_jsonb(event.target_role_snapshot))) v(account_id,field,snapshot)
+      WHERE account_id IS NOT NULL LOOP
+      SELECT coalesce(
+        (SELECT e.after_values->identity.field FROM public.audit_events e WHERE e.entity_table='user_accounts'
+          AND e.entity_key=jsonb_build_object('id',identity.account_id) AND e.id<=event.id AND e.after_values ? identity.field ORDER BY e.id DESC LIMIT 1),
+        (SELECT e.before_values->identity.field FROM public.audit_events e WHERE e.entity_table='user_accounts'
+          AND e.entity_key=jsonb_build_object('id',identity.account_id) AND e.id>event.id AND e.before_values ? identity.field ORDER BY e.id LIMIT 1),
+        (SELECT to_jsonb(u)->identity.field FROM public.user_accounts u WHERE u.id=identity.account_id)) INTO expected_value;
+      IF identity.snapshot IS DISTINCT FROM expected_value THEN
+        RAISE EXCEPTION 'Pre-boundary audit account snapshot is invalid at event %',event.id;
+      END IF;
+    END LOOP;
+    SELECT * INTO rule FROM public.audit_event_table_rules r WHERE r.entity_schema=event.entity_schema AND r.entity_table=event.entity_table;
+    IF event.entity_key IS NOT NULL AND (rule.entity_table IS NULL OR NOT public.audit_safe_flat_object(event.entity_key)) THEN
+      RAISE EXCEPTION 'Pre-boundary audit entity is invalid at event %',event.id;
+    END IF;
+    IF event.action IN ('record_created','record_updated','relationship_added','relationship_updated','relationship_removed') THEN
+      valid:=event.outcome='succeeded' AND rule.entity_table IS NOT NULL
+        AND event.entity_key=jsonb_build_object('id',event.entity_key->'id') AND jsonb_typeof(event.entity_key->'id')='number'
+        AND event.target_actor_id IS NULL AND event.attempted_username IS NULL AND event.resource_identifier IS NULL
+        AND event.reason_code IS NULL AND event.parameters='{}' AND event.event_metadata='{}'
+        AND event.action=CASE WHEN rule.entity_kind='record' THEN CASE WHEN event.action='record_created' THEN 'record_created' ELSE 'record_updated' END
+          ELSE CASE WHEN event.action='relationship_added' THEN 'relationship_added' WHEN event.action='relationship_removed' THEN 'relationship_removed' ELSE 'relationship_updated' END END;
+      IF event.action IN ('record_created','relationship_added','relationship_removed') THEN
+        SELECT array_agg(field_name ORDER BY field_name) INTO expected_fields FROM public.audit_event_fields
+          WHERE entity_schema=event.entity_schema AND entity_table=event.entity_table AND capture_mode IN ('value','redacted');
+      ELSE
+        SELECT array_agg(field ORDER BY field) INTO expected_fields FROM (SELECT DISTINCT unnest(event.changed_fields) field) f;
+      END IF;
+      valid:=valid AND cardinality(event.changed_fields)>0 AND event.changed_fields=expected_fields
+        AND ARRAY(SELECT jsonb_object_keys(event.before_values) ORDER BY 1)=CASE WHEN event.action IN ('record_created','relationship_added') THEN ARRAY[]::text[] ELSE expected_fields END
+        AND ARRAY(SELECT jsonb_object_keys(event.after_values) ORDER BY 1)=CASE WHEN event.action='relationship_removed' THEN ARRAY[]::text[] ELSE expected_fields END;
+      FOREACH side IN ARRAY ARRAY[event.before_values,event.after_values] LOOP
+        FOR item IN SELECT j.key,j.value,f.capture_mode,f.max_text_characters FROM jsonb_each(side) j LEFT JOIN public.audit_event_fields f
+          ON f.entity_schema=event.entity_schema AND f.entity_table=event.entity_table AND f.field_name=j.key LOOP
+          valid:=valid AND item.capture_mode IN ('value','redacted') AND CASE WHEN item.capture_mode='redacted'
+            THEN item.value='{"$redacted":true,"$reason":"sensitive_field"}'::jsonb
+            WHEN jsonb_typeof(item.value)<>'object' THEN item.value=public.audit_bound_json_value(item.value,item.max_text_characters,'value')
+            ELSE item.value IN ('{"$redacted":true,"$reason":"structured_value"}'::jsonb,'{"$redacted":true,"$reason":"secret_pattern"}'::jsonb)
+              OR (item.value=jsonb_build_object('$value',item.value->'$value','$truncated',true,'$original_characters',item.value->'$original_characters')
+                AND jsonb_typeof(item.value->'$value')='string' AND char_length(item.value->>'$value')=item.max_text_characters
+                AND jsonb_typeof(item.value->'$original_characters')='number' AND (item.value->>'$original_characters')::numeric>item.max_text_characters
+                AND NOT public.audit_contains_secret_pattern(item.value->>'$value')) END;
+        END LOOP;
+      END LOOP;
+      -- A bounded payload is not yet a truthful row event. Every captured
+      -- after-value must lead to the next captured before-value, or to the
+      -- actual final row if no later event changes that field. The most recent
+      -- reviewed before-boundary after-value also anchors each known before.
+      -- Compare timestamptz instants, not a writer's timezone spelling.
+      FOR item IN SELECT j.key,j.value,f.capture_mode,f.max_text_characters FROM jsonb_each(event.after_values) j
+        JOIN public.audit_event_fields f ON f.entity_schema=event.entity_schema AND f.entity_table=event.entity_table AND f.field_name=j.key LOOP
+        SELECT e.before_values->item.key INTO expected_value FROM public.audit_events e
+          WHERE e.entity_schema=event.entity_schema AND e.entity_table=event.entity_table AND e.entity_key=event.entity_key
+            AND e.id>event.id AND e.before_values ? item.key ORDER BY e.id LIMIT 1;
+        IF NOT FOUND THEN
+          EXECUTE format('SELECT public.audit_bound_json_value(to_jsonb(t)->$1,$2,$3) FROM public.%I t WHERE to_jsonb(t)->''id''=$4',event.entity_table)
+            INTO expected_value USING item.key,item.max_text_characters,item.capture_mode,event.entity_key->'id';
+        END IF;
+        SELECT a.atttypid='timestamptz'::regtype INTO timestamp_field FROM pg_attribute a
+          WHERE a.attrelid=format('public.%I',event.entity_table)::regclass AND a.attname=item.key AND NOT a.attisdropped;
+        actual_value:=item.value;
+        IF timestamp_field AND jsonb_typeof(actual_value)='string' AND jsonb_typeof(expected_value)='string' THEN
+          actual_value:=to_jsonb((actual_value#>>'{}')::timestamptz);
+          expected_value:=to_jsonb((expected_value#>>'{}')::timestamptz);
+        END IF;
+        IF actual_value IS DISTINCT FROM expected_value THEN
+          RAISE EXCEPTION 'Pre-boundary audit structural continuity is invalid at event %',event.id;
+        END IF;
+      END LOOP;
+      FOR item IN SELECT * FROM jsonb_each(event.before_values) LOOP
+        SELECT e.after_values->item.key INTO expected_value FROM public.audit_events e
+          WHERE e.entity_schema=event.entity_schema AND e.entity_table=event.entity_table AND e.entity_key=event.entity_key
+            AND e.id<event.id AND e.after_values ? item.key ORDER BY e.id DESC LIMIT 1;
+        IF FOUND THEN
+          SELECT a.atttypid='timestamptz'::regtype INTO timestamp_field FROM pg_attribute a
+            WHERE a.attrelid=format('public.%I',event.entity_table)::regclass AND a.attname=item.key AND NOT a.attisdropped;
+          actual_value:=item.value;
+          IF timestamp_field AND jsonb_typeof(actual_value)='string' AND jsonb_typeof(expected_value)='string' THEN
+            actual_value:=to_jsonb((actual_value#>>'{}')::timestamptz);
+            expected_value:=to_jsonb((expected_value#>>'{}')::timestamptz);
+          END IF;
+          IF actual_value IS DISTINCT FROM expected_value THEN
+            RAISE EXCEPTION 'Pre-boundary audit structural continuity is invalid at event %',event.id;
+          END IF;
+        END IF;
+      END LOOP;
+    ELSE
+      valid:=event.changed_fields=ARRAY[]::text[] AND event.before_values='{}' AND event.after_values='{}';
+      valid:=valid AND CASE event.action
+        WHEN 'login_succeeded' THEN actor.actor_kind='human' AND event.outcome='succeeded' AND event.target_actor_id IS NULL AND event.attempted_username IS NULL
+          AND event.entity_schema='public' AND event.entity_table='user_accounts' AND event.entity_key=jsonb_build_object('id',actor.user_account_id)
+        WHEN 'login_failed' THEN actor.actor_key='system_authentication' AND event.outcome IN ('failed','blocked') AND event.attempted_username IS NOT NULL
+          AND ((event.target_actor_id IS NULL AND event.entity_key IS NULL) OR (event.entity_schema='public' AND event.entity_table='user_accounts' AND event.entity_key=jsonb_build_object('id',target.user_account_id)))
+        WHEN 'account_locked' THEN actor.actor_key='system_authentication' AND event.outcome='succeeded' AND target.actor_kind='human'
+          AND event.entity_schema='public' AND event.entity_table='user_accounts' AND event.entity_key=jsonb_build_object('id',target.user_account_id)
+        WHEN 'password_changed' THEN actor.actor_kind='human' AND event.outcome='succeeded' AND event.target_actor_id=event.actor_id
+          AND event.entity_schema='public' AND event.entity_table='user_accounts' AND event.entity_key=jsonb_build_object('id',actor.user_account_id)
+        WHEN 'password_initialized' THEN (actor.actor_key='system_administration' AND target.user_account_id BETWEEN 1 AND 4 OR actor.actor_kind='human' AND event.actor_role_snapshot='Administrator' AND actor.id<>target.id)
+        WHEN 'password_reset' THEN (actor.actor_key='system_administration' AND target.user_account_id BETWEEN 1 AND 4 OR actor.actor_kind='human' AND event.actor_role_snapshot='Administrator' AND actor.id<>target.id)
+        WHEN 'account_created' THEN actor.actor_kind='human' AND event.actor_role_snapshot='Administrator'
+        WHEN 'account_enabled' THEN actor.actor_kind='human' AND event.actor_role_snapshot='Administrator'
+        WHEN 'account_disabled' THEN actor.actor_kind='human' AND event.actor_role_snapshot='Administrator'
+        WHEN 'username_changed' THEN actor.actor_kind='human' AND event.actor_role_snapshot='Administrator'
+        WHEN 'role_changed' THEN actor.actor_kind='human' AND event.actor_role_snapshot='Administrator'
+        WHEN 'archive' THEN actor.actor_kind='human' AND event.outcome='succeeded' AND event.target_actor_id IS NULL AND event.entity_key IS NOT NULL AND event.entity_table<>'user_accounts'
+        WHEN 'restore' THEN actor.actor_kind='human' AND event.outcome='succeeded' AND event.target_actor_id IS NULL AND event.entity_key IS NOT NULL AND event.entity_table<>'user_accounts'
+        WHEN 'report_executed' THEN actor.actor_kind='human' AND event.resource_identifier IS NOT NULL
+        WHEN 'export_completed' THEN actor.actor_kind='human' AND event.resource_identifier IS NOT NULL
+        WHEN 'download_completed' THEN actor.actor_kind='human' AND event.resource_identifier IS NOT NULL
+        ELSE false END;
+      IF event.action IN ('password_initialized','password_reset','account_created','account_enabled','account_disabled','username_changed','role_changed') THEN
+        valid:=valid AND event.outcome='succeeded' AND target.actor_kind='human' AND event.entity_schema='public' AND event.entity_table='user_accounts'
+          AND event.entity_key=jsonb_build_object('id',target.user_account_id);
+      END IF;
+      IF event.action IN ('password_initialized','password_reset','account_created','account_enabled','account_disabled','username_changed','role_changed','archive','restore') THEN
+        valid:=valid AND event.attempted_username IS NULL AND event.resource_identifier IS NULL AND event.reason_code IS NULL AND event.parameters='{}' AND event.event_metadata='{}';
+      END IF;
+    END IF;
+    IF valid IS NOT TRUE THEN RAISE EXCEPTION 'Pre-boundary audit action or payload is invalid at event %',event.id; END IF;
+  END LOOP;
+END
+$prior_audit$;
 
 CREATE FUNCTION _migration.refuse_staff_evidence_change() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$

@@ -16,14 +16,17 @@ import {
   withApprovedMigrationClient,
   createApprovedMigrationPrismaClient,
 } from './lib/migration-principal';
-import { setApprovedAccountPassword } from '../src/lib/auth/service';
+import { authenticateCredentials, setApprovedAccountPassword } from '../src/lib/auth/service';
+import { disableManagedAccount } from '../src/lib/auth/user-management';
+import { createDatabaseClient } from '../src/lib/db';
+import { recordLoginFailed, setAuthenticationAuditContext } from '../src/lib/audit';
 import { createMaintenanceAuditMetadata } from '../src/lib/audit-metadata';
 import { applicationInventory, type InventoryRow } from './lib/high-impact-application-state';
 import type { ClientBase } from 'pg';
 import { assertStaffBoundary } from './lib/staff-roster-structure';
 import { authStructureFailures, authDataFailures } from './lib/auth-structure';
 import { runtimeRoleBoundaryFailures } from './lib/audit-structure';
-import { auditEventStructureFailures } from './lib/audit-event-structure';
+import { auditEventDataFailures, auditEventStructureFailures } from './lib/audit-event-structure';
 import { proveStaffMutations } from './lib/staff-roster-fixture-tests';
 import { migrateFixtureThroughCheckpoint } from './lib/fixture-migration-checkpoint';
 
@@ -46,6 +49,291 @@ async function fullInventory(db: ClientBase): Promise<InventoryRow[]> {
     rows.push({ schema: '_migration', table, ...row });
   }
   return rows.sort((a, b) => `${a.schema}.${a.table}`.localeCompare(`${b.schema}.${b.table}`));
+}
+
+/** Permanent reproductions of the reviewed deployment-readiness defect.
+ * Each case starts with its own migration-60 DB in the verified isolated
+ * cluster. Valid events are produced through the actual application services;
+ * deliberate corruption is confined to those disposable cloned databases. */
+async function proveOperationalBoundary(
+  fixture: IsolatedPostgres,
+  template = 'litigation',
+): Promise<void> {
+  const profile =
+    template === 'litigation' ? 'historical-full-state-upgrade' : 'canonical-clean-replay';
+  const short = template === 'litigation' ? 'historical' : 'canonical';
+  const state = async (db: ClientBase) =>
+    (
+      await db.query<{
+        count: string;
+        max: string;
+        digest: string;
+        business: string;
+      }>(`SELECT (SELECT count(*)::text FROM audit_events) count,(SELECT max(id)::text FROM audit_events) max,
+    (SELECT encode(sha256(convert_to(string_agg(to_jsonb(e)::text,chr(10) ORDER BY id),'UTF8')),'hex') FROM audit_events e) digest,
+    (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(p)-ARRAY['created_at','updated_at','created_by','updated_by','can_login'] ORDER BY id)::text,'UTF8')),'hex') FROM people p) business`)
+    ).rows[0]!;
+  for (const kind of ['login', 'gap', 'account', 'prefix', 'forged', 'structural', 'derived']) {
+    const url = await fixture.createDatabase(
+      `litigation_task40a_boundary_${short}_${kind}`,
+      template,
+    );
+    const runtimeUrl = new URL(fixture.runtimeUrl);
+    runtimeUrl.pathname = new URL(url).pathname;
+    const environment = {
+      ...fixture.environment,
+      MIGRATION_DATABASE_URL: url,
+      DATABASE_URL: runtimeUrl.toString(),
+    };
+    const connect = <T>(operation: (db: ClientBase) => Promise<T>) =>
+      withApprovedMigrationClient(
+        async (db) => {
+          await assertIsolatedTestCluster(db, new URL(url), environment);
+          await db.query("SET TIME ZONE 'UTC'");
+          return operation(db);
+        },
+        { databaseUrl: url },
+      );
+    if (short === 'canonical' && ['account', 'login', 'gap', 'structural'].includes(kind)) {
+      const owner = await createApprovedMigrationPrismaClient(url);
+      try {
+        await setApprovedAccountPassword('KHelmy', randomBytes(36).toString('base64url'), {
+          database: owner,
+          auditMetadata: createMaintenanceAuditMetadata(),
+        });
+      } finally {
+        await owner.$disconnect();
+      }
+    }
+    const original = await connect(state);
+    const accounts = await connect(
+      async (db) =>
+        (
+          await db.query<{
+            id: number;
+            person_id: number;
+            session_version: number;
+            role_code: string;
+          }>(
+            "SELECT id,person_id,session_version,role_code FROM user_accounts WHERE username IN ('KHelmy','IHamdy') ORDER BY username",
+          )
+        ).rows,
+    );
+    assert.equal(accounts.length, 2);
+    const admins = accounts.filter((a) => a.role_code === 'Administrator');
+    const targets = accounts.filter((a) => a.role_code === 'Lawyer');
+    assert.equal(admins.length, 1);
+    assert.equal(targets.length, 1);
+    const runtime = createDatabaseClient(runtimeUrl.toString());
+    try {
+      const auditMetadata = createMaintenanceAuditMetadata();
+      if (kind === 'account' || kind === 'structural') {
+        await disableManagedAccount(
+          admins[0]!.id,
+          {
+            accountId: targets[0]!.id,
+            expectedSessionVersion: targets[0]!.session_version,
+          },
+          { database: runtime, auditMetadata },
+        );
+      } else if (kind === 'login' || kind === 'forged' || kind === 'gap') {
+        if (kind === 'gap') {
+          await assert.rejects(
+            runtime.$transaction(async (transaction) => {
+              await setAuthenticationAuditContext(transaction, auditMetadata);
+              await recordLoginFailed(transaction, {
+                attemptedUsername: '__TASK40A_ROLLBACK_LOGIN',
+                outcome: 'failed',
+                reasonCode: 'unknown_username',
+              });
+              throw new Error('Task40a intentional event rollback');
+            }),
+            /Task40a intentional event rollback/u,
+          );
+          assert.deepEqual(
+            await connect(state),
+            original,
+            'Rolled-back event changed stored evidence',
+          );
+        }
+        assert.equal(
+          await authenticateCredentials(
+            {
+              username: '__TASK40A_UNKNOWN_LOGIN',
+              password: randomBytes(36).toString('base64url'),
+            },
+            { database: runtime, auditMetadata },
+          ),
+          null,
+        );
+      }
+    } finally {
+      await runtime.$disconnect();
+    }
+    const before = await connect(async (db) => {
+      assert.deepEqual(await authDataFailures(db), []);
+      assert.deepEqual(await authStructureFailures(db), []);
+      assert.deepEqual(await auditEventStructureFailures(db), []);
+      assert.deepEqual(
+        await auditEventDataFailures(db, { historicalLive: short === 'historical' }),
+        [],
+      );
+      const current = await state(db);
+      assert.equal(current.business, original.business);
+      assert.equal(
+        (
+          await db.query(
+            `SELECT encode(sha256(convert_to(string_agg(to_jsonb(e)::text,chr(10) ORDER BY id),'UTF8')),'hex') digest FROM audit_events e WHERE id<=$1`,
+            [original.max],
+          )
+        ).rows[0].digest,
+        original.digest,
+      );
+      return current;
+    });
+    if (['prefix', 'forged', 'structural', 'derived'].includes(kind)) {
+      await connect(async (db) => {
+        // Deliberately defeat only this task-owned clone's row guards to prove
+        // the migration detects corrupt stored evidence, not merely denied DML.
+        await db.query('BEGIN');
+        if (kind === 'derived') {
+          await db.query('ALTER TABLE people DISABLE TRIGGER USER');
+          assert.equal(
+            (
+              await db.query('UPDATE people SET can_login=false WHERE id=$1 AND can_login', [
+                targets[0]!.person_id,
+              ])
+            ).rowCount,
+            1,
+          );
+          await db.query('ALTER TABLE people ENABLE TRIGGER USER');
+        } else {
+          await db.query('ALTER TABLE audit_events DISABLE TRIGGER USER');
+          assert.equal(
+            (
+              await db.query(
+                kind === 'prefix'
+                  ? "UPDATE audit_events SET occurred_at=occurred_at+interval '1 second' WHERE id=1"
+                  : kind === 'structural'
+                    ? "UPDATE audit_events SET after_values=jsonb_set(after_values,'{is_enabled}','true') WHERE id=(SELECT max(id) FROM audit_events WHERE id>$1 AND entity_table='user_accounts' AND after_values ? 'is_enabled')"
+                    : "UPDATE audit_events SET action='login_succeeded',outcome='succeeded' WHERE id=$1",
+                kind === 'prefix' ? [] : [kind === 'structural' ? original.max : before.max],
+              )
+            ).rowCount,
+            1,
+          );
+          await db.query('ALTER TABLE audit_events ENABLE TRIGGER USER');
+          // Canonical baseline time is deliberately replay-dependent. Corrupt
+          // its frozen metadata instead; historical tests target timestamp too.
+          if (short === 'canonical' && kind === 'prefix') {
+            await db.query('ALTER TABLE audit_events DISABLE TRIGGER USER');
+            await db.query(
+              'UPDATE audit_events SET event_metadata=event_metadata||\'{"migrations_applied_before":55}\'::jsonb WHERE id=1',
+            );
+            await db.query('ALTER TABLE audit_events ENABLE TRIGGER USER');
+          }
+        }
+        await db.query('COMMIT');
+        const corrupt = await fullInventory(db);
+        await assert.rejects(
+          db.query(staffMigrationSql()),
+          kind === 'derived'
+            ? /Current account-derived login eligibility is inconsistent/u
+            : kind === 'prefix'
+              ? /Protected (historical )?audit prefix/u
+              : kind === 'structural'
+                ? /Pre-boundary audit structural continuity is invalid/u
+                : /Pre-boundary audit action or payload is invalid/u,
+        );
+        await db.query('ROLLBACK');
+        assert.deepEqual(await fullInventory(db), corrupt);
+        assert.equal(await staffBoundaryApplied(db), false);
+      });
+      console.log(`PASS ${short} operational boundary rejects ${kind} corruption atomically`);
+      continue;
+    }
+    assert.ok(BigInt(before.max) > BigInt(original.max));
+    if (kind === 'gap')
+      assert.ok(
+        BigInt(before.max) > BigInt(before.count),
+        'Boundary max must not be an event count',
+      );
+    assert.equal(runIsolated('scripts/run-prisma-migration.ts', ['deploy'], environment), 0);
+    await connect(async (db) => {
+      const boundary = (
+        await db.query(
+          'SELECT last_prior_event_id::text max,prior_event_count::text count,prior_events_sha256 digest FROM _migration.staff_roster_boundary',
+        )
+      ).rows;
+      assert.deepEqual(boundary, [{ max: before.max, count: before.count, digest: before.digest }]);
+      assert.equal(
+        (await db.query('SELECT count(*)::text FROM audit_events')).rows[0].count,
+        before.count,
+      );
+      if (kind === 'account')
+        assert.deepEqual(
+          (
+            await db.query(
+              'SELECT p.can_login,u.is_enabled,s.can_login snapshot FROM people p JOIN user_accounts u ON u.person_id=p.id JOIN _migration.staff_roster_person s ON s.id=p.id WHERE u.id=$1',
+              [targets[0]!.id],
+            )
+          ).rows,
+          [{ can_login: false, is_enabled: false, snapshot: false }],
+        );
+      await assertStaffBoundary(db, profile);
+      await db.query('BEGIN');
+      await db.query('SELECT audit_set_human_context($1)', [admins[0]!.id]);
+      await db.query(
+        "SELECT audit_set_event_context($1::uuid,$2::uuid,$3::uuid,NULL,'Task40a boundary fixture','system')",
+        [randomUUID(), randomUUID(), randomUUID()],
+      );
+      await db.query('SELECT staff_add_alias($1,1,$2)', [
+        admins[0]!.person_id,
+        '__TASK40A_BOUNDARY_' + short + '_' + kind,
+      ]);
+      await db.query('COMMIT');
+      assert.equal(
+        (
+          await db.query(
+            'SELECT count(*)::integer n FROM _migration.staff_roster_change WHERE audit_event_id<=$1',
+            [before.max],
+          )
+        ).rows[0].n,
+        0,
+      );
+      assert.ok(
+        BigInt(
+          (
+            await db.query(
+              'SELECT min(audit_event_id)::text first FROM _migration.staff_roster_change',
+            )
+          ).rows[0].first,
+        ) > BigInt(before.max),
+      );
+      await assertStaffBoundary(db, profile);
+      // Rewriting or deleting even a valid appended pre-boundary event is
+      // detected permanently, including when a privileged fixture disables the
+      // ordinary append-only guard. Each attempt is rolled back independently.
+      for (const mutation of [
+        "UPDATE audit_events SET occurred_at=occurred_at+interval '1 second' WHERE id=$1",
+        'DELETE FROM audit_events WHERE id=$1',
+      ]) {
+        await db.query('BEGIN');
+        await db.query('ALTER TABLE audit_events DISABLE TRIGGER USER');
+        assert.equal((await db.query(mutation, [before.max])).rowCount, 1);
+        await db.query('ALTER TABLE audit_events ENABLE TRIGGER USER');
+        await assert.rejects(
+          assertStaffBoundary(db, profile),
+          /protected pre-boundary audit trail changed/u,
+        );
+        await db.query('ROLLBACK');
+      }
+      await assertStaffBoundary(db, profile);
+    });
+    console.log(
+      `PASS ${short} genuine ${kind}: actual boundary ${before.max}, all ${before.count} prior events frozen, first staff event strictly later, permanent rewrite/deletion rejection`,
+    );
+  }
 }
 
 function runIsolated(script: string, args: string[], environment: NodeJS.ProcessEnv): number {
@@ -267,6 +555,8 @@ async function main(): Promise<void> {
     }
     if (mode === '--profile-acceptance' || mode === '--mutation-proof')
       await proveMigrationRollback(fixture);
+    if (mode === '--profile-acceptance' || mode === '--mutation-proof')
+      await proveOperationalBoundary(fixture);
     if (upgrade) {
       const historicalDeploy = runIsolated(
         'scripts/run-prisma-migration.ts',
@@ -323,6 +613,7 @@ async function main(): Promise<void> {
         const prestate = await fixture.createDatabase(canonicalTemplate);
         await migrateFixtureThroughCheckpoint(prestate, 60, fixture.environment);
         await proveMigrationRollback(fixture, canonicalTemplate);
+        await proveOperationalBoundary(fixture, canonicalTemplate);
         const hybridUrl = await fixture.createDatabase(
           'litigation_task40a_hybrid_prestate',
           canonicalTemplate,

@@ -3213,6 +3213,18 @@ application-native staff plus later native hires. It does not redefine, delete
 or rewrite any Stage 2 row, alias, crosswalk, source fingerprint, audit row or
 protected digest.
 
+The reviewed protected historical audit prefix ends at event 824. Migration 61
+requires its exact complete digest, permits structurally and semantically valid
+later predeployment events, and captures the actual maximum event ID under the
+same atomic boundary lock as the roster snapshot. Its stored full-trail digest
+and count preserve every pre-boundary event, not only the first 824. Canonical
+replay keeps its separate baseline and explicit absence of non-Git historical
+payload; genuine authentication activity is not historical extraction payload.
+The independently fixed people business projection excludes derived `can_login`
+but no identity, classification, name, employment, trainee, team or email field.
+Current account/employment eligibility is verified separately; the full actual
+snapshot retains `can_login`, timestamps and attribution without resetting them.
+
 Stable `people.id`, alias identity and the durable Access/source keys from D43
 remain the reconciliation anchors. A canonical rename changes the current
 label on the same person and adds the prior spelling as an alias; it never
@@ -3259,7 +3271,7 @@ and unresolved identities stop for review rather than being guessed.
 No implementation was made when the readiness contract was recorded. The
 subsequent Phase 1 migration is
 `20260906180000_staff_roster_database_boundary`, SHA-256
-`588f23fdecaa497599773eacec8c302fbbca426dc0c888151fef5f2e64f89959`.
+`87e04320badc5bc71de1c30eae02c72f82ae0e59f2088b42cb0806f6b25c8904`.
 It snapshots 137 original people, 350 aliases and both teams, adds seven
 operational metadata columns and seven audit classifications, serializes staff
 and account writes, and exposes six narrow runtime mutation gateways.
