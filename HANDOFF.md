@@ -14,8 +14,8 @@ Use these current authorities instead:
   — dated continuity evidence, not a current priority authority.
 
 **Current return point:** Stages 2 and 3, including the accepted Task 3.5
-high-impact quarantine checkpoint, are complete. Stage 4 remains unstarted.
-Resume at Task 4.0, the structural RTL-checker correction required before the
-first core screen—not Task 4.0a or Task 4.1. Access remains in operational use;
-the Task 3.5 application was not the final cutover. Do not restart earlier work
-or treat the former handoff's obsolete governance instructions as active.
+high-impact quarantine checkpoint, are complete. Task 4.0's structural
+Arabic/RTL checker is complete; no core Stage 4 screen has started. Resume at
+Task 4.0a, staff roster management—not Task 4.1. Access remains in operational
+use; the Task 3.5 application was not the final cutover. Do not restart earlier
+work or treat the former handoff's obsolete governance instructions as active.

@@ -1,0 +1,10 @@
+/* DELIBERATELY WRONG: complete stylesheet direction inventory. */
+.borders {
+  border-left-width: 1px;
+  border-left-color: red;
+  border-left-style: solid;
+  border-right-width: 1px;
+  border-right-color: red;
+  border-right-style: solid;
+  clear: right;
+}

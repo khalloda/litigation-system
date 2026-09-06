@@ -1,0 +1,5 @@
+/* DELIBERATELY CORRECT: the self-test designates this as its globals.css analogue. */
+:root {
+  --fixture-surface: #ffffff;
+  --fixture-border: #c7c7c7;
+}

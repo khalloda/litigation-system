@@ -2,11 +2,8 @@
  * DELIBERATELY WRONG. Do not copy anything from this file, and do not import
  * it.
  *
- * The variations the re-review found untested. Some are caught by the
- * line-by-line checker; two are NOT, and are marked. Those two need the
- * checker to understand the structure of the file rather than read it a line
- * at a time — deferred to task 4.0, when there are real screens to justify
- * the work. The self-test lists them every run so they cannot be forgotten.
+ * The variations the re-review found untested. The structural checker must
+ * reject every one, including the two former multiline gaps.
  */
 
 const label = 'x';
@@ -32,9 +29,7 @@ export function Variations() {
       <p style={{ borderRadius: '8px 0 0 8px' }}>{label}</p>
 
       {/*
-        KNOWN GAP — multi-line JSX text.
-        The checker reads one line at a time, so text that wraps is invisible
-        to it. Task 4.0.
+        Former gap — multi-line JSX text. This must now be rejected.
       */}
       <p>
         This sentence is interface text and belongs in src/strings.ts, but it is
@@ -42,8 +37,7 @@ export function Variations() {
       </p>
 
       {/*
-        KNOWN GAP — a label split across lines.
-        Task 4.0.
+        Former gap — a visible prop split across lines. This must now be rejected.
       */}
       <button
         title={

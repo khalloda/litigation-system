@@ -35,15 +35,21 @@ somebody needed a hover state and had nowhere to put it.
 > why it exists. A colour that appears in a component without a token is a
 > defect.**
 
-**`npm run check:rtl` enforces the last sentence** and fails on any raw hex in
-a `.tsx` file, or in a stylesheet anywhere except the line that defines a
-token. That is what makes the rule real rather than aspirational — the same
-reasoning as the right-to-left checks: a violation is invisible until somebody
-opens the screen.
+**`npm run check:rtl` enforces the last sentence structurally.** It parses both
+`.tsx` and `.jsx` components and rejects raw colour literals anywhere in their
+parsed source. It parses `.css` declarations and permits a raw colour only when
+the declaration defines a CSS custom property in `src/app/globals.css`. A
+custom property in a component stylesheet is not a token-policy bypass. This
+makes the rule real rather than aspirational — the same reasoning as the
+right-to-left checks: a violation is invisible until somebody opens the screen.
 
-A deliberate exception needs an `rtl-ok` comment saying why. There is exactly
-one in the codebase, on the task 0.4 page, where the hex is the *expected
-value* being verified rather than a style.
+A deliberate exception must be an actual immediately attached source comment
+in the form `rtl-ok: non-empty reason`. A marker inside a string or identifier,
+a reasonless marker and a distant comment do not suppress anything; unused or
+malformed directives fail the check. There are currently **zero exceptions in
+`src`**. The clean synthetic fixtures contain two narrowly attached exceptions
+to prove that the mechanism works for component and CSS parsing without
+creating a production exception.
 
 ## Layer 1 — the brand palette
 
@@ -109,9 +115,13 @@ contain a raw colour.
    `padding-inline-end`, not `padding-right`. This costs nothing now and saves a
    full restyle if a left-to-right version is ever needed.
 
-   **Enforced.** `npm run check:rtl` fails on any physical direction in a
-   stylesheet, and is part of `npm run check`. A deliberate exception needs an
-   `rtl-ok` comment on the line or the one above it, saying why.
+   **Enforced structurally.** `npm run check:rtl` inspects every parsed `.css`
+   declaration, including multiline, minified, commented and repeated forms,
+   and every inline-style object literal in `.tsx` and `.jsx`. It rejects
+   physical direction and asymmetric four-value directional shorthand. SCSS
+   fails closed with an unsupported-parser diagnostic until a structural SCSS
+   parser is deliberately added. A deliberate exception follows the narrow
+   reasoned-comment rule above.
 
 2. **No hardcoded strings in components.** Every visible string lives in
    `src/strings.ts`:
@@ -126,8 +136,13 @@ contain a raw colour.
    No i18n library in Phase 1 — one language does not need one. But this file
    makes a future second language a mechanical change.
 
-   **Enforced.** `npm run check:rtl` fails on any Arabic character inside a
-   `.tsx` file outside a comment.
+   **Enforced structurally.** `npm run check:rtl` rejects visible literal text
+   in `.tsx` and `.jsx`, regardless of language, including multiline JSX text,
+   string and template expression children, visible props and the approved
+   displayed-label object-key patterns. References to `src/strings.ts`, safe
+   runtime expressions, whitespace, numbers, punctuation and technical
+   attributes remain valid. A component parse failure fails closed rather than
+   silently skipping the file.
 
 3. **Numbers are Western (0–9) everywhere. SETTLED, 23 August 2026.**
 

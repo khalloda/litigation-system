@@ -8,9 +8,10 @@ checkpoint is completed and accepted: migration 60 and the approved Task 3.5B
 real application each executed exactly once against the local project
 PostgreSQL database, producing 1,744 matters and 13,382 hearings while retaining
 the original quarantine and source evidence. This was not the final Access
-cutover; the Litigation Department continues to use Access. Stage 4 has not
-started. The exact return point is Task 4.0, the structural right-to-left checker
-correction required before the first core screen—not Task 4.0a or Task 4.1.
+cutover; the Litigation Department continues to use Access. Task 4.0's
+structural Arabic/RTL checker is complete, but no core Stage 4 screen has
+started. The exact return point is Task 4.0a, staff roster management—not Task
+4.1.
 The owner-readable
 migration result is in
 [`docs/reconciliations/2026-08-30-gate-4.md`](docs/reconciliations/2026-08-30-gate-4.md);
@@ -140,15 +141,17 @@ are in `docs/DATABASE.md`.
 npm run check
 ```
 
-That runs seven checks in one sequence: TypeScript, ESLint, formatting,
-Arabic/RTL rules, authorization inventory, Git-ignore/storage rules and file
-encoding. All seven must pass. `npm run format` fixes formatting automatically;
-`npm run lint:fix` fixes what ESLint can fix.
+That runs nine checks in one sequence: TypeScript, ESLint, formatting,
+Arabic/RTL rules, authorization inventory, audit structure, user-management
+structure, Git-ignore/storage rules and file encoding. All nine must pass.
+`npm run format` fixes formatting automatically; `npm run lint:fix` fixes what
+ESLint can fix.
 
-`check:rtl` catches the two mistakes that are invisible until someone opens
-the screen: a physical CSS direction (`margin-left` instead of
-`margin-inline-start`), and an Arabic string written inside a component
-instead of in `src/strings.ts`.
+`check:rtl` structurally parses `.tsx` and `.jsx` components with TypeScript and
+`.css` stylesheets with PostCSS. It catches physical direction, directional
+four-value shorthand, visible literal text outside `src/strings.ts`, raw colour
+bypasses and malformed source. SCSS fails closed until the project deliberately
+adopts a structural SCSS parser.
 
 Note: since Next.js 16, `npm run build` no longer runs ESLint. `npm run check`
 is the gate.

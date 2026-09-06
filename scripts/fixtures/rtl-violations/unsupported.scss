@@ -1,0 +1,3 @@
+// DELIBERATELY UNSUPPORTED: SCSS must fail closed without an SCSS parser.
+$gap: 8px;
+.broken { margin-inline-start: $gap; }

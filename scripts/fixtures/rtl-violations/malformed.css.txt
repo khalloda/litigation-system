@@ -1,0 +1,3 @@
+/* DELIBERATELY MALFORMED CSS: a parser failure must fail closed. */
+.broken {
+  color: red;

@@ -59,9 +59,13 @@
   border-top: 1px solid grey;
 }
 
-/* A genuine exception, declared. rtl-ok: a hex code is Latin and must read
-   left-to-right even inside an Arabic line. */
+/* A hex code is technical Latin content and legitimately reads left-to-right. */
 .hex-code {
   direction: ltr;
   unicode-bidi: isolate;
+}
+
+.expected-brand-value {
+  /* rtl-ok: synthetic fixture compares a documented value and is not application styling. */
+  color: #214b4b;
 }

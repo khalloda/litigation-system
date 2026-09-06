@@ -15,6 +15,10 @@ import { t } from '@/strings';
  */
 const tokens = ['--colour-primary', '--colour-danger'];
 
+const expectedBrandHex =
+  /* rtl-ok: synthetic fixture compares one documented token value; it does not style UI. */
+  '#214B4B';
+
 export function Clean() {
   return (
     <div>
@@ -47,6 +51,7 @@ export function Clean() {
       {tokens.map((token) => (
         <span key={token} style={{ backgroundColor: `var(${token})` }} />
       ))}
+      <span data-expected-token={expectedBrandHex}>{t.common.none}</span>
     </div>
   );
 }

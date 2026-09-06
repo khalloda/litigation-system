@@ -1,0 +1,4 @@
+/* DELIBERATELY MALFORMED TSX: a parser failure must fail closed. */
+export function Malformed() {
+  return <div title="This file must not be skipped">broken;
+}

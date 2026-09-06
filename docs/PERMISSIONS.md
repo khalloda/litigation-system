@@ -59,9 +59,10 @@ silently skipped.
 invoicing lives in Excel until Phase 2, so there is nothing to create here yet.
 
 **Billing is visible to all roles, for all clients.** Not restricted to the
-lawyer's own matters — **981 of the 1,689 transformed matters have no target
+lawyer's own matters — **1,000 of the current 1,744 matters have no target
 lawyer relationship**, so such a rule would hide billing from everyone. The
-earlier 834 of 1,730 figure was the pre-migration planning snapshot. See D14.
+Task 2.7 historical result was 981 of 1,689 transformed matters; the earlier
+pre-migration planning snapshot was 834 of 1,730. See D14.
 
 **Everyone can export ordinary reports and visible business data.** If a role
 can see ordinary data on screen, it can export it to Excel or PDF. Audit-history

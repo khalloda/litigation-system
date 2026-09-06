@@ -73,10 +73,10 @@ printed reports already present it. In print, guillemets: `«مطعون ضده»
 
 ### Absence is stated, not blank
 
-**981 of the current 1,689 transformed matters have no target lawyer
-relationship.** Show `لم يُكلَّف أحد` in gold, not an empty cell. The earlier
-834 of 1,730 figure was the planning snapshot. The same rule applies to any
-field the source data genuinely lacks.
+**1,000 of the current 1,744 matters have no target lawyer relationship.** Show
+`لم يُكلَّف أحد` in gold, not an empty cell. The Task 2.7 historical result was
+981 of 1,689 transformed matters; the earlier planning snapshot was 834 of
+1,730. The same rule applies to any field the source data genuinely lacks.
 
 ### Search says what it matched
 

@@ -1,0 +1,12 @@
+/* DELIBERATELY WRONG: parsed declarations defeat line-oriented scanning. */
+.multiline-direction {
+  margin-left
+    : 8px;
+  color:
+    #abcdef;
+}
+
+.minified { padding-right: 1px; margin-left: 2px; right: 0; }
+.repeated { left: 0; left: 1px; }
+.forged { content: "rtl-ok: this string is not a comment"; right: 0; }
+.component-token-bypass { --component-colour: #123456; color: var(--component-colour); }

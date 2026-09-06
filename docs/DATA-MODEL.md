@@ -920,7 +920,7 @@ spelling each row used survives.
 `الموعد القادم` at seven rows is effectively dead. Migrate it; do not surface
 it.
 
-## Courts — `lookup_court`, 308 entries
+## Courts — `lookup_court`, 309 current entries
 
 Seeded 23 August 2026 from `sql/lookup-court-and-crosswalk.sql`, the firm's
 review of all **401** distinct court names in `الدعاوى.matterCourt`,
@@ -934,12 +934,18 @@ review of all **401** distinct court names in `الدعاوى.matterCourt`,
 | WRONG — not a court at all | 7 |
 | | **401** |
 
-**308, not the 309 the source file states.** `هيئة الاستثمار` appeared in the
-list *and* was a merge source for `الهيئة العامة للاستثمار والمناطق الحرة`;
-the seed generator had taken it from a SPLIT's court part without checking. The
-firm's review was consistent — the generator was not. `npm run db:check` now
-asserts permanently that **no lookup value is also a crosswalk source**,
-however it reached the list.
+**The reviewed Stage 2 court list contained 308 courts, not the 309 its source
+file then stated.** `هيئة الاستثمار` appeared in the list *and* was a merge
+source for `الهيئة العامة للاستثمار والمناطق الحرة`; the seed generator had
+taken it from a SPLIT's court part without checking. The firm's review was
+consistent — the generator was not. `npm run db:check` now asserts permanently
+that **no lookup value is also a crosswalk source**, however it reached the
+list.
+
+**The current count is 309.** D40 and Task 3.5B created the one additional
+approved distinct court `أسرة مصر الجديدة`; exactly two approved hearings use
+it. The earlier 308 remains the reviewed historical court list before Task
+3.5B, not the current total.
 
 Never retype this list: `npm run generate:court-seed -- <new migration.sql>`.
 
@@ -966,8 +972,9 @@ happened, and that list already holds exactly this kind of value. See
 `sql/court-wrong-destinations.sql`. Task 2.6 added the 32nd destination named
 by the firm's structured matter-category split.
 
-A tenth list, **`lookup_court`**, holds **309** courts and is **not** counted
-in the 138. See below.
+A tenth list, **`lookup_court`**, holds **309 current courts** and is **not**
+counted in the 138. The reviewed historical list held 308 before D40/Task 3.5B
+added `أسرة مصر الجديدة` for exactly two approved hearings. See above.
 
 Was 150, then 146, then 130 after the branch resolution. Court destinations
 and the structured matter split brought the pre-Task 3.5B total to 135; the

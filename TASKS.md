@@ -11,9 +11,9 @@ independent Task 3.5B evidence review is accepted; migration 60 and the approved
 real application each executed exactly once, all 382 decisions reconciled, and
 the permanent invariant set passes 93/93. Task 3.5 is complete. This was not the
 final Access cutover, and the Litigation Department continues using Access.
-Stage 4 has not started. The exact return point is Task 4.0, the structural
-RTL-checker correction required before the first core screen—not Task 4.0a or
-Task 4.1.
+Task 4.0's structural Arabic/RTL checker is complete. No core Stage 4 screen has
+started. The exact return point is Task 4.0a, staff roster management—not Task
+4.1.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1647,7 +1647,9 @@ only ever seen good data is not known to work.
       pass 93/93 and two accepted non-writing reconciliations are byte-identical.
       Task 3.5 is complete; Stage 3 is complete; Stage 4 remains unstarted.
       This application was not the final Access cutover, and Access remains in
-      operational use. **Return point:** Task 4.0—not Task 4.0a or Task 4.1.
+      operational use. At that checkpoint the return point was Task 4.0. Task
+      4.0 is now complete; the current return point is recorded above and in
+      the completed Task 4.0 entry.
 
 ---
 
@@ -1660,17 +1662,18 @@ physical deletion. The interface must say archive/restore. Design archived-row
 visibility, filters and reporting behavior with each relevant screen rather
 than assuming one rule for every workflow. Test with real volumes.
 
-- [ ] **4.0 Revisit the right-to-left checker**
-      Do this **before** the first real screen. `npm run check:rtl` works one
-      line at a time, which was enough for Stage 0 but will not be enough for
-      real interface code. Two known gaps are already fixtured in
-      `scripts/fixtures/rtl-violations/Variations.tsx` and reported by every
-      self-test run:
-        - JSX text spread over several lines
-        - a visible prop whose string sits on its own line
-      Both need the checker to parse TSX and CSS structurally rather than
-      pattern-match lines. Roughly 2–4 hours. Deferred from the Stage 0
-      re-review because there were no screens yet to check.
+- [x] **4.0 Revisit the right-to-left checker** — completed 6 September 2026.
+      TypeScript 5.9.3 now parses `.tsx` and `.jsx` component structure;
+      PostCSS 8.5.23 parses every `.css` declaration, including CSS modules,
+      multiline and minified forms. The checker fails closed on malformed
+      component/CSS input and on `.scss`, for which no structural parser is
+      installed. Visible literals, displayed-label objects, inline and CSS
+      physical direction, directional four-value shorthand, raw colours and
+      narrowly attached reasoned `rtl-ok` comments all have permanent positive
+      and negative fixtures. Both former multiline gaps are rejecting fixtures;
+      the self-test reports zero known gaps. Normal `src` scanning passes
+      without any `src` edit. No core Stage 4 screen has started. **Return
+      point:** Task 4.0a—not Task 4.1.
 
 - [ ] **4.0a Staff roster management** — future reviewed contract for new
       hires and staff identity maintenance before go-live (**D36**). Do not
