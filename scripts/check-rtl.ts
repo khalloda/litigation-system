@@ -8,7 +8,13 @@ import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { extname, join, relative, resolve, sep } from 'node:path';
 
-import postcss, { type Comment, type Declaration, type Position } from 'postcss';
+import postcss, {
+  type AtRule,
+  type Comment,
+  type Declaration,
+  type Position,
+  type Rule,
+} from 'postcss';
 import ts from 'typescript';
 
 const ROOT = process.cwd();
@@ -354,6 +360,7 @@ function propertyNameText(name: ts.PropertyName | ts.JsxAttributeName): string |
   if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
     return name.text;
   }
+  if (ts.isComputedPropertyName(name)) return fullyStaticString(name.expression);
   if (ts.isJsxNamespacedName(name)) return `${name.namespace.text}:${name.name.text}`;
   return null;
 }
@@ -431,11 +438,35 @@ function jsxInitializerExpression(initializer: ts.JsxAttributeValue): ts.Express
   return null;
 }
 
-function isInlineStyleObject(node: ts.ObjectLiteralExpression): boolean {
-  const expression = node.parent;
-  if (!ts.isJsxExpression(expression)) return false;
-  const attribute = expression.parent;
-  return ts.isJsxAttribute(attribute) && propertyNameText(attribute.name) === 'style';
+function collectInlineStyleObjects(
+  expression: ts.Expression,
+  objects: Set<ts.ObjectLiteralExpression>,
+): void {
+  const current = unwrapExpression(expression);
+  if (ts.isObjectLiteralExpression(current)) {
+    objects.add(current);
+    for (const property of current.properties) {
+      if (ts.isSpreadAssignment(property)) {
+        collectInlineStyleObjects(property.expression, objects);
+      }
+    }
+    return;
+  }
+  if (ts.isConditionalExpression(current)) {
+    collectInlineStyleObjects(current.whenTrue, objects);
+    collectInlineStyleObjects(current.whenFalse, objects);
+    return;
+  }
+  if (
+    ts.isBinaryExpression(current) &&
+    (current.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ||
+      current.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+      current.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+      current.operatorToken.kind === ts.SyntaxKind.CommaToken)
+  ) {
+    collectInlineStyleObjects(current.left, objects);
+    collectInlineStyleObjects(current.right, objects);
+  }
 }
 
 function templateTokenText(node: ts.Node): string | null {
@@ -478,6 +509,16 @@ function checkComponent(file: string): Problem[] {
     return problems;
   }
 
+  const inlineStyleObjects = new Set<ts.ObjectLiteralExpression>();
+  const findInlineStyleObjects = (node: ts.Node): void => {
+    if (ts.isJsxAttribute(node) && propertyNameText(node.name) === 'style' && node.initializer) {
+      const expression = jsxInitializerExpression(node.initializer);
+      if (expression) collectInlineStyleObjects(expression, inlineStyleObjects);
+    }
+    ts.forEachChild(node, findInlineStyleObjects);
+  };
+  findInlineStyleObjects(sourceFile);
+
   const isAllowed = (...nodes: ts.Node[]): boolean => {
     for (const node of nodes) {
       const start = node.getStart(sourceFile);
@@ -513,7 +554,7 @@ function checkComponent(file: string): Problem[] {
   };
 
   const visit = (node: ts.Node): void => {
-    const rawLiteral = templateTokenText(node);
+    const rawLiteral = ts.isJsxText(node) ? node.getText(sourceFile) : templateTokenText(node);
     if (rawLiteral !== null && HEX.test(rawLiteral)) {
       addNodeProblem(
         node,
@@ -576,9 +617,27 @@ function checkComponent(file: string): Problem[] {
           );
         }
       }
+    }
 
-      const object = node.parent;
-      if (name && ts.isObjectLiteralExpression(object) && isInlineStyleObject(object)) {
+    if (
+      (ts.isPropertyAssignment(node) ||
+        ts.isShorthandPropertyAssignment(node) ||
+        ts.isMethodDeclaration(node) ||
+        ts.isGetAccessorDeclaration(node) ||
+        ts.isSetAccessorDeclaration(node)) &&
+      ts.isObjectLiteralExpression(node.parent) &&
+      inlineStyleObjects.has(node.parent)
+    ) {
+      const name = propertyNameText(node.name);
+      if (ts.isComputedPropertyName(node.name) && name === null) {
+        addNodeProblem(
+          node,
+          'computed inline-style key cannot be resolved statically — use a literal property name or a separately defined style object',
+          'jsx-style-computed-key',
+        );
+      }
+
+      if (name) {
         const physical = SIMPLE_PHYSICAL_JSX.get(name);
         if (physical) {
           addNodeProblem(
@@ -589,7 +648,9 @@ function checkComponent(file: string): Problem[] {
         }
 
         const directionalValues = PHYSICAL_JSX_VALUES.get(name);
-        const staticValue = fullyStaticString(node.initializer);
+        const staticValue = ts.isPropertyAssignment(node)
+          ? fullyStaticString(node.initializer)
+          : null;
         if (directionalValues && staticValue !== null) {
           const normalized = staticValue.trim().toLowerCase();
           const replacement = directionalValues.get(normalized);
@@ -637,7 +698,9 @@ function offsetAt(source: string, position: Position): number {
   return offset + position.column - 1;
 }
 
-function cssNodeRange(source: string, node: Comment | Declaration): { start: number; end: number } {
+type CssLocatedNode = AtRule | Comment | Declaration | Rule;
+
+function cssNodeRange(source: string, node: CssLocatedNode): { start: number; end: number } {
   const startPosition = node.source?.start;
   if (!startPosition) return { start: 0, end: 0 };
   const start = offsetAt(source, startPosition);
@@ -691,32 +754,50 @@ function checkStylesheet(file: string, options: ScanOptions): Problem[] {
     if (directive) directives.push(directive);
   });
 
-  root.walkDecls((declaration) => {
-    const range = cssNodeRange(source, declaration);
-    const startLine = declaration.source?.start?.line ?? 1;
-    const endLine = declaration.source?.end?.line ?? startLine;
-    const addDeclarationProblem = (message: string, rule: string) => {
-      const directive = attachedDirective(
-        source,
-        range.start,
-        range.end,
-        startLine,
-        endLine,
-        directives,
+  const addCssNodeProblem = (node: AtRule | Declaration | Rule, message: string, rule: string) => {
+    const range = cssNodeRange(source, node);
+    const startLine = node.source?.start?.line ?? 1;
+    const endLine = node.source?.end?.line ?? startLine;
+    const directive = attachedDirective(
+      source,
+      range.start,
+      range.end,
+      startLine,
+      endLine,
+      directives,
+    );
+    if (directive) {
+      directive.used = true;
+    } else {
+      problems.push(
+        makeProblem(file, startLine, sourceExcerpt(source, range.start, range.end), message, rule),
       );
-      if (directive) {
-        directive.used = true;
-      } else {
-        problems.push(
-          makeProblem(
-            file,
-            startLine,
-            sourceExcerpt(source, range.start, range.end),
-            message,
-            rule,
-          ),
-        );
-      }
+    }
+  };
+
+  root.walkAtRules((atRule) => {
+    if (HEX.test(`${atRule.name} ${atRule.params}`)) {
+      addCssNodeProblem(
+        atRule,
+        'raw colour in a stylesheet at-rule — use a var(--token) or a narrowly attached reasoned exception',
+        'raw-hex-css',
+      );
+    }
+  });
+
+  root.walkRules((rule) => {
+    if (HEX.test(rule.selector)) {
+      addCssNodeProblem(
+        rule,
+        'raw colour in a stylesheet selector — raw hex is permitted only in an approved token declaration',
+        'raw-hex-css',
+      );
+    }
+  });
+
+  root.walkDecls((declaration) => {
+    const addDeclarationProblem = (message: string, rule: string) => {
+      addCssNodeProblem(declaration, message, rule);
     };
 
     const property = declaration.prop.toLowerCase();
@@ -748,9 +829,11 @@ function checkStylesheet(file: string, options: ScanOptions): Problem[] {
       }
     }
 
-    if (HEX.test(declaration.value)) {
+    if (HEX.test(declaration.prop) || HEX.test(declaration.value)) {
       const isApprovedToken =
-        resolve(file) === resolve(options.tokenFile) && declaration.prop.startsWith('--');
+        !HEX.test(declaration.prop) &&
+        resolve(file) === resolve(options.tokenFile) &&
+        declaration.prop.startsWith('--');
       if (!isApprovedToken) {
         addDeclarationProblem(
           'raw colour in a stylesheet — use a var(--token); tokens may be defined only in src/app/globals.css with their derivation (docs/BRAND.md layer 2)',
@@ -803,6 +886,7 @@ const REQUIRED_RULES = [
   'jsx-expression-string',
   'raw-hex',
   'raw-hex-css',
+  'jsx-style-computed-key',
   'parse-error',
   'css-parse-error',
   'unsupported-scss',
@@ -811,6 +895,60 @@ const REQUIRED_RULES = [
 ];
 
 const REQUIRED_CASES = [
+  {
+    description: 'shorthand physical inline-style property',
+    file: 'scripts/fixtures/rtl-violations/ShorthandPhysicalStyle.tsx',
+    rule: 'jsx:marginLeft',
+    message: 'marginInlineStart',
+  },
+  {
+    description: 'statically computed physical inline-style key',
+    file: 'scripts/fixtures/rtl-violations/ComputedPhysicalStyle.tsx',
+    rule: 'jsx:paddingRight',
+    message: 'paddingInlineEnd',
+  },
+  {
+    description: 'conditional physical inline-style object',
+    file: 'scripts/fixtures/rtl-violations/ConditionalPhysicalStyle.tsx',
+    rule: 'jsx:borderLeftWidth',
+    message: 'borderInlineStartWidth',
+  },
+  {
+    description: 'physical-value rule inside a conditional style object',
+    file: 'scripts/fixtures/rtl-violations/ConditionalPhysicalStyle.tsx',
+    rule: 'jsx:textAlign:left',
+    message: "textAlign: 'start'",
+  },
+  {
+    description: 'nested literal-spread physical inline-style object',
+    file: 'scripts/fixtures/rtl-violations/SpreadPhysicalStyle.tsx',
+    rule: 'jsx:marginRight',
+    message: 'marginInlineEnd',
+  },
+  {
+    description: 'four-value rule inside a nested literal style spread',
+    file: 'scripts/fixtures/rtl-violations/SpreadPhysicalStyle.tsx',
+    rule: 'four-value-inline:padding',
+    message: 'padding-block and padding-inline',
+  },
+  {
+    description: 'unresolved computed inline-style key fails closed',
+    file: 'scripts/fixtures/rtl-violations/UnresolvedComputedStyle.tsx',
+    rule: 'jsx-style-computed-key',
+    message: 'cannot be resolved statically',
+  },
+  {
+    description: 'raw hex in JSX text',
+    file: 'scripts/fixtures/rtl-violations/RawHexJsxText.tsx',
+    rule: 'raw-hex',
+    message: '#fff',
+  },
+  {
+    description: 'raw hex in CSS at-rule parameters',
+    file: 'scripts/fixtures/rtl-violations/raw-hex-atrule.css',
+    rule: 'raw-hex-css',
+    message: '@supports',
+  },
   {
     description: 'former multiline JSX-text gap',
     file: 'scripts/fixtures/rtl-violations/Variations.tsx',
@@ -897,6 +1035,76 @@ const REQUIRED_CASES = [
   },
 ] as const;
 
+const REQUIRED_CLEAN_CASES = [
+  {
+    description: 'logical shorthand inline-style property',
+    file: 'scripts/fixtures/rtl-clean/StyleBranchesClean.tsx',
+    construct: 'style={{ marginInlineStart }}',
+  },
+  {
+    description: 'statically computed logical inline-style key',
+    file: 'scripts/fixtures/rtl-clean/StyleBranchesClean.tsx',
+    construct: "['paddingInlineEnd']: 8",
+  },
+  {
+    description: 'conditional logical inline-style object',
+    file: 'scripts/fixtures/rtl-clean/StyleBranchesClean.tsx',
+    construct: 'borderInlineStartWidth: 1',
+  },
+  {
+    description: 'nested literal-spread logical inline-style object',
+    file: 'scripts/fixtures/rtl-clean/StyleBranchesClean.tsx',
+    construct: '...{ marginInlineEnd: 8 }',
+  },
+  {
+    description: 'logical physical-value counterparts',
+    file: 'scripts/fixtures/rtl-clean/StyleBranchesClean.tsx',
+    construct: "textAlign: 'start'",
+  },
+  {
+    description: 'symmetric four-value shorthand remains accepted',
+    file: 'scripts/fixtures/rtl-clean/StyleBranchesClean.tsx',
+    construct: "padding: '0 8px 0 8px'",
+  },
+  {
+    description: 'raw hex in an actual component comment remains ignored',
+    file: 'scripts/fixtures/rtl-clean/StyleBranchesClean.tsx',
+    construct: '// A raw colour such as #fff inside an actual source comment is not code.',
+  },
+  {
+    description: 'raw hex in an actual JSX comment remains ignored',
+    file: 'scripts/fixtures/rtl-clean/StyleBranchesClean.tsx',
+    construct: '{/* Raw colour #abcdef inside an actual JSX comment is not visible text. */}',
+  },
+  {
+    description: 'approved token declaration remains accepted',
+    file: 'scripts/fixtures/rtl-clean/approved-tokens.css',
+    construct: '--fixture-surface: #ffffff',
+  },
+  {
+    description: 'raw hex in an actual CSS comment remains ignored',
+    file: 'scripts/fixtures/rtl-clean/clean.css',
+    construct: '/* Raw colour text such as #abcdef inside an actual CSS comment is not code. */',
+  },
+  {
+    description: 'reasoned component exception remains accepted',
+    file: 'scripts/fixtures/rtl-clean/Clean.tsx',
+    construct: '#214B4B',
+  },
+  {
+    description: 'reasoned CSS declaration exception remains accepted',
+    file: 'scripts/fixtures/rtl-clean/clean.css',
+    construct: 'color: #214b4b',
+  },
+] as const;
+
+const EXPECTED_SELF_TEST_TOTALS = {
+  rules: 78,
+  rejectingFixtures: 21,
+  cleanFixtures: 5,
+  findings: 142,
+} as const;
+
 async function selfTest(): Promise<void> {
   const violationRoot = join(ROOT, 'scripts', 'fixtures', 'rtl-violations');
   const cleanRoot = join(ROOT, 'scripts', 'fixtures', 'rtl-clean');
@@ -923,6 +1131,12 @@ async function selfTest(): Promise<void> {
           (item.message.includes(expected.message) || item.text.includes(expected.message)),
       ),
   );
+  const cleanFiles = new Set(clean.files.map(relativePath));
+  const missedCleanCases = REQUIRED_CLEAN_CASES.filter((expected) => {
+    if (!cleanFiles.has(expected.file)) return true;
+    const source = readFileSync(join(ROOT, expected.file), 'utf8');
+    return !source.includes(expected.construct);
+  });
   const multipleFile = 'scripts/fixtures/rtl-violations/MultipleViolations.tsx';
   const multipleFindings = broken.problems.filter((item) => item.file === multipleFile).length;
 
@@ -944,9 +1158,30 @@ async function selfTest(): Promise<void> {
     for (const item of missedCases) console.error(`  ${item.description}`);
     failed = true;
   }
+  if (missedCleanCases.length > 0) {
+    console.error(`\nself-test: ${missedCleanCases.length} clean case(s) were not proved:\n`);
+    for (const item of missedCleanCases) console.error(`  ${item.description}`);
+    failed = true;
+  }
   if (multipleFindings < 3) {
     console.error('\nself-test: multiple violations in one parsed file were not all reported.');
     failed = true;
+  }
+  const actualTotals = {
+    rules: REQUIRED_RULES.length,
+    rejectingFixtures: broken.files.length,
+    cleanFixtures: clean.files.length,
+    findings: broken.problems.length,
+  };
+  for (const key of Object.keys(EXPECTED_SELF_TEST_TOTALS) as Array<
+    keyof typeof EXPECTED_SELF_TEST_TOTALS
+  >) {
+    if (actualTotals[key] !== EXPECTED_SELF_TEST_TOTALS[key]) {
+      console.error(
+        `\nself-test: expected ${EXPECTED_SELF_TEST_TOTALS[key]} ${key}, received ${actualTotals[key]}.`,
+      );
+      failed = true;
+    }
   }
   if (clean.problems.length > 0) {
     console.error(`\nself-test: ${clean.problems.length} false positive(s) on clean fixtures:\n`);
@@ -960,11 +1195,11 @@ async function selfTest(): Promise<void> {
   }
 
   console.log(
-    `check:rtl self-test — ${REQUIRED_RULES.length} structural rules proved across ` +
-      `${broken.files.length} rejecting fixtures; ${clean.files.length} clean fixtures accepted.`,
+    `check:rtl self-test — ${actualTotals.rules} structural rules proved across ` +
+      `${actualTotals.rejectingFixtures} rejecting fixtures; ${actualTotals.cleanFixtures} clean fixtures accepted.`,
   );
   console.log(
-    `                     ${broken.problems.length} expected findings; both former multiline gaps enforced; 0 known gaps.`,
+    `                     ${actualTotals.findings} expected findings; both former multiline gaps enforced; 0 known gaps.`,
   );
 }
 

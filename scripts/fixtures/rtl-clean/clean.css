@@ -69,3 +69,5 @@
   /* rtl-ok: synthetic fixture compares a documented value and is not application styling. */
   color: #214b4b;
 }
+
+/* Raw colour text such as #abcdef inside an actual CSS comment is not code. */

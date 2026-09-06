@@ -1,0 +1,6 @@
+/* DELIBERATELY WRONG: raw hex in parsed at-rule parameters must be rejected. */
+@supports (color: #abcdef) {
+  .review {
+    color: var(--colour-primary);
+  }
+}

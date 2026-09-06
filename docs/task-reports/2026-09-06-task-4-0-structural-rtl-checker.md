@@ -10,14 +10,17 @@
   static-analysis correction with synthetic fixtures and no database or browser
   work; one agent using the repository's installed TypeScript toolchain was the
   smallest configuration that could implement and verify it safely.
-- Starting commit: `d73daf19e7c9f6b7de3d3fd8db1a4856e24dc5e8`
-- Final commit: the enclosing commit named `fix: make RTL checker structural`;
-  its SHA is reported after creation because a content-addressed commit cannot
-  contain its own SHA.
+- Original starting commit: `d73daf19e7c9f6b7de3d3fd8db1a4856e24dc5e8`
+- Original Task 4.0 commit: `23484f54369311e1a2996238f5cc3c2b37687420`,
+  named `fix: make RTL checker structural`
+- Regression-correction commit: the enclosing commit named
+  `fix: close Task 4.0 structural regressions`; its SHA is reported after
+  creation because a content-addressed commit cannot contain its own SHA.
 - Push status: not pushed; `origin/main` remains
   `d73daf19e7c9f6b7de3d3fd8db1a4856e24dc5e8`
-- Exact authorized stop point: one local Task 4.0 commit and one external
-  binary-safe full-index review patch; no push, database work or Stage 4 screen
+- Exact authorized stop point: one additional local correction commit and one
+  external binary-safe full-index review patch containing only that correction;
+  no push, database work or Stage 4 screen
 - Exact next return point: Task 4.0a — Staff roster management, not Task 4.1
 
 ## Run configuration and scope
@@ -26,6 +29,11 @@ The owner authorized Task 4.0 only: replace the line-oriented checker with
 structural parsing, turn both known multiline gaps into permanent failures,
 retain every existing RTL/string/colour rule, correct three approved current
 documentation counts, commit once and export one external review patch.
+
+An independent review then identified two bounded structural regressions in the
+exact committed checker. The owner authorized only their correction and
+permanent fixture proof. Package files, product policy, permissions, factual
+corrections and the Task 4.0a return point remain unchanged.
 
 No file under `src` changed. No database, Docker service, migration, import,
 reconciliation application, seed, raw data, workbook, runtime storage or
@@ -36,7 +44,7 @@ Figma, external account, unrelated plugin or subagent was used.
 This implements existing D12 and the Arabic/RTL and colour-token policy in
 `docs/BRAND.md`; it does not change product behavior or permissions.
 
-## Pre-edit reproduction
+## Original pre-edit reproduction
 
 At the clean starting commit, `npm run check:rtl` exited successfully and
 reported:
@@ -51,6 +59,44 @@ Both missed constructs were already present in
 `scripts/fixtures/rtl-violations/Variations.tsx`. The successful exit with those
 two explicit gap messages proves the pre-edit behavior without creating a
 disposable repository file.
+
+## Independent regression reproduction and root cause
+
+Before correction, the checker from exact commit
+`23484f54369311e1a2996238f5cc3c2b37687420` was copied into an external
+disposable directory. Valid TSX containing shorthand, statically computed,
+conditional and nested literal-spread physical style properties plus raw hex in
+JSX text was scanned together with valid CSS containing raw hex in an
+`@supports` parameter. The checker exited zero and reported `2 files, no
+problems`. No reproduction file entered the repository, and the disposable copy
+was removed after the post-edit proof.
+
+There were two causes:
+
+1. Inline-style recognition required an object literal to be the direct child
+   of the JSX expression and then inspected only ordinary property assignments.
+   Shorthand members, computed names, conditional branches and literal objects
+   nested in spreads therefore never reached the directional rules.
+2. Component raw-hex inspection visited string and template nodes but omitted
+   `JsxText`. Stylesheet raw-hex inspection walked declaration values only, so
+   parsed at-rule parameters and selectors were outside its coverage.
+
+The correction remains deliberately structural and bounded. Starting from a
+JSX `style={...}` initializer, it follows transparent TypeScript wrappers,
+conditional branches, logical/nullish/comma branches and recursively nested
+literal object spreads. It does not resolve an arbitrary identifier, function
+call or external style object. Within each discovered object it inspects
+ordinary and shorthand members, resolves literal or statically assembled
+computed names, and fails closed with `jsx-style-computed-key` when a computed
+name is not statically knowable. It does not infer the runtime value behind a
+shorthand variable.
+
+For raw hex, the TypeScript AST supplies JSX text plus string/template nodes.
+PostCSS supplies declaration properties and values, rule selectors, and at-rule
+names and parameters. Actual TypeScript/PostCSS comments remain excluded by
+their parsers. This preserves the rule that raw hex is accepted only in an
+approved custom-property value in exact `src/app/globals.css`, or by an
+immediately attached reasoned `rtl-ok` directive.
 
 ## Structural parser choices and dependency decision
 
@@ -85,16 +131,21 @@ Normal scanning recursively inspects `.tsx`, `.jsx`, `.css` and `.scss` under
   `placeholder`, `aria-label`, `aria-description` and `label`;
 - displayed-label object properties named `name`, `label`, `title`, `heading`,
   `caption`, `text` or `description`;
-- component raw hex literals;
+- component raw hex in JSX text and string/template nodes;
 - inline-style physical properties for left/right margin, padding, borders,
   corner radii and inset, plus left/right `textAlign`, `float` and `clear`;
+- direct, conditional and logical inline-style object branches, shorthand and
+  statically computed property names, and recursively nested literal spreads;
+- unresolved computed names inside those structural style branches failing
+  closed;
 - asymmetric four-value inline `margin`, `padding`, `inset`, `borderWidth`,
   `borderColor`, `borderStyle`, `scrollMargin`, `scrollPadding` and
   `borderRadius`;
 - the equivalent CSS physical declarations and left/right values;
 - the equivalent nine asymmetric four-value CSS shorthands;
-- raw CSS colours everywhere except a custom-property declaration in the exact
-  production token file `src/app/globals.css`;
+- raw CSS colours in declaration properties/values, rule selectors and at-rule
+  names/parameters, except a custom-property value in the exact production
+  token file `src/app/globals.css`;
 - component and CSS parse failures, with SCSS explicitly unsupported rather
   than silently skipped.
 
@@ -106,9 +157,9 @@ source lines.
 
 ## Permanent fixture coverage and `rtl-ok`
 
-The post-edit self-test proves 77 structural rule identities across 14 rejecting
-fixtures and produces 133 expected findings. Four clean fixtures produce no
-finding. It explicitly proves:
+The corrected self-test protects exact totals of 78 structural rule identities,
+21 rejecting fixtures, 142 expected findings and five clean fixtures. It
+explicitly proves:
 
 - the two former multiline gaps in `Variations.tsx`;
 - rejecting and accepting `.tsx` and `.jsx` components;
@@ -116,6 +167,13 @@ finding. It explicitly proves:
   text;
 - every visible prop and displayed-label object-key family;
 - all physical CSS and inline-style directions and all nine shorthand families;
+- separate rejecting fixtures for shorthand and statically computed physical
+  style properties, conditional and nested literal-spread style objects, an
+  unresolved computed key, raw hex in JSX text and raw hex in an at-rule;
+- named clean counterparts for logical shorthand/computed properties,
+  conditional and literal-spread logical objects, logical values, symmetric
+  shorthand, approved token declarations, source/JSX/CSS comments and both valid
+  narrowly attached exceptions;
 - multiple findings in one parsed component;
 - malformed TSX and CSS held as `.txt` evidence so repository formatting can
   remain valid while the checker parses those contents deliberately;
@@ -136,8 +194,9 @@ brand-hex comparisons in component and CSS parsing. The current real-source
 exception inventory is zero.
 
 The self-test ends with **zero known gaps** and fails if either former gap, any
-rule identity, any negative fixture, any named structural case, the
-multiple-finding proof or any clean fixture regresses.
+rule identity, any negative fixture, any named negative or positive structural
+case, the multiple-finding proof, any clean fixture or any protected total
+regresses.
 
 ## Approved documentation corrections
 
@@ -163,6 +222,11 @@ reports were not rewritten.
   `origin/main` both
   `d73daf19e7c9f6b7de3d3fd8db1a4856e24dc5e8`; ahead/behind `0/0`; Task 4.0
   first unchecked; Tasks 4.0a and 4.1 unchecked.
+- Correction preflight after fetching origin: `main`; clean; no active Git
+  operation; `HEAD`
+  `23484f54369311e1a2996238f5cc3c2b37687420`; parent and unchanged
+  `origin/main` `d73daf19e7c9f6b7de3d3fd8db1a4856e24dc5e8`;
+  ahead/behind `1/0`; exact subject and 26-file original commit confirmed.
 - Migration 60 SHA-256:
   `7921c9b168549928185bfd0b915ccc725ba363787158990c614420e0e3bbbee5`.
 - Pre-edit `npm run check:rtl`: passed with 13 source files clean, 22 rules/59
@@ -171,16 +235,23 @@ reports were not rewritten.
 - Post-edit `npm run check:rtl`: passed with 13 source files clean, 77 rules,
   14 rejecting fixtures, 133 expected findings, four clean fixtures, both
   former gaps enforced and zero known gaps.
+- Focused correction reproduction: the exact pre-edit checker accepted both
+  review files with exit zero; the corrected checker rejected all six original
+  constructs with `jsx:marginLeft`, `jsx:paddingRight`,
+  `jsx:borderLeftWidth`, `jsx:marginRight`, `raw-hex` and `raw-hex-css`.
+- Corrected `npm run check:rtl`: 13 source files clean; 78 protected rules, 21
+  rejecting fixtures, 142 protected expected findings, five clean fixtures,
+  both former multiline gaps enforced and zero known gaps.
 - `npm run typecheck`: passed.
 - Focused `npx --no-install eslint scripts/check-rtl.ts`: passed.
 - `npm run format:check`: passed.
-- `npm run check`: all nine static gates passed; authorization still classifies
+- Corrected `npm run check`: all nine static gates passed; authorization still classifies
   16 entry points, audit self-test still rejects 6 schema plus 67 bypass
   fixtures, user-management self-test still rejects eight fixtures,
   Git-ignore/storage reports no banned tracked file, and all checked files are
   correctly encoded.
-- `npm run build`: Next.js 16.3.1 production build passed; all eight routes were
-  generated or server-rendered as expected.
+- Corrected `npm run build`: Next.js 16.3.1 production build passed; all eight
+  routes were generated or server-rendered as expected.
 - Final acceptance also includes `git diff --check`, exact authorized-scope,
   dependency/lockfile, secret/path/raw-data/binary/runtime-artifact scans,
   every-migration byte comparison, migration 60's repeated exact digest,
@@ -193,18 +264,20 @@ authorization or database behavior, and the owner prohibited database access.
 ## Protected state, limitations and final Git state
 
 All migration files remain byte-identical; no database claim is based on a live
-query. The only dependency change is the exact direct development declaration
-`postcss: 8.5.23`. No application source, authentication, permission, audit,
-migration, schema, business data or runtime-storage file changed.
+query. The original Task 4.0 dependency change was the exact direct development
+declaration `postcss: 8.5.23`; the regression correction changes no package or
+lockfile. No application source, authentication, permission, audit, migration,
+schema, business data or runtime-storage file changed.
 
 The checker intentionally does not parse SCSS; encountering it is a hard error.
 It recognizes literal and structurally assembled JSX source, not arbitrary
 runtime values, so values already supplied by `src/strings.ts` or computed at
-runtime remain valid by design. Standard CSS parsed by PostCSS is the supported
-stylesheet syntax.
+runtime remain valid by design. Inline-style traversal likewise stops at
+arbitrary identifiers and calls rather than attempting whole-program data-flow
+analysis. Standard CSS parsed by PostCSS is the supported stylesheet syntax.
 
-After the enclosing commit, the intended verified state is `main`, one commit
-ahead of unchanged `origin/main`, zero behind, clean, with no active Git
-operation. The external patch identity and the final commit SHA are reported to
-the owner after creation. The exact return point is Task 4.0a; no core Stage 4
+After the enclosing correction commit, the intended verified state is `main`,
+two commits ahead of unchanged `origin/main`, zero behind, clean, with no active
+Git operation. The external patch identity and the final commit SHA are reported
+to the owner after creation. The exact return point is Task 4.0a; no core Stage 4
 screen has started.
