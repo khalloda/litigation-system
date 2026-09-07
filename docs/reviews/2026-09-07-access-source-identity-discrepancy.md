@@ -13,10 +13,11 @@ This dated document summarizes evidence; it does not replace
 ## Why the audit occurred
 
 The current Access file no longer matched the byte size and SHA-256 recorded
-for the frozen migration source. The owner disclosed that the source had been
-opened to confirm client information and to export `العملاء` to Excel, with no
-intentional business-data edit or import-back. That disclosure was evidence of
-activity and intent, not proof of what changed inside the binary.
+for the frozen migration source. The owner disclosed that, during the 4
+September client-data review, the source had been opened to confirm client
+information and to export `العملاء` to Excel, with no intentional business-data
+edit or import-back. That disclosure was evidence of activity and intent, not
+proof of what changed inside the binary.
 
 | Artifact | Bytes | SHA-256 | Status |
 |---|---:|---|---|
@@ -26,11 +27,12 @@ activity and intent, not proof of what changed inside the binary.
 The derivative is exactly **131,072 bytes** larger. The cause remains
 unexplained. Access-internal allocation or bookkeeping is plausible but was not
 proved, so the two files are never described as byte-identical. The current
-source modification time was 4 September, before the owner's disclosed
-7 September inspection/export, so that disclosure does not prove the cause.
-The current source and retained working copy matched before and after the audit;
-neither was modified by it, and all database-engine inspection used only the
-read-only working copy.
+source modification time is also 4 September, which is consistent with the
+disclosed investigation and export. Timing alone does not prove that activity
+caused the additional 131,072 bytes or changed binary hash. The current source
+and retained working copy matched before and after the audit; neither was
+modified by it, and all database-engine inspection used only the read-only
+working copy.
 
 ## Completed comparisons
 
