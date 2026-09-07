@@ -466,18 +466,33 @@ business rows and their digest, current attribution digest, four roles, 448
 authorization decisions, one baseline event and 583 field classifications are
 unchanged. The live invariant count is 92.
 
-The 92 count above is the Task 3.4 checkpoint. Task 3.5B adds the current
-93rd permanent invariant described below.
+The 92 count above is the Task 3.4 checkpoint. Task 3.5B added the 93rd
+permanent invariant; migration 61 brings the current historical profile to
+107/107 as described below.
 
-## Task 4.0a Phase 1 database boundary — implemented locally, not deployed
+## Task 4.0a Phase 1 database boundary — deployed and verified
 
 The database foundation below is implemented by migration 61,
 `20260906180000_staff_roster_database_boundary`, SHA-256
 `87e04320badc5bc71de1c30eae02c72f82ae0e59f2088b42cb0806f6b25c8904`.
-It was deployed **only** to the separate disposable PostgreSQL 17.11 instance.
-The project container/database remains unchanged at migration 60, with 93
-passing permanent checks; migration 61 is the sole intentionally pending
-repository migration. No staff route, service action or UI has been built.
+After disposable proof and predeployment recovery readiness, the separately
+authorized project deployment completed on 7 September 2026. Project
+PostgreSQL 17.11 has 61 applied migrations, zero pending or unfinished and one
+retained approved historical rollback. The deployment command ran exactly once;
+migration 61 has one completed ledger entry. Post-deployment `db:verify` passed
+15/15 and the permanent historical profile passed 107/107. Phase 1 is
+operationally complete; no staff route, service action or UI has been built.
+The [deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
+identifies the retained recovery and deployment evidence. The project container
+was unchanged. The 103 current tables preserve all 97 prior projections:
+92 whole tables unchanged and five containing only approved additions, plus
+six new boundary tables. All 54 logos remain intact; the staff-change ledger
+has zero rows at deployment acceptance.
+
+The exact next return point is **Task 4.0a Phase 2 — read-only staff roster**.
+Task 4.0a overall, Phases 2–4 and Task 4.1 remain unchecked. The Litigation
+Department continues using Access; final delta reconciliation and cutover
+remain separate work under D43 and D51.
 
 The reviewed protected historical audit prefix ends at event 824; it is not a
 deployment-time event-count limit. Migration 61 validates that exact full-value
@@ -582,8 +597,10 @@ owner-authorized real application each executed exactly once on 5 September
 `7921c9b168549928185bfd0b915ccc725ba363787158990c614420e0e3bbbee5`;
 the application plan digest is
 `4a1fee01d011b960f48204102e28ed71731a5f1d682006141749460828e33da3`.
-The project database now has 60 applied migrations, one application batch, 382
-resolutions, 824 audit events and 93/93 passing permanent invariants.
+At that checkpoint the project database had 60 applied migrations, one
+application batch, 382 resolutions, 824 audit events and 93/93 passing permanent
+invariants. Migration 61 subsequently preserved that evidence and raised the
+current historical profile to 107/107, as recorded above.
 
 The current business totals are 18 client branches, 309 courts, 1,744 matters,
 13,382 hearings, 968 matter-lawyer links, 2,695 parties, 2,267 party roles and

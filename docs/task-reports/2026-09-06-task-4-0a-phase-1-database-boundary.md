@@ -9,12 +9,16 @@
 - Correction: the enclosing commit with subject `fix: decouple staff boundary from operational drift`; section 21 records its separate evidence. Its full SHA and patch checksum are reported after creation.
 - Push: prohibited; not pushed.
 - Authorized correction stop: one additional local commit and its full-index binary-safe patch outside Git, then independent review. No push or deployment.
-- Exact next return point: **Task 4.0a Phase 2—read-only roster, not started.**
+- Current return point: **Task 4.0a Phase 2 — read-only staff roster**; not started.
 
-This is fixed implementation/test evidence, not owner acceptance of a deployed
-application. [TASKS.md](../../TASKS.md) owns current status;
-[DECISIONS.md](../DECISIONS.md) owns policy. Migration 61 is **not deployed** to
-the project database. Access remains the department's active system.
+This is fixed implementation/test evidence. Its migration-60 preservation,
+pending-deployment statements and command results describe that earlier work.
+The separate [7 September deployment acceptance report](2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
+records recovery readiness, real migration-61 deployment and post-deployment
+verification: project PostgreSQL is now at 61, with 107/107 permanent historical
+invariants. Phase 1 is operationally complete. [TASKS.md](../../TASKS.md) owns
+current status; [DECISIONS.md](../DECISIONS.md) owns policy. Access remains the
+department's active system; final cutover remains separate under D43/D51.
 
 ## Configuration, authority and scope
 
@@ -285,9 +289,10 @@ stronger isolation a stale snapshot fails serialization rather than committing
 a collision. Both profiles separately passed deliberately late migration failure
 with no partial boundary, and invalid-prestate refusal without silent repair.
 
-## 13. Current project preservation and resource cleanup
+## 13. Implementation checkpoint preservation and resource cleanup
 
-Final forced-read-only verification matched the original baseline:
+At the implementation checkpoint, final forced-read-only verification matched
+the original baseline:
 
 | Protected surface | Before = after |
 |---|---|
@@ -443,8 +448,9 @@ the [testing document](../testing/task-4-0a-phase1-invariants.md).
 Prisma's installed engine is selected with
 `PRISMA_SCHEMA_ENGINE_BINARY=node_modules/@prisma/engines/schema-engine-windows.exe`.
 Migration-ledger status is proved by exact repository-file/checksum reconciliation
-at the two explicit checkpoints. A generic deployment/up-to-date claim for the
-source would be false; migration 61 is intentionally pending.
+at the two explicit checkpoints. At that implementation checkpoint the project
+source still had migration 61 pending; these test results did not establish
+project deployment.
 
 The audit benchmark appended 45,463 events in 11,228.5 ms and retrieved an indexed
 50-row entity page in 0.140 ms. Keyset pagination across equal timestamps had no
@@ -503,8 +509,9 @@ Unchanged migration 60:
 SHA-256:
 `7921c9b168549928185bfd0b915ccc725ba363787158990c614420e0e3bbbee5`
 
-Only the disposable instances applied 61. Deployment to the project requires
-separate owner authorization.
+Only the disposable instances applied 61 during this implementation work.
+The separately authorized project deployment is recorded in the
+[deployment acceptance report](2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
 
 ## 18. Commit and review export
 
@@ -525,7 +532,7 @@ conversation report records the actual full commit and verified state.
 
 ## 20. Exact return point
 
-**Task 4.0a Phase 2—read-only roster, not started.**
+**Task 4.0a Phase 2 — read-only staff roster**; not started.
 
 Only the Phase 1 checkbox is complete. Task 4.0a itself, Phases 2–4 and Task 4.1
 remain unchecked. No staff route, UI, Access cutover or later-phase work started.

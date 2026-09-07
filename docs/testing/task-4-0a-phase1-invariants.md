@@ -4,11 +4,17 @@ This is verification classification approved by the owner on 6 September 2026,
 not permission to weaken a failed check. Product decisions remain D44–D50;
 `TASKS.md` owns completion and work order.
 
+Migration 61 is deployed and verified on project PostgreSQL. The current
+permanent historical profile passed 107/107 on 7 September 2026; see the
+[deployment acceptance report](../task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
+The upgrade/rollback proofs below used the preserved predeployment migration-60
+state. They remain dated evidence, separate from post-deployment checks.
+
 ## Independently mandatory profiles
 
 | Profile | Exact starting evidence | Required result |
 | --- | --- | --- |
-| Historical full-state upgrade (H) | Read-only full copy of the current PostgreSQL 17.11 migration-60 database; all 97 table fingerprints, source/review payload, Task 3.5B release and protected evidence equal the source | All 93 original invariants before migration 61; all 93 preserved/relocated plus 14 new invariants afterward: 107 |
+| Historical full-state upgrade (H) | Read-only full copy of the predeployment PostgreSQL 17.11 migration-60 database; all 97 table fingerprints, source/review payload, Task 3.5B release and protected evidence equal that source checkpoint | All 93 original invariants before migration 61; all 93 preserved/relocated plus 14 new invariants afterward: 107 |
 | Canonical clean replay (C) | Empty, separate PostgreSQL 17.11 cluster with the approved Arabic ICU initialization; exact repository migrations through 61 | 75 original universal checks plus 14 new checks: 89; explicitly empty non-Git extraction, review-answer and release payload |
 
 Both profiles run independently on the task-owned instance; neither substitutes
@@ -35,10 +41,10 @@ reclassify it. Default classification is both profiles.
 - C permanent checks: `npm run db:check -- --profile=canonical-clean-replay`.
 
 The permanent commands are read-only checks of the explicitly configured
-target. On the current project database, H checks the exact migration-60
-checkpoint and reports migration 61 intentionally pending. It does not deploy
-anything. Canonical acceptance runs only with the harness's generated isolated
-target. The affected standalone authentication/audit fixture scripts now
+target. On the current project database, H checks the completed migration-61
+checkpoint with 107 invariants; migration 61 is no longer pending. The command
+does not deploy anything. Canonical acceptance runs only with the harness's
+generated isolated target. The affected standalone authentication/audit fixture scripts now
 refuse the project cluster; use the harness, not a database-name prefix on 5433.
 
 The harness verifies Docker ownership labels, exact image identity and PG17.11,

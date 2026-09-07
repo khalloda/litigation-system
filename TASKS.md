@@ -9,17 +9,21 @@ be bigger than expected, split it and tell the owner.
 **Current checkpoint — 7 September 2026:** Stages 2 and 3 are complete. The
 independent Task 3.5B evidence review is accepted; migration 60 and the approved
 real application each executed exactly once, all 382 decisions reconciled, and
-the permanent invariant set passes 93/93. Task 3.5 is complete. This was not the
-final Access cutover, and the Litigation Department continues using Access.
+the permanent invariant set passed 93/93 at that checkpoint. Task 3.5 is
+complete. This was not the final Access cutover, and the Litigation Department
+continues using Access.
 Task 4.0's structural Arabic/RTL checker is complete. No core Stage 4 screen has
 started. The owner-approved Task 4.0a contract is recorded in D44–D50 and its
 dated readiness audit is preserved as evidence. Phase 1's database foundation
-and bounded operational-drift correction are implemented and tested locally;
-migration 61 remains unapplied to the project database. Task 4.0a overall and
-Phases 2–4 remain unchecked. D51 separately records the Access-source
-derivative disposition without establishing deployment readiness. The current
-return point is **Task 4.0a Phase 1 migration-61 predeployment recovery and
-execution-readiness audit—not yet resumed.**
+and bounded operational-drift correction are implemented and tested. After
+recovery readiness and separate owner authorization, migration 61 was deployed
+and verified on project PostgreSQL: 61 applied, zero pending or unfinished,
+15/15 database checks and 107/107 permanent historical-profile invariants.
+Phase 1 remains checked and is operationally complete. Task 4.0a overall,
+Phases 2–4 and Task 4.1 remain unchecked. This deployment was not final Access
+cutover; final delta reconciliation remains governed by D43 and D51, without
+any new owner decision. The exact return point is
+**Task 4.0a Phase 2 — read-only staff roster**.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1689,8 +1693,9 @@ than assuming one rule for every workflow. Test with real volumes.
       roster data. Account controls remain exclusively under `/users`; the
       staff detail may show an Administrator-only account-existence/status link
       but must not create, enable, disable, reset or otherwise manage accounts.
-      Only Phase 1 is complete locally. Migration 61 remains unapplied to the
-      current project database; Phases 2–4 and Task 4.1 have not started.
+      Phase 1 is operationally complete: migration 61 is deployed and verified
+      on project PostgreSQL, with 107/107 permanent historical-profile
+      invariants. Phases 2–4 and Task 4.1 have not started.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1732,10 +1737,10 @@ than assuming one rule for every workflow. Test with real volumes.
         `20260906180000_staff_roster_database_boundary`; historical 93 before /
         107 after, canonical 89 after, 22 mutation groups per profile, rollback
         on both profiles, hybrid rejection, authentication/448-permission/account
-        and audit/principal regressions. Project database, schema, roles,
-        protected data and 54 logo files are unchanged at migration 60; migration
-        61 is intentionally pending. No deployment, staff route/UI, Access
-        cutover or later-phase work. See the
+        and audit/principal regressions. At that implementation checkpoint the
+        project database, schema, roles, protected data and 54 logo files stayed
+        unchanged at migration 60, with 61 pending. No deployment, staff
+        route/UI, Access cutover or later-phase work occurred then. See the
         [Phase 1 report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
         and [107-entry invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
 
@@ -1757,6 +1762,20 @@ than assuming one rule for every workflow. Test with real volumes.
         isolated migration checks remain required. See the
         [sanitized discrepancy evidence](docs/reviews/2026-09-07-access-source-identity-discrepancy.md).
         This documentation decision does not deploy or test migration 61.
+
+        **Deployment accepted, 7 September 2026:** the retained recovery
+        package proved restoration of all 97 prior table projections and
+        historical checks 93 before / 107 after isolated upgrade. After separate
+        owner authorization, `npm run db:migrate:deploy` executed exactly once
+        on the project database. Migration 61 completed with one ledger entry:
+        61 applied, zero pending or unfinished, and the one approved historical
+        rollback retained. Post-deployment checks passed 15/15 and the permanent
+        historical profile passed 107/107. All original data, the 824-event
+        audit boundary, prior migration history and 54 logos were preserved;
+        the staff-change ledger has zero rows. Phase 1 is operationally
+        complete. The [deployment report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
+        records the evidence separately from implementation and recovery.
+        Access remains in use; this was not final cutover under D43/D51.
 
   - [ ] **Phase 2 — read-only roster and detail.** Implement `/staff` and the
         read-only state of `/staff/[id]` with server-enforced authorization,
@@ -1794,8 +1813,7 @@ than assuming one rule for every workflow. Test with real volumes.
         volume and browser evidence, then update the canonical docs and task
         report without marking earlier phases complete retrospectively.
 
-      **Return point:** Task 4.0a Phase 1 migration-61 predeployment recovery
-      and execution-readiness audit—not yet resumed.
+      **Return point:** Task 4.0a Phase 2 — read-only staff roster.
 
 - [ ] **4.1 Clients** — list, detail, contacts, logo
 

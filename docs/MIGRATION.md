@@ -3206,10 +3206,10 @@ share normalized output SHA-256
 and return the approved plan digest above. Task 3.5 and Stage 3 are complete.
 No core Stage 4 screen has started. Task 4.0 was subsequently completed and
 D44–D50 subsequently recorded the approved Task 4.0a contract; Phase 1's
-local-only database implementation is described below.
+database implementation and subsequent deployment are described below.
 Access remains in operational use and no final cutover occurred.
 
-## Task 4.0a migration boundary — Phase 1 implemented locally, not deployed
+## Task 4.0a migration boundary — Phase 1 deployed and verified
 
 Task 4.0a must preserve two truths at once: the imported roster is historical
 evidence, while the application roster must keep changing after go-live. Phase
@@ -3293,15 +3293,29 @@ and timestamp stayed unchanged across migration 61 except the explicit new
 migration ledger entry and seven new audit-field rules. Legitimate subsequent
 fixture edits remained in place while permanent checks passed.
 
-The current project database is still at 60 applied migrations with 93 passing
-invariants, unchanged schema, roles, table fingerprints, protected data and
-54 logo files. Migration 61 is the only intentionally pending migration and
-must not be deployed without separate owner authorization. No dump file was
-written; the read-only dump buffer was zeroed. All disposable databases,
-roles, containers, volumes, networks, migration mirrors and test processes were
-removed. The [complete invariant inventory](testing/task-4-0a-phase1-invariants.md)
-and [Phase 1 report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
-record the evidence and explicit limits.
+At the implementation/test checkpoint, the project remained at migration 60
+with 93 passing invariants and unchanged protected data and 54 logos. Those
+tests used a memory-only dump and removed their disposable resources. The
+[implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
+retains that dated evidence; the subsequent recovery audit separately retained
+an archive and proved restoration of all 97 prior table projections.
 
-The exact return point is **Task 4.0a Phase 1 migration-61 predeployment
-recovery and execution-readiness audit—not yet resumed.**
+After separate owner authorization on 7 September 2026, the project deployment
+command ran exactly once and migration 61 completed with one ledger entry.
+Project PostgreSQL is now at 61 applied migrations, zero pending or unfinished,
+with the one approved historical rollback retained. Post-deployment verification
+passed 15/15 database checks and 107/107 permanent historical-profile invariants.
+All 97 original table projections remain exact: 92 whole tables unchanged and
+five with only the approved additions. Six new boundary tables bring the total
+to 103. Original people, aliases, teams, accounts, business/source evidence,
+the complete 824-event audit boundary, historical migration rows and all 54
+logos were preserved; the staff-change ledger contains zero rows.
+The [deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
+and [complete invariant inventory](testing/task-4-0a-phase1-invariants.md)
+distinguish the recovery, real deployment and verification evidence.
+
+Phase 1 is operationally complete; Task 4.0a overall, Phases 2–4 and Task 4.1
+remain unchecked. The exact return point is
+**Task 4.0a Phase 2 — read-only staff roster**. The Litigation Department
+continues using Access. This deployment was not final Access cutover; final
+delta reconciliation remains governed by D43 and D51.

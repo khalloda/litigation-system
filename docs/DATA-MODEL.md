@@ -57,7 +57,7 @@ own name**, which rule 15 depends on: matching through the alias table only
 works if every name is in it. Samy Khattab's exact self-alias was already
 present from task 1.2a and is asserted rather than duplicated.
 
-### Task 4.0a people/alias contract — Phase 1 implemented, not deployed
+### Task 4.0a people/alias contract — Phase 1 deployed and verified
 
 The application staff roster is the 66 internal identities: the 64 protected
 Stage 2 staff plus the two application-native staff added in Task 3.1. That is
@@ -108,8 +108,10 @@ shared addresses requires a future owner decision. The exact names and
 representations are now `people.row_version`, `alias_epoch`,
 `application_modified_at` and `application_modified_by` (an immutable human
 audit-actor reference); `person_name_alias.is_retired` and `retirement_reason`;
-and `lookup_team.row_version`. They exist in the repository schema and tested
-migration 61, **not** in the current migration-60 project database.
+and `lookup_team.row_version`. They are deployed in project PostgreSQL at
+migration 61. Post-deployment verification passed the permanent historical
+profile at 107/107; Phase 1 is operationally complete. No staff route or UI
+exists yet. See the [deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
 
 Four private immutable snapshots preserve all 137 original people (135 imported
 and two native), all 350 aliases (348 imported), both teams and the source
@@ -1111,8 +1113,9 @@ Migration 60 and the approved real application each executed exactly once.
 There is one application batch, 382 resolutions and 824 audit events. The
 post-application `high_impact_row_proof` count is correctly zero because no
 released row has subsequently been modified; the immutable initial snapshots
-and hashes remain in the application evidence. Permanent verification passes
-93/93.
+and hashes remain in the application evidence. Permanent verification passed
+93/93 at Task 3.5B acceptance; after migration 61 the current historical
+profile passes 107/107, preserving that release evidence.
 
 ### Historical Stage 2 observations
 
