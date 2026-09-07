@@ -15,7 +15,11 @@ verified locally; migration 61 remains **unapplied** to the project database,
 which is unchanged at migration 60 with 93 passing invariants. Historical
 upgrade passed 93 checks before and 107 after; canonical replay passed 89.
 Task 4.0a itself and Phases 2–4 remain incomplete; no staff route/UI exists.
-The exact return point is **Task 4.0a Phase 2—read-only roster, not started.**
+The Access-source derivative disposition is recorded in
+[D51](docs/DECISIONS.md#d51--access-source-derivative-and-migration-61-readiness)
+with its [dated evidence summary](docs/reviews/2026-09-07-access-source-identity-discrepancy.md).
+The exact return point is **Task 4.0a Phase 1 migration-61 predeployment
+recovery and execution-readiness audit—not yet resumed.**
 See the [Phase 1 report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
 The owner-readable

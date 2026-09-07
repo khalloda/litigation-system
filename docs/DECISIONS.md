@@ -1303,3 +1303,49 @@ frozen evidence. No decision ID is added. The
 and [inventory](testing/task-4-0a-phase1-invariants.md) record proof and limits.
 Service/UI evidence remains Phase 2/3, browser accessibility remains Phase 4,
 and Access remains in use. Task 4.0a itself is not complete.
+
+## D51 — Access-source derivative and migration-61 readiness
+
+**Approved explicitly by Khaled Helmy on 7 September 2026 after review of the
+Access-source identity discrepancy evidence.** The sanitized evidence summary
+is preserved in
+[`2026-09-07-access-source-identity-discrepancy.md`](reviews/2026-09-07-access-source-identity-discrepancy.md).
+
+The 46,661,632-byte file with SHA-256
+`1a1da8d573ca92ad67efbe638f2c043d02df278e88563c31eea8ce4a4f07b4bc`
+remains the historical identity of the frozen Access source used for the
+completed migration evidence. That identity is a historical fact: it must not
+be replaced, rewritten or silently redirected to a later file.
+
+The later 46,792,704-byte file with SHA-256
+`d25fb958ffc42d09b962d36e69de723d4595d960725540a96f01767601ec4a86`
+is a **noncanonical post-inspection derivative**. Its additional 131,072 bytes
+and changed binary hash remain unexplained. Access-internal allocation or
+bookkeeping is plausible but unproved, and the derivative must never be
+described as byte-identical to the historical frozen source. A bounded search
+did not recover the original binary.
+
+The owner accepts **migration-relevant semantic equivalence**, limited to the
+surfaces the discrepancy audit proved exactly: all 20 frozen CSV payloads; the
+17 table and complex-field exports; all 54 logos; all 194 column definitions;
+all 17 relationships; the recorded table, relationship, query-definition and
+report-name inventory digests; and the three client identity spot checks. The
+audit's original forensic classification remains `INDETERMINATE` because the
+complete Access system catalogs, indexes, form and report designs, VBA and
+macros, and import/export specifications were not fully verified.
+
+Those unverified Access-application internals are not inputs to migration 61,
+which operates on the reviewed PostgreSQL migration-60 state and the reviewed
+repository migration. The derivative's raw byte hash is therefore not a
+migration-61 readiness gate. The PostgreSQL state, protected evidence,
+recovery, restore and isolated migration verification remain mandatory. This
+decision does **not** authorize migration 61 deployment or establish deployment
+readiness.
+
+The final Access cutover remains governed by D43. Under a separately approved
+cutover plan, the Litigation Department must stop writing to Access, Access
+must be fully closed, and a new final snapshot must be copied and independently
+hashed. That snapshot receives its own identity and evidence. Only
+post-baseline or newer changes may then be reconciled and migrated; already
+accepted historical imports must not be duplicated, and no delta may be
+applied without validation and owner approval.

@@ -15,16 +15,21 @@ Use these current authorities instead:
 - [`docs/reviews/2026-09-06-task-4-0a-staff-roster-readiness-audit.md`](docs/reviews/2026-09-06-task-4-0a-staff-roster-readiness-audit.md)
   — complete Task 4.0a readiness evidence and owner-resolution map; decisions
   and status remain canonical elsewhere.
+- [`docs/reviews/2026-09-07-access-source-identity-discrepancy.md`](docs/reviews/2026-09-07-access-source-identity-discrepancy.md)
+  — sanitized evidence for the Access-source derivative disposition in D51.
 
 **Current return point:** Stages 2 and 3, including the accepted Task 3.5
 high-impact quarantine checkpoint, are complete. Task 4.0's structural
 Arabic/RTL checker is complete; no core Stage 4 screen has started. Resume at
-**Task 4.0a Phase 2—read-only roster, not started.** Only Phase 1's database
-foundation is complete. Migration 61 was verified on a separate disposable
+**Task 4.0a Phase 1 migration-61 predeployment recovery and
+execution-readiness audit—not yet resumed.** Only Phase 1's database foundation
+is complete. Migration 61 was verified on a separate disposable
 PostgreSQL 17.11 instance and is not deployed: the project remains unchanged at
 60 applied migrations and 93 passing invariants. The task and Phases 2–4 stay
 unchecked; Task 4.1 has not started. See the
 [Phase 1 report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md).
 Access remains in operational use; the Task
-3.5 application was not the final cutover. Do not restart earlier work or treat
-the former handoff's obsolete governance instructions as active.
+3.5 application was not the final cutover. D51 preserves the frozen historical
+source identity and records the later file as a noncanonical derivative; it
+does not authorize deployment. Do not restart earlier work or treat the former
+handoff's obsolete governance instructions as active.

@@ -16,8 +16,10 @@ started. The owner-approved Task 4.0a contract is recorded in D44–D50 and its
 dated readiness audit is preserved as evidence. Phase 1's database foundation
 and bounded operational-drift correction are implemented and tested locally;
 migration 61 remains unapplied to the project database. Task 4.0a overall and
-Phases 2–4 remain unchecked. The current stop is independent correction review;
-the later return point is **Task 4.0a Phase 2—read-only roster, not started.**
+Phases 2–4 remain unchecked. D51 separately records the Access-source
+derivative disposition without establishing deployment readiness. The current
+return point is **Task 4.0a Phase 1 migration-61 predeployment recovery and
+execution-readiness audit—not yet resumed.**
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1747,6 +1749,15 @@ than assuming one rule for every workflow. Test with real volumes.
         `2d25f937` is preserved; one additional local correction commit and patch
         only. No push, project deployment or later phase is authorized here.
 
+        **Access-source disposition, 7 September 2026:** D51 preserves the
+        frozen historical source identity and classifies the later physical file
+        as a noncanonical derivative with owner-accepted migration-relevant
+        semantic equivalence. Its raw byte hash is not a migration-61 readiness
+        gate; the PostgreSQL state, protected evidence, recovery, restore and
+        isolated migration checks remain required. See the
+        [sanitized discrepancy evidence](docs/reviews/2026-09-07-access-source-identity-discrepancy.md).
+        This documentation decision does not deploy or test migration 61.
+
   - [ ] **Phase 2 — read-only roster and detail.** Implement `/staff` and the
         read-only state of `/staff/[id]` with server-enforced authorization,
         deterministic distinct pagination and query plans tested at real
@@ -1783,7 +1794,8 @@ than assuming one rule for every workflow. Test with real volumes.
         volume and browser evidence, then update the canonical docs and task
         report without marking earlier phases complete retrospectively.
 
-      **Return point:** Task 4.0a Phase 2—read-only roster, not started.
+      **Return point:** Task 4.0a Phase 1 migration-61 predeployment recovery
+      and execution-readiness audit—not yet resumed.
 
 - [ ] **4.1 Clients** — list, detail, contacts, logo
 

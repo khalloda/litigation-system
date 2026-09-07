@@ -49,7 +49,8 @@ reconciliation instead of duplicating its tables and report datasets.
 
 | Source or evidence | Durable identity | Tracking and availability | Reproducibility / consumer |
 |---|---|---|---|
-| Owner-approved current Access source | SHA-256 `1A1DA8D573CA92AD67EFBE638F2C043D02DF278E88563C31EEA8CE4A4F07B4BC`; 46,661,632 bytes; modified `2026-08-24T11:52:37.2957010Z` | Outside Git; locally available at the owner-approved migration-source location | Gate 4 works from a task-owned read-only copy and proves logical equivalence without rewriting the source |
+| Historical frozen Access source | SHA-256 `1A1DA8D573CA92AD67EFBE638F2C043D02DF278E88563C31EEA8CE4A4F07B4BC`; 46,661,632 bytes; modified `2026-08-24T11:52:37.2957010Z` | Outside Git; historical identity used for the completed migration evidence; no exact original binary was recovered in the bounded 7 September search | Frozen historical fact that must not be replaced, rewritten or redirected to a later file |
+| Noncanonical post-inspection derivative | SHA-256 `D25FB958FFC42D09B962D36E69DE723D4595D960725540A96F01767601EC4A86`; 46,792,704 bytes; modified `2026-09-04T12:14:53.9934597Z` | Outside Git; retained as read-only discrepancy evidence, not as a replacement source identity | [D51](DECISIONS.md#d51--access-source-derivative-and-migration-61-readiness) accepts migration-relevant semantic equivalence within the audited surfaces; the raw byte hash is not a migration-61 readiness gate |
 | Authoritative extraction | SHA-256 `40EBF988D4C952A676A4A00A403AE9576D87C18E35D4F7E3BAD0A62DF92D5979`; 46,661,632 bytes; modified `2026-08-23T07:31:52.6811852Z` | `_migration/`, deliberately ignored; locally available | All staging rows and migrated legacy associations retain this fingerprint; Gate 4 proves the later Access physical change did not change business content |
 | Extraction manifest | `_migration/meta/manifest.csv`; SHA-256 `5116C6622BB39594E49A73567EFFCA9767FC51B8FD38D9BCCAF087CC75F72A58` | Ignored; locally available | Gate 1, staging load and Gate 4; records the source plus 17 tables and three complex objects |
 | Column and relationship manifests | `columns.csv` SHA-256 `C41116DDB9F7A8CA9DFF0D860CB4BD552CE32B5E13A4EE876106B020B87240A0`; `relationships.csv` SHA-256 `1CB0E79DDCC7FF990EFC02E47367D2865307142F472776338B5C225B2F22E7E6` | `_migration/meta/`, ignored; locally available | Gate 4 independently proves all 194 extracted column definitions and 17 relationships |
@@ -64,6 +65,7 @@ reconciliation instead of duplicating its tables and report datasets.
 | Task 3.4 acceptance | [`2026-09-03-task-3-4-user-management.md`](task-reports/2026-09-03-task-3-4-user-management.md) | Tracked dated evidence | Migration 59, Administrator-only lifecycle gateway and Arabic/RTL management interface; independently accepted four-commit chain |
 | Task 3.5A review package | [`2026-09-03-task-3-5a-high-impact-review-package.md`](task-reports/2026-09-03-task-3-5a-high-impact-review-package.md) | Tracked generator, validator and dated evidence; raw workbook ignored | Read-only 382-row decision package, durable row identity, protected lookup associations and fail-closed completion validation; no firm answer applied |
 | Task 4.0a readiness and approved contract | [`2026-09-06-task-4-0a-staff-roster-readiness-audit.md`](reviews/2026-09-06-task-4-0a-staff-roster-readiness-audit.md) | Tracked dated evidence; not a priority authority | Complete pre-implementation roster/lifecycle evidence, 15-section audit, owner decisions D44–D50 and exact Phase 1 return point; no schema, migration or application change |
+| Access-source identity discrepancy | [`2026-09-07-access-source-identity-discrepancy.md`](reviews/2026-09-07-access-source-identity-discrepancy.md) | Tracked sanitized evidence; external binary and detailed JSON evidence remain outside Git | Records the `INDETERMINATE` forensic audit and D51's narrower owner-approved migration-scope disposition without replacing the historical source identity |
 
 Ignored source material and workbooks are never committed. Their hashes,
 fingerprints, protected outcomes and reproduction procedures are the durable
@@ -2466,13 +2468,13 @@ The complete owner-readable evidence is in
 
 - The extraction was produced from Access physical hash `40EBF988…5979`.
   Khaled Helmy later opened the same file for inspection without an intentional
-  change; Access changed its modification time and whole-file hash to
-  `1A1DA8D…B4BC`.
-- The owner ruled it the same logical source. Gate 4 now proves that ruling on
-  every run: it copies the current approved Access file into a task-owned
-  temporary directory, marks the copy read-only, performs a complete
-  extraction, compares canonical logical evidence with the authoritative
-  extraction and removes the temporary output on both success and failure.
+  change; Access changed its modification time and whole-file hash to the now
+  frozen historical identity `1A1DA8D…B4BC`.
+- The owner ruled that then-observed file the same logical source. Gate 4 proved
+  that ruling at the completed checkpoint: it copied the then-approved Access
+  file into a task-owned temporary directory, marked the copy read-only,
+  performed a complete extraction, compared canonical logical evidence with the
+  authoritative extraction and removed the temporary output.
   The comparison covers all 17 base/reference tables and 30,885 rows, 194
   column definitions, 17 relationships, all three complex exports and 342
   values, plus all 54 logos and 1,541,428 bytes. Absolute/temp paths,
@@ -3067,8 +3069,12 @@ Department continues using Access. Under **D43**, the final controlled snapshot
 is reconciled by durable source identity: unchanged previously migrated records
 are not duplicated; only genuinely new or changed records are considered;
 changed, deleted, ambiguous or conflicting records are reconciled or
-quarantined rather than blindly overwriting PostgreSQL. The final snapshot,
-freeze window and differential plan remain future controlled work.
+quarantined rather than blindly overwriting PostgreSQL. D51 does not substitute
+the later noncanonical derivative for that historical identity. The final
+snapshot, freeze window and differential plan remain future controlled work:
+after Access writes stop and Access is fully closed, a new final snapshot must
+be copied, independently hashed and given its own evidence before any validated,
+owner-approved delta is applied.
 
 ```
 T-14d  Full dry run on a copy. All gates pass. Six reports reconciled.
@@ -3297,4 +3303,5 @@ removed. The [complete invariant inventory](testing/task-4-0a-phase1-invariants.
 and [Phase 1 report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 record the evidence and explicit limits.
 
-The exact return point is **Task 4.0a Phase 2—read-only roster, not started.**
+The exact return point is **Task 4.0a Phase 1 migration-61 predeployment
+recovery and execution-readiness audit—not yet resumed.**
