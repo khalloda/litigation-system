@@ -34,6 +34,7 @@ import {
   createRequestAuditMetadata,
 } from '../src/lib/audit-metadata.ts';
 import { t } from '../src/strings.ts';
+import { proveStaffMutationBrowser } from './lib/staff-mutation-browser.mjs';
 
 const root = process.cwd();
 const output = resolve(process.env.STAFF_EVIDENCE_DIR ?? 'test-results/staff');
@@ -239,7 +240,7 @@ await withIsolatedPostgres(async (fixture) => {
         name + ' horizontal overflow',
       );
       const small = await page
-        .locator('main a, main button, main input, main select')
+        .locator('main a, main button, main input, main select, main textarea')
         .evaluateAll((elements) =>
           elements
             .filter((el) => {
@@ -340,7 +341,7 @@ await withIsolatedPostgres(async (fixture) => {
     assert.equal(await page.locator(':focus').getAttribute('id'), 'staff-results');
     await goto(base + '/staff');
     const focus = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 9; i++) {
       await page.keyboard.press('Tab');
       focus.push(
         await page.locator(':focus').evaluate((el) => ({
@@ -352,7 +353,7 @@ await withIsolatedPostgres(async (fixture) => {
       );
     }
     assert.deepEqual(
-      focus.slice(2, 6).map((f) => f.id),
+      focus.slice(3, 7).map((f) => f.id),
       ['staff-search', 'staff-status', 'staff-team', 'staff-trainee'],
     );
     assert.ok(focus.every((f) => f.outline !== 'none'));
@@ -396,10 +397,8 @@ await withIsolatedPostgres(async (fixture) => {
     await page.getByRole('heading', { name: t.staff.notFound, exact: true }).waitFor();
     await audit('external detail denied');
     await screenshot('external-not-found');
-    await goto(base + '/staff/new');
+    await goto(base + `/staff/${external}/edit`);
     await page.getByRole('heading', { name: t.staff.notFound, exact: true }).waitFor();
-    await goto(base + '/staff/1/edit');
-    assert.equal(await page.locator('form').count(), 0);
     const denied = await goto(base + '/forbidden');
     assert.equal(denied.status(), 403);
     await audit('shared permission denial');
@@ -443,6 +442,17 @@ await withIsolatedPostgres(async (fixture) => {
     );
     await page.locator('#staff-results').waitFor();
     evidence.push({ name: 'streaming loading and recovered database error', passed: true });
+    await proveStaffMutationBrowser({
+      page,
+      context,
+      base,
+      fixture,
+      accounts,
+      login,
+      audit,
+      screenshot,
+      evidence,
+    });
     assert.deepEqual(remoteRequests, []);
     writeFileSync(
       join(output, 'browser-evidence.json'),

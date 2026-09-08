@@ -49,6 +49,72 @@ export type RouteInventoryEntry = {
 export const ROUTE_INVENTORY = [
   {
     kind: 'page',
+    source: 'src/app/staff/new/page.tsx',
+    route: '/staff/new',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/staff/[id]/edit/page.tsx',
+    route: '/staff/[id]/edit',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/staff/actions.ts',
+    exportName: 'createStaffAction',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/staff/actions.ts',
+    exportName: 'updateStaffAction',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/staff/actions.ts',
+    exportName: 'renameStaffAction',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/staff/actions.ts',
+    exportName: 'addStaffAliasAction',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/staff/actions.ts',
+    exportName: 'retireStaffAliasAction',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/staff/actions.ts',
+    exportName: 'restoreStaffAliasAction',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/staff/actions.ts',
+    exportName: 'deactivateStaffAction',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/staff/actions.ts',
+    exportName: 'reactivateStaffAction',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/staff/actions.ts',
+    exportName: 'setStaffReviewerAction',
+    classification: { access: 'permission', area: 'staff', action: 'manage' },
+  },
+  {
+    kind: 'page',
     source: 'src/app/staff/page.tsx',
     route: '/staff',
     classification: { access: 'permission', area: 'staff', action: 'view' },

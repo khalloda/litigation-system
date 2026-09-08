@@ -188,14 +188,17 @@ This is Task 3.4 evidence, not a universal component specification and not a
 start on Task 4.0. Staff identity maintenance remains Task 4.0a, and audit
 history remains Task 4.9.
 
-## 8. Staff roster — read-only Phase 2 implemented; editing deferred
+## 8. Staff roster — Phases 2–3 implemented
 
 Migration 61 is deployed. Phase 2 implements `/staff` and `/staff/[id]` with
 the read-only layout and interactions below. The
 [Phase 2 report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md)
-records focused local browser evidence. Editing, confirmation dialogs and their
-complete D50 acceptance evidence remain Phases 3–4. After independent Phase 2
-review, the next return point is **Task 4.0a Phase 3 — Administrator roster mutations**.
+records focused local browser evidence. Phase 3 adds distinct Administrator
+forms, confirmation dialogs, focused validation and stale/conflict recovery.
+Its [implementation report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
+records local desktop, mobile, keyboard, zoom and accessibility evidence.
+After independent Phase 3 review, the next return point is **Task 4.0a Phase 4 —
+browser interaction, accessibility and final evidence**. Phase 4 remains unstarted.
 
 The Arabic-first RTL route set is `/staff`, `/staff/new`, `/staff/[id]` and
 `/staff/[id]/edit`. The roster defaults to the 23 active internal staff and can
@@ -239,7 +242,8 @@ with focus movement, announced status, non-colour-only meaning, minimum
 44-by-44 CSS-pixel targets, 200% zoom/reflow, and mobile plus desktop RTL. Any
 browser mutation uses only an isolated disposable database. These are approved
 acceptance requirements; the Phase 2 report records which read-only cases were
-verified. It does not complete Phase 4 or verify future mutation dialogs.
+verified, and the Phase 3 report covers the implemented mutation forms and
+dialogs. These focused acceptance checks do not complete Phase 4.
 
 ## 9. Audit history — owner-approved direction, deferred
 

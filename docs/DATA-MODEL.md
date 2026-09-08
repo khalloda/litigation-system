@@ -124,6 +124,16 @@ Runtime receives no additional private-evidence or audit-actor access. Account
 status is selected only for an Administrator; other roles receive no account
 field. No schema, migration, grant or invariant change is part of Phase 2.
 
+Phase 3 adds no model change. Administrator forms keep `people.id` as identity
+and retain each original version token with its displayed values; another form's
+save cannot silently refresh that token and overwrite newer data. The service
+uses the existing six gateways for canonical/alias history, native alias reasons,
+team/reviewer eligibility and employment/account transitions. Genuine no-ops
+return before a write gateway, preserving rows, versions, timestamps, audit,
+sequence and serialization-row state. Imported alias provenance and private
+evidence access remain unchanged. See the
+[Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md).
+
 Four private immutable snapshots preserve all 137 original people (135 imported
 and two native), all 350 aliases (348 imported), both teams and the source
 boundary. A private serialization row and append-only full-row change ledger

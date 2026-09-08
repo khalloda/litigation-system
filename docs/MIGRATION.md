@@ -3315,11 +3315,16 @@ and [complete invariant inventory](testing/task-4-0a-phase1-invariants.md)
 distinguish the recovery, real deployment and verification evidence.
 
 Phase 1 is operationally complete. Phase 2's read-only `/staff` roster and
-`/staff/[id]` detail are implemented, locally verified and checked, with no
-staff mutation route or action. Task 4.0a overall, Phases 3–4 and Task 4.1
-remain unchecked. After independent review and push of the Phase 2 commits, the
-next return point is **Task 4.0a Phase 3 — Administrator roster mutations**.
+`/staff/[id]` detail are implemented, locally verified and checked. Phase 3 now
+implements Administrator staff mutations using migration 61's existing gateways.
+No migration, schema, grant, invariant, imported evidence or Access file changed.
+Project verification still passes 15/15 and 107/107 with all 103 table, sequence,
+catalog, audit and logo fingerprints unchanged. Task 4.0a overall, Phase 4 and
+Task 4.1 remain unchecked. After independent Phase 3 review, the next return point
+is **Task 4.0a Phase 4 — browser interaction, accessibility and final evidence**.
 See the
 [Phase 2 implementation report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
+The [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
+records disposable mutation and preservation evidence. This phase deploys no migration.
 The Litigation Department continues using Access. This is not final Access
 cutover; final delta reconciliation remains governed by D43 and D51.

@@ -25,14 +25,19 @@ operationally complete: project PostgreSQL 17.11 has 61 applied migrations,
 zero pending or unfinished, 15/15 database checks and 107/107 permanent
 historical-profile invariants. Phase 2's read-only `/staff` roster and
 `/staff/[id]` detail are implemented, locally verified and checked. Task 4.0a
-overall, Phases 3–4 and Task 4.1 remain unchecked. The return point is
-**independent review and push of the Phase 2 commits, followed by Task 4.0a
-Phase 3 — Administrator roster mutations**. See the
+overall, Phase 4 and Task 4.1 remain unchecked. Phase 3's Administrator mutations
+are implemented and locally verified through the existing migration-61 gateways.
+The return point is **independent Phase 3 review, followed by Task 4.0a Phase 4 —
+browser interaction, accessibility and final evidence**. Phase 4 and Task 4.1
+are unstarted. The single Phase 3 implementation commit is local; no push was
+authorized. See the
 [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
 for the separate Phase 1 implementation, recovery and deployment checkpoints,
 and the
 [Phase 2 implementation report](docs/task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md)
-for its read-only implementation and local verification. The Litigation
+for its read-only implementation and local verification, and the
+[Phase 3 report](docs/task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
+for mutation, concurrency, browser, audit and preservation evidence. The Litigation
 Department continues using Access; this is not final cutover. Final delta
 reconciliation remains governed by D43 and D51. D51's
 historical source identity and derivative disposition remain unchanged; the

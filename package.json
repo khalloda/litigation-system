@@ -59,6 +59,7 @@
     "check:user-management": "tsx scripts/check-user-management.ts && tsx scripts/check-user-management.ts --self-test",
     "check:staff-read-only": "tsx scripts/check-staff-read-only.ts",
     "test:staff-read-only": "tsx scripts/test-staff-read-only.ts",
+    "test:staff-mutations": "tsx scripts/test-staff-mutations.ts",
     "test:staff-browser": "node --import tsx scripts/test-staff-browser.mjs",
     "check:gitignore": "tsx scripts/check-gitignore.ts",
     "check:encoding": "tsx scripts/check-encoding.ts",

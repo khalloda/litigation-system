@@ -20,9 +20,16 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
           <h1>{person.nameAr}</h1>
           <p className={styles.state}>{person.isActive ? t.staff.active : t.staff.former}</p>
         </div>
-        <Link className={styles.link} href="/staff">
-          {t.staff.back}
-        </Link>
+        <div className={styles.actions}>
+          {session.user.role === 'Administrator' ? (
+            <Link className={styles.button} href={`/staff/${person.id}/edit`}>
+              {t.staff.manage.edit}
+            </Link>
+          ) : null}
+          <Link className={styles.link} href="/staff">
+            {t.staff.back}
+          </Link>
+        </div>
       </header>
       <div className={styles.detailGrid}>
         <section className={styles.panel} aria-labelledby="staff-identity">

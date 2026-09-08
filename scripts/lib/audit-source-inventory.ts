@@ -19,6 +19,9 @@ export const AUDIT_AUTH_SERVICE = 'src/lib/auth/service.ts';
 export const AUDIT_USER_MANAGEMENT_SERVICE = 'src/lib/auth/user-management.ts';
 export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
+const STAFF_MUTATION_SERVICE = 'src/lib/staff-mutations.ts';
+const STAFF_MUTATION_SERVICE_SHA256 =
+  '85444fe58ebe365574c1deb6b659c0d2b2c186fdfd2ad3371b42e30cda591666';
 // Binds the query builders as well as the eight call sites. There is no new
 // audit writer, context helper, privileged connection or runtime exception.
 const STAFF_READ_SERVICE_SHA256 =
@@ -82,6 +85,81 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    STAFF_MUTATION_SERVICE,
+    'person',
+    '71afff0a618b7cca69923e50e233e9718ddabe57b23c7f2403dc8e02e549ce37',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'administrator',
+    'dfeff6de081d0aabc36605b5e39b03744befc82c009c220f073b00dccb3da1b9',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'readStaffManagement',
+    '8b5eaaa87acd107836f4eb0368d4277757ebcf9fa90b243ed10519df88ec7b1c',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'readStaffManagement',
+    '9bbaeaa91b35b584f0a61bf53229c3c982d3b3518abd7b2ef7bf09e45448c7c2',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'readStaffManagement',
+    '7a4db246fe405ea1839ae6f294777ebf2c87042753dda1376801d6fc58c15112',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'readStaffManagement',
+    '490614f68670f85afed3f4d3b51f8dc552f0a372e78294a0b61447eb21c38f63',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'mutateStaff',
+    'b73caf10b46ab3b4288f85575c8ed75b4c41a0ff08f16bd4c751190dda723507',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'mutateStaff',
+    '82e33ca4fcde31e066159aef933ff19320d047aa2a42a5ebfec0dc6fb7e79272',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'mutateStaff',
+    'ccf0ab3f9dc65eba5ccefcd4f833e02304d157245b3598a10baaccd9032ef57f',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'mutateStaff',
+    '6a6d13393491351a853bcd8c3bf15d8e6232b4c84934ce9e83b1462e91536eaf',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'mutateStaff',
+    '7daf3eab440d4502eac64460f554d8ed57cd0bb99e8a0dc74dfb3d90982c7b3e',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'mutateStaff',
+    '8a25c98225cb7da704f858cc3c4347b2953367ded9b638b7c7b8f4347df4ff3d',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'mutateStaff',
+    '53de18b317d83b18aa4e50e0cc5f8a7c2a75fa0e8087e46ad7d93c3dc9c837b7',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'mutateStaff',
+    'cc067dbdbe9aa2105ac0a8130057f692e0c52ac4fd0d8443693946ef7b363074',
+  ],
+  [
+    STAFF_MUTATION_SERVICE,
+    'mutateStaff',
+    '3e3b1549b2790f0e0aff543f27a80cdeaf742a0c85cae296d44a122d3fa8ee7b',
+  ],
   [
     STAFF_READ_SERVICE,
     'readSnapshot',
@@ -1468,9 +1546,19 @@ export function auditRuntimeSourceFailures(
     const isGateway = absolute === gatewayAbsolute;
     const isAuthService = absolute === serviceAbsolute;
     const isUserManagementService = absolute === userManagementServiceAbsolute;
-    const isReviewedAuthService = isAuthService || isUserManagementService;
+    const isStaffMutationService = source.path === STAFF_MUTATION_SERVICE;
+    const isReviewedAuthService =
+      isAuthService || isUserManagementService || isStaffMutationService;
     const isDatabaseModule = absolute === databaseAbsolute;
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
+    if (
+      isStaffMutationService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        STAFF_MUTATION_SERVICE_SHA256
+    )
+      failures.add(
+        `${STAFF_MUTATION_SERVICE}: Administrator gateway closure differs from reviewed inventory`,
+      );
     if (
       isStaffReadService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -1536,7 +1624,9 @@ export function auditRuntimeSourceFailures(
             const imported = element.propertyName?.text ?? element.name.text;
             const approvedHelpers = isAuthService
               ? AUTH_SERVICE_HELPERS
-              : USER_MANAGEMENT_SERVICE_HELPERS;
+              : isStaffMutationService
+                ? new Set(['setHumanAuditContext'])
+                : USER_MANAGEMENT_SERVICE_HELPERS;
             if (element.propertyName || !approvedHelpers.has(imported)) {
               add(element, `unapproved or aliased audit import ${element.getText(sourceFile)}`);
             } else authImports.add(imported);
@@ -1849,6 +1939,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'mutateStaff',
+        'transaction,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       ['setAuthenticationAuditContext', 'authenticateCredentials', 'tx,auditMetadata', 2],
       ['setHumanAuditContext', 'authenticateCredentials', 'tx,account.id,auditMetadata', 1],
       [

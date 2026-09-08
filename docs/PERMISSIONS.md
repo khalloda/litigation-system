@@ -139,10 +139,17 @@ and helper access remain denied. Phase 2 adds exactly two permission-inventory
 entries: `/staff` and `/staff/[id]`, each with its first awaited server guard.
 The read service independently checks the validated session before querying,
 uses a read-only repeatable-read transaction, and refuses external person IDs.
-No staff action, route handler or mutation capability was added. The existing
-448 decisions and `/users` boundary pass regression unchanged. Source checks
-permanently reject missing guards and mutation entry points in this phase.
-See the [Phase 2 report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
+Phase 3 adds two `staff/manage` pages and nine independently guarded Server
+Actions, making 13 staff inventory entries. The mutation service independently
+authorizes and revalidates the current Administrator account, employment and
+session version in a serializable transaction. Only the six migration-61
+gateways perform roster writes; their current-actor checks remain authoritative.
+Non-Administrators receive no mutation controls, and direct URLs and crafted
+actions fail on the server. The existing 448 decisions and `/users` boundary
+pass regression unchanged. Source checks retain the read-query prohibition on
+writes, reject direct UI database access and pin the complete mutation service
+and its 15 SQL call sites. See the
+[Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md).
 
 ## Audit access — approved UI/capability, not implemented
 

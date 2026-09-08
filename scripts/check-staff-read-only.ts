@@ -9,8 +9,8 @@ import {
   discoverAuthorizationEntrypoints,
 } from './lib/authorization-route-inventory';
 
-/** Permanent Phase 2 architecture boundary. Phase 3 must deliberately replace
- * this allowlist alongside its independently reviewed mutation contract. */
+/** Retain Phase 2's read-query boundary. Phase 3 adds exactly two manage pages
+ * and nine guarded actions; the separate mutation closure is pinned by audit. */
 function failures(sources: AuditRuntimeSource[]): string[] {
   const errors: string[] = [];
   for (const { path, text } of sources.filter(
@@ -26,10 +26,10 @@ function failures(sources: AuditRuntimeSource[]): string[] {
     const queryFile = path === 'src/lib/staff-roster-query.ts';
     const visit = (node: ts.Node): void => {
       if (ts.isStringLiteral(node)) {
-        if (node.text === 'use server') errors.push('staff server action');
-        if (/^@\/lib\/(audit|auth\/(user-management|service))/u.test(node.text))
+        if (node.text === 'use server' && path !== 'src/app/staff/actions.ts')
+          errors.push('unreviewed staff server action');
+        if (/^@\/lib\/(audit|auth\/(user-management|service))$/u.test(node.text))
           errors.push('mutation service import');
-        if (/^\/staff\/(new|.*\/edit)(?:$|\?)/u.test(node.text)) errors.push('mutation route link');
       }
       if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
         const member = ts.isPropertyAccessExpression(node)
@@ -37,6 +37,7 @@ function failures(sources: AuditRuntimeSource[]): string[] {
           : node.argumentExpression?.getText(tree).replace(/['"]/gu, '');
         if (
           member &&
+          !node.getText(tree).startsWith('t.staff.') &&
           /^(create|createMany|update|updateMany|upsert|delete|deleteMany|\$executeRawUnsafe|\$queryRawUnsafe)$/u.test(
             member,
           )
@@ -59,7 +60,7 @@ function failures(sources: AuditRuntimeSource[]): string[] {
           errors.push('mutation SQL');
       }
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
-        if (node.tagName.getText(tree) === 'form') {
+        if (node.tagName.getText(tree) === 'form' && path !== 'src/app/staff/staff-editor.tsx') {
           const attrs = node.attributes.properties.filter(ts.isJsxAttribute);
           const method = attrs.find((a) => a.name.getText(tree) === 'method')?.initializer;
           const action = attrs.find((a) => a.name.getText(tree) === 'action')?.initializer;
@@ -86,13 +87,23 @@ function main() {
   assert.deepEqual(failures(sources), []);
   assert.deepEqual(routeInventoryFailures(discoverAuthorizationEntrypoints(process.cwd())), []);
   const entries = ROUTE_INVENTORY.filter((e) => e.source.startsWith('src/app/staff/'));
-  assert.equal(entries.length, 2);
+  assert.equal(entries.length, 13);
   for (const entry of entries)
-    assert.deepEqual(entry.classification, { access: 'permission', area: 'staff', action: 'view' });
-  assert.deepEqual(entries.map((e) => ('route' in e ? e.route : undefined)).sort(), [
-    '/staff',
-    '/staff/[id]',
-  ]);
+    assert.deepEqual(entry.classification, {
+      access: 'permission',
+      area: 'staff',
+      action:
+        'route' in entry && (entry.route === '/staff' || entry.route === '/staff/[id]')
+          ? 'view'
+          : 'manage',
+    });
+  assert.deepEqual(
+    entries
+      .filter((e) => e.kind === 'page')
+      .map((e) => e.route)
+      .sort(),
+    ['/staff', '/staff/[id]', '/staff/[id]/edit', '/staff/new'],
+  );
   for (const text of [
     "'use server'; export async function change(){}",
     "import { setHumanAuditContext } from '@/lib/audit';",
@@ -102,7 +113,7 @@ function main() {
     'tx.$executeRaw`SELECT public.staff_create_person()`;',
     'Prisma.sql`SELECT public.staff_add_alias(1,1,${name})`;',
     '<form method="post" action="/staff"/>',
-    '<a href="/staff/new"/>',
+    'db.$queryRaw(Prisma.sql`SELECT * FROM people`);',
   ])
     assert.ok(failures([{ path: 'src/app/staff/fixture.tsx', text }]).length > 0, text);
   const css = postcss.parse(readFileSync('src/app/staff/staff.module.css', 'utf8'));
@@ -116,7 +127,7 @@ function main() {
       assert.ok(tokens.has(m[1]), `undefined token ${m[1]}`);
   });
   console.log(
-    'PASS Phase 2 read-only structure: two guarded pages, GET-only forms, no mutation imports/actions/SQL, defined RTL CSS tokens; nine rejecting fixtures',
+    'PASS staff structure: two view and two manage pages, nine manage actions, unchanged read-query boundary, no direct UI database access, defined RTL CSS tokens; nine rejecting fixtures',
   );
 }
 main();

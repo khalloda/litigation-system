@@ -50,6 +50,7 @@
   font-weight: 700;
 }
 .field input,
+.field textarea,
 .field select {
   inline-size: 100%;
   min-inline-size: 0;
@@ -104,7 +105,7 @@
 .nameLink:hover {
   background: var(--panel-inset);
 }
-.page :is(a, button, input, select):focus-visible {
+.page :is(a, button, input, textarea, select):focus-visible {
   outline: 3px solid var(--colour-primary-dark);
   outline-offset: 3px;
 }
@@ -246,6 +247,42 @@
 .focusTarget:focus {
   outline: 3px solid var(--colour-primary-dark);
   outline-offset: 3px;
+}
+
+.formFields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.feedback {
+  padding: var(--space-4);
+  background: var(--panel-inset);
+  margin-block: var(--space-4);
+  overflow-wrap: anywhere;
+}
+.dialog {
+  inline-size: min(36rem, calc(100% - 2rem));
+  max-block-size: calc(100% - 2rem);
+  overflow: auto;
+  margin: auto;
+  padding: var(--space-4);
+  border: 2px solid var(--colour-primary);
+  border-radius: var(--radius);
+  color: var(--colour-text);
+  background: var(--colour-surface);
+  overflow-wrap: anywhere;
+}
+.dialog::backdrop {
+  background: var(--colour-primary-dark);
+  opacity: 0.6;
+}
+.button:disabled,
+.formFields:disabled .button {
+  opacity: 0.7;
+  cursor: default;
 }
 
 @media (max-width: 60rem) {

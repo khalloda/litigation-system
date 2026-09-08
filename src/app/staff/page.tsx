@@ -50,9 +50,16 @@ export default async function StaffPage({
           <h1>{t.staff.title}</h1>
           <p>{t.staff.subtitle}</p>
         </div>
-        <Link className={styles.link} href="/">
-          {t.users.back}
-        </Link>
+        <div className={styles.actions}>
+          {session.user.role === 'Administrator' ? (
+            <Link className={styles.button} href="/staff/new">
+              {t.staff.manage.create}
+            </Link>
+          ) : null}
+          <Link className={styles.link} href="/">
+            {t.users.back}
+          </Link>
+        </div>
       </header>
       <section className={styles.panel} aria-label={t.common.search}>
         <form action="/staff" method="get">

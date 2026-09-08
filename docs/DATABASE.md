@@ -482,7 +482,8 @@ retained approved historical rollback. The deployment command ran exactly once;
 migration 61 has one completed ledger entry. Post-deployment `db:verify` passed
 15/15 and the permanent historical profile passed 107/107. Phase 1 is
 operationally complete. Phase 2 now reads the deployed boundary through the
-staff roster and detail pages; no staff mutation action has been built.
+staff roster and detail pages. Phase 3 now uses the existing six gateways for
+Administrator mutations, with no schema, migration, privilege or invariant change.
 The [deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
 identifies the retained recovery and deployment evidence. The project container
 was unchanged. The 103 current tables preserve all 97 prior projections:
@@ -497,9 +498,16 @@ historical invariants. All login, query-fixture setup and error simulation run
 in disposable PostgreSQL instances restored in memory, without migration replay.
 See the [Phase 2 report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 
-After independent Phase 2 review, the next return point is
-**Task 4.0a Phase 3 — Administrator roster mutations**.
-Task 4.0a overall, Phases 3–4 and Task 4.1 remain unchecked. The Litigation
+Phase 3 project verification again preserves all 103 tables, full sequence state,
+catalogs, protected evidence, 824 audit events and 54 logos; the staff-change
+ledger remains empty. All Phase 3 workflow, race, failure and browser mutations
+run on separately owned full-state PostgreSQL 17 fixtures. The
+[Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
+records the exact evidence and the older migration-60 audit harness limitation.
+
+After independent Phase 3 review, the next return point is
+**Task 4.0a Phase 4 — browser interaction, accessibility and final evidence**.
+Task 4.0a overall, Phase 4 and Task 4.1 remain unchecked. The Litigation
 Department continues using Access; final delta reconciliation and cutover
 remain separate work under D43 and D51.
 

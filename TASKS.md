@@ -20,11 +20,12 @@ recovery readiness and separate owner authorization, migration 61 was deployed
 and verified on project PostgreSQL: 61 applied, zero pending or unfinished,
 15/15 database checks and 107/107 permanent historical-profile invariants.
 Phase 1 remains checked and is operationally complete. Phase 2's read-only
-roster and detail are implemented and verified, ready for independent review.
-Task 4.0a overall, Phases 3–4 and Task 4.1 remain unchecked. This deployment was not final Access
+roster and detail are implemented and verified. Phase 3's Administrator
+mutations are implemented and locally verified, ready for independent review.
+Task 4.0a overall, Phase 4 and Task 4.1 remain unchecked. This deployment was not final Access
 cutover; final delta reconciliation remains governed by D43 and D51, without
-any new owner decision. After independent Phase 2 review, the next return point
-is **Task 4.0a Phase 3 — Administrator roster mutations**.
+any new owner decision. After independent Phase 3 review, the next return point
+is **Task 4.0a Phase 4 — browser interaction, accessibility and final evidence**.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1696,7 +1697,7 @@ than assuming one rule for every workflow. Test with real volumes.
       but must not create, enable, disable, reset or otherwise manage accounts.
       Phase 1 is operationally complete: migration 61 is deployed and verified
       on project PostgreSQL, with 107/107 permanent historical-profile
-      invariants. Phase 2 is implemented and verified; Phases 3–4 and Task 4.1
+      invariants. Phases 2–3 are implemented and locally verified; Phase 4 and Task 4.1
       have not started.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
@@ -1806,7 +1807,7 @@ than assuming one rule for every workflow. Test with real volumes.
         migration/schema change, Access access or later-phase implementation.
         See the [Phase 2 report](docs/task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 
-  - [ ] **Phase 3 — Administrator roster mutations.** Implement `/staff/new`
+  - [x] **Phase 3 — Administrator roster mutations.** Implement `/staff/new`
         and `/staff/[id]/edit` for create, canonical Arabic rename, application
         alias add/retire/restore, fixed-team membership and reviewer assignment,
         deactivate and reactivate. Renaming retains the same person identity,
@@ -1816,6 +1817,22 @@ than assuming one rule for every workflow. Test with real volumes.
         owner decision. Each action gets independent server authorization,
         concurrency protection and append-only audit facts. There is no delete
         action and no account-management control.
+
+        **Completed locally, 8 September 2026:** two guarded management pages
+        and nine Administrator actions use the existing migration-61 gateways.
+        Create/edit/rename, native alias lifecycle, team/reviewer assignment and
+        employment transitions pass full-state service, audit and rollback proof;
+        17 service races and 22 gateway proof groups pass. All 448 permissions
+        and Phase 2 roster regressions pass. Final production browser proof
+        passes 54 cases, 44 zero-violation axe audits and 36 screenshots, with
+        desktop/390/320, keyboard, confirmations, stale/conflict and recovery
+        coverage. Complete static checks pass. Project PostgreSQL remains
+        unchanged at 61 migrations, 15/15 checks and 107/107 historical invariants;
+        all 103 tables, full sequences, catalogs, audit and 54 logos match.
+        No schema/migration change, Access access, push or later-phase work.
+        The legacy migration-60 audit-upgrade harness refuses the migration-61
+        source; its guard is unchanged and its limitation is explicit in the
+        [Phase 3 report](docs/task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md).
 
   - [ ] **Phase 4 — browser interaction, accessibility and final evidence.** Use
         centralized strings, Arabic-first RTL layout and logical CSS properties.
@@ -1830,8 +1847,8 @@ than assuming one rule for every workflow. Test with real volumes.
         volume and browser evidence, then update the canonical docs and task
         report without marking earlier phases complete retrospectively.
 
-      **Return point:** independent Phase 2 review, then Task 4.0a Phase 3 —
-      Administrator roster mutations.
+      **Return point:** independent Phase 3 review, then Task 4.0a Phase 4 —
+      browser interaction, accessibility and final evidence.
 
 - [ ] **4.1 Clients** — list, detail, contacts, logo
 
