@@ -6,6 +6,7 @@ import {
   STAFF_MIGRATION,
   STAFF_RUNTIME_GATEWAYS,
   staffBoundaryApplied,
+  assertStaffCheckpoint,
 } from './lib/staff-roster-checkpoint';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -1156,11 +1157,51 @@ async function proveMigrationPrincipalPreflight(admin: Client, source: URL): Pro
 }
 
 async function main(): Promise<void> {
+  const profile = process.argv[2];
+  assert.ok(
+    process.argv.length === 3 &&
+      (profile === '--profile=current-state-61' || profile === '--profile=historical-53-60'),
+    'Explicit audit profile required: --profile=current-state-61 or --profile=historical-53-60; use the isolated test-staff-roster.ts harness',
+  );
   const sourceUrl = process.env['MIGRATION_DATABASE_URL'];
   assert.ok(sourceUrl, 'MIGRATION_DATABASE_URL is required');
   const source = new URL(sourceUrl);
   assert.ok(['localhost', '127.0.0.1'].includes(source.hostname));
   await assertDisposableFixtureSource(source);
+  if (profile === '--profile=current-state-61') {
+    await withApprovedMigrationClient(
+      async (db) => {
+        assert.equal(
+          await assertStaffCheckpoint(db, 'historical-full-state-upgrade'),
+          61,
+          'Current-state audit regression requires the complete migration-61 checkpoint',
+        );
+      },
+      {
+        databaseUrl: source.toString(),
+        clientConfig: { options: '-c default_transaction_read_only=on' },
+      },
+    );
+    // Check the complete current historical data/attribution/event profile.
+    // The migration-53–60 upgrade proof remains a separate historical profile;
+    // it is never attempted, caught or reported as passing on migration 61.
+    const current = spawnSync(
+      process.execPath,
+      [
+        'node_modules/tsx/dist/cli.mjs',
+        'scripts/check-db.ts',
+        '--profile=historical-full-state-upgrade',
+      ],
+      {
+        env: { ...process.env, PGOPTIONS: '-c default_transaction_read_only=on' },
+        stdio: 'inherit',
+        windowsHide: true,
+      },
+    );
+    assert.equal(current.error, undefined, 'Current-state audit invariant check could not start');
+    assert.equal(current.status, 0, 'Current-state audit invariant check failed');
+    console.log('PASS current-state-61 source: exact checkpoint and all 107 historical invariants');
+  }
   const fixtureName = `litigation_task33a_fixture_${process.pid}_${Date.now()}`;
   const fixtureOwnerUrl = new URL(source);
   fixtureOwnerUrl.pathname = `/${fixtureName}`;
@@ -1180,7 +1221,7 @@ async function main(): Promise<void> {
   try {
     await proveMigrationPrincipalPreflight(admin, source);
     await provePasswordProvisioning(admin, source);
-    await proveHistoricalUpgrade(admin, source);
+    if (profile === '--profile=historical-53-60') await proveHistoricalUpgrade(admin, source);
     assert.equal(
       (
         await admin.query<{ count: string }>(

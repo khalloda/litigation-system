@@ -503,7 +503,12 @@ catalogs, protected evidence, 824 audit events and 54 logos; the staff-change
 ledger remains empty. All Phase 3 workflow, race, failure and browser mutations
 run on separately owned full-state PostgreSQL 17 fixtures. The
 [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
-records the exact evidence and the older migration-60 audit harness limitation.
+records the exact evidence and the correction separating current migration-61
+audit regression from the retained historical migration-53–60 upgrade proof.
+Run `npm run test:audit` for the current checkpoint and `npm run test:audit-events`
+for separate event proof; both own isolated disposable PostgreSQL fixtures.
+The [canonical testing instructions](testing/task-4-0a-phase1-invariants.md#commands-and-safe-execution)
+state each profile's prerequisites and scope.
 
 After independent Phase 3 review, the next return point is
 **Task 4.0a Phase 4 — browser interaction, accessibility and final evidence**.

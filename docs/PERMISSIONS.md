@@ -101,15 +101,15 @@ Administrator from the server session; form fields cannot choose the actor or
 acting role. Self-disablement, self-demotion and self-administrative reset are
 refused. The database also prevents any account or later person mutation from
 leaving zero usable Administrators. Disable/reactivate replaces deletion, and
-staff roster editing remains future Task 4.0a work.
+staff roster editing is implemented separately in Task 4.0a Phase 3.
 
-## Staff roster — read-only routes implemented
+## Staff roster — Phase 2 read-only and Phase 3 mutation routes implemented
 
 `/staff` and `/staff/[id]` require `staff / view`; the existing 448-entry
 matrix grants that permission to Administrator, Litigation Assistant, Lawyer
 and Paralegal. `staff` is the existing executable permission key; the earlier
 `staffRoster` wording was descriptive, not an additional permission area.
-The future `/staff/new`, `/staff/[id]/edit` and every create, rename,
+The implemented `/staff/new`, `/staff/[id]/edit` and every create, rename,
 alias, team, reviewer, deactivate or reactivate mutation require
 `staff / manage`, which is Administrator-only. Hiding a control is not
 authorization: each page, action and route must validate the server session

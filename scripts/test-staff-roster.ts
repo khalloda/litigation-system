@@ -481,6 +481,7 @@ async function main(): Promise<void> {
         '--mutation-proof',
         '--regression-proof',
         '--audit-regression-proof',
+        '--historical-audit-regression-proof',
         '--audit-events-regression-proof',
       ].includes(mode!),
   );
@@ -499,16 +500,29 @@ async function main(): Promise<void> {
   );
   await withIsolatedPostgres(async (fixture) => {
     await fixture.restoreProject();
-    if (mode === '--audit-regression-proof' || mode === '--audit-events-regression-proof') {
+    if (
+      mode === '--audit-regression-proof' ||
+      mode === '--historical-audit-regression-proof' ||
+      mode === '--audit-events-regression-proof'
+    ) {
       for (const script of mode === '--audit-events-regression-proof'
         ? ['scripts/test-audit-events.ts']
         : ['scripts/test-audit.ts', 'scripts/test-audit-events.ts']) {
-        console.log('BEGIN isolated existing audit regression: ' + script);
+        const args: string[] =
+          script === 'scripts/test-audit.ts'
+            ? [
+                mode === '--historical-audit-regression-proof'
+                  ? '--profile=historical-53-60'
+                  : '--profile=current-state-61',
+              ]
+            : [];
+        console.log('BEGIN isolated audit regression: ' + [script, ...args].join(' '));
         assert.equal(
-          runIsolated(script, [], fixture.environment),
+          runIsolated(script, args, fixture.environment),
           0,
           'Existing audit regression failed: ' + script,
         );
+        console.log('PASS completed audit regression: ' + [script, ...args].join(' '));
       }
       return;
     }

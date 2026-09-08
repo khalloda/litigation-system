@@ -149,8 +149,10 @@ No guard override, source downgrade or migration-boundary modification was
 made. This old historical-migration harness is not claimed as a passing Phase 3
 regression. Current staff audit mutations, audit structure/data invariants,
 static negative fixtures and failure rollback passed separately on the
-migration-61 full-state fixture. Independent review should retain this explicit
-legacy harness limitation; modernizing it is outside Phase 3.
+migration-61 full-state fixture. This was the original Phase 3 verification
+limitation, not a passing audit regression. The bounded correction below
+restores current-checkpoint verification while retaining this historical
+failure and its source guard.
 
 All new Phase 3 mutation/concurrency/login/browser proofs use owned full-state
 fixtures. The unchanged general authentication/account regression programs also
@@ -191,7 +193,7 @@ is matched to the commit, and `git apply --reverse --check` verifies it without
 applying it. No workstation-specific absolute paths or raw data enter tracked
 documentation. No push or other remote write was performed.
 
-## Exact changed-file inventory
+## Original Phase 3 changed-file inventory
 
 ```text
 HANDOFF.md
@@ -221,3 +223,82 @@ src/lib/auth/route-inventory.ts
 src/lib/staff-mutations.ts
 src/strings.ts
 ```
+
+## Bounded audit-verification correction — 8 September 2026
+
+The owner authorized exactly one additional local correction commit,
+`fix: keep Phase 3 audit verification operational`, preserving
+`56534006d8bfd07a3bb227f863f40e643037f6f4` unchanged, with a correction-only
+full-index patch and no push. Preflight confirmed clean `main`, that exact HEAD,
+parent `34fcd9153f688039f55580d15f9bff045c046c27`, its original 26-file scope and
+the migration-60/61 hashes above. The primary agent made all edits; one
+read-only helper reviewed audit coverage and the diff.
+
+Before editing, the documented `test-staff-roster.ts --audit-regression-proof`
+command exited 1 with `Legacy fixture source must still be at migration 60`.
+It did not execute the chained event suite. All reproduction resources were
+removed. The three stale status statements in `docs/PERMISSIONS.md` were also
+confirmed before correction.
+
+`npm run test:audit` now selects an explicit `current-state-61` profile inside
+the existing isolated harness. It validates the complete migration-61 source
+checkpoint and all 107 historical invariants, runs every shared attribution,
+principal, canonical replay, role/ACL/session and adversarial audit test, then
+executes the unchanged `scripts/test-audit-events.ts`. Every child must exit
+successfully; interruption, unknown arguments and assertion failures remain
+fatal. The separate `npm run test:audit-events` uses the same isolation owner.
+
+`npm run test:audit:historical` explicitly retains the historical migration-53–60
+upgrade proof. Its fixture builder, reverse procedure, upgrade assertions and
+migration-60 guard are unchanged. That proof requires its original verified
+source and is unavailable from the current migration-61 source; it is not
+claimed as passing in this correction. Current verification needs no retained
+migration-60 dump. Canonical testing documentation now distinguishes these
+profiles and labels the older migration-61 deployment acceptance commands as
+historical-start proofs. No owner decision or invariant classification changed.
+
+The permission document changes only the three stale status statements: Phase 2
+read-only routes and Phase 3 Administrator mutation routes/actions are
+implemented. The permission matrix and every application source file remain
+unchanged.
+
+| Correction verification | Result |
+| --- | --- |
+| `npm run test:audit` | PASS; migration-61 checkpoint, 107 invariants, complete shared actor suite and separately reported event-suite completion |
+| `npm run test:audit-events` | PASS independently; migration-57 atomic failure, append-only/redaction/context/semantic contracts, 45,463-event volume and indexed paging |
+| Missing, unknown and extra `test-audit.ts` profile arguments | Rejected before database access |
+| `npm run test:staff-mutations` | PASS; all 17 service races, 22 gateway groups, audit/rollback/no-op/session proof and 107 invariants |
+| `npm run test:staff-read-only` | PASS; real-volume reads, alias/filter/pagination regression and all 448 permission decisions through its isolated restored fixture |
+| `npm run check` | PASS |
+| Production `next build --webpack` | PASS in an owned source mirror with no project credentials; no database required; mirror/junction removed |
+| Project `npm run db:verify` | PASS 15/15; read-only |
+| Project `npm run db:check -- --profile=historical-full-state-upgrade` | PASS 107/107; forced read-only |
+| Final preservation comparison | PASS; before/after receipts are byte-identical, SHA-256 `7539cb01f45c62a440d58f1d07fe9b9c0e44ad2880de0e4374e0035624278ce7` |
+
+The preservation receipt covers all 103 full-row table fingerprints, complete
+sequence state, function/trigger/constraint/index/role/ACL catalogs, database
+settings, all 54 logo files, all migration files, schema, lockfile, decisions,
+governance files, project environment and Docker identities/resources. Project
+rows, audit evidence, sequences, logos and migration history remain unchanged.
+All disposable PostgreSQL containers, databases, roles, volumes and networks
+were removed. No Access operation, project database write, production code,
+schema, migration, dependency, permission-matrix or Phase 4 change occurred.
+No browser tests were added or rerun for this test-orchestration correction;
+the original Phase 3 browser evidence above remains the unchanged checkpoint.
+
+Correction-only files:
+
+```text
+docs/DATABASE.md
+docs/PERMISSIONS.md
+docs/task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md
+docs/testing/task-4-0a-phase1-invariants.md
+package.json
+scripts/test-audit.ts
+scripts/test-staff-roster.ts
+```
+
+The correction commit and patch hashes are recorded in the external delivery
+receipt. The patch uses `git diff --binary --full-index` from the preserved
+Phase 3 commit and is verified with `git apply --reverse --check` without
+application. Work stops for independent review; no push or Phase 4 start.

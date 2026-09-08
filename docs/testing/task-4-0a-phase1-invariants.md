@@ -31,12 +31,23 @@ reclassify it. Default classification is both profiles.
 
 ## Commands and safe execution
 
-- Complete acceptance: `node node_modules/tsx/dist/cli.mjs scripts/test-staff-roster.ts --profile-acceptance`.
-- Focused mutation/rollback profiles: same command with `--mutation-proof`.
-- Authentication, 448 authorization decisions and account lifecycle: same
-  command with `--regression-proof`.
-- Both established audit suites: same command with `--audit-regression-proof`;
-  `--audit-events-regression-proof` runs only the event suite.
+- Historical-start acceptance: `node node_modules/tsx/dist/cli.mjs scripts/test-staff-roster.ts --profile-acceptance`.
+- Historical-start mutation/rollback profiles: same command with `--mutation-proof`.
+  Both require the verified migration-60 source before deployment; they are
+  retained upgrade proofs, not commands for the current migration-61 source.
+  They do not downgrade a source or reconstruct unavailable historical state.
+- Current Phase 3 staff service/race and gateway proof: `npm run test:staff-mutations`.
+- Authentication, 448 authorization decisions and account lifecycle:
+  `node node_modules/tsx/dist/cli.mjs scripts/test-staff-roster.ts --regression-proof`.
+- Current migration-61 audit regression: `npm run test:audit`, equivalent to
+  `node node_modules/tsx/dist/cli.mjs scripts/test-staff-roster.ts --audit-regression-proof`.
+- Separate audit-event regression: `npm run test:audit-events`, equivalent to
+  the same harness with `--audit-events-regression-proof`.
+- Historical migration-53–60 audit upgrade: `npm run test:audit:historical`,
+  equivalent to the same harness with `--historical-audit-regression-proof`.
+  This requires the exact verified migration-60 full-state source. It is
+  unavailable from the current migration-61 source and deliberately fails
+  there with `Legacy fixture source must still be at migration 60`.
 - H permanent checks: `npm run db:check -- --profile=historical-full-state-upgrade`.
 - C permanent checks: `npm run db:check -- --profile=canonical-clean-replay`.
 
@@ -46,6 +57,26 @@ checkpoint with 107 invariants; migration 61 is no longer pending. The command
 does not deploy anything. Canonical acceptance runs only with the harness's
 generated isolated target. The affected standalone authentication/audit fixture scripts now
 refuse the project cluster; use the harness, not a database-name prefix on 5433.
+
+The current audit command explicitly selects `test-audit.ts
+--profile=current-state-61`. It fails closed unless the restored source has
+the exact complete migration-61 ledger, checksums, historical data profile and
+boundary, then requires all 107 permanent invariants, including actor and event
+structure, data and protected historical evidence. It runs every shared audit
+group: migration-principal preflight, password provisioning, canonical replay
+through 61, role/ACL/session attacks, actor registry, attribution/spoofing,
+Prisma/direct-SQL/junction writes, rollback, pooled/concurrent actor isolation
+and denied bypasses. It then actually executes `scripts/test-audit-events.ts`:
+classification, append-only access, redaction/context, semantic atomicity,
+45,463-event volume, indexed paging and the migration-57 failure-atomicity
+fixture built through 56. A child failure or interruption fails the command;
+no failed assertion becomes a pass. Completion is reported for each suite.
+
+`--profile=historical-53-60` retains the original historical upgrade assertions
+and migration-60 source guard, followed by the same shared suites. Selecting
+the current profile does not claim that historical replay passed. Missing,
+unknown or extra profile arguments are rejected. No current command needs a
+retained migration-60 dump, Access operation or workstation-only artifact.
 
 The harness verifies Docker ownership labels, exact image identity and PG17.11,
 distinct cluster identity, Arabic ICU initialization, isolated storage/network,
@@ -83,7 +114,8 @@ Acceptance checks that migration-owned identity/security state, then initializes
 only a generated disposable Administrator password before operational-readiness
 and lifecycle tests. This is test setup, never a password-bearing migration.
 
-Legacy audit regression fixtures are separate from acceptance databases. The
+Historical audit regression fixtures are separate from acceptance databases
+and require the verified migration-60 source. The
 migration-53 historical audit fixture is restored from the independently verified
 pre-3.5B partition before installing post-data guards; it never deletes guarded
 relationship evidence. The deliberate migration-57 conflict fixture is built
