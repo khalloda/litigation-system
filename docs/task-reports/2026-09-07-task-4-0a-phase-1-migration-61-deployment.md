@@ -124,11 +124,11 @@ Only these authorized Markdown files required synchronization:
 - `docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md`
 
 Current-state statements now distinguish deployment from earlier disposable
-proof. Dated test outcomes retain their original meaning. Documents outside
-the owner's allowlist, including the decision file and original reviews, remain
-untouched. The earlier pending-migration paragraph in `docs/PRD.md` also remains
-unchanged because that file is outside the allowlist; use `TASKS.md` and this
-report for the accepted checkpoint. This is not a repository-wide status rewrite.
+proof. Dated test outcomes retain their original meaning. In the separately
+owner-authorized follow-up of 8 September 2026, the `docs/PRD.md` current-state
+paragraph is synchronized with the accepted deployment. That correction changes
+only the PRD paragraph and this scope note; all other accepted deployment
+evidence, decisions and task status remain unchanged.
 
 | Documentation/static check | Result |
 | --- | --- |

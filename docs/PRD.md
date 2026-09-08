@@ -77,11 +77,17 @@ separate future Task 4.0a; Task 3.4 never creates or edits a person or alias.
 
 ### Staff roster — Phase 1 database foundation complete; screens not started
 
-Migration 61 implements the database portions below and is verified locally,
-but remains unapplied to the unchanged migration-60 project database. No staff
-routes, service actions or UI exist yet. Task 4.0a remains incomplete; the next
-return point is **Task 4.0a Phase 2—read-only roster, not started.** See the
-[Phase 1 report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md).
+Migration 61 implements the database portions below and has been deployed
+exactly once to the current project PostgreSQL database. The database now has
+61 applied migrations, zero pending and zero unfinished. `db:verify` passed
+15/15 and the `historical-full-state-upgrade` profile passed 107/107 invariants.
+Task 4.0a Phase 1 is operationally complete; overall Task 4.0a remains
+incomplete. No staff routes, service actions or UI have been implemented. The
+exact next return point is **Task 4.0a Phase 2 — read-only staff roster**;
+Phase 2 has not started. The Litigation Department continues using Access;
+final cutover remains governed by D43 and D51. See the
+[Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
+and [migration-61 deployment report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
 
 Task 4.0a covers the 66 internal staff identities now in PostgreSQL: 23 active
 and 43 inactive. The 71 external people stay available to historical legal
