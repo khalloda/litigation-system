@@ -1349,3 +1349,178 @@ hashed. That snapshot receives its own identity and evidence. Only
 post-baseline or newer changes may then be reconciled and migrated; already
 accepted historical imports must not be duplicated, and no delta may be
 applied without validation and owner approval.
+
+## D52 — Client and contact archive lifecycle
+
+**Approved explicitly by Khaled Helmy on 8 September 2026 through the Task
+4.1 documentation mandate.** The preceding readiness review and subsequent
+owner resolutions are preserved separately in the
+[dated review](reviews/2026-09-08-task-4-1-clients-readiness-review.md).
+This records a future implementation contract, not implemented behavior.
+
+Client archive is non-cascading. Archived clients leave ordinary lists and new
+selections. All four roles that may view clients may find clearly labelled,
+read-only archived details through an explicit archive filter. Only an
+Administrator may archive or restore a client or contact. Show related-record
+counts before confirmation. No physical deletion is permitted.
+
+Archive preserves related matters, billing, contacts, logos and relationships.
+Existing matters remain accessible and must not disappear from reports because
+their client is archived. Client business status remains independent of archive
+state; `Disabled` is not an archive instruction. A client's existing matters do
+not have to be closed merely to archive the client.
+
+Archiving a client preserves its main-contact selection and each contact's
+individual archive state. Restoring the client does not restore contacts that
+were separately archived. The parent client must first be restored before any
+contact creation, editing, archiving or restoration. Archived client business
+fields are read-only until restoration; the authorized restore operation is
+still available to an Administrator.
+
+**Rationale and tradeoff:** the client can leave ordinary selection without
+hiding its legal history or changing its contacts. Restoration is a deliberate
+extra step before contact maintenance. This rejects cascading archive/restore
+and silent report exclusions. For example, archiving a client cannot make its
+ongoing matters disappear from a lawyer's work or reports.
+
+## D53 — Client classification meanings and Arabic labels
+
+**Approved explicitly by Khaled Helmy on 8 September 2026.** `Cash` means a
+fee-paying client regardless of payment method. It does not mean cash payment.
+
+| Stored source value | Approved Arabic display |
+|---|---|
+| `Cash` | بأتعاب |
+| `Probono` / `probono` | بدون أتعاب |
+| `Active` | نشط |
+| `Disabled` | غير نشط |
+| `Potential` | محتمل |
+
+`Probono` and `probono` have one operational display/entry choice. Preserve
+original spellings in historical evidence. Unrelated edits and no-op saves
+must not silently normalize existing stored values. Blank values stay blank
+unless deliberately changed. No default may turn a missing classification into
+an asserted business fact. The labels belong in `src/strings.ts` when the UI is
+implemented; this documentation task does not edit that file.
+
+The observed `Cash/probono` population is **316 populated values, two empty
+strings and zero NULLs**. These facts do not establish how the empty strings
+arose. The inaccurate migration-documentation paragraph is corrected on that
+basis only. Staging, earlier evidence and frozen digests are not rewritten.
+
+**Rationale and tradeoff:** one choice removes a meaningless spelling choice
+from entry while exact historical evidence remains available. Field-aware
+saving is necessary so editing an address does not also recode `probono`.
+The five labels above do not resolve D28's separate 11 billing-code labels.
+
+## D54 — Responsible-lawyer text remains historical information
+
+**Approved explicitly by Khaled Helmy on 8 September 2026.** Display the
+existing `legacy_contact_lawyer_raw` source text as historical information.
+Editable responsible-staff assignment and source-to-staff mapping are deferred
+outside Task 4.1. Do not infer a person from a name or add an assignment field.
+
+The firm's responsible lawyer is distinct from the client's own main contact,
+which refers to `contacts`, not `people`. The readiness inspection observed
+123 populated source values across 11 exact strings; it did not resolve them
+to staff identities.
+
+**Rationale and tradeoff:** useful history stays visible without treating an
+unreviewed name mapping as an assignment. Current responsible-staff maintenance
+will require separate future work; no such mapping or data cleanup is approved
+here.
+
+## D55 — Optional main contact and fixed contact ownership
+
+**Approved explicitly by Khaled Helmy on 8 September 2026.** Main contact is
+optional. A selected contact must belong to the same client and must not be
+archived. Require explicit clearing or replacement of the selection before
+archiving that contact. Never choose a replacement automatically. Client
+archive/restore itself retains the selection under D52.
+
+Contact reassignment between clients is outside Task 4.1. There is no move
+workflow, and ordinary contact edits cannot change client ownership. Preserve
+the original imported ownership evidence. Enforce ownership and main-contact
+eligibility in the database and server, including concurrent operations; hiding
+an ownership control in the interface is insufficient.
+
+New contacts require a name in `contact_name`. Preserve the six imported
+contacts without that name, without fabrication or blocking unrelated edits.
+`full_name` is a separate source field, not an inferred substitute. Keep the
+existing rule that `home_phone` is preserved but not surfaced.
+
+**Rationale and tradeoff:** a client's selected contact cannot silently become
+another client's person or an archived contact. Explicitly clearing/replacing
+the selection adds a deliberate step; future reassignment would need a
+separate reviewed contract. Existing incomplete records remain usable.
+
+## D56 — Task 4.1 identity and feature boundaries
+
+**Approved explicitly by Khaled Helmy on 8 September 2026.** Task 4.1 covers
+client/contact lists and details, authorized creation/editing and D52–D55
+lifecycle behavior, plus display of existing client logos with the client's
+name as the fallback for absent or unusable images. Upload, replacement,
+resizing, upload preview and recoverable logo removal remain Task 4.1a.
+
+Distinct clients remain distinct even when their names match. PostgreSQL IDs
+identify relationships, routes, mutations, auditing and concurrency targets;
+Access IDs remain historical identities. Never substitute a name or an assumed
+numeric offset for the stored association. Application-native records receive
+no invented Access ID. Do not transfer staff-specific name/email uniqueness
+or Arabic-character requirements to clients and contacts; legitimate Latin
+names such as `JTI` remain valid.
+
+Branches stay on matters. The unused client branch columns are not an entry
+field. D39's restriction on renaming main Sigma remains binding. Matters,
+billing, reports and audit-history UI retain their existing task boundaries.
+All four roles may view; Administrator has full client/contact access,
+Litigation Assistant may add/edit, and Lawyer/Paralegal may only view.
+Independent server guards are required for pages, reads and mutations.
+
+## D57 — Task 4.1 evidence, phases and acceptance boundary
+
+**Approved explicitly by Khaled Helmy on 8 September 2026 as a documentation-only
+contract.** Task 4.1 and all four implementation phases remain unchecked and
+unstarted. Stop after the documentation commit for independent review; approval
+of this contract does not start implementation or authorize deployment.
+
+Implement the smallest sound separation of immutable client/contact import
+evidence from editable live state. Validate original system/Access identity
+associations, staging durable keys/fingerprints, exact source values and initial
+transformed values before capturing them. Preserve imported ownership, raw
+evidence and frozen historical digests. Historical checks must prove the exact
+imported population and initial values; separate live invariants must permit
+authorized native creation and edits while enforcing provenance and lifecycle
+rules. Do not weaken equality checks to lower bounds, exempt edited imports,
+replace historical digests or copy the entire staff-boundary design.
+
+Extend affected permanent checks and Gate 4 client/contact accounting without
+counting native additions as imported rows. Preserve accepted workbook evidence.
+The old client/contact delete-and-rebuild transform must fail closed after the
+operational boundary and must never serve as D43's differential cutover path.
+Reuse existing actor/event infrastructure for truthful atomic writes; new
+columns require explicit audit classification. Reject stale edits while
+retaining unsaved input. Replayed creation submissions must return the same
+created identity without another record/event; intentional same-name creations
+must remain possible. No-op saves preserve values, versions and audit state.
+
+The ordered implementation phases, recorded unchecked in `TASKS.md`, are:
+
+1. Database foundation and operational invariants.
+2. Read-only client/contact screens and existing-logo display.
+3. Authorized mutations and archive/restore.
+4. Final acceptance.
+
+Database-foundation proofs use **isolated PostgreSQL instances** with distinct,
+mandatory historical-upgrade and canonical-replay acceptance profiles. A clean
+replay cannot substitute for historical upgrade proof or silently skip its
+evidence. All future mutation, race and rollback tests stay isolated. Final
+acceptance includes static, permission, audit, reconciliation, real-volume and
+separately authorized local browser/accessibility evidence. Deployment to the
+current project database requires separate authorization. Access remains in
+departmental use; D43/D51 final cutover remains separate.
+
+**Cost context:** the readiness estimate is approximately 6–10 development and
+testing days for the bounded implementation, with overlapping component
+estimates and prompt business answers assumed. This is an estimate, not an
+authorization to execute or incur new infrastructure/licensing costs.

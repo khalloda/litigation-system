@@ -279,10 +279,10 @@ carriage return, and no row count would have moved.
 
 ### NULL and the empty string are not the same value
 
-**An unassigned `lawyerA` is a matter nobody has been put on. A cleared one is
-a matter somebody was taken off.** Collapse the two and that difference is
-gone for good, because staging is the only place the original text still
-exists.
+**SQL NULL and an empty string are distinct source values.** Preserve that
+distinction exactly. The stored value alone does not establish whether a user
+never entered a field, cleared it or produced it another way; do not infer
+editing history from it.
 
 The mechanism is exact and needs no special handling:
 
@@ -302,12 +302,12 @@ quoted field**, a doubled quote, and trailing spaces.
 extraction the difference is **193,445 NULLs against 2 empty strings**. Gate 2
 counts both, across all 204 source columns, and fails on either figure.
 
-**Two cells.** Both in `العملاء."Cash/probono"` — two clients where somebody
-typed something and cleared it, against 316 where nothing was ever entered.
-That is the entire practical extent of a distinction worth insisting on, and
-it is exactly why it had to be insisted on: nothing about a load that lost
-them would have looked wrong. No row count moves. No error is raised. The two
-cells simply become the same as the other 316.
+**Observed client classification values:** `العملاء."Cash/probono"` contains
+**316 populated values, two empty strings and zero NULLs**. These counts do
+not establish how the empty strings arose. Replacing an empty string with
+NULL would change source evidence without changing the row count. D53
+requires preserving the original values and this distinction; it does not
+authorize rewriting staging or historical digests.
 
 **The loader keeps them by never replacing the original record with a decoded
 and re-encoded copy.** It reads field values to validate the header and compute
@@ -327,8 +327,8 @@ whole design. The entire practical extent of it is **two rows**.
 The honest answer is not that two rows justify the effort by themselves. It is
 that **you cannot know which two until you have kept them** — and by the time
 anyone asks the question, the information is gone. There is no way to recover
-a cleared field from a database that has already collapsed it into "never
-entered": both are empty, and nothing records which was which.
+an original empty string from a database that has already collapsed it into
+NULL: the distinct source value is no longer recorded.
 
 So the cost is paid once, at the only moment it can be paid, against a benefit
 that cannot be measured in advance. That is the shape of most of the rules in
@@ -3322,8 +3322,9 @@ Project verification still passes 15/15 and 107/107 with all 103 table, sequence
 catalog, audit and logo fingerprints unchanged. Phase 4 completes final browser,
 accessibility and regression acceptance with the same full project-preservation
 result. Task 4.0a overall and Phase 4 are checked. Task 4.1 remains unchecked and
-unstarted. The next return point is **Task 4.1 — Clients, pending independent
-Task 4.0a review**.
+unstarted under the approved D52–D57 contract. The next return point is
+**independent review of the Task 4.1 documentation contract**, followed by
+separately authorized Phase 1 work.
 See the
 [Phase 2 implementation report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 The [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
@@ -3334,3 +3335,52 @@ separate event regressions, and removal of every owned test resource. No
 migration, schema, decision, source or cutover operation occurred in Phase 4.
 The Litigation Department continues using Access. This is not final Access
 cutover; final delta reconciliation remains governed by D43 and D51.
+
+## Task 4.1 client/contact evidence contract — approved, unimplemented
+
+D52–D57 approve a separation of immutable import evidence from editable live
+clients and contacts. This documentation-only checkpoint changes no database,
+source artifact, code or applied migration. The
+[dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
+records the earlier read-only aggregate verification and its remote-freshness
+limitation; the subsequent owner resolutions are separate.
+
+Current DB-052–DB-056 checks still compare all live clients/contacts against
+staging, count live empty cash strings and require a NULL main contact. Before
+exposing application writes, validate and retain each original system/Access
+identity association, staging durable key/fingerprint, exact source payload,
+initial transformed value and contact-parent association in immutable evidence.
+Historical checks must verify the exact imported population and original
+values, including the two empty strings at their original identities. Separate
+live checks must allow authorized native creation and deliberate edits while
+enforcing preserved IDs/raw evidence, fixed contact ownership, same-client
+unarchived main contacts and archive state. Native records receive no invented
+Access identity. Do not exempt edited imports or replace exact comparisons with
+lower bounds; do not replace any frozen source, workbook, audit or result digest.
+
+D53 defines `Cash` as fee-paying regardless of payment method and combines
+`Probono`/`probono` into one operational choice with approved Arabic labels.
+Original spelling remains historical evidence. Unrelated/no-op edits cannot
+silently normalize current spelling, and blanks remain blank unless deliberately
+changed. D54 defers responsible-staff mapping and assignment; source lawyer text
+remains exact, displayed as historical information. D55 prohibits ordinary
+contact ownership changes and requires preserving the six unnamed imported
+contacts without blocking unrelated edits. The old unanswered workbook rows
+are historical artifacts; this documentation approval does not update them.
+
+Gate 4 client/contact accounting must count the exact imported population,
+separately from native additions. Preserve accepted historical workbook labels
+and manifests. The old client/contact transform deletes and rebuilds its target
+tables; it must fail closed after the operational boundary and must not be used
+to import Access deltas. Reuse existing truthful actor/event infrastructure for
+current edits, add explicit audit field classifications, and prove atomic
+archive/restore and audit-failure rollback. No full staff alias/roster ledger is
+required merely because that earlier task used one.
+
+Database-foundation proofs require isolated PostgreSQL instances and distinct,
+mandatory historical-upgrade and canonical-replay profiles. Preserve each
+profile's evidence and do not substitute clean replay for historical proof.
+Future mutation, race and rollback tests remain isolated. Project-database
+deployment needs separate owner authorization. Task 4.1 and its four phases
+remain unchecked and unstarted; Access remains in departmental use and D43/D51
+final cutover remains separate.

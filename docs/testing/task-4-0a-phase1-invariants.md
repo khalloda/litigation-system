@@ -10,6 +10,13 @@ permanent historical profile passed 107/107 on 7 September 2026; see the
 The upgrade/rollback proofs below used the preserved predeployment migration-60
 state. They remain dated evidence, separate from post-deployment checks.
 
+**Task 4.1 documentation clarification, 8 September 2026:** DB-052–DB-056
+still describe the implemented historical client/contact checks. D53/D57
+approve their future separation into immutable import evidence and current
+operational invariants; no checker changes have been made. DB-054's title is
+legacy executable wording, not proof of how the empty strings arose. Observed
+cash values are 316 populated, two empty strings and zero NULLs.
+
 ## Independently mandatory profiles
 
 | Profile | Exact starting evidence | Required result |
@@ -186,7 +193,7 @@ non-Git payload, not an inconvenience in constructing a fixture.
 | DB-051 | The firm's original 744 answers remain attached to the same values | Historical | The original 744 review-answer values, notes and decisions in quarantine.review_value and quarantine.finding; Git contains their frozen digest, not the payload. | 668 value answers + 76 finding answers, exact reviewed payload | 668 value answers + 76 finding answers, exact reviewed payload |
 | DB-052 | Every staged client was transformed | Both | None | Historical: 318 staged clients and 318 targets; canonical: both zero. | Historical: 318 staged clients and 318 targets; canonical: both zero. |
 | DB-053 | Every staged contact was transformed | Both | None | Historical: 188 staged contacts and 188 targets; canonical: both zero; no orphan contacts. | Historical: 188 staged contacts and 188 targets; canonical: both zero; no orphan contacts. |
-| DB-054 | Cleared values still differ from never-entered | Both | None | Historical: two explicitly cleared Cash/probono values remain empty strings; canonical: both source and target zero. | Historical: two explicitly cleared Cash/probono values remain empty strings; canonical: both source and target zero. |
+| DB-054 | Cleared values still differ from never-entered | Both | None | Historical: two empty Cash/probono strings match staging; canonical: both source and target zero. No editing history is inferred. | Historical: two empty Cash/probono strings match staging; canonical: both source and target zero. No editing history is inferred. |
 | DB-055 | contactLawyer preserved byte for byte | Both | None | 0 differing from staging | 0 differing from staging |
 | DB-056 | Nothing was guessed into branch or contact_person | Both | None | 0 rows | 0 rows |
 | DB-057 | Matter transform safeguards still exist | Both | None | 21/1/1/6/2/2/1 and reviewed key exact | 21/1/1/6/2/2/1 and reviewed key exact |

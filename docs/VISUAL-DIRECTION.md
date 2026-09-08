@@ -198,8 +198,9 @@ forms, confirmation dialogs, focused validation and stale/conflict recovery.
 Its [implementation report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
 records local desktop, mobile, keyboard, zoom and accessibility evidence.
 Phase 4 completes browser interaction, accessibility and final visual evidence.
-The next return point is **Task 4.1 — Clients, pending independent Task 4.0a review**.
-Task 4.1 remains unstarted.
+The next return point is **independent review of the Task 4.1 documentation
+contract**. Task 4.1 and its four implementation phases remain unchecked and
+unstarted under D52–D57.
 
 The Arabic-first RTL route set is `/staff`, `/staff/new`, `/staff/[id]` and
 `/staff/[id]/edit`. The roster defaults to the 23 active internal staff and can
@@ -251,6 +252,41 @@ visual inspection of every distinct state. Field instructions are associated
 programmatically, dialog Tab focus stays contained, pending/results receive
 focus, and error-link targets have space for their focus outlines. Live-region
 roles and properties were inspected; screen-reader speech was not tested.
+
+## 8a. Clients and contacts — approved Task 4.1 direction, unstarted
+
+Use the established light Arabic-first RTL layout, logical CSS, bundled font,
+centralized strings, Western numerals and explicit absence/error states. Client
+search covers normalized client/contact names and retained English client names;
+explain contact matches and keep distinct, deterministic 25-row pages. Duplicate
+names must still show distinct identities, with PostgreSQL and Access IDs clearly
+distinguished. Keep business-status and archive filters separate.
+
+Use D53's exact [Arabic labels](GLOSSARY.md#client-classification--approved-task-41-labels).
+`Cash` describes fee-paying status, not payment method. Both pro bono spellings
+have one choice; unrelated/no-op saves preserve stored spelling and blanks.
+Show the firm's responsible-lawyer text as historical information, separate
+from the optional main contact at the client. Do not fabricate names for the
+six imported unnamed contacts or display their secondary full-name field as an
+inferred personal name.
+
+All four viewing roles can explicitly find clearly labelled read-only archived
+details. Administrator archive/restore confirmations show related-record counts
+and the non-cascading consequences. Preserve main-contact selection and individual
+contact archive states across parent archive/restore. Contact create/edit/archive/
+restore requires parent restoration first; selected main contacts must be
+explicitly cleared/replaced before individual archive. No contact-move control
+belongs here. New contacts require a name; existing unnamed contacts permit
+unrelated edits. Preserve form input after validation/stale failures and expose
+pending, success, no-op and recoverable-error states accessibly.
+
+Display existing client logos through guarded local access; absent/unusable
+images use the client's name, including a late image-load failure. Task 4.1a
+owns upload, replacement, resizing, preview and recoverable removal. Future
+acceptance requires separately authorized local browser checks for keyboard,
+focus, labels/errors, confirmations, status announcements, contrast, 200% zoom
+and 320-pixel RTL reflow; mutation flows use isolated databases. No screen or
+browser implementation is part of this documentation checkpoint.
 
 ## 9. Audit history — owner-approved direction, deferred
 

@@ -34,6 +34,11 @@ house style, taken from nine real printed samples.
 - Most reports take parameters: a date range (`من` / `إلى`), and one of client,
   branch, team or lawyer
 - Several embed sub-reports; these become nested queries
+- Under D52, client archival must not remove existing matters from reports.
+  Client business status, client archive state and matter status are separate
+  facts. Preserve existing report criteria; do not add a silent archived-client
+  exclusion. This is the approved future Task 4.1/Stage 6 contract, not a report
+  implementation in the documentation task.
 
 ## The one report with an unknown layout
 

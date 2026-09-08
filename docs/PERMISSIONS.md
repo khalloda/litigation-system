@@ -83,8 +83,37 @@ account, person, actor and history. Staff and dropdown removal remains
 deactivate; their rows and values are retained. Client-logo removal must
 eventually be recoverable and retain the file and its evidence. Those other
 lifecycle screens, handlers, database representations, archived-record
-visibility, filters and reporting behavior remain with their relevant later
-tasks.
+visibility, filters and reporting behavior remain to be implemented with their
+relevant tasks. D52–D57 now settle the client/contact contract below; its implementation
+remains unstarted. Other areas retain their existing task boundaries.
+
+## Clients and contacts — approved Task 4.1 contract, unstarted
+
+The matrix above is unchanged: Administrator view/create/update/archive/restore;
+Litigation Assistant view/create/update; Lawyer and Paralegal view. All four
+viewing roles may explicitly filter for archived clients and view clearly
+labelled, read-only archived details. Only Administrators receive archive and
+restore operations, with related-record counts shown before confirmation.
+Enforce each page, read, handler and mutation independently on the server;
+derive authorization and actor attribution from the validated session.
+
+Archive is non-cascading and separate from client business status. Exclude
+archived clients from ordinary lists and new selections; keep existing matters
+accessible and included in reports. Retain billing, contacts, logos,
+relationships and main-contact selection. Preserve each contact's individual
+archive state: restoring the parent never restores a separately archived
+contact. Archived client business fields remain read-only until restoration.
+Before any contact creation, editing, archiving or restoration, require the
+parent client to be restored. This restriction applies to Administrators too.
+
+Main contact is optional, same-client and unarchived. Explicitly clear or
+replace the selection before archiving that contact; never auto-select a
+replacement. Contact reassignment is outside Task 4.1, including ownership
+changes hidden in ordinary edits. Existing-logo viewing uses its own view
+guard; logo upload/replacement/resizing/recoverable removal stay Task 4.1a.
+Responsible-lawyer text is historical-only; staff assignment/mapping is
+deferred. No physical deletion is authorized. See D52–D57 and
+[TASKS.md](../TASKS.md) for the four unchecked implementation phases.
 
 ## User management — implemented Task 3.4
 

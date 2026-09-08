@@ -19,6 +19,30 @@ For anyone reading the data or the schema. Do not guess at these.
 | إجراءات المهام | Task steps / actions | Children of administrative works |
 | فريق العمل | Work team | Dropped — see D6 |
 
+## Client classification — approved Task 4.1 labels
+
+Approved by Khaled Helmy on 8 September 2026, D53. These are client
+classifications, not invoice/payment codes. `Cash` means a fee-paying client
+regardless of payment method; it must not be translated as a cash payment.
+
+| Source value | Approved Arabic display | Meaning |
+|---|---|---|
+| `Cash` | بأتعاب | Fee-paying client, regardless of payment method |
+| `Probono` / `probono` | بدون أتعاب | One operational display/entry choice |
+| `Active` | نشط | Client business status; independent of archive state |
+| `Disabled` | غير نشط | Client business status; does not mean archived |
+| `Potential` | محتمل | Client business status; independent of archive state |
+
+Preserve original spellings in historical evidence. Unrelated edits and no-op
+saves must not normalize existing values; blanks remain blank unless
+deliberately changed. Implement these labels in `src/strings.ts` when Task 4.1
+begins; this documentation approval does not edit application strings. D28's
+separate approval of 11 billing-code labels remains outstanding.
+
+The firm's responsible-lawyer source text is historical information under D54.
+It is distinct from the client's own main contact in `contacts`. Editable staff
+assignment and source-to-staff mapping are deferred.
+
 ## Matter fields
 
 | Arabic | English |

@@ -75,7 +75,7 @@ there is no account deletion, self-disablement, self-demotion or
 self-administrative reset. Staff identity maintenance belongs to the separate
 Task 4.0a; Task 3.4 never creates or edits a person or alias.
 
-### Staff roster — Phases 2–3 implemented
+### Staff roster — Task 4.0a complete and published
 
 Migration 61 implements the database portions below and has been deployed
 exactly once to the current project PostgreSQL database. The database now has
@@ -90,8 +90,9 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **Task 4.1 — Clients, pending independent Task 4.0a review**.
-Task 4.1 remains unstarted. The Litigation Department continues using Access;
+point is **independent review of the Task 4.1 documentation contract**.
+Task 4.1 and its four implementation phases remain unchecked and unstarted
+under D52–D57. The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [migration-61 deployment report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
@@ -160,6 +161,55 @@ logical CSS properties, and must pass the D50 local browser checks for keyboard,
 focus, labels, errors, status announcements, colour independence, target size,
 zoom/reflow and mobile/desktop layout. Browser mutations use only an isolated
 disposable database; project data does not leave the machine.
+
+### Clients and contacts — approved Task 4.1 contract, unstarted
+
+D52–D57 approve client/contact list, detail, authorized create/edit and
+Administrator-only archive/restore, plus existing-logo display and the
+client-name fallback. Upload/replacement/resizing/recoverable logo removal
+remain Task 4.1a. No implementation or deployment is authorized by the
+documentation checkpoint. [TASKS.md](../TASKS.md) records four unchecked phases;
+the [dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
+separates findings from later owner resolutions.
+
+List search covers normalized client/contact names and retained English client
+names, with contact-match disclosure and deterministic, distinct 25-row pages.
+Use separate business-status and archive filters. Client fields are display
+name, retained English name, full name, classification/status, POA/document
+locations, start/end dates and optional main contact. Contacts retain primary
+name, secondary full name, job/contact/address details; `home_phone` remains
+preserved but unsurfaced. Use server validation, keep multiline values, and
+provide loading, empty/no-contact, not-found, forbidden, validation/stale and
+recoverable-error states. Do not invent data to fill an empty state.
+
+Client archive is non-cascading: exclude archived clients from ordinary lists
+and new selections, but all four viewing roles can find clearly labelled,
+read-only archived details through an explicit filter. Preserve related
+matters, billing, contacts, logos and main-contact selection. Existing matters
+stay accessible and in reports. Preserve each contact's individual archive
+state; restoring the parent does not restore separately archived contacts.
+Require parent restoration before any contact create/edit/archive/restore.
+Show related-record counts before Administrator archive/restore confirmation.
+Business status is independent of archival.
+
+Main contact is optional, belongs to that same client and is not archived.
+Require explicit clear/replacement before archiving the selected contact; never
+select a replacement automatically. Contact moves and ownership changes through
+ordinary edits are outside scope. New contacts require a name; preserve the
+six imported unnamed contacts and permit unrelated edits. Display the firm's
+responsible-lawyer source text separately as historical information; editable
+staff assignment and source-to-staff mapping are deferred.
+
+`Cash` means fee-paying regardless of payment method. Use the exact approved
+[Arabic labels](GLOSSARY.md#client-classification--approved-task-41-labels).
+`Probono`/`probono` share one operational choice while historical spellings
+remain exact. Unrelated/no-op saves must not normalize values, and blanks
+remain unchanged without a deliberate edit. Preserve duplicate client
+identities, use PostgreSQL IDs for mutations/relationships and retain Access
+IDs as historical identities. Branches remain on matters and D39's main Sigma
+rename restriction remains binding. Native records receive no invented Access
+IDs. Stale saves and repeated creation submissions require distinct safeguards;
+audit failure must roll back the business change.
 
 ### Audit and accountability
 

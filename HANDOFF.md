@@ -27,10 +27,15 @@ historical-profile invariants. Phase 2's read-only `/staff` roster and
 `/staff/[id]` detail are implemented, locally verified and checked. Phase 3's
 Administrator mutations passed independent review and are published. Phase 4
 completes interaction, accessibility and final verification; Task 4.0a overall
-and Phase 4 are checked. The return point is **Task 4.1 — Clients, pending
-independent Task 4.0a review**. Task 4.1 is unchecked and unstarted. This Phase 4
-completion is one local commit with an external patch/evidence package and no
-push. See the
+and Phase 4 are checked and published at `6579799`. The Task 4.1 contract is
+approved in D52–D57; its [dated readiness review](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md)
+preserves the original remote-freshness limitation separately from the later
+owner resolutions. The return point is **independent review of the Task 4.1
+documentation contract**, followed by separately authorized Phase 1 work.
+Task 4.1 and its four implementation phases remain unchecked and unstarted.
+This documentation checkpoint permits no implementation or deployment. The
+database figures above are prior verified evidence, not fresh database checks
+in this documentation-only task. See the
 [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
 for the separate Phase 1 implementation, recovery and deployment checkpoints,
 and the

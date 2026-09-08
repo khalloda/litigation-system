@@ -399,17 +399,20 @@ system client 142 (`ماسترز`). No existing client was renamed or reassigned
 The current branch count is 18. Historical Task 3.5A workbook and quarantine
 evidence remain unchanged.
 
-> **Transformed 23 August 2026, task 2.5.** Three columns are deliberately
-> empty and `db:check` asserts they stay that way: `branch_id`,
-> `legacy_branch_raw` and `contact_person_id`. See "A client can have several
-> branches" below and task 2.5.
+> **Implemented migration-61 state, before Task 4.1:** `branch_id`,
+> `legacy_branch_raw` and `contact_person_id` remain NULL, and current
+> `db:check` still checks those historical transform choices. D55/D57 approve
+> a future optional main-contact workflow and separation of original import
+> evidence from live edits. The client branch columns remain unused. The
+> migration and check changes are not implemented by this documentation task.
 >
 > **`legacy_contact_lawyer_raw`** was added (migration 0027) to preserve
 > `العملاء.contactLawyer` — the firm lawyer responsible for the client, on 123
 > of 318. It has no modelled column: `contact_person_id` references
 > `contacts` and means the client's *own* contact person, not one of ours.
-> Whether the model should gain a `responsible_person_id` is on the review
-> workbook.
+> D54 resolves Task 4.1's scope: display this source text as historical
+> information; defer editable responsible-staff assignment and source-to-staff
+> mapping. The old unanswered workbook row remains historical evidence.
 
 #### A client can have several branches, so the branch belongs on the matter
 
@@ -435,16 +438,56 @@ branch to `matters.branch_id` and the exact Access text to
 `matters.legacy_branch_raw`. The older nullable client columns remain empty;
 they are not used to guess one branch for a client that has several.
 
-**`legacy_branch_raw`** — the original clientBranch text, byte for byte.
+**`matters.legacy_branch_raw`** — the original clientBranch text, byte for byte.
 Not optional. The 32 original values resolve to 15 (**D19**): 9 move to
 `matter_category`, 1 to `matter_type`, 1 to `degree`, 4 are quarantined and 2
 are discarded. That is heavily many-to-one, and without this column the
 original text is unrecoverable — including for the 14 matters whose branch was
 a document heading and is deliberately dropped.
 
-`name_ar` (100% filled), `name_en` (73%), `full_name`, `branch`,
+`name_ar` (100% filled), `name_en` (73%), `full_name`,
 `cash_or_probono`, `status`, `poa_location`, `documents_location`,
 `contact_person_id`, `client_start`, `client_end`.
+
+#### Approved operational model — Task 4.1 unstarted
+
+D52–D57 require separate archive state and database-owned row versions; these
+columns and safeguards do not yet exist on clients/contacts. `status` remains
+business data, never an archive marker. Client archive retains every related
+record, the selected main contact and each contact's individual archive state.
+Parent restoration does not restore separately archived contacts. Require a
+restored parent before contact create/edit/archive/restore. Existing matters
+and their report inclusion remain independent of client archive state.
+
+The optional `contact_person_id` must reference an unarchived contact owned by
+that client. The existing plain foreign key proves only existence; Phase 1
+must add permanent same-client/eligibility enforcement, including concurrency.
+Explicitly clear or replace the selection before archiving that contact.
+Contact reassignment is outside Task 4.1; ordinary edits cannot change
+`contacts.client_id`. Imported ownership evidence remains immutable.
+
+Use a small immutable client/contact import-evidence layer to preserve the
+verified original system/Access ID mapping, staging keys/fingerprints, exact
+source payload and initial transformed values. Separate historical
+reconciliation from current operational invariants. Preserve raw evidence and
+all frozen digests; native records have no invented Access identity. Existing
+actor/event infrastructure records ordinary edits and atomic archive/restore;
+new fields require explicit audit classification. Row versions protect stale
+edits; transactional submission identity prevents replayed creation without
+forbidding legitimate duplicate names. No-op saves preserve values and audit
+state. Do not copy staff-specific name/email uniqueness or alias machinery.
+
+D53's [approved labels](GLOSSARY.md#client-classification--approved-task-41-labels)
+map `Cash` to fee-paying regardless of payment method and both pro bono
+spellings to one operational choice. Historical spellings remain exact;
+unrelated/no-op saves cannot recode them. Blank values remain blank without
+deliberate change. Observed source values are 316 populated, two empty strings
+and zero NULLs; no editing history is inferred from those counts.
+
+The four unchecked phases are in [TASKS.md](../TASKS.md). Their proofs use
+isolated PostgreSQL instances and distinct historical-upgrade/canonical-replay
+profiles. Implementation and project-database deployment remain separately
+authorized work.
 
 ### `client_logos` — 54 rows
 Extracted from an Access Attachment column.
@@ -481,6 +524,13 @@ See `docs/MIGRATION.md` for extraction. **A normal CSV export destroys these
 
 ### `contacts` — 188 rows
 Client contact people. Note `Contacts.Attachments` in Access is **empty**.
+
+`contact_name` is the primary name; `full_name` is a separate source field,
+not an inferred replacement. D55 requires a name for new contacts while
+preserving the six imported unnamed contacts and permitting unrelated edits.
+Ownership is selected when creating a contact under its client and cannot be
+changed through Task 4.1 editing. Main-contact and archive rules above apply
+independently of the firm's historical responsible-lawyer text.
 
 ---
 

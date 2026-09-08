@@ -23,10 +23,14 @@ Phase 1 remains checked and is operationally complete. Phase 2's read-only
 roster and detail are implemented and verified. Phase 3's Administrator
 mutations passed independent review and are published. Phase 4's interaction,
 accessibility and final verification are complete; Task 4.0a is checked.
-Task 4.1 remains unchecked and unstarted. This was not final Access cutover;
-final delta reconciliation remains governed by D43 and D51, without a new owner
-decision. The next return point is **Task 4.1 — Clients, pending independent
-Task 4.0a review**. See the
+Task 4.0a and all four phases are complete and published. Task 4.1's approved
+contract is recorded in D52–D57 and the
+[dated readiness review and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
+Task 4.1 and all four implementation phases remain unchecked and unstarted.
+The next return point is **independent review of the Task 4.1 documentation
+contract**, followed by separately authorized Phase 1 work. No implementation
+or deployment is authorized by this documentation checkpoint. Final Access
+delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
@@ -664,20 +668,22 @@ only ever seen good data is not known to work.
       188 drift with the firm's file, "the target equals what was staged" does
       not.
 
-      **The two empty strings arrived.** `Cash/probono` holds `''` on two
-      clients — typed and cleared — against 316 with a value and **zero**
-      never-entered. That is the NULL-versus-`''` chain complete from Access
-      to the target table, and `db:check` re-proves it every run. A transform
-      that trimmed or coalesced would have made those two indistinguishable
-      from "never entered", and nothing would have looked wrong.
+      **The two empty strings arrived.** `Cash/probono` has 316 populated
+      values, two empty strings and zero NULLs. This proves the stored value
+      distinction, not how the empty strings arose. The current `db:check`
+      compares empty-string counts with staging. D53/D57 require preserving
+      the original per-identity evidence while allowing deliberate future
+      application edits; those check changes are not implemented yet.
 
       **`contactLawyer` preserved byte for byte** in the new
       `clients.legacy_contact_lawyer_raw` — asserted as *identical to
       staging*, not merely present, because a count is satisfied by 123
       trimmed values.
 
-      **THREE THINGS ARE DELIBERATELY NOT SET, and `db:check` asserts they
-      stay empty** so a later transform cannot quietly fill one in:
+      **Historical Task 2.5 transform choices:** the branch and main-contact
+      fields were deliberately not set; cash classification was copied exactly.
+      Current code still checks branch/main-contact NULLs. The approved future
+      contract below does not retrospectively change that migration result:
 
       1. **`branch_id` / `legacy_branch_raw`** — the source column is on the
          **matter**, and 8 of the 12 clients with any branch have several
@@ -692,8 +698,12 @@ only ever seen good data is not known to work.
          not a licence to merge. محكمة/محكمه/مجكمة looked equally obvious and
          needed the firm.
 
-      All three are on the `أسئلة عامة` sheet of the review workbook, which is
-      now 4 questions.
+      Those questions were recorded on the `أسئلة عامة` review sheet.
+      **8 September 2026 owner resolution:** branches remain on matters;
+      D53 settles cash meanings/labels without rewriting source values; D54
+      defers editable responsible-staff assignment; D55 permits an optional
+      same-client, unarchived main contact. The old unanswered workbook rows
+      remain historical evidence; this documentation task does not update them.
 
       **Note for every later transform:** `updated_at` has no database default
       — Prisma's `@updatedAt` is applied by the client — so a raw `INSERT`
@@ -1659,7 +1669,8 @@ only ever seen good data is not known to work.
       decisions, the two hearings using the new `أسرة مصر الجديدة` court, and
       the ten intentional NULL branches reconcile exactly. Permanent checks
       pass 93/93 and two accepted non-writing reconciliations are byte-identical.
-      Task 3.5 is complete; Stage 3 is complete; Stage 4 remains unstarted.
+      At that checkpoint, Task 3.5 and Stage 3 were complete; Stage 4 had not
+      started.
       This application was not the final Access cutover, and Access remains in
       operational use. At that checkpoint the return point was Task 4.0. Task
       4.0 is now complete; the current return point is recorded above and in
@@ -1686,8 +1697,9 @@ than assuming one rule for every workflow. Test with real volumes.
       narrowly attached reasoned `rtl-ok` comments all have permanent positive
       and negative fixtures. Both former multiline gaps are rejecting fixtures;
       the self-test reports zero known gaps. Normal `src` scanning passes
-      without any `src` edit. No core Stage 4 screen has started. **Return
-      point:** Task 4.0a—not Task 4.1.
+      without any `src` edit. At that completion checkpoint no core Stage 4
+      screen had started, and the historical return point was Task 4.0a.
+      The current return point is recorded at the top of this file.
 
 - [x] **4.0a Staff roster management** — approved contract for the 66 internal
       staff identities (23 active and 43 inactive), new hires and identity
@@ -1700,7 +1712,8 @@ than assuming one rule for every workflow. Test with real volumes.
       Phase 1 is operationally complete: migration 61 is deployed and verified
       on project PostgreSQL, with 107/107 permanent historical-profile
       invariants. Phases 2–4 are implemented and verified. Task 4.1 remains
-      unstarted, pending independent review of completed Task 4.0a.
+      unchecked and unstarted under the approved D52–D57 contract. The current
+      return point is independent review of that documentation contract.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1864,10 +1877,78 @@ than assuming one rule for every workflow. Test with real volumes.
         live-region semantics were verified in the browser accessibility tree.
         See the [Phase 4 report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 
-      **Return point:** Task 4.1 — Clients, pending independent Task 4.0a review.
-      No push or Task 4.1 implementation occurred in this completion task.
+      **Historical Phase 4 stop point:** independent Task 4.0a review; no push
+      or Task 4.1 implementation occurred in that completion task. Task 4.0a
+      was subsequently published at `6579799`. The current return point is
+      independent review of the approved Task 4.1 documentation contract.
 
-- [ ] **4.1 Clients** — list, detail, contacts, logo
+- [ ] **4.1 Clients** — approved contract, not implementation (**D52–D57**).
+      Client/contact list, detail and authorized creation/editing; optional main
+      contact; Administrator-only non-cascading archive/restore; existing-logo
+      display and client-name fallback. All four roles view; Litigation
+      Assistant adds/edits; Lawyer and Paralegal remain view-only. Use separate
+      server guards for pages, reads and mutations. PostgreSQL IDs identify
+      records; Access IDs and imported ownership remain historical evidence.
+      Duplicate names stay distinct, branches stay on matters and D39's main
+      Sigma rename restriction remains binding. Contact moves, editable
+      responsible-staff assignment/mapping and Task 4.1a logo mutations are
+      outside scope. See the [readiness evidence and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
+
+  - [ ] **Phase 1 — Database foundation and operational invariants.** Validate
+        and preserve immutable client/contact import identity, source payload,
+        fingerprints, initial values and original ownership. Separate historical
+        reconciliation from authorized live edits/native creation without
+        weakening checks, excluding changed imports or replacing frozen digests.
+        Add provenance, archive and row-version safeguards; enforce same-client,
+        unarchived main contacts and prohibit ordinary ownership changes.
+        Extend permanent checks and Gate 4 accounting; guard the legacy rebuild
+        against use after the operational boundary. Reuse existing atomic
+        actor/event infrastructure with exact new field classifications and
+        repeated-submission protection. Prove mandatory, distinct historical-
+        upgrade and canonical-replay acceptance profiles on isolated PostgreSQL
+        instances. Project-database deployment requires separate authorization.
+
+  - [ ] **Phase 2 — Read-only client/contact screens and existing-logo display.**
+        Implement guarded client list/detail and client-owned contact views;
+        normalized Arabic and retained English-name search, contact-match
+        disclosure, distinct deterministic 25-row pagination, separate business
+        status and archive filters, and clearly labelled archived read-only
+        details for all four roles. Show historical responsible-lawyer text
+        separately from the client's main contact. Apply D53's exact Arabic
+        labels. Preserve all six unnamed contacts without invented names.
+        Display existing logos through a guarded, safe local path resolver;
+        absent/unusable images show the client name. Include loading, empty,
+        invalid-filter, not-found, forbidden and recoverable-error states.
+
+  - [ ] **Phase 3 — Authorized mutations and archive/restore.** Implement client
+        and contact create/edit under the approved matrix; new contacts require
+        a name, while unrelated edits to imported unnamed contacts remain valid.
+        Archive/restore is Administrator-only, non-cascading and confirmed with
+        related-record counts. Parent archival retains main-contact selection
+        and each contact's archive state; parent restoration never restores
+        separately archived contacts. Require parent restoration before every
+        contact create/edit/archive/restore. Explicitly clear/replace a main
+        contact before archiving it; never auto-select or move contacts.
+        Unrelated/no-op saves preserve existing cash spelling and blanks;
+        deliberate classification changes use the approved operational choices.
+        Prove stale-input retention, duplicate-submission handling, no-op
+        preservation, actor attribution and full rollback on audit failure.
+        All mutation/race tests use isolated disposable databases.
+
+  - [ ] **Phase 4 — Final acceptance.** Complete static, permission, audit,
+        reconciliation, concurrency and real-volume checks. Cover 318 clients,
+        188 contacts, duplicate-name identities, clients without contacts and
+        the largest observed client with 378 matters. Under separate local
+        browser authorization, verify Arabic/RTL, keyboard/focus, labels/errors,
+        confirmations, status announcements, 200% zoom, 320-pixel reflow and
+        existing-logo fallback; browser mutations remain isolated. Prove client
+        archive cannot hide existing matters or suppress them from reports.
+        Produce dated acceptance evidence without treating documentation
+        approval, clean replay or isolated proof as deployment authorization.
+
+      **Stop now:** independent review of this documentation commit. Task 4.1
+      and all four phases remain unchecked and unstarted. Implementation,
+      project deployment and D43/D51 final cutover require their own authorization.
 
 - [ ] **4.1a Client logo upload**
       Upload field on the client screen (Administrator and Litigation
