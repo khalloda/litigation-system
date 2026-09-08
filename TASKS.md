@@ -6,24 +6,25 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 7 September 2026:** Stages 2 and 3 are complete. The
+**Current checkpoint — 8 September 2026:** Stages 2 and 3 are complete. The
 independent Task 3.5B evidence review is accepted; migration 60 and the approved
 real application each executed exactly once, all 382 decisions reconciled, and
 the permanent invariant set passed 93/93 at that checkpoint. Task 3.5 is
 complete. This was not the final Access cutover, and the Litigation Department
 continues using Access.
-Task 4.0's structural Arabic/RTL checker is complete. No core Stage 4 screen has
-started. The owner-approved Task 4.0a contract is recorded in D44–D50 and its
+Task 4.0's structural Arabic/RTL checker is complete. The owner-approved
+Task 4.0a contract is recorded in D44–D50 and its
 dated readiness audit is preserved as evidence. Phase 1's database foundation
 and bounded operational-drift correction are implemented and tested. After
 recovery readiness and separate owner authorization, migration 61 was deployed
 and verified on project PostgreSQL: 61 applied, zero pending or unfinished,
 15/15 database checks and 107/107 permanent historical-profile invariants.
-Phase 1 remains checked and is operationally complete. Task 4.0a overall,
-Phases 2–4 and Task 4.1 remain unchecked. This deployment was not final Access
+Phase 1 remains checked and is operationally complete. Phase 2's read-only
+roster and detail are implemented and verified, ready for independent review.
+Task 4.0a overall, Phases 3–4 and Task 4.1 remain unchecked. This deployment was not final Access
 cutover; final delta reconciliation remains governed by D43 and D51, without
-any new owner decision. The exact return point is
-**Task 4.0a Phase 2 — read-only staff roster**.
+any new owner decision. After independent Phase 2 review, the next return point
+is **Task 4.0a Phase 3 — Administrator roster mutations**.
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1695,7 +1696,8 @@ than assuming one rule for every workflow. Test with real volumes.
       but must not create, enable, disable, reset or otherwise manage accounts.
       Phase 1 is operationally complete: migration 61 is deployed and verified
       on project PostgreSQL, with 107/107 permanent historical-profile
-      invariants. Phases 2–4 and Task 4.1 have not started.
+      invariants. Phase 2 is implemented and verified; Phases 3–4 and Task 4.1
+      have not started.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1777,7 +1779,7 @@ than assuming one rule for every workflow. Test with real volumes.
         records the evidence separately from implementation and recovery.
         Access remains in use; this was not final cutover under D43/D51.
 
-  - [ ] **Phase 2 — read-only roster and detail.** Implement `/staff` and the
+  - [x] **Phase 2 — read-only roster and detail.** Implement `/staff` and the
         read-only state of `/staff/[id]` with server-enforced authorization,
         deterministic distinct pagination and query plans tested at real
         volumes. Default to active staff and provide active/former/all,
@@ -1788,6 +1790,21 @@ than assuming one rule for every workflow. Test with real volumes.
         rejected `J → ق` fold. Keep the route contract for `/staff`,
         `/staff/new`, `/staff/[id]` and
         `/staff/[id]/edit`, although mutation routes remain Phase 3.
+
+        **Completed locally, 8 September 2026:** two independently guarded
+        read-only pages; Arabic alias search, active/former/all, team/unassigned
+        and trainee filters; distinct 25-person pagination; stable internal IDs;
+        Administrator-only account-status projection. Focused real-volume and
+        synthetic query tests, all 448 permission decisions, audit, structural
+        RTL and complete static checks pass. Production build and 26 local
+        browser cases pass, including 23 zero-violation accessibility audits,
+        desktop/390/320 layouts, zoom/reflow, focus, loading and error recovery.
+        Project database stays unchanged at migration 61, 15/15 checks and
+        107/107 permanent historical invariants; all 103 table, sequence and
+        catalog fingerprints match. All disposable fixtures are removed.
+        One local implementation commit and external review patch; no push,
+        migration/schema change, Access access or later-phase implementation.
+        See the [Phase 2 report](docs/task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 
   - [ ] **Phase 3 — Administrator roster mutations.** Implement `/staff/new`
         and `/staff/[id]/edit` for create, canonical Arabic rename, application
@@ -1813,7 +1830,8 @@ than assuming one rule for every workflow. Test with real volumes.
         volume and browser evidence, then update the canonical docs and task
         report without marking earlier phases complete retrospectively.
 
-      **Return point:** Task 4.0a Phase 2 — read-only staff roster.
+      **Return point:** independent Phase 2 review, then Task 4.0a Phase 3 —
+      Administrator roster mutations.
 
 - [ ] **4.1 Clients** — list, detail, contacts, logo
 

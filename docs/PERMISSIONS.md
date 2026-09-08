@@ -103,13 +103,15 @@ refused. The database also prevents any account or later person mutation from
 leaving zero usable Administrators. Disable/reactivate replaces deletion, and
 staff roster editing remains future Task 4.0a work.
 
-## Staff roster — database foundation implemented; routes not started
+## Staff roster — read-only routes implemented
 
-`/staff` and `/staff/[id]` require `staffRoster / view`; the existing 448-entry
+`/staff` and `/staff/[id]` require `staff / view`; the existing 448-entry
 matrix grants that permission to Administrator, Litigation Assistant, Lawyer
-and Paralegal. `/staff/new`, `/staff/[id]/edit` and every create, rename,
+and Paralegal. `staff` is the existing executable permission key; the earlier
+`staffRoster` wording was descriptive, not an additional permission area.
+The future `/staff/new`, `/staff/[id]/edit` and every create, rename,
 alias, team, reviewer, deactivate or reactivate mutation require
-`staffRoster / manage`, which is Administrator-only. Hiding a control is not
+`staff / manage`, which is Administrator-only. Hiding a control is not
 authorization: each page, action and route must validate the server session
 independently before reading protected roster data or mutating anything.
 
@@ -128,15 +130,19 @@ person deactivation, not an additional staff-screen account permission;
 person reactivation never grants access. Self-deactivation and any operation
 that would remove the last usable Administrator are refused. The detailed
 identity, alias, team and reviewer contract is D44–D50. Migration 61 implements
-its database boundary, verified only in a separate disposable instance and not
-deployed to the current project database. Runtime direct INSERT/UPDATE/DELETE/
+its database boundary, deployed and verified on project PostgreSQL on 7 September.
+Runtime direct INSERT/UPDATE/DELETE/
 TRUNCATE on the three roster tables and their sequence access are revoked;
 six narrow public gateways require a current usable human Administrator, audit
 context and (for existing records) the expected row version. Private evidence
-and helper access remain denied. No new staff route or permission entry point
-exists yet: Phase 2/3 must supply independent server authorization and negative
-route/action tests. The existing 448 decisions and `/users` boundary passed
-regression unchanged. See the [Phase 1 report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md).
+and helper access remain denied. Phase 2 adds exactly two permission-inventory
+entries: `/staff` and `/staff/[id]`, each with its first awaited server guard.
+The read service independently checks the validated session before querying,
+uses a read-only repeatable-read transaction, and refuses external person IDs.
+No staff action, route handler or mutation capability was added. The existing
+448 decisions and `/users` boundary pass regression unchanged. Source checks
+permanently reject missing guards and mutation entry points in this phase.
+See the [Phase 2 report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 
 ## Audit access — approved UI/capability, not implemented
 

@@ -1376,7 +1376,7 @@ export const run = () => withApprovedMigrationClient(async (database) => databas
     rmSync(d35Root, { force: true, recursive: true });
   }
   console.log(
-    `check:audit self-test — ${prismaModelFailures.length} Prisma schema fixtures plus ${negative.length + 13} semantic/fingerprint/D35 bypass fixtures rejected; the correct AuditEventField model, ${positive.length} focused legitimate fixtures, the complete runtime, ten fingerprinted SQL calls and the approved migration gateway accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
+    `check:audit self-test — ${prismaModelFailures.length} Prisma schema fixtures plus ${negative.length + 13} semantic/fingerprint/D35 bypass fixtures rejected; the correct AuditEventField model, ${positive.length} focused legitimate fixtures, the complete runtime, exactly inventoried SQL calls and the approved migration gateway accepted; all 8 runtime and D35 script extensions discovered; Windows/POSIX test paths classified identically; unguarded JavaScript tooling rejected; the exact generated-Prisma subtree excluded; all disposable files removed.`,
   );
 }
 

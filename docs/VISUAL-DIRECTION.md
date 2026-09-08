@@ -188,12 +188,14 @@ This is Task 3.4 evidence, not a universal component specification and not a
 start on Task 4.0. Staff identity maintenance remains Task 4.0a, and audit
 history remains Task 4.9.
 
-## 8. Staff roster — approved Task 4.0a direction, not implemented
+## 8. Staff roster — read-only Phase 2 implemented; editing deferred
 
-This section still describes future screens. Task 4.0a Phase 1 completed only
-the local database foundation; migration 61 is undeployed, and no staff route,
-layout, interaction or browser evidence exists. The exact return point is
-**Task 4.0a Phase 2—read-only roster, not started.** D50 evidence remains Phase 4.
+Migration 61 is deployed. Phase 2 implements `/staff` and `/staff/[id]` with
+the read-only layout and interactions below. The
+[Phase 2 report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md)
+records focused local browser evidence. Editing, confirmation dialogs and their
+complete D50 acceptance evidence remain Phases 3–4. After independent Phase 2
+review, the next return point is **Task 4.0a Phase 3 — Administrator roster mutations**.
 
 The Arabic-first RTL route set is `/staff`, `/staff/new`, `/staff/[id]` and
 `/staff/[id]/edit`. The roster defaults to the 23 active internal staff and can
@@ -212,8 +214,8 @@ showing only a different canonical name. Pagination is stable, and the same
 person appears once even when several aliases match.
 
 The detail separates identity, organization, aliases and lifecycle. Imported
-aliases are visibly historical and immutable. Application-created aliases may
-offer labelled retire/restore actions with a required reason; neither action is
+aliases are visibly historical and immutable. In Phase 3, application-created
+aliases may offer labelled retire/restore actions with a required reason; neither action is
 called delete. Canonical rename, create, team/reviewer assignment,
 deactivate/reactivate and alias maintenance are distinct Administrator actions,
 not one ambiguous form. Warnings identify the person and explain real
@@ -236,7 +238,8 @@ use, visible focus, programmatic labels/instructions/errors, an error summary
 with focus movement, announced status, non-colour-only meaning, minimum
 44-by-44 CSS-pixel targets, 200% zoom/reflow, and mobile plus desktop RTL. Any
 browser mutation uses only an isolated disposable database. These are approved
-acceptance requirements, not evidence that the screen exists.
+acceptance requirements; the Phase 2 report records which read-only cases were
+verified. It does not complete Phase 4 or verify future mutation dialogs.
 
 ## 9. Audit history — owner-approved direction, deferred
 

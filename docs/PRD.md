@@ -72,22 +72,27 @@ account for an eligible staff identity, correct a username, change a role,
 disable access, reactivate with a new temporary password and issue a temporary
 password reset. All actions are enforced from the validated server session and
 there is no account deletion, self-disablement, self-demotion or
-self-administrative reset. Staff roster and identity maintenance remain the
-separate future Task 4.0a; Task 3.4 never creates or edits a person or alias.
+self-administrative reset. Staff identity maintenance belongs to the separate
+Task 4.0a; Task 3.4 never creates or edits a person or alias.
 
-### Staff roster — Phase 1 database foundation complete; screens not started
+### Staff roster — Phase 2 read-only screens implemented
 
 Migration 61 implements the database portions below and has been deployed
 exactly once to the current project PostgreSQL database. The database now has
 61 applied migrations, zero pending and zero unfinished. `db:verify` passed
 15/15 and the `historical-full-state-upgrade` profile passed 107/107 invariants.
 Task 4.0a Phase 1 is operationally complete; overall Task 4.0a remains
-incomplete. No staff routes, service actions or UI have been implemented. The
-exact next return point is **Task 4.0a Phase 2 — read-only staff roster**;
-Phase 2 has not started. The Litigation Department continues using Access;
+incomplete. Phase 2 supplies the read-only `/staff` and `/staff/[id]` pages,
+independent server guards, Arabic alias search, filters and distinct paging.
+There are no staff mutation routes or actions. After independent Phase 2 review,
+the next return point is **Task 4.0a Phase 3 — Administrator roster mutations**.
+Phase 4 and Task 4.1 remain unstarted. The Litigation Department continues using
+Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [migration-61 deployment report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
+The [Phase 2 report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md)
+records the read-only query, authorization, database-preservation and browser evidence.
 
 Task 4.0a covers the 66 internal staff identities now in PostgreSQL: 23 active
 and 43 inactive. The 71 external people stay available to historical legal

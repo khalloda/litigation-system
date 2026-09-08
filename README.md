@@ -9,17 +9,21 @@ real application each executed exactly once against the local project
 PostgreSQL database, producing 1,744 matters and 13,382 hearings while retaining
 the original quarantine and source evidence. This was not the final Access
 cutover; the Litigation Department continues to use Access. Task 4.0's
-structural Arabic/RTL checker is complete, but no core Stage 4 screen has
-started. Task 4.0a Phase 1's D44–D49 database foundation is **deployed and
+structural Arabic/RTL checker is complete. Task 4.0a Phase 1's D44–D49 database
+foundation is **deployed and
 verified**: project PostgreSQL is at migration 61, with 15/15 database checks
 and 107/107 permanent historical-profile invariants. Phase 1 is operationally
 complete. Its earlier disposable proof passed 93 checks before historical
-upgrade and 107 after; canonical replay passed 89. Task 4.0a itself, Phases 2–4
-and Task 4.1 remain incomplete; no staff route/UI exists.
+upgrade and 107 after; canonical replay passed 89. Phase 2 implements the
+read-only `/staff` roster and `/staff/[id]` detail for all four roles, with
+distinct alias search, filters and pagination. Task 4.0a itself, Phases 3–4
+and Task 4.1 remain incomplete. See the
+[Phase 2 implementation and verification report](docs/task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 The Access-source derivative disposition is recorded in
 [D51](docs/DECISIONS.md#d51--access-source-derivative-and-migration-61-readiness)
 with its [dated evidence summary](docs/reviews/2026-09-07-access-source-identity-discrepancy.md).
-The exact return point is **Task 4.0a Phase 2 — read-only staff roster**.
+The next return point, after independent Phase 2 review, is
+**Task 4.0a Phase 3 — Administrator roster mutations**.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).

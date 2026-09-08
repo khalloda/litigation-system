@@ -284,9 +284,15 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
       ).rows[0]?.count,
       '0',
     );
-    await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
+    // Phase 2 can reuse an isolated, restored migration-61 template without
+    // replaying migrations. The cluster identity guard above remains mandatory.
+    const restored = process.argv.includes('--restored-fixture');
+    assert.ok(process.argv.slice(2).every((arg) => arg === '--restored-fixture'));
+    await admin.query(
+      `CREATE DATABASE ${identifier(fixtureName)}${restored ? ' TEMPLATE litigation' : ''}`,
+    );
     created = true;
-    migrate(fixtureUrl.toString());
+    if (!restored) migrate(fixtureUrl.toString());
     const database = createDatabaseClient(runtimeUrl.toString());
     const migrationDatabase = new PrismaClient({
       adapter: new PrismaPg({ connectionString: fixtureUrl.toString() }),

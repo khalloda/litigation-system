@@ -481,7 +481,8 @@ PostgreSQL 17.11 has 61 applied migrations, zero pending or unfinished and one
 retained approved historical rollback. The deployment command ran exactly once;
 migration 61 has one completed ledger entry. Post-deployment `db:verify` passed
 15/15 and the permanent historical profile passed 107/107. Phase 1 is
-operationally complete; no staff route, service action or UI has been built.
+operationally complete. Phase 2 now reads the deployed boundary through the
+staff roster and detail pages; no staff mutation action has been built.
 The [deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
 identifies the retained recovery and deployment evidence. The project container
 was unchanged. The 103 current tables preserve all 97 prior projections:
@@ -489,8 +490,16 @@ was unchanged. The 103 current tables preserve all 97 prior projections:
 six new boundary tables. All 54 logos remain intact; the staff-change ledger
 has zero rows at deployment acceptance.
 
-The exact next return point is **Task 4.0a Phase 2 — read-only staff roster**.
-Task 4.0a overall, Phases 2–4 and Task 4.1 remain unchecked. The Litigation
+Phase 2 adds no database change. Its read-only project verification retains all
+103 tables, sequence state and catalog fingerprints; migration state remains
+61 applied, zero pending and zero unfinished, with 15/15 checks and 107/107
+historical invariants. All login, query-fixture setup and error simulation run
+in disposable PostgreSQL instances restored in memory, without migration replay.
+See the [Phase 2 report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
+
+After independent Phase 2 review, the next return point is
+**Task 4.0a Phase 3 — Administrator roster mutations**.
+Task 4.0a overall, Phases 3–4 and Task 4.1 remain unchecked. The Litigation
 Department continues using Access; final delta reconciliation and cutover
 remain separate work under D43 and D51.
 

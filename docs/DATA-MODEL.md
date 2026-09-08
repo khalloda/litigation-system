@@ -110,8 +110,19 @@ representations are now `people.row_version`, `alias_epoch`,
 audit-actor reference); `person_name_alias.is_retired` and `retirement_reason`;
 and `lookup_team.row_version`. They are deployed in project PostgreSQL at
 migration 61. Post-deployment verification passed the permanent historical
-profile at 107/107; Phase 1 is operationally complete. No staff route or UI
-exists yet. See the [deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
+profile at 107/107; Phase 1 is operationally complete. Phase 2 now reads this
+unchanged schema through `/staff` and `/staff/[id]`. See the
+[deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
+
+The roster query selects `people.is_staff`, searches aliases with `EXISTS`,
+and orders by Arabic name then stable `people.id`; alias matches cannot multiply
+rows or page counts. Count, page and filter choices share one read-only snapshot.
+The detail retains retired aliases as evidence. Imported alias classification
+uses the immutable imported-person origin and migration actor ID 1 (permanently
+pinned by migration 53), proven against the private migration-61 alias snapshot.
+Runtime receives no additional private-evidence or audit-actor access. Account
+status is selected only for an Administrator; other roles receive no account
+field. No schema, migration, grant or invariant change is part of Phase 2.
 
 Four private immutable snapshots preserve all 137 original people (135 imported
 and two native), all 350 aliases (348 imported), both teams and the source

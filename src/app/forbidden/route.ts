@@ -41,6 +41,12 @@ function denialDocument(): string {
         padding: 2rem;
         text-align: center;
       }
+      a {
+        display: inline-flex;
+        align-items: center;
+        min-inline-size: 44px;
+        min-block-size: 44px;
+      }
       a:focus-visible {
         outline: 0.2rem solid currentColor;
         outline-offset: 0.2rem;

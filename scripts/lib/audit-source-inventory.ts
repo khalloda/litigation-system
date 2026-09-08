@@ -18,6 +18,11 @@ export const AUDIT_GATEWAY = 'src/lib/audit.ts';
 export const AUDIT_AUTH_SERVICE = 'src/lib/auth/service.ts';
 export const AUDIT_USER_MANAGEMENT_SERVICE = 'src/lib/auth/user-management.ts';
 export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
+const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
+// Binds the query builders as well as the eight call sites. There is no new
+// audit writer, context helper, privileged connection or runtime exception.
+const STAFF_READ_SERVICE_SHA256 =
+  '9f30829fafcd76e7e9781841d3fc4444668363b433902d3a59022afc3f0d7d00';
 
 const GENERATED_EXCLUSION = 'src/generated/prisma/';
 const REVIEWED_NON_CODE_EXTENSIONS = new Set(['.css', '.png']);
@@ -77,6 +82,46 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    STAFF_READ_SERVICE,
+    'readSnapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    STAFF_READ_SERVICE,
+    'readStaffRoster',
+    'a2857ccdf4e67aa9c5515a221c20d098a4fab123e2e720496c2e249b0465d136',
+  ],
+  [
+    STAFF_READ_SERVICE,
+    'readStaffRoster',
+    'fec188c5e88fd91d3bdb7cc1d37d3b7361f27a8deda431b6df21db2afd554b07',
+  ],
+  [
+    STAFF_READ_SERVICE,
+    'readStaffRoster',
+    '7b732552030253d85fa5b6db9139379aad7c117441ce98003b1ed6c63f7c1791',
+  ],
+  [
+    STAFF_READ_SERVICE,
+    'readStaffDetail',
+    '923063aa6e063effe61ddf0f257db9901d9c940e414b5e2b5504a297b441cc54',
+  ],
+  [
+    STAFF_READ_SERVICE,
+    'readStaffDetail',
+    'fab9b790f963fc8cdf10635d2c21f5ea7dec629c4ffc80840ddb2064b5fe1840',
+  ],
+  [
+    STAFF_READ_SERVICE,
+    'readStaffDetail',
+    '340ade77bb66b3071d7b5311c8b525bfaa52ae67511839e9d6c1d8a516994269',
+  ],
+  [
+    STAFF_READ_SERVICE,
+    'readStaffDetail',
+    'd0e04f38f1ffb4554bf3e96007f40f8c0431332ad6c2513ea53ab4ed5dc26681',
+  ],
   [
     AUDIT_GATEWAY,
     'setHumanAuditContext',
@@ -1425,6 +1470,16 @@ export function auditRuntimeSourceFailures(
     const isUserManagementService = absolute === userManagementServiceAbsolute;
     const isReviewedAuthService = isAuthService || isUserManagementService;
     const isDatabaseModule = absolute === databaseAbsolute;
+    const isStaffReadService = source.path === STAFF_READ_SERVICE;
+    if (
+      isStaffReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        STAFF_READ_SERVICE_SHA256
+    ) {
+      failures.add(
+        `${STAFF_READ_SERVICE}: read-only query closure differs from reviewed inventory`,
+      );
+    }
     const add = (node: ts.Node, message: string): void => {
       failures.add(`${source.path}:${sourceLocation(sourceFile, node)} ${message}`);
     };
@@ -1684,7 +1739,7 @@ export function auditRuntimeSourceFailures(
             argument.tag.name.text === 'sql' &&
             prismaSymbol !== undefined &&
             resolvedSymbol(checker, argument.tag.expression) === prismaSymbol;
-          if (!(isGateway || isReviewedAuthService) || !reviewedSql) {
+          if (!(isGateway || isReviewedAuthService || isStaffReadService) || !reviewedSql) {
             add(node, `${method} is outside the exact reviewed static Prisma.sql call sites`);
           } else {
             rawCalls.push({
@@ -1954,11 +2009,16 @@ export function auditRuntimeSourceFailures(
       );
     }
     for (const [file, functionName] of REVIEWED_RAW_SQL_CALLS) {
+      const expectedCount = REVIEWED_RAW_SQL_CALLS.filter(
+        ([f, name]) => f === file && name === functionName,
+      ).length;
       if (
         rawCalls.filter((call) => call.file === file && call.functionName === functionName)
-          .length !== 1
+          .length !== expectedCount
       ) {
-        failures.add(`${file} expected one reviewed Prisma.sql call in ${functionName}`);
+        failures.add(
+          `${file} expected ${expectedCount} reviewed Prisma.sql call(s) in ${functionName}`,
+        );
       }
     }
     if (rawCalls.length !== REVIEWED_RAW_SQL_CALLS.length) {
