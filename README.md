@@ -19,13 +19,15 @@ read-only `/staff` roster and `/staff/[id]` detail for all four roles, with
 distinct alias search, filters and pagination. Phase 3 adds Administrator-only
 staff creation, editing, canonical rename, native alias lifecycle, team/reviewer
 assignment and active/former transitions through the existing migration-61
-gateways. Task 4.0a itself, Phase 4 and Task 4.1 remain incomplete. See the
-[Phase 3 implementation and verification report](docs/task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md).
+gateways. Task 4.0a is locally complete, including Phase 4 browser interaction,
+accessibility and final verification. See the
+[Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md)
+for the final browser matrix, five focused accessibility corrections, regression
+results and project-preservation evidence. Task 4.1 remains unstarted.
 The Access-source derivative disposition is recorded in
 [D51](docs/DECISIONS.md#d51--access-source-derivative-and-migration-61-readiness)
 with its [dated evidence summary](docs/reviews/2026-09-07-access-source-identity-discrepancy.md).
-The next return point, after independent Phase 3 review, is
-**Task 4.0a Phase 4 — browser interaction, accessibility and final evidence**.
+The next return point is **Task 4.1 — Clients, pending independent Task 4.0a review**.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
@@ -165,9 +167,9 @@ are in `docs/DATABASE.md`.
 npm run check
 ```
 
-That runs nine checks in one sequence: TypeScript, ESLint, formatting,
+That runs ten checks in one sequence: TypeScript, ESLint, formatting,
 Arabic/RTL rules, authorization inventory, audit structure, user-management
-structure, Git-ignore/storage rules and file encoding. All nine must pass.
+structure, staff structure, Git-ignore/storage rules and file encoding. All ten must pass.
 `npm run format` fixes formatting automatically; `npm run lint:fix` fixes what
 ESLint can fix.
 

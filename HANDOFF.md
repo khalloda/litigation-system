@@ -24,20 +24,22 @@ Arabic/RTL checker is complete. Task 4.0a Phase 1 is deployed, verified and
 operationally complete: project PostgreSQL 17.11 has 61 applied migrations,
 zero pending or unfinished, 15/15 database checks and 107/107 permanent
 historical-profile invariants. Phase 2's read-only `/staff` roster and
-`/staff/[id]` detail are implemented, locally verified and checked. Task 4.0a
-overall, Phase 4 and Task 4.1 remain unchecked. Phase 3's Administrator mutations
-are implemented and locally verified through the existing migration-61 gateways.
-The return point is **independent Phase 3 review, followed by Task 4.0a Phase 4 —
-browser interaction, accessibility and final evidence**. Phase 4 and Task 4.1
-are unstarted. The single Phase 3 implementation commit is local; no push was
-authorized. See the
+`/staff/[id]` detail are implemented, locally verified and checked. Phase 3's
+Administrator mutations passed independent review and are published. Phase 4
+completes interaction, accessibility and final verification; Task 4.0a overall
+and Phase 4 are checked. The return point is **Task 4.1 — Clients, pending
+independent Task 4.0a review**. Task 4.1 is unchecked and unstarted. This Phase 4
+completion is one local commit with an external patch/evidence package and no
+push. See the
 [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
 for the separate Phase 1 implementation, recovery and deployment checkpoints,
 and the
 [Phase 2 implementation report](docs/task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md)
 for its read-only implementation and local verification, and the
 [Phase 3 report](docs/task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
-for mutation, concurrency, browser, audit and preservation evidence. The Litigation
+for mutation, concurrency, browser, audit and preservation evidence, and the
+[Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md)
+for final acceptance and artifact hashes. The Litigation
 Department continues using Access; this is not final cutover. Final delta
 reconciliation remains governed by D43 and D51. D51's
 historical source identity and derivative disposition remain unchanged; the

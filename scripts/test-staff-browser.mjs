@@ -35,6 +35,13 @@ import {
 } from '../src/lib/audit-metadata.ts';
 import { t } from '../src/strings.ts';
 import { proveStaffMutationBrowser } from './lib/staff-mutation-browser.mjs';
+import { proveStaffInteractions } from './lib/staff-interaction-browser.mjs';
+import {
+  staffZoomExtension,
+  proveStaffBrowserZoom,
+  staffAccessibilityTree,
+  staffComputedTargets,
+} from './lib/staff-accessibility-browser.mjs';
 
 const root = process.cwd();
 const output = resolve(process.env.STAFF_EVIDENCE_DIR ?? 'test-results/staff');
@@ -153,6 +160,7 @@ await withIsolatedPostgres(async (fixture) => {
       NEXT_TELEMETRY_DISABLED: '1',
     };
     delete environment.MIGRATION_DATABASE_URL;
+    delete environment.POSTGRES_PASSWORD;
     delete environment.AUTH_URL;
     delete environment.NEXTAUTH_URL;
     // No source .env is copied. The production process receives only the
@@ -189,16 +197,41 @@ await withIsolatedPostgres(async (fixture) => {
       await new Promise((res) => setTimeout(res, 200));
       if (i === 99) throw new Error('isolated Next server readiness failed');
     }
-    browser = await chromium.launch({
+    const extension = staffZoomExtension(mirror);
+    const browserEnvironment = { ...process.env };
+    for (const key of Object.keys(browserEnvironment))
+      if (/PASSWORD|TOKEN|SECRET|API_KEY|DATABASE_URL/iu.test(key)) delete browserEnvironment[key];
+    const context = await chromium.launchPersistentContext(join(mirror, 'browser-profile'), {
       headless: true,
       executablePath: process.env.STAFF_CHROMIUM_EXECUTABLE,
-    });
-    const evidence = [];
-    const remoteRequests = [];
-    const context = await browser.newContext({
+      ignoreDefaultArgs: ['--disable-extensions'],
+      args: ['--disable-extensions-except=' + extension, '--load-extension=' + extension],
       viewport: { width: 1440, height: 1000 },
       deviceScaleFactor: 1,
+      env: browserEnvironment,
     });
+    browser = context.browser();
+    const evidence = [];
+    const remoteRequests = [];
+    writeFileSync(
+      join(output, 'application-isolation.json'),
+      JSON.stringify(
+        {
+          process: next.child.pid,
+          base,
+          container: fixture.container,
+          databaseCluster: fixture.clusterId,
+          projectCluster: fixture.sourceClusterId,
+          runtimeHost: new URL(environment.DATABASE_URL).hostname,
+          runtimePort: new URL(environment.DATABASE_URL).port,
+          runtimePrincipal: new URL(environment.DATABASE_URL).username,
+          migrationCredentialPresent: Object.hasOwn(environment, 'MIGRATION_DATABASE_URL'),
+          sourceEnvironmentCopied: false,
+        },
+        null,
+        2,
+      ),
+    );
     await context.route('**/*', (route) => {
       const url = new URL(route.request().url());
       if (['localhost', '127.0.0.1'].includes(url.hostname)) return route.continue();
@@ -210,9 +243,60 @@ await withIsolatedPostgres(async (fixture) => {
     // Wait for local navigation to settle before asserting keyboard/DOM state.
     const goto = (url) => page.goto(url, { waitUntil: 'networkidle' });
     const screenshot = async (name) => {
-      await page.screenshot({ path: join(output, name + '.png'), fullPage: true });
+      const fullPage = (await page.getByRole('dialog').count()) === 0;
+      if ((await page.evaluate(() => devicePixelRatio)) !== 1) {
+        // Playwright's configured DPR remains 1 during true Chrome tab zoom.
+        // Capture the live CDP surface without its emulation/clip adjustments.
+        const cdp = await context.newCDPSession(page);
+        try {
+          const layout = await cdp.send('Page.getLayoutMetrics');
+          // captureScreenshot's clip uses device-independent surface pixels;
+          // CSS metrics are smaller by the real tab-zoom factor.
+          const area = fullPage
+            ? layout.contentSize
+            : {
+                x: layout.visualViewport.pageX,
+                y: layout.visualViewport.pageY,
+                width: layout.visualViewport.clientWidth,
+                height: layout.visualViewport.clientHeight,
+              };
+          const { data } = await cdp.send('Page.captureScreenshot', {
+            format: 'png',
+            fromSurface: true,
+            captureBeyondViewport: fullPage,
+            ...(fullPage ? { clip: { ...area, scale: 1 } } : {}),
+          });
+          const png = Buffer.from(data, 'base64');
+          assert.equal(png.readUInt32BE(16), Math.ceil(area.width), 'zoom capture width');
+          assert.equal(png.readUInt32BE(20), Math.ceil(area.height), 'zoom capture height');
+          writeFileSync(join(output, name + '.png'), png);
+          writeFileSync(
+            join(output, name + '-capture.json'),
+            JSON.stringify(
+              {
+                name,
+                area,
+                cssViewport: layout.cssVisualViewport,
+                pngWidth: png.readUInt32BE(16),
+                pngHeight: png.readUInt32BE(20),
+              },
+              null,
+              2,
+            ),
+          );
+        } finally {
+          await cdp.detach();
+        }
+        return;
+      }
+      await page.screenshot({
+        path: join(output, name + '.png'),
+        fullPage,
+      });
     };
-    const audit = async (name) => {
+    let auditAttempt = 0;
+    const auditSingle = async (name) => {
+      auditAttempt++;
       await page.addScriptTag({ path: axePath });
       const results = await page.evaluate(async () =>
         window.axe.run(document, {
@@ -221,6 +305,14 @@ await withIsolatedPostgres(async (fixture) => {
       );
       evidence.push({
         name,
+        viewport: await page.evaluate(() => ({ width: innerWidth, height: innerHeight })),
+        targets: await staffComputedTargets(page),
+        accessibilityTree: await staffAccessibilityTree(context, page, (tree) =>
+          writeFileSync(
+            join(output, 'accessibility-tree-' + String(auditAttempt).padStart(3, '0') + '.json'),
+            JSON.stringify({ name, tree }, null, 2),
+          ),
+        ),
         axeViolations: results.violations.map((v) => ({
           id: v.id,
           impact: v.impact,
@@ -234,28 +326,37 @@ await withIsolatedPostgres(async (fixture) => {
       );
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
       assert.equal(await page.locator('html').getAttribute('lang'), 'ar');
+      assert.deepEqual(
+        await page
+          .locator('[role="status"], [role="alert"]')
+          .evaluateAll((regions) =>
+            regions
+              .filter((region) => region.closest('[aria-busy="true"]'))
+              .map((region) => region.textContent),
+          ),
+        [],
+        'live feedback must not be deferred by a busy ancestor',
+      );
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
         true,
         name + ' horizontal overflow',
       );
-      const small = await page
-        .locator('main a, main button, main input, main select, main textarea')
-        .evaluateAll((elements) =>
-          elements
-            .filter((el) => {
-              // Use CSS layout dimensions so a clipped 1px skip link does not
-              // become a spurious 2px target during the separate zoom check.
-              return (
-                el.offsetWidth > 1 &&
-                el.offsetHeight > 1 &&
-                (el.offsetWidth < 44 || el.offsetHeight < 44)
-              );
-            })
-            .map((el) => ({ tag: el.tagName, text: el.textContent })),
-        );
-      assert.deepEqual(small, [], name + ' targets below 44px');
+      await screenshot('acceptance-' + String(evidence.length).padStart(3, '0'));
     };
+    const audit = async (name, { variants = true } = {}) => {
+      await auditSingle(name);
+      if (!variants) return;
+      const original = page.viewportSize();
+      for (const width of [1440, 390, 320]) {
+        if (width === original.width) continue;
+        await page.setViewportSize({ width, height: 1000 });
+        await auditSingle(name + ' reflow ' + width);
+      }
+      await page.setViewportSize(original);
+    };
+    const nativeZoom = (name) =>
+      proveStaffBrowserZoom({ context, page, audit, screenshot, evidence, name });
     await goto(base + '/staff');
     await page.waitForURL('**/login');
     evidence.push({ name: 'unauthenticated roster', redirect: 'login' });
@@ -368,17 +469,11 @@ await withIsolatedPostgres(async (fixture) => {
       await audit('detail ' + width);
       await screenshot('detail-' + width);
     }
-    // A 1440px browser zoomed to 200% provides 720 CSS px. Verify both that
-    // reflow width and an additional 2x CSS zoom pass on the actual page.
-    await page.setViewportSize({ width: 720, height: 500 });
-    await goto(base + '/staff');
-    await audit('200-percent equivalent viewport');
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.evaluate(() => {
-      document.documentElement.style.zoom = '2';
-    });
-    await audit('200-percent CSS zoom');
-    await screenshot('roster-200-percent');
+    await goto(base + '/staff');
+    await nativeZoom('roster');
+    await goto(base + `/staff/${administrator.personId}`);
+    await nativeZoom('staff-detail');
     await goto(base + '/staff?q=لا-توجد-نتيجة');
     await page.getByRole('heading', { name: t.common.noResults, exact: true }).waitFor();
     await audit('empty results');
@@ -433,6 +528,7 @@ await withIsolatedPostgres(async (fixture) => {
           await db.query('LOCK TABLE public.person_name_alias IN ACCESS EXCLUSIVE MODE');
           await page.goto(base + '/staff?q=احمد', { waitUntil: 'commit' });
           await page.getByRole('status').filter({ hasText: t.common.loading }).waitFor();
+          await audit('streaming loading state');
           await screenshot('loading');
         } finally {
           await db.query('ROLLBACK');
@@ -442,7 +538,96 @@ await withIsolatedPostgres(async (fixture) => {
     );
     await page.locator('#staff-results').waitFor();
     evidence.push({ name: 'streaming loading and recovered database error', passed: true });
+    const capturedActions = new Map();
+    const captureAction = (request) => {
+      if (request.method() !== 'POST' || !request.headers()['next-action']) return;
+      const path = new URL(request.url()).pathname;
+      if (!path.startsWith('/staff')) return;
+      const key = request.headers()['next-action'];
+      if (capturedActions.has(key)) return;
+      capturedActions.set(key, {
+        request,
+        acceptedForAdministrator: false,
+        path,
+        headers: {
+          'next-action': key,
+          'content-type': request.headers()['content-type'],
+          origin: base,
+        },
+        data: Buffer.from(request.postDataBuffer()),
+      });
+    };
+    const captureResponse = (response) => {
+      const entry = capturedActions.get(response.request().headers()['next-action']);
+      if (entry?.request === response.request())
+        entry.acceptedForAdministrator = response.status() === 200;
+    };
+    page.on('request', captureAction);
+    page.on('response', captureResponse);
     await proveStaffMutationBrowser({
+      page,
+      context,
+      base,
+      fixture,
+      accounts,
+      login,
+      audit,
+      screenshot,
+      evidence,
+      nativeZoom,
+    });
+    page.off('request', captureAction);
+    page.off('response', captureResponse);
+    assert.equal(capturedActions.size, 9, 'all nine real staff actions must be captured');
+    assert.ok(
+      [...capturedActions.values()].every(
+        (entry) => entry.acceptedForAdministrator && entry.data.some((byte) => byte !== 0),
+      ),
+      'every replay must retain a valid action body decoded for the Administrator',
+    );
+    try {
+      for (const account of accounts.filter((item) => item.roleCode !== 'Administrator')) {
+        await login(account);
+        const before = await withApprovedMigrationClient(staffReadOnlyState, {
+          databaseUrl: fixture.migrationUrl,
+        });
+        for (const action of capturedActions.values()) {
+          const response = await context.request.post(base + action.path, {
+            headers: action.headers,
+            data: action.data,
+          });
+          assert.ok(response.status() >= 400);
+          const body = await response.text();
+          for (const protectedField of [
+            'nameAr',
+            'rowVersion',
+            'password_hash',
+            'session_version',
+            'isEnabled',
+          ])
+            assert.equal(
+              body.includes(protectedField),
+              false,
+              'denial must not disclose protected state',
+            );
+        }
+        assert.deepEqual(
+          await withApprovedMigrationClient(staffReadOnlyState, {
+            databaseUrl: fixture.migrationUrl,
+          }),
+          before,
+        );
+        evidence.push({
+          name: 'all nine crafted staff actions denied ' + account.roleCode,
+          denied: 9,
+          unchanged: true,
+        });
+      }
+    } finally {
+      for (const action of capturedActions.values()) action.data.fill(0);
+      capturedActions.clear();
+    }
+    await proveStaffInteractions({
       page,
       context,
       base,
@@ -454,6 +639,34 @@ await withIsolatedPostgres(async (fixture) => {
       evidence,
     });
     assert.deepEqual(remoteRequests, []);
+    for (const name of [
+      'roster native zoom contract',
+      'staff-detail native zoom contract',
+      'staff-create native zoom contract',
+      'staff-edit native zoom contract',
+      'staff-confirmation native zoom contract',
+      'complete staff keyboard workflow',
+      'keyboard combined filters and preserved distinct pagination',
+      'slow create pending feedback',
+      'enabled rapid double activation',
+      'unchanged save status',
+      'retirement reason validation',
+      'restoration reason validation',
+      'employment restored while linked account remains disabled',
+      'all nine crafted staff actions denied Lawyer',
+      'all nine crafted staff actions denied Litigation Assistant',
+      'all nine crafted staff actions denied Paralegal',
+      'actual old browser session denied after deactivation and after employment-only reactivation',
+    ])
+      assert.equal(
+        evidence.filter((item) => item.name === name).length,
+        1,
+        'missing or duplicated required proof: ' + name,
+      );
+    assert.ok(
+      evidence.filter((item) => item.axeViolations).length >= 150,
+      'complete state audit matrix required',
+    );
     writeFileSync(
       join(output, 'browser-evidence.json'),
       JSON.stringify(

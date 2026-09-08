@@ -81,17 +81,17 @@ Migration 61 implements the database portions below and has been deployed
 exactly once to the current project PostgreSQL database. The database now has
 61 applied migrations, zero pending and zero unfinished. `db:verify` passed
 15/15 and the `historical-full-state-upgrade` profile passed 107/107 invariants.
-Task 4.0a Phase 1 is operationally complete; overall Task 4.0a remains
-incomplete. Phase 2 supplies the read-only `/staff` and `/staff/[id]` pages,
+Task 4.0a is locally complete; Phase 1 is operationally complete.
+Phase 2 supplies the read-only `/staff` and `/staff/[id]` pages,
 independent server guards, Arabic alias search, filters and distinct paging.
 Phase 3 supplies guarded `/staff/new` and `/staff/[id]/edit` pages and nine
 Administrator actions for creation, ordinary editing, canonical rename, native
 alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existing
 migration-61 gateways enforce identity, concurrency, audit and account safety.
-No schema change was needed. After independent Phase 3 review, the next return
-point is **Task 4.0a Phase 4 — browser interaction, accessibility and final evidence**.
-Phase 4 and Task 4.1 remain unstarted. The Litigation Department continues using
-Access;
+No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
+genuine browser zoom, reflow, visual and regression acceptance. The next return
+point is **Task 4.1 — Clients, pending independent Task 4.0a review**.
+Task 4.1 remains unstarted. The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [migration-61 deployment report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
@@ -99,6 +99,10 @@ The [Phase 2 report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-r
 records the read-only query, authorization, database-preservation and browser evidence.
 The [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
 records mutation and regression acceptance, including the legacy audit-fixture limitation.
+The [Phase 4 report](task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md)
+records final acceptance, current migration-61 audit and separate event proof,
+project preservation and the explicit limitation that screen-reader speech was
+not tested.
 
 Task 4.0a covers the 66 internal staff identities now in PostgreSQL: 23 active
 and 43 inactive. The 71 external people stay available to historical legal

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { t } from '../../src/strings.ts';
 import { withApprovedMigrationClient } from './migration-principal.ts';
 import { staffReadOnlyState } from './staff-read-only-state.ts';
+import { staffDialogKeyboard } from './staff-accessibility-browser.mjs';
 
 /** Runs only inside test-staff-browser's owned full-state fixture/browser. */
 export async function proveStaffMutationBrowser({
@@ -14,6 +15,7 @@ export async function proveStaffMutationBrowser({
   audit,
   screenshot,
   evidence,
+  nativeZoom,
 }) {
   const goto = (path) => page.goto(base + path, { waitUntil: 'networkidle' });
   const section = (title) => page.getByRole('region', { name: title, exact: true });
@@ -23,11 +25,16 @@ export async function proveStaffMutationBrowser({
     const dialog = page.getByRole('dialog');
     await dialog.waitFor();
     assert.equal(await page.locator(':focus').textContent(), t.staff.manage.cancel);
+    evidence.push({
+      name: 'confirmation keyboard containment',
+      focus: await staffDialogKeyboard(page),
+    });
     await dialog.getByRole('button', { name: t.staff.manage.confirm, exact: true }).click();
   };
   const admin = accounts.find((account) => account.roleCode === 'Administrator');
   await login(admin);
   await goto('/staff/new');
+  await nativeZoom('staff-create');
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 });
     await audit('staff creation ' + width);
@@ -48,6 +55,7 @@ export async function proveStaffMutationBrowser({
   assert.equal(await page.locator(':focus').textContent(), t.staff.manage.create);
   await page.keyboard.press('Enter');
   await page.getByRole('alert').waitFor();
+  await page.locator('[role="alert"]:focus').waitFor({ timeout: 5000 });
   assert.equal(await page.locator(':focus').getAttribute('role'), 'alert');
   await audit('staff focused validation summary');
   await screenshot('staff-validation');
@@ -69,7 +77,7 @@ export async function proveStaffMutationBrowser({
           'content-type': request.headers()['content-type'],
           origin: base,
         },
-        data: request.postDataBuffer(),
+        data: Buffer.from(request.postDataBuffer()),
       };
   };
   page.on('request', capture);
@@ -87,7 +95,7 @@ export async function proveStaffMutationBrowser({
   await screenshot('staff-created');
 
   await goto('/staff/new');
-  await page.getByLabel(t.staff.name, { exact: true }).fill('اختبار متصفح للموظف TEST ONLY');
+  await page.getByLabel(t.staff.name, { exact: true }).fill('إِختبار متصفح للموظف TEST ONLY');
   await page.getByRole('button', { name: t.staff.manage.create, exact: true }).click();
   await page
     .getByRole('alert')
@@ -95,7 +103,7 @@ export async function proveStaffMutationBrowser({
     .waitFor();
   assert.equal(
     await page.getByLabel(t.staff.name, { exact: true }).inputValue(),
-    'اختبار متصفح للموظف TEST ONLY',
+    'إِختبار متصفح للموظف TEST ONLY',
   );
   await audit('duplicate identity Arabic conflict');
   await screenshot('staff-duplicate-name');
@@ -115,14 +123,7 @@ export async function proveStaffMutationBrowser({
     await audit('staff editing ' + width);
     await screenshot('staff-edit-' + width);
   }
-  await page.setViewportSize({ width: 720, height: 600 });
-  await audit('staff editing 200 percent equivalent viewport');
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.evaluate(() => {
-    document.documentElement.style.zoom = '2';
-  });
-  await audit('staff editing 200 percent CSS zoom');
-  await screenshot('staff-edit-200-percent');
+  await nativeZoom('staff-edit');
   await goto(`/staff/${personId}/edit`);
   const update = section(t.staff.manage.update);
   await update.getByLabel(t.staff.englishName, { exact: true }).fill('BROWSER UPDATED');
@@ -134,6 +135,7 @@ export async function proveStaffMutationBrowser({
   await rename.getByLabel(t.staff.name, { exact: true }).fill('اختبار متصفح اسم مصحح TEST ONLY');
   await rename.getByRole('button', { name: t.staff.manage.rename, exact: true }).click();
   await page.getByRole('dialog').waitFor();
+  await nativeZoom('staff-confirmation');
   await audit('rename confirmation');
   await screenshot('staff-confirmation');
   await page.setViewportSize({ width: 320, height: 700 });
@@ -150,6 +152,7 @@ export async function proveStaffMutationBrowser({
     await rename.getByLabel(t.staff.name, { exact: true }).inputValue(),
     'اختبار متصفح اسم مصحح TEST ONLY',
   );
+  await page.locator('[role="alert"]:focus').waitFor({ timeout: 5000 });
   assert.equal(await page.locator(':focus').getAttribute('role'), 'alert');
   await audit('stale form preserves input and focuses recovery');
   await screenshot('staff-stale');
@@ -243,6 +246,9 @@ export async function proveStaffMutationBrowser({
     .getByRole('alert')
     .filter({ hasText: t.staff.manage.errors.reviewer })
     .waitFor();
+  await page.locator('[role="alert"]:focus').waitFor({ timeout: 5000 });
+  assert.equal(await page.locator(':focus').getAttribute('role'), 'alert');
+  await audit('reviewer trainee conversion validation');
   evidence.push({
     name: 'both team reviewers assigned without membership; deactivation and trainee conversion refused',
     passed: true,
@@ -287,6 +293,7 @@ export async function proveStaffMutationBrowser({
       .getByRole('button', { name: t.staff.manage.addAlias, exact: true })
       .click();
     await section(t.staff.manage.addAlias).getByRole('alert').waitFor();
+    await page.locator('[role="alert"]:focus').waitFor({ timeout: 5000 });
     assert.equal(await page.locator(':focus').getAttribute('role'), 'alert');
     await audit('gateway refusal preserves input');
     await screenshot('staff-save-error');

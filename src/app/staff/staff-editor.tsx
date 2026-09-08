@@ -49,6 +49,7 @@ function StaffForm({
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const summary = useRef<HTMLDivElement>(null);
+  const pendingFeedback = useRef<HTMLParagraphElement>(null);
   // Keep the version paired with the values originally displayed. A server
   // action can refresh surrounding RSC props while another form has unsaved input.
   const [tokens] = useState(hidden);
@@ -58,8 +59,9 @@ function StaffForm({
   const [result, setResult] = useState<StaffActionResult | null>(null);
   const [pending, startTransition] = useTransition();
   useEffect(() => {
-    if (result) summary.current?.focus();
-  }, [result]);
+    if (pending) pendingFeedback.current?.focus();
+    else if (result) summary.current?.focus();
+  }, [pending, result]);
   const close = () => {
     dialog.current?.close();
     trigger.current?.focus();
@@ -147,8 +149,8 @@ function StaffForm({
               'aria-invalid': result?.kind === 'error' && result.field === field.key,
               'aria-describedby':
                 result?.kind === 'error' && result.field === field.key
-                  ? `${formId}-feedback`
-                  : undefined,
+                  ? `${formId}-hint ${formId}-feedback`
+                  : `${formId}-hint`,
               className: field.ltr ? styles.ltr : undefined,
             };
             return (
@@ -176,7 +178,11 @@ function StaffForm({
             </button>
           </div>
         </fieldset>
-        {pending ? <p role="status">{t.staff.manage.saving}</p> : null}
+        {pending ? (
+          <p ref={pendingFeedback} role="status" tabIndex={-1} className={styles.focusTarget}>
+            {t.staff.manage.saving}
+          </p>
+        ) : null}
       </form>
       {confirm ? (
         <dialog
@@ -184,6 +190,19 @@ function StaffForm({
           className={styles.dialog}
           aria-labelledby={`${formId}-confirm`}
           aria-describedby={`${formId}-consequence`}
+          onKeyDown={(event) => {
+            if (event.key !== 'Tab') return;
+            const buttons = dialog.current?.querySelectorAll<HTMLButtonElement>('button');
+            const first = buttons?.item(0);
+            const last = buttons?.item(buttons.length - 1);
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last?.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first?.focus();
+            }
+          }}
           onCancel={(event) => {
             event.preventDefault();
             close();

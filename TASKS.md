@@ -21,11 +21,13 @@ and verified on project PostgreSQL: 61 applied, zero pending or unfinished,
 15/15 database checks and 107/107 permanent historical-profile invariants.
 Phase 1 remains checked and is operationally complete. Phase 2's read-only
 roster and detail are implemented and verified. Phase 3's Administrator
-mutations are implemented and locally verified, ready for independent review.
-Task 4.0a overall, Phase 4 and Task 4.1 remain unchecked. This deployment was not final Access
-cutover; final delta reconciliation remains governed by D43 and D51, without
-any new owner decision. After independent Phase 3 review, the next return point
-is **Task 4.0a Phase 4 — browser interaction, accessibility and final evidence**.
+mutations passed independent review and are published. Phase 4's interaction,
+accessibility and final verification are complete; Task 4.0a is checked.
+Task 4.1 remains unchecked and unstarted. This was not final Access cutover;
+final delta reconciliation remains governed by D43 and D51, without a new owner
+decision. The next return point is **Task 4.1 — Clients, pending independent
+Task 4.0a review**. See the
+[Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
 
@@ -1687,7 +1689,7 @@ than assuming one rule for every workflow. Test with real volumes.
       without any `src` edit. No core Stage 4 screen has started. **Return
       point:** Task 4.0a—not Task 4.1.
 
-- [ ] **4.0a Staff roster management** — approved contract for the 66 internal
+- [x] **4.0a Staff roster management** — approved contract for the 66 internal
       staff identities (23 active and 43 inactive), new hires and identity
       maintenance before go-live (**D36, D44–D50**). The 71 external people
       remain available to historical relationships but are outside the staff
@@ -1697,8 +1699,8 @@ than assuming one rule for every workflow. Test with real volumes.
       but must not create, enable, disable, reset or otherwise manage accounts.
       Phase 1 is operationally complete: migration 61 is deployed and verified
       on project PostgreSQL, with 107/107 permanent historical-profile
-      invariants. Phases 2–3 are implemented and locally verified; Phase 4 and Task 4.1
-      have not started.
+      invariants. Phases 2–4 are implemented and verified. Task 4.1 remains
+      unstarted, pending independent review of completed Task 4.0a.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1834,7 +1836,7 @@ than assuming one rule for every workflow. Test with real volumes.
         source; its guard is unchanged and its limitation is explicit in the
         [Phase 3 report](docs/task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md).
 
-  - [ ] **Phase 4 — browser interaction, accessibility and final evidence.** Use
+  - [x] **Phase 4 — browser interaction, accessibility and final evidence.** Use
         centralized strings, Arabic-first RTL layout and logical CSS properties.
         Under D50, run local browser testing for keyboard-only operation, visible
         focus, programmatic labels/instructions/errors, error summary and focus
@@ -1847,8 +1849,23 @@ than assuming one rule for every workflow. Test with real volumes.
         volume and browser evidence, then update the canonical docs and task
         report without marking earlier phases complete retrospectively.
 
-      **Return point:** independent Phase 3 review, then Task 4.0a Phase 4 —
-      browser interaction, accessibility and final evidence.
+        **Completed locally, 8 September 2026:** 220 browser state/interaction
+        cases, 191 zero-violation axe audits, five genuine Chrome 200% zoom
+        proofs and 231 final screenshots. Keyboard, accessibility-tree,
+        focus/contrast, 44-by-44 targets, desktop/390/320 reflow, all-role
+        navigation and all nine actions denied to each non-Administrator pass.
+        Five focused corrections cover field instructions, dialog containment,
+        loading feedback, pending/result focus and error-link scroll spacing.
+        Full service, 17-race, 22-gateway, 448-permission, authentication/account,
+        current migration-61 audit and separate event regressions pass, as do
+        static checks and the production build. Project checks remain 15/15
+        and 107/107; complete before/after receipts and all 54 logos match.
+        Disposable resources are removed. Screen-reader speech was not tested;
+        live-region semantics were verified in the browser accessibility tree.
+        See the [Phase 4 report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
+
+      **Return point:** Task 4.1 — Clients, pending independent Task 4.0a review.
+      No push or Task 4.1 implementation occurred in this completion task.
 
 - [ ] **4.1 Clients** — list, detail, contacts, logo
 

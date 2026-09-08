@@ -3319,12 +3319,18 @@ Phase 1 is operationally complete. Phase 2's read-only `/staff` roster and
 implements Administrator staff mutations using migration 61's existing gateways.
 No migration, schema, grant, invariant, imported evidence or Access file changed.
 Project verification still passes 15/15 and 107/107 with all 103 table, sequence,
-catalog, audit and logo fingerprints unchanged. Task 4.0a overall, Phase 4 and
-Task 4.1 remain unchecked. After independent Phase 3 review, the next return point
-is **Task 4.0a Phase 4 — browser interaction, accessibility and final evidence**.
+catalog, audit and logo fingerprints unchanged. Phase 4 completes final browser,
+accessibility and regression acceptance with the same full project-preservation
+result. Task 4.0a overall and Phase 4 are checked. Task 4.1 remains unchecked and
+unstarted. The next return point is **Task 4.1 — Clients, pending independent
+Task 4.0a review**.
 See the
 [Phase 2 implementation report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 The [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
 records disposable mutation and preservation evidence. This phase deploys no migration.
+The [Phase 4 completion report](task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md)
+records the final read-only project comparison, migration-61/current-audit and
+separate event regressions, and removal of every owned test resource. No
+migration, schema, decision, source or cutover operation occurred in Phase 4.
 The Litigation Department continues using Access. This is not final Access
 cutover; final delta reconciliation remains governed by D43 and D51.

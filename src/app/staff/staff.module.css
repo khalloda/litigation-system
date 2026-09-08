@@ -52,6 +52,7 @@
 .field input,
 .field textarea,
 .field select {
+  scroll-margin-block: var(--space-2);
   inline-size: 100%;
   min-inline-size: 0;
   min-block-size: 44px;

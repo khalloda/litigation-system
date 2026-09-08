@@ -188,7 +188,7 @@ This is Task 3.4 evidence, not a universal component specification and not a
 start on Task 4.0. Staff identity maintenance remains Task 4.0a, and audit
 history remains Task 4.9.
 
-## 8. Staff roster — Phases 2–3 implemented
+## 8. Staff roster — Phases 2–4 implemented
 
 Migration 61 is deployed. Phase 2 implements `/staff` and `/staff/[id]` with
 the read-only layout and interactions below. The
@@ -197,8 +197,9 @@ records focused local browser evidence. Phase 3 adds distinct Administrator
 forms, confirmation dialogs, focused validation and stale/conflict recovery.
 Its [implementation report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
 records local desktop, mobile, keyboard, zoom and accessibility evidence.
-After independent Phase 3 review, the next return point is **Task 4.0a Phase 4 —
-browser interaction, accessibility and final evidence**. Phase 4 remains unstarted.
+Phase 4 completes browser interaction, accessibility and final visual evidence.
+The next return point is **Task 4.1 — Clients, pending independent Task 4.0a review**.
+Task 4.1 remains unstarted.
 
 The Arabic-first RTL route set is `/staff`, `/staff/new`, `/staff/[id]` and
 `/staff/[id]/edit`. The roster defaults to the 23 active internal staff and can
@@ -243,7 +244,13 @@ with focus movement, announced status, non-colour-only meaning, minimum
 browser mutation uses only an isolated disposable database. These are approved
 acceptance requirements; the Phase 2 report records which read-only cases were
 verified, and the Phase 3 report covers the implemented mutation forms and
-dialogs. These focused acceptance checks do not complete Phase 4.
+dialogs. The [Phase 4 report](task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md)
+provides final acceptance: 220 browser cases, 191 zero-violation axe audits,
+five genuine 200% browser-zoom proofs, separate desktop/390/320 layouts and
+visual inspection of every distinct state. Field instructions are associated
+programmatically, dialog Tab focus stays contained, pending/results receive
+focus, and error-link targets have space for their focus outlines. Live-region
+roles and properties were inspected; screen-reader speech was not tested.
 
 ## 9. Audit history — owner-approved direction, deferred
 

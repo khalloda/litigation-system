@@ -510,11 +510,16 @@ for separate event proof; both own isolated disposable PostgreSQL fixtures.
 The [canonical testing instructions](testing/task-4-0a-phase1-invariants.md#commands-and-safe-execution)
 state each profile's prerequisites and scope.
 
-After independent Phase 3 review, the next return point is
-**Task 4.0a Phase 4 — browser interaction, accessibility and final evidence**.
-Task 4.0a overall, Phase 4 and Task 4.1 remain unchecked. The Litigation
-Department continues using Access; final delta reconciliation and cutover
-remain separate work under D43 and D51.
+Phase 4's complete before/after comparison again preserves all 103 tables,
+full sequence state, schema/catalog objects, roles/grants, migration/audit
+evidence, project container/database identity and 54 logos. Read-only project
+checks pass 15/15 and historical invariants pass 107/107. Browser mutations and
+all regression fixtures were separately owned and removed. See the
+[Phase 4 completion report](task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
+Task 4.0a overall and Phase 4 are checked. The next return point is
+**Task 4.1 — Clients, pending independent Task 4.0a review**; Task 4.1 remains
+unchecked and unstarted. The Litigation Department continues using Access;
+final delta reconciliation and cutover remain separate work under D43 and D51.
 
 The reviewed protected historical audit prefix ends at event 824; it is not a
 deployment-time event-count limit. Migration 61 validates that exact full-value
