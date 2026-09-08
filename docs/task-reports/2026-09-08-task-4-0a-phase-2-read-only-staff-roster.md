@@ -128,8 +128,9 @@ narrow screenshots were visually inspected for connected Arabic, text wrapping,
 LTR email and logical reading order. No horizontal overflow or targets below
 44 CSS pixels were found in the audited states.
 
-Evidence remains outside the repository at
-`C:/Users/Khaled/.codex/visualizations/2026/09/08/01a07fc7-b72a-73b1-ba78-29a4ca3bdce3/staff-phase2/`:
+Phase 2 evidence was retained outside Git in the task's external review
+directory. The external receipt records its exact location, sizes, SHA-256
+hashes and patch identity.
 
 ```text
 browser-evidence.json
@@ -237,3 +238,7 @@ and binary-safe representation. Its byte size, SHA-256, successful
 `git apply --reverse --check` receipt, final clean-tree state and screenshot
 manifest are recorded in the external review receipt and final response.
 No patch is applied and nothing is pushed.
+
+A subsequent documentation-only review correction synchronized the handoff and
+migration status and removed the workstation-specific evidence path. It did not
+change the Phase 2 implementation or its external evidence.

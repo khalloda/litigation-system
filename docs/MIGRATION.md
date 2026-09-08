@@ -3314,8 +3314,12 @@ The [deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-mig
 and [complete invariant inventory](testing/task-4-0a-phase1-invariants.md)
 distinguish the recovery, real deployment and verification evidence.
 
-Phase 1 is operationally complete; Task 4.0a overall, Phases 2–4 and Task 4.1
-remain unchecked. The exact return point is
-**Task 4.0a Phase 2 — read-only staff roster**. The Litigation Department
-continues using Access. This deployment was not final Access cutover; final
-delta reconciliation remains governed by D43 and D51.
+Phase 1 is operationally complete. Phase 2's read-only `/staff` roster and
+`/staff/[id]` detail are implemented, locally verified and checked, with no
+staff mutation route or action. Task 4.0a overall, Phases 3–4 and Task 4.1
+remain unchecked. After independent review and push of the Phase 2 commits, the
+next return point is **Task 4.0a Phase 3 — Administrator roster mutations**.
+See the
+[Phase 2 implementation report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
+The Litigation Department continues using Access. This is not final Access
+cutover; final delta reconciliation remains governed by D43 and D51.

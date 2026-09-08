@@ -20,16 +20,21 @@ Use these current authorities instead:
 
 **Current return point:** Stages 2 and 3, including the accepted Task 3.5
 high-impact quarantine checkpoint, are complete. Task 4.0's structural
-Arabic/RTL checker is complete; no core Stage 4 screen has started. Resume at
-**Task 4.0a Phase 2 — read-only staff roster**. Phase 1 is operationally
-complete: migration 61 is deployed and verified on project PostgreSQL 17.11,
-with 61 applied migrations, zero pending or unfinished, 15/15 database checks
-and 107/107 permanent historical-profile invariants. The task, Phases 2–4 and
-Task 4.1 stay unchecked. See the
+Arabic/RTL checker is complete. Task 4.0a Phase 1 is deployed, verified and
+operationally complete: project PostgreSQL 17.11 has 61 applied migrations,
+zero pending or unfinished, 15/15 database checks and 107/107 permanent
+historical-profile invariants. Phase 2's read-only `/staff` roster and
+`/staff/[id]` detail are implemented, locally verified and checked. Task 4.0a
+overall, Phases 3–4 and Task 4.1 remain unchecked. The return point is
+**independent review and push of the Phase 2 commits, followed by Task 4.0a
+Phase 3 — Administrator roster mutations**. See the
 [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
-for the separate implementation, recovery and deployment checkpoints.
-The Litigation Department continues using Access; this deployment was not final
-cutover. Final delta reconciliation remains governed by D43 and D51. D51's
+for the separate Phase 1 implementation, recovery and deployment checkpoints,
+and the
+[Phase 2 implementation report](docs/task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md)
+for its read-only implementation and local verification. The Litigation
+Department continues using Access; this is not final cutover. Final delta
+reconciliation remains governed by D43 and D51. D51's
 historical source identity and derivative disposition remain unchanged; the
 deployment had separate owner authorization. Do not restart earlier work or
 treat the former handoff's obsolete governance instructions as active.
