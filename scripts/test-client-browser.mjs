@@ -326,6 +326,128 @@ await withIsolatedPostgres(async (fixture) => {
       await page.waitForURL(base + '/clients');
       await page.locator('#client-results').waitFor();
     };
+    const proveNavigation = async () => {
+      const observations = [];
+      const controls = async () => ({
+        q: await page.getByLabel(t.clients.searchLabel, { exact: true }).inputValue(),
+        status: await page.getByLabel(t.clients.status, { exact: true }).inputValue(),
+        archive: await page.getByLabel(t.clients.archive, { exact: true }).inputValue(),
+      });
+      const query = () => Object.fromEntries(new URL(page.url()).searchParams);
+      const search = '__PHASE2_ARCHIVED_PARENT_CONTACT';
+      await goto(base + `/clients?q=${search}&status=Disabled&archive=current&page=2`);
+      await page.getByRole('heading', { name: t.common.noResults, exact: true }).waitFor();
+      assert.deepEqual(await controls(), { q: search, status: 'Disabled', archive: 'current' });
+      await page.getByRole('link', { name: t.clients.allArchives, exact: true }).click();
+      await page.waitForURL((url) => url.searchParams.get('archive') === 'all', {
+        waitUntil: 'networkidle',
+      });
+      observations.push({
+        name: 'R1 include archived retains search/status and resets list page',
+        actual: {
+          query: query(),
+          controls: await controls(),
+          resultPaths: await page
+            .locator('#client-results h3 a')
+            .evaluateAll((links) => links.map((link) => new URL(link.href).pathname)),
+          archivedRows: await page
+            .locator('#client-results li')
+            .filter({
+              has: page.getByText(t.clients.archived, { exact: true }),
+            })
+            .count(),
+        },
+        expected: {
+          query: { q: search, status: 'Disabled', archive: 'all' },
+          controls: { q: search, status: 'Disabled', archive: 'all' },
+          resultPaths: [`/clients/${cases.archived}`],
+          archivedRows: 1,
+        },
+      });
+      await screenshot('navigation-r1');
+
+      const filters = {
+        q: '__PHASE2_TEST_DUPLICATE',
+        status: 'Disabled',
+        archive: 'all',
+        page: '2',
+      };
+      const detail =
+        base + `/clients/${cases.primary}?${new URLSearchParams(filters)}&contactsPage=2`;
+      const contactRegion = page.getByRole('region', { name: t.clients.contacts, exact: true });
+      const contactState = async () => ({
+        query: query(),
+        pagination: await page
+          .getByRole('navigation', {
+            name: t.clients.contactPagination,
+            exact: true,
+          })
+          .locator('p')
+          .textContent(),
+        contacts: await contactRegion
+          .locator('h3 a')
+          .evaluateAll((links) => links.map((link) => new URL(link.href).pathname)),
+      });
+      await goto(detail);
+      await contactRegion.getByText(t.clients.page(2, 2), { exact: true }).waitFor();
+      const expectedContactState = await contactState();
+      assert.equal(expectedContactState.contacts.length, 3);
+      await page
+        .getByRole('region', { name: t.clients.details, exact: true })
+        .getByRole('link')
+        .click();
+      await page.waitForURL(
+        (url) => url.pathname === `/clients/${cases.primary}/contacts/${cases.contacts[0]}`,
+      );
+      const mainContactQuery = query();
+      await page.getByRole('link', { name: t.clients.backClient, exact: true }).click();
+      await page.waitForURL((url) => url.pathname === `/clients/${cases.primary}`, {
+        waitUntil: 'networkidle',
+      });
+      observations.push({
+        name: 'R2 main contact and displayed Back preserve contact page and list state',
+        actual: { mainContactQuery, returned: await contactState() },
+        expected: {
+          mainContactQuery: { ...filters, contactsPage: '2' },
+          returned: expectedContactState,
+        },
+      });
+      await screenshot('navigation-r2');
+
+      // Record both independent paths before asserting, so a failing build
+      // retains reproducible observations for both navigation regressions.
+      writeFileSync(
+        join(output, 'navigation-evidence.json'),
+        JSON.stringify(observations, null, 2),
+      );
+      for (const observation of observations)
+        assert.deepEqual(observation.actual, observation.expected, observation.name);
+      evidence.push(...observations.map(({ name }) => ({ name, passed: true })));
+
+      await goto(detail);
+      await contactRegion.locator('h3 a').first().click();
+      await page.getByRole('link', { name: t.clients.backClient, exact: true }).click();
+      await page.waitForURL((url) => url.pathname === `/clients/${cases.primary}`, {
+        waitUntil: 'networkidle',
+      });
+      assert.deepEqual(await contactState(), expectedContactState, 'ordinary contact row return');
+      await page.getByRole('link', { name: t.clients.back, exact: true }).click();
+      await page.waitForURL((url) => url.pathname === '/clients', { waitUntil: 'networkidle' });
+      assert.deepEqual(query(), filters);
+      assert.deepEqual(await controls(), {
+        q: filters.q,
+        status: filters.status,
+        archive: filters.archive,
+      });
+      await page.getByText(t.clients.page(2, 2), { exact: true }).waitFor();
+      assert.equal(await page.locator('#client-results h3 a').count(), 3);
+      evidence.push({
+        name: 'ordinary contact and displayed list Back preserve pages and filters',
+        passed: true,
+      });
+      await goto(base + '/clients');
+      console.log('PASS R1/R2 navigation, ordinary contact return and client-list return');
+    };
     for (const path of [
       '/clients',
       `/clients/${cases.primary}`,
@@ -343,6 +465,7 @@ await withIsolatedPostgres(async (fixture) => {
       const before = await withApprovedMigrationClient(staffReadOnlyState, {
         databaseUrl: fixture.migrationUrl,
       });
+      if (account === accounts[0]) await proveNavigation();
       await audit('list ' + account.roleCode);
       await goto(base + `/clients/${cases.primary}`);
       await page.getByRole('heading', { name: t.clients.details, exact: true }).waitFor();
@@ -446,6 +569,10 @@ await withIsolatedPostgres(async (fixture) => {
     assert.equal(await page.getByLabel(t.clients.status, { exact: true }).inputValue(), 'all');
     assert.equal(await page.getByLabel(t.clients.archive, { exact: true }).inputValue(), 'current');
     await page.goBack({ waitUntil: 'networkidle' });
+    assert.equal(new URL(page.url()).searchParams.get('page'), '2');
+    assert.equal(await page.getByLabel(t.clients.status, { exact: true }).inputValue(), 'Disabled');
+    assert.equal(await page.getByLabel(t.clients.archive, { exact: true }).inputValue(), 'all');
+    assert.equal(await page.locator('#client-results h3 a').count(), 3);
     assert.equal(
       await page.getByLabel(t.clients.searchLabel, { exact: true }).inputValue(),
       '__PHASE2_TEST_DUPLICATE',

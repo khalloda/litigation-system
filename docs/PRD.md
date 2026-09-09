@@ -344,7 +344,8 @@ filters. Historical identities, unnamed contacts, main contacts, lawyer text and
 date-only values remain explicit. Existing logos use bounded validated local reads
 and a client-name fallback. No mutation controls, schema or migration changes.
 
-The immediate stop is independent Phase 2 review; Phase 3 is the next development
-phase. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
+The immediate stop is independent Phase 2 navigation-correction review; Phase 3
+is the next development phase. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
+See the [R1/R2 correction report](task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md).
 See the [Phase 2 implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md)
 for exact test, browser, query-plan and unchanged-project evidence.

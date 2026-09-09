@@ -155,7 +155,7 @@ export default async function ClientsPage({
           <div className={styles.empty}>
             <h3>{t.common.noResults}</h3>
             <p>{t.clients.empty}</p>
-            <Link className={styles.link} href="/clients?archive=all">
+            <Link className={styles.link} href={clientListHref({ ...filters, archive: 'all' }, 1)}>
               {t.clients.allArchives}
             </Link>
           </div>

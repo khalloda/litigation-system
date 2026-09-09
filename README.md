@@ -38,7 +38,8 @@ The next development return point is **Task 4.1 Phase 3 — Authorized mutations
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
 Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked. The current stop is
-independent review of the Phase 2 implementation.
+independent review of the Phase 2 navigation correction. See the
+[R1/R2 correction report](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md).
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).

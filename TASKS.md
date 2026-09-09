@@ -32,7 +32,7 @@ or unfinished, one approved historical rollback, 15/15 checks and 116/116
 historical invariants. Earlier isolated proof passed 116 historical and 98 canonical
 checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
-The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted. Stop for independent review of the Phase 2 implementation. Final Access
+The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted. Stop for independent review of the Phase 2 navigation correction. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
@@ -1975,7 +1975,8 @@ than assuming one rule for every workflow. Test with real volumes.
       list/detail/contact pages and existing-logo display, read-only for all roles.
       See the [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
 
-      **Stop now:** independent review of the Phase 2 implementation.
+      **Stop now:** independent review of the Phase 2 navigation correction.
+      See the [R1/R2 correction report](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md).
       **Next development return point:** Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
       Later implementation and D43/D51 final cutover require their own authorization.
 

@@ -1,5 +1,13 @@
 # Task 4.1 Phase 2 — read-only clients, contacts and existing logos
 
+**Subsequent review and correction, 9 September 2026:** this report records the
+original implementation checkpoint. The [independent review](../reviews/2026-09-09-task-4-1-phase-2-independent-review.md)
+identified two untested exceptions to its navigation-state claim: the empty-results
+include-archived link and the main-contact return path. Their reproduction,
+bounded correction and fresh verification are recorded in the
+[R1/R2 correction report](2026-09-09-task-4-1-phase-2-navigation-correction.md).
+The immediate stop is independent correction review; owner acceptance remains pending.
+
 Implementation checkpoint: 9 September 2026. The owner authorized Phase 2 only,
 one local commit (`feat: add read-only client and contact screens`), external
 review evidence, no push, and a stop for independent review. Two bounded

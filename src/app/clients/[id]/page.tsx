@@ -94,7 +94,7 @@ export default async function ClientPage({
               client.mainContact ? (
                 <Link
                   className={styles.nameLink}
-                  href={`/clients/${client.id}/contacts/${client.mainContact.id}${detailHref.slice(detailHref.indexOf('?'))}`}
+                  href={`/clients/${client.id}/contacts/${client.mainContact.id}${detailHref.slice(detailHref.indexOf('?'))}&contactsPage=${contacts.page}`}
                 >
                   {client.mainContact.contactName?.trim()
                     ? client.mainContact.contactName
