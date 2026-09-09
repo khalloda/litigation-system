@@ -198,9 +198,9 @@ forms, confirmation dialogs, focused validation and stale/conflict recovery.
 Its [implementation report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
 records local desktop, mobile, keyboard, zoom and accessibility evidence.
 Phase 4 completes browser interaction, accessibility and final visual evidence.
-The next return point is **independent review of the Task 4.1 documentation
-contract**. Task 4.1 and its four implementation phases remain unchecked and
-unstarted under D52–D57.
+The next development return point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
+unstarted. Task 4.1 Phase 1 is checked, deployed and operationally complete under
+D52–D57; the overall task, Phases 2–4 and Task 4.1a remain unchecked.
 
 The Arabic-first RTL route set is `/staff`, `/staff/new`, `/staff/[id]` and
 `/staff/[id]/edit`. The roster defaults to the 23 active internal staff and can
@@ -253,7 +253,11 @@ programmatically, dialog Tab focus stays contained, pending/results receive
 focus, and error-link targets have space for their focus outlines. Live-region
 roles and properties were inspected; screen-reader speech was not tested.
 
-## 8a. Clients and contacts — approved Task 4.1 direction, unstarted
+## 8a. Clients and contacts — approved Task 4.1 direction, screens unstarted
+
+The [migration-62 deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md)
+records database completion and 116/116 historical invariants. Deployment adds
+no client/contact application screens; the direction below remains for Phases 2–4.
 
 Use the established light Arabic-first RTL layout, logical CSS, bundled font,
 centralized strings, Western numerals and explicit absence/error states. Client

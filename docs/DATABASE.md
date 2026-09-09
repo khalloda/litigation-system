@@ -467,8 +467,8 @@ authorization decisions, one baseline event and 583 field classifications are
 unchanged. The live invariant count is 92.
 
 The 92 count above is the Task 3.4 checkpoint. Task 3.5B added the 93rd
-permanent invariant; migration 61 brings the current historical profile to
-107/107 as described below.
+permanent invariant; migration 61 brought the historical profile to 107/107.
+The accepted migration-62 checkpoint now passes 116/116, as described below.
 
 ## Task 4.0a Phase 1 database boundary — deployed and verified
 
@@ -477,7 +477,7 @@ The database foundation below is implemented by migration 61,
 `87e04320badc5bc71de1c30eae02c72f82ae0e59f2088b42cb0806f6b25c8904`.
 After disposable proof and predeployment recovery readiness, the separately
 authorized project deployment completed on 7 September 2026. Project
-PostgreSQL 17.11 has 61 applied migrations, zero pending or unfinished and one
+PostgreSQL 17.11 then had 61 applied migrations, zero pending or unfinished and one
 retained approved historical rollback. The deployment command ran exactly once;
 migration 61 has one completed ledger entry. Post-deployment `db:verify` passed
 15/15 and the permanent historical profile passed 107/107. Phase 1 is
@@ -486,13 +486,13 @@ staff roster and detail pages. Phase 3 now uses the existing six gateways for
 Administrator mutations, with no schema, migration, privilege or invariant change.
 The [deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md)
 identifies the retained recovery and deployment evidence. The project container
-was unchanged. The 103 current tables preserve all 97 prior projections:
+was unchanged. The 103 tables at that checkpoint preserve all 97 prior projections:
 92 whole tables unchanged and five containing only approved additions, plus
 six new boundary tables. All 54 logos remain intact; the staff-change ledger
 has zero rows at deployment acceptance.
 
-Phase 2 adds no database change. Its read-only project verification retains all
-103 tables, sequence state and catalog fingerprints; migration state remains
+Phase 2 added no database change. Its 8 September read-only verification retained all
+103 tables, sequence state and catalog fingerprints; migration state was then
 61 applied, zero pending and zero unfinished, with 15/15 checks and 107/107
 historical invariants. All login, query-fixture setup and error simulation run
 in disposable PostgreSQL instances restored in memory, without migration replay.
@@ -503,22 +503,23 @@ catalogs, protected evidence, 824 audit events and 54 logos; the staff-change
 ledger remains empty. All Phase 3 workflow, race, failure and browser mutations
 run on separately owned full-state PostgreSQL 17 fixtures. The
 [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
-records the exact evidence and the correction separating current migration-61
+records the exact evidence and the correction separating then-current migration-61
 audit regression from the retained historical migration-53–60 upgrade proof.
 Run `npm run test:audit` for the current checkpoint and `npm run test:audit-events`
 for separate event proof; both own isolated disposable PostgreSQL fixtures.
 The [canonical testing instructions](testing/task-4-0a-phase1-invariants.md#commands-and-safe-execution)
 state each profile's prerequisites and scope.
 
-Phase 4's complete before/after comparison again preserves all 103 tables,
+Phase 4's 8 September before/after comparison again preserved all 103 tables,
 full sequence state, schema/catalog objects, roles/grants, migration/audit
 evidence, project container/database identity and 54 logos. Read-only project
-checks pass 15/15 and historical invariants pass 107/107. Browser mutations and
+checks passed 15/15 and historical invariants passed 107/107. Browser mutations and
 all regression fixtures were separately owned and removed. See the
 [Phase 4 completion report](task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 Task 4.0a overall and Phase 4 are checked. The next return point is
-**independent review of the Task 4.1 Phase 1 correction**; its database foundation is implemented
-in isolation. Task 4.1 overall and Phases 2–4 remain unchecked. The Litigation
+**Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
+unstarted; its Phase 1 database foundation is now deployed and operationally
+complete at migration 62. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked. The Litigation
 Department continues using Access;
 final delta reconciliation and cutover remain separate work under D43 and D51.
 
@@ -617,7 +618,7 @@ Source copying is read-only and memory-only. No project roles, sessions,
 networks, volumes or container configuration are changed. See the
 [Phase 1 acceptance report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md).
 
-## Task 4.1 database foundation — isolated implementation, not deployed
+## Task 4.1 database foundation — deployed, verified and operationally complete
 
 D57 requires a small, validated immutable client/contact import-evidence layer
 and separate current operational invariants. Preserve original system/Access
@@ -626,7 +627,21 @@ raw evidence and imported contact ownership. Current native additions and
 authorized edits must not weaken historical checks or replace frozen digests.
 Migration 62 (`20260909120000_client_contact_database_boundary`) implements this
 boundary, archive/version fields, same-client main-contact enforcement and
-transactional repeated-submission protection. Project PostgreSQL remains at 61.
+transactional repeated-submission protection. After independent review and
+separate owner authorization, one project deployment invocation applied only
+migration 62 on 9 September 2026. Its SHA-256 is
+`88ab034517f76e152e944f1a0949edc175a286c7bfeefe82fba0672c6b86f6c1`.
+Fresh verification passed 15/15 and 116/116: 62 applied, zero pending or
+unfinished, and one approved historical rollback retained. All 99 unrelated
+original tables and four original projections, prior ledger rows at full timestamp
+precision, audit/accounts, 48 complete sequence states and 54 logos were preserved.
+The [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md)
+records exact evidence and separates deployment from the retained migration-61
+predeployment recovery archive. That archive is not a new migration-62 backup;
+its restore-only representation exceptions do not apply to live preservation.
+Fresh role credentials and separately supplied `AUTH_SECRET` remain recovery
+requirements. Task 7.2 backup work and D43/D51 cutover remain separate.
+No client/contact application screens were implemented by deployment.
 
 The database gateways enforce D52/D55 archive rules, fixed contact ownership
 and same-client unarchived main contacts. Stale edits fail safely; actor/event attribution and
@@ -637,7 +652,10 @@ affected permanent checks and imported-only Gate 4 accounting; refuse the old
 client/contact delete-and-rebuild transform after the operational boundary.
 
 `npm run test:client-contacts` owns a separate PostgreSQL 17.11 cluster and proves
-historical 61→62 (116 checks) and canonical replay (98 checks). The 18
+historical 61→62 (116 checks) and canonical replay (98 checks). Historical
+acceptance requires an actual untouched migration-61 source restored and verified
+in isolation; the current migration-62 project cannot supply that starting state.
+Do not downgrade it or rerun deployment to manufacture the proof. The 18
 historical-only checks still require their actual imported artifacts.
 `npm run test:client-regressions`, `npm run test:audit` and
 `npm run test:audit-events` accept an exact complete historical source at 61 or
@@ -660,9 +678,11 @@ it requires the actual historical migration-61 source. Omit `--entry-points`
 for the focused source proof, including normal staff paths. Installed dependencies
 are sufficient; no package installation is needed.
 The updated read-only `db:check -- --profile=historical-full-state-upgrade`
-accepts the complete project migration-61 predeployment state (107 checks),
-reporting 62 as solely pending. Neither isolated proof nor this documentation
-authorizes project deployment. See the [profile inventory](testing/task-4-1-phase1-invariants.md)
+checks the current complete migration-62 project (116 checks); the retained
+migration-61 predeployment result remains 107 with 62 solely pending. Current
+regression commands can copy the complete migration-62 source without redeploying
+it. This documentation acceptance runs no database or runtime command.
+See the [profile inventory](testing/task-4-1-phase1-invariants.md)
 and [Phase 1 report](task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md).
 
 ## Task 3.5B accepted database state
@@ -675,8 +695,8 @@ the application plan digest is
 `4a1fee01d011b960f48204102e28ed71731a5f1d682006141749460828e33da3`.
 At that checkpoint the project database had 60 applied migrations, one
 application batch, 382 resolutions, 824 audit events and 93/93 passing permanent
-invariants. Migration 61 subsequently preserved that evidence and raised the
-current historical profile to 107/107, as recorded above.
+invariants. Migration 61 subsequently preserved that evidence and passed 107/107;
+migration 62 now preserves it with 116/116, as recorded above.
 
 The current business totals are 18 client branches, 309 courts, 1,744 matters,
 13,382 hearings, 968 matter-lawyer links, 2,695 parties, 2,267 party roles and

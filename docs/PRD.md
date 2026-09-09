@@ -78,7 +78,7 @@ Task 4.0a; Task 3.4 never creates or edits a person or alias.
 ### Staff roster — Task 4.0a complete and published
 
 Migration 61 implements the database portions below and has been deployed
-exactly once to the current project PostgreSQL database. The database now has
+exactly once to the project PostgreSQL database. At its 7 September acceptance it had
 61 applied migrations, zero pending and zero unfinished. `db:verify` passed
 15/15 and the `historical-full-state-upgrade` profile passed 107/107 invariants.
 Task 4.0a is locally complete; Phase 1 is operationally complete.
@@ -90,9 +90,10 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of Task 4.1 Phase 1**. Its D52–D57 database
-foundation is implemented on isolated databases; project PostgreSQL remains
-at migration 61. Task 4.1 overall and Phases 2–4 remain unchecked.
+point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
+unstarted. The D52–D57 database foundation is now deployed and operationally
+complete at migration 62, with 15/15 checks and 116/116 historical invariants.
+Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
 The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
@@ -102,7 +103,7 @@ records the read-only query, authorization, database-preservation and browser ev
 The [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
 records mutation and regression acceptance, including the legacy audit-fixture limitation.
 The [Phase 4 report](task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md)
-records final acceptance, current migration-61 audit and separate event proof,
+records final acceptance, then-current migration-61 audit and separate event proof,
 project preservation and the explicit limitation that screen-reader speech was
 not tested.
 
@@ -163,14 +164,17 @@ focus, labels, errors, status announcements, colour independence, target size,
 zoom/reflow and mobile/desktop layout. Browser mutations use only an isolated
 disposable database; project data does not leave the machine.
 
-### Clients and contacts — Task 4.1 database foundation implemented in isolation
+### Clients and contacts — Task 4.1 database foundation deployed and verified
 
 D52–D57 approve client/contact list, detail, authorized create/edit and
 Administrator-only archive/restore, plus existing-logo display and the
 client-name fallback. Upload/replacement/resizing/recoverable logo removal
-remain Task 4.1a. Phase 1 implements database enforcement and its isolated
-proofs; screens and application mutations remain Phases 2–4. No project
-deployment has occurred. [TASKS.md](../TASKS.md) owns phase status;
+remain Task 4.1a. Phase 1 implements database enforcement, proved in isolation
+and deployed under separate owner authorization on 9 September 2026. Project
+PostgreSQL has 62 applied migrations, zero pending or unfinished; no client/contact
+application screens are implemented. See the
+[deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
+Screens and application mutations remain Phases 2–4. [TASKS.md](../TASKS.md) owns phase status;
 the [dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
 separates findings from later owner resolutions.
 

@@ -1,6 +1,6 @@
 # Task 4.1 Phase 1 — Database foundation and operational invariants
 
-- Implementation verification date: 9 September 2026; independent review is next.
+- Implementation verification date: 9 September 2026; independent review was next at that checkpoint.
 - Requested configuration: GPT-6 Astra, High reasoning, Local Codex Desktop on Windows.
 - Subagents: two bounded read-only source/test reviews permitted and used. The
   primary agent made every edit and performed every database/Docker operation.
@@ -14,8 +14,12 @@
   preserved unchanged. Its original external delivery manifest records its
   parent, subject, 36-file inventory and patch size/hash. The correction below
   is a separate local commit, recorded in its own external delivery manifest.
-- Push status: not pushed.
-- Authorized stop and next return point: **independent review of Task 4.1 Phase 1**.
+- Push status at the implementation/correction checkpoints: not pushed.
+- Historical authorized stop and return point: **independent review of Task 4.1 Phase 1**.
+
+The implementation and correction evidence below records their original
+checkpoints. The [deployment addendum](#deployment-acceptance-addendum--9-september-2026)
+records subsequent acceptance; it does not rewrite their earlier results.
 
 ## Authority and scope
 
@@ -196,7 +200,7 @@ network, and no dump file was created.
 
 ## Remaining boundaries
 
-Independent Phase 1 review is required next. Project deployment, later client
+At the implementation checkpoint, independent Phase 1 review was required next. Project deployment, later client
 screens/mutations, Task 4.1a and D43/D51 final cutover remain separate work.
 Browser acceptance is intentionally absent from this database phase. Full
 Access-based `reconcile:gate4` and the historical 53–60/60→61 source proofs were
@@ -251,7 +255,7 @@ the full-index patch. The implementation changes exactly these files:
 
 The owner's bounded correction mandate preserves the original implementation
 commit and permits exactly one additional local commit, a correction-only patch
-and sanitized evidence. The return point is **independent review of the Task 4.1
+and sanitized evidence. Its historical return point was **independent review of the Task 4.1
 Phase 1 correction**. No fetch, push, project deployment, Access access, browser
 test or later-phase work is included. Two bounded read-only source/test reviewers
 reviewed the correction; the primary agent owns all edits and database operations.
@@ -349,7 +353,7 @@ manifest outside Git. Initial refusals, expected negative acceptance and final
 passing checks are labeled separately. The single additional local commit is
 `fix: preserve current regressions after client boundary`; the required final
 state is clean `main`, 2 ahead / 0 behind unchanged cached `origin/main`.
-The exact return point remains independent review of this Phase 1 correction.
+The return point at that checkpoint was independent review of this Phase 1 correction.
 
 ### Correction file scope
 
@@ -369,3 +373,27 @@ lockfile, D1–D57, governance and the older audit/staff upgrade guards are unch
 - `scripts/test-client-contacts.ts`
 - `scripts/test-client-regression-source.ts`
 - `scripts/test-staff-read-only.ts`
+
+## Deployment acceptance addendum — 9 September 2026
+
+After independent implementation/correction review, accepted recovery proof and
+separate owner authorization, migration 62 was deployed once to project PostgreSQL.
+The owner has accepted the independently reviewed deployment evidence. Task 4.1
+Phase 1 is now deployed, verified and operationally complete. The project has
+62 applied migrations, zero pending/unfinished and one approved historical
+rollback; fresh deployment checks passed 15/15 and 116/116. All original data,
+full-precision prior ledger rows, audit/accounts, 48 complete sequence states
+and 54 logos were preserved. The retained archive is the migration-61
+predeployment backup, not a new migration-62 backup.
+
+The [deployment acceptance report](2026-09-09-task-4-1-phase-1-migration-62-deployment.md)
+separates the original isolated implementation/correction proofs, recovery,
+project deployment, fresh post-deployment checks and documentation acceptance.
+The canonical 98-check, regression and build evidence above was reused; it was
+not rerun during deployment or this documentation task. D1–D57 and all task
+checkboxes remain unchanged. No client/contact application screen is implemented.
+
+The current stop is independent review of the documentation acceptance commit.
+The next development return point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
+unstarted. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked. Access
+cutover under D43/D51 and Task 7.2 backup work remain separate.

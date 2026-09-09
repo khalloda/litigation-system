@@ -1,7 +1,12 @@
 # Task 4.1 Phase 1 — invariant inventory and isolated test profiles
 
-Migration 62 is implemented and verified on isolated databases; it is not
-deployed to the project. D52–D57 own business policy; `TASKS.md` owns status.
+Migration 62 is deployed, verified and operationally complete after isolated
+proof and separate owner authorization. The current project passed 15/15 database
+checks and 116/116 historical invariants on 9 September 2026, with 62 applied
+and zero pending/unfinished. See the [deployment acceptance report](../task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
+D52–D57 own business policy; `TASKS.md` owns status. The next development return
+point is Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display,
+unstarted. The frozen profile counts below remain unchanged.
 
 | Exact state | Historical profile | Canonical profile |
 | --- | --- | --- |
@@ -45,11 +50,14 @@ of that proof.
 ## Commands
 
 - `npm run test:client-contacts`: one task-owned PostgreSQL 17.11 cluster;
-  read-only in-memory project copy at 61 upgraded to 62, then separate canonical
+  read-only in-memory copy of an actual untouched historical 61 source upgraded
+  to 62, then separate canonical
   replay through 62. Includes forced migration rollback, malformed-state
   refusals, native/imported mutations, actual lock contention at all three
   isolation levels, audit rollback, legacy-transform refusal and exact Gate 4
-  imported accounting after native additions.
+  imported accounting after native additions. Restore and verify the historical
+  source in isolation before this proof; the current migration-62 project is not
+  a valid starting source. Never downgrade it or manufacture an earlier ledger.
 - `npm run test:client-regressions`: serial current authentication, 448
   permission decisions, accounts, staff reads/mutations, audit/event and pure
   Gate 4 regressions. Authentication/accounts/audit/events each run on both
@@ -64,9 +72,10 @@ of that proof.
 - `npm run test:audit` and `npm run test:audit-events`: current migration-62
   isolated wrappers accepting the same exact historical 61/62 source states;
   `test:audit:historical` remains the separate exact 53–60
-  historical proof and is unavailable from the project migration-61 source.
+  historical proof and is unavailable from the current migration-62 project source.
 - `npm run db:check -- --profile=historical-full-state-upgrade`: read-only
-  project predeployment verification (107), or explicit upgraded fixture (116).
+  current project verification (116). The retained predeployment migration-61
+  result is 107; it remains valid only for that historical checkpoint.
 - Canonical checking requires the generated fixture URL and explicit
   `--profile=canonical-clean-replay` (98); it cannot stand in for historical proof.
 - `npm run test:staff-read-only` and `-- --project-read-only`: derive the exact
@@ -79,6 +88,8 @@ of that proof.
   imported edits, native additions and archive/restore. Normal staff is exercised
   on both states. Omit the flag for the focused source proof. This separate proof
   never forges an earlier migration ledger or removes the boundary to simulate 61.
+  This proof likewise requires a separately restored, verified historical 61 source;
+  it cannot start directly from the current migration-62 project.
 
 The wrappers independently check cluster identity, task ownership, PostgreSQL
 version, isolated storage/network and a loopback-only port other than 5433.

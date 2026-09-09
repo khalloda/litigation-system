@@ -11,8 +11,8 @@ the original quarantine and source evidence. This was not the final Access
 cutover; the Litigation Department continues to use Access. Task 4.0's
 structural Arabic/RTL checker is complete. Task 4.0a Phase 1's D44–D49 database
 foundation is **deployed and
-verified**: project PostgreSQL is at migration 61, with 15/15 database checks
-and 107/107 permanent historical-profile invariants. Phase 1 is operationally
+verified**: its 7 September acceptance passed 15/15 database checks
+and 107/107 permanent historical-profile invariants at migration 61. Phase 1 is operationally
 complete. Its earlier disposable proof passed 93 checks before historical
 upgrade and 107 after; canonical replay passed 89. Phase 2 implements the
 read-only `/staff` roster and `/staff/[id]` detail for all four roles, with
@@ -23,19 +23,20 @@ gateways. Task 4.0a is complete and published, including Phase 4 browser interac
 accessibility and final verification. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md)
 for the final browser matrix, five focused accessibility corrections, regression
-results and project-preservation evidence. Task 4.1 Phase 1 now implements the
-client/contact database foundation on isolated databases; project PostgreSQL
-remains at migration 61, with migration 62 solely pending.
+results and project-preservation evidence. Task 4.1 Phase 1 is now deployed,
+verified and operationally complete. Project PostgreSQL has 62 applied migrations,
+zero pending or unfinished, 15/15 database checks and 116/116 historical invariants.
 The Access-source derivative disposition is recorded in
 [D51](docs/DECISIONS.md#d51--access-source-derivative-and-migration-61-readiness)
 with its [dated evidence summary](docs/reviews/2026-09-07-access-source-identity-discrepancy.md).
 Task 4.1's approved contract is recorded in D52–D57 and its
 [dated readiness review and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
-The next return point is **independent review of the Task 4.1 Phase 1 correction**. See its
+The next development return point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
+unstarted. See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
-Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked. Project deployment
-requires separate authorization.
+Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked. The current stop is
+independent review of the documentation acceptance commit.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).

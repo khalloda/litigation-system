@@ -17,7 +17,7 @@ Task 4.0a contract is recorded in D44–D50 and its
 dated readiness audit is preserved as evidence. Phase 1's database foundation
 and bounded operational-drift correction are implemented and tested. After
 recovery readiness and separate owner authorization, migration 61 was deployed
-and verified on project PostgreSQL: 61 applied, zero pending or unfinished,
+and verified on project PostgreSQL at its 7 September checkpoint: 61 applied, zero pending or unfinished,
 15/15 database checks and 107/107 permanent historical-profile invariants.
 Phase 1 remains checked and is operationally complete. Phase 2's read-only
 roster and detail are implemented and verified. Phase 3's Administrator
@@ -26,12 +26,14 @@ accessibility and final verification are complete; Task 4.0a is checked.
 Task 4.0a and all four phases are complete and published. Task 4.1's approved
 contract is recorded in D52–D57 and the
 [dated readiness review and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
-Task 4.1 Phase 1 is implemented and verified on isolated databases; not deployed
-to the project. Project PostgreSQL remains at migration 61 with 62 solely pending,
-15/15 checks and 107/107 invariants. Isolated migration 62 passes 116 historical
-and 98 canonical checks. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
-The next return point is **independent review of the Task 4.1 Phase 1 correction**. Project
-deployment requires separate authorization. Final Access
+Task 4.1 Phase 1 is deployed, verified and operationally complete after separate
+owner authorization. Project PostgreSQL has 62 applied migrations, zero pending
+or unfinished, one approved historical rollback, 15/15 checks and 116/116
+historical invariants. Earlier isolated proof passed 116 historical and 98 canonical
+checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
+Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
+The next development return point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
+unstarted. Stop for independent review of this documentation acceptance commit. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
@@ -673,9 +675,9 @@ only ever seen good data is not known to work.
       **The two empty strings arrived.** `Cash/probono` has 316 populated
       values, two empty strings and zero NULLs. This proves the stored value
       distinction, not how the empty strings arose. The current `db:check`
-      compares empty-string counts with staging. D53/D57 require preserving
-      the original per-identity evidence while allowing deliberate future
-      application edits; those check changes are not implemented yet.
+      compares original empty-string counts with staging. Task 4.1 Phase 1 now
+      implements D53/D57 through immutable per-identity import evidence and
+      separate live checks, permitting authorized edits without changing that evidence.
 
       **`contactLawyer` preserved byte for byte** in the new
       `clients.legacy_contact_lawyer_raw` — asserted as *identical to
@@ -684,8 +686,9 @@ only ever seen good data is not known to work.
 
       **Historical Task 2.5 transform choices:** the branch and main-contact
       fields were deliberately not set; cash classification was copied exactly.
-      Current code still checks branch/main-contact NULLs. The approved future
-      contract below does not retrospectively change that migration result:
+      Historical checks retain the original branch/main-contact NULLs through
+      migration 62's immutable views; current main-contact eligibility is checked
+      separately. The approved contract does not retrospectively change that migration result:
 
       1. **`branch_id` / `legacy_branch_raw`** — the source column is on the
          **matter**, and 8 of the 12 clients with any branch have several
@@ -1711,11 +1714,12 @@ than assuming one rule for every workflow. Test with real volumes.
       roster data. Account controls remain exclusively under `/users`; the
       staff detail may show an Administrator-only account-existence/status link
       but must not create, enable, disable, reset or otherwise manage accounts.
-      Phase 1 is operationally complete: migration 61 is deployed and verified
-      on project PostgreSQL, with 107/107 permanent historical-profile
+      Phase 1 is operationally complete: migration 61's 7 September project
+      deployment passed 107/107 permanent historical-profile
       invariants. Phases 2–4 are implemented and verified. Task 4.1 remains
       incomplete under the approved D52–D57 contract. Its Phase 1 database
-      foundation is implemented in isolation; independent Phase 1 review is next.
+      foundation is now deployed and operationally complete at migration 62;
+      Phase 2 — Read-only client/contact screens and existing-logo display is next, unstarted.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1872,7 +1876,7 @@ than assuming one rule for every workflow. Test with real volumes.
         Five focused corrections cover field instructions, dialog containment,
         loading feedback, pending/result focus and error-link scroll spacing.
         Full service, 17-race, 22-gateway, 448-permission, authentication/account,
-        current migration-61 audit and separate event regressions pass, as do
+        then-current migration-61 audit and separate event regressions pass, as do
         static checks and the production build. Project checks remain 15/15
         and 107/107; complete before/after receipts and all 54 logos match.
         Disposable resources are removed. Screen-reader speech was not tested;
@@ -1882,9 +1886,9 @@ than assuming one rule for every workflow. Test with real volumes.
       **Historical Phase 4 stop point:** independent Task 4.0a review; no push
       or Task 4.1 implementation occurred in that completion task. Task 4.0a
       was subsequently published at `6579799`. The current return point is
-      independent review of Task 4.1 Phase 1.
+      Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display, unstarted.
 
-- [ ] **4.1 Clients** — Phase 1 implemented in isolation (**D52–D57**).
+- [ ] **4.1 Clients** — Phase 1 deployed and operationally complete (**D52–D57**).
       Client/contact list, detail and authorized creation/editing; optional main
       contact; Administrator-only non-cascading archive/restore; existing-logo
       display and client-name fallback. All four roles view; Litigation
@@ -1912,13 +1916,23 @@ than assuming one rule for every workflow. Test with real volumes.
 
         **Completed locally, 9 September 2026:** migration 62
         `20260909120000_client_contact_database_boundary`. **Implemented and
-        verified on isolated databases; not deployed to the project.** Historical
+        verified on isolated databases; not deployed at that checkpoint.** Historical
         116/116 and canonical 98/98; current authentication, 448 permissions,
         account, staff, audit/event and affected Gate 4 regressions pass. Full
         static checks and isolated production build pass. Project remains at 61,
         15/15 and 107/107, with exact before/after preservation and all 54 logos
         unchanged. See the [Phase 1 report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
         and [profile inventory](docs/testing/task-4-1-phase1-invariants.md).
+
+        **Deployment accepted, 9 September 2026:** after independent review and
+        separate owner authorization, exactly one project deployment invocation
+        applied only migration 62. Fresh verification passed 15/15 and 116/116;
+        62 applied, zero pending/unfinished and one approved historical rollback.
+        Original data, ledger timestamps, audit/accounts, 48 complete sequence
+        states and 54 logos are preserved. Phase 1 is operationally complete.
+        The [deployment report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md)
+        distinguishes this from the retained migration-61 recovery backup and
+        earlier isolated implementation/correction proofs.
 
   - [ ] **Phase 2 — Read-only client/contact screens and existing-logo display.**
         Implement guarded client list/detail and client-owned contact views;
@@ -1958,9 +1972,10 @@ than assuming one rule for every workflow. Test with real volumes.
         Produce dated acceptance evidence without treating documentation
         approval, clean replay or isolated proof as deployment authorization.
 
-      **Stop now:** independent review of the Task 4.1 Phase 1 correction. Task 4.1 overall,
-      Phases 2–4 and Task 4.1a remain unchecked. Project deployment, later
-      implementation and D43/D51 final cutover require their own authorization.
+      **Stop now:** independent review of the documentation acceptance commit.
+      **Next development return point:** Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display,
+      unstarted. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
+      Later implementation and D43/D51 final cutover require their own authorization.
 
 - [ ] **4.1a Client logo upload**
       Upload field on the client screen (Administrator and Litigation

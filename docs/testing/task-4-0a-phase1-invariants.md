@@ -4,11 +4,15 @@ This is verification classification approved by the owner on 6 September 2026,
 not permission to weaken a failed check. Product decisions remain D44–D50;
 `TASKS.md` owns completion and work order.
 
-Migration 61 is deployed and verified on project PostgreSQL. The current
+Migration 61 is deployed and verified on project PostgreSQL. Its dated
 permanent historical profile passed 107/107 on 7 September 2026; see the
 [deployment acceptance report](../task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
 The upgrade/rollback proofs below used the preserved predeployment migration-60
 state. They remain dated evidence, separate from post-deployment checks.
+The current project checkpoint is migration 62 with 116/116 historical checks;
+see the [9 September deployment acceptance](../task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
+Task 4.1 Phase 1 is operationally complete. The next development return point is
+Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display, unstarted.
 
 **Task 4.1 Phase 1 update, 9 September 2026:** DB-052–DB-056 retain the
 historical client/contact checks through immutable original-row views at
@@ -42,7 +46,7 @@ reclassify it. Default classification is both profiles.
 - Historical-start acceptance: `node node_modules/tsx/dist/cli.mjs scripts/test-staff-roster.ts --profile-acceptance`.
 - Historical-start mutation/rollback profiles: same command with `--mutation-proof`.
   Both require the verified migration-60 source before deployment; they are
-  retained upgrade proofs, not commands for the current migration-61 source.
+  retained upgrade proofs, not commands for the current migration-62 source.
   They do not downgrade a source or reconstruct unavailable historical state.
 - Current Phase 3 staff service/race and gateway proof: `npm run test:staff-mutations`.
 - Authentication, 448 authorization decisions and account lifecycle:
@@ -55,19 +59,22 @@ reclassify it. Default classification is both profiles.
 - Historical migration-53–60 audit upgrade: `npm run test:audit:historical`,
   equivalent to the staff-roster harness with `--historical-audit-regression-proof`.
   This requires the exact verified migration-60 full-state source. It is
-  unavailable from the current migration-61 source and deliberately fails
+  unavailable from the current migration-62 source and deliberately fails
   there with `Legacy fixture source must still be at migration 60`.
 - H permanent checks: `npm run db:check -- --profile=historical-full-state-upgrade`.
 - C permanent checks: `npm run db:check -- --profile=canonical-clean-replay`.
 
 The permanent commands are read-only checks of the explicitly configured
-target. On the current project database, H checks the completed migration-61
-checkpoint with 107 invariants; migration 61 is no longer pending. The command
+target. On the current project database, H checks the completed migration-62
+checkpoint with 116 invariants; no migration is pending. The command
 does not deploy anything. Canonical acceptance runs only with the harness's
 generated isolated target. The affected standalone authentication/audit fixture scripts now
 refuse the project cluster; use the harness, not a database-name prefix on 5433.
 
-The current audit wrapper upgrades its isolated 61 clone and explicitly selects
+The current audit wrapper accepts a complete historical 61 or 62 source: it
+upgrades only its owned 61 clone and reuses a complete 62 clone without invoking
+migration deployment. It validates immutable imports and current operational
+state separately, retaining authorized client/contact changes. It explicitly selects
 `test-audit.ts --profile=current-state-62`. It fails closed unless that target has
 the exact complete migration-62 ledger, checksums, historical data profile and
 boundary, then requires all 116 permanent invariants, including actor and event

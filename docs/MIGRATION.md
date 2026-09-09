@@ -3302,7 +3302,7 @@ an archive and proved restoration of all 97 prior table projections.
 
 After separate owner authorization on 7 September 2026, the project deployment
 command ran exactly once and migration 61 completed with one ledger entry.
-Project PostgreSQL is now at 61 applied migrations, zero pending or unfinished,
+At that 7 September checkpoint, PostgreSQL had 61 applied migrations, zero pending or unfinished,
 with the one approved historical rollback retained. Post-deployment verification
 passed 15/15 database checks and 107/107 permanent historical-profile invariants.
 All 97 original table projections remain exact: 92 whole tables unchanged and
@@ -3318,13 +3318,13 @@ Phase 1 is operationally complete. Phase 2's read-only `/staff` roster and
 `/staff/[id]` detail are implemented, locally verified and checked. Phase 3 now
 implements Administrator staff mutations using migration 61's existing gateways.
 No migration, schema, grant, invariant, imported evidence or Access file changed.
-Project verification still passes 15/15 and 107/107 with all 103 table, sequence,
+That staff-phase verification passed 15/15 and 107/107 with all 103 table, sequence,
 catalog, audit and logo fingerprints unchanged. Phase 4 completes final browser,
 accessibility and regression acceptance with the same full project-preservation
 result. Task 4.0a overall and Phase 4 are checked. Task 4.1 remains unchecked and
-incomplete under the approved D52–D57 contract. Phase 1 now implements the
-client/contact foundation in isolation. The next return point is
-**independent review of Task 4.1 Phase 1**.
+incomplete under the approved D52–D57 contract. Phase 1's client/contact foundation
+is now deployed and operationally complete at migration 62. The next development return point is
+**Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**, unstarted.
 See the
 [Phase 2 implementation report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 The [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
@@ -3336,11 +3336,22 @@ migration, schema, decision, source or cutover operation occurred in Phase 4.
 The Litigation Department continues using Access. This is not final Access
 cutover; final delta reconciliation remains governed by D43 and D51.
 
-## Task 4.1 client/contact evidence — Phase 1 implemented in isolation
+## Task 4.1 client/contact evidence — Phase 1 deployed and verified
 
 D52–D57 approve a separation of immutable import evidence from editable live
-clients and contacts. Migration 62 implements that separation on isolated
-databases. The project remains at migration 61 with only 62 pending. The
+clients and contacts. Migration 62 implements that separation, proved on isolated
+databases and then deployed under separate owner authorization on 9 September 2026.
+One project deployment invocation applied only migration 62; its reviewed SHA-256 is
+`88ab034517f76e152e944f1a0949edc175a286c7bfeefe82fba0672c6b86f6c1`.
+The project checkpoint has 62 applied, zero pending/unfinished and one approved
+historical rollback, with fresh 15/15 checks and 116/116 historical invariants.
+The [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md)
+records all 99 unrelated tables and four original projections preserved, including
+full-precision prior ledger timestamps, audit/accounts, 48 complete sequence
+states and 54 logos. The retained recovery archive is the migration-61
+predeployment backup; logical-restore exceptions were not used for live preservation.
+Migration 33's documented historical extra-LF checksum compatibility remains
+the existing accepted rule, not a new exception. The
 [dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
 records the earlier read-only aggregate verification and its remote-freshness
 limitation; the subsequent owner resolutions are separate.
@@ -3381,8 +3392,10 @@ staff alias system or name/email uniqueness is added.
 Database-foundation proofs require isolated PostgreSQL instances and distinct,
 mandatory historical-upgrade and canonical-replay profiles. Preserve each
 profile's evidence and do not substitute clean replay for historical proof.
-Future mutation, race and rollback tests remain isolated. Project-database
-deployment needs separate owner authorization. Historical 61→62 passes 116
+Future mutation, race and rollback tests remain isolated. The accepted historical
+61→62 proof needs an actual untouched migration-61 source in isolation, not the
+current migration-62 project. Current regression commands can reuse complete 62
+without redeployment. Historical 61→62 passes 116
 invariants; canonical replay passes 98. The 18 historical-only checks are
 unchanged. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked; Access
 remains in departmental use and D43/D51 final cutover remains separate. See the

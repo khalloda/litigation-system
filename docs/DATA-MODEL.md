@@ -109,7 +109,7 @@ representations are now `people.row_version`, `alias_epoch`,
 `application_modified_at` and `application_modified_by` (an immutable human
 audit-actor reference); `person_name_alias.is_retired` and `retirement_reason`;
 and `lookup_team.row_version`. They are deployed in project PostgreSQL at
-migration 61. Post-deployment verification passed the permanent historical
+migration 61. Its 7 September post-deployment verification passed the permanent historical
 profile at 107/107; Phase 1 is operationally complete. Phase 2 now reads this
 unchanged schema through `/staff` and `/staff/[id]`. See the
 [deployment acceptance report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
@@ -449,9 +449,10 @@ a document heading and is deliberately dropped.
 `cash_or_probono`, `status`, `poa_location`, `documents_location`,
 `contact_person_id`, `client_start`, `client_end`.
 
-#### Operational model — Task 4.1 Phase 1 implemented in isolation
+#### Operational model — Task 4.1 Phase 1 deployed and verified
 
-D52–D57 are implemented by migration 62 on isolated fixtures. Both tables add
+D52–D57's database foundation is implemented by migration 62, now deployed after
+isolated proof and separate owner authorization. Both tables add
 `is_application_native`, `is_archived`, positive bigint `row_version`, and
 paired `application_modified_at`/`application_modified_by` fields. Imports begin
 at version 1 with no invented modification attribution; real changes increment
@@ -491,8 +492,11 @@ and zero NULLs; no editing history is inferred from those counts.
 
 Phase status is in [TASKS.md](../TASKS.md). The database proofs use
 isolated PostgreSQL instances and distinct historical-upgrade/canonical-replay
-profiles. Project deployment and the later application phases remain separate
-work; the project database is still at migration 61.
+profiles. The separately authorized project deployment passed 15/15 database
+checks and 116/116 historical invariants on 9 September 2026: 62 applied, zero
+pending or unfinished. Phase 1 is operationally complete; the next development
+return point is Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display,
+unstarted. See the [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 
 ### `client_logos` — 54 rows
 Extracted from an Access Attachment column.
@@ -1190,8 +1194,8 @@ There is one application batch, 382 resolutions and 824 audit events. The
 post-application `high_impact_row_proof` count is correctly zero because no
 released row has subsequently been modified; the immutable initial snapshots
 and hashes remain in the application evidence. Permanent verification passed
-93/93 at Task 3.5B acceptance; after migration 61 the current historical
-profile passes 107/107, preserving that release evidence.
+93/93 at Task 3.5B acceptance and 107/107 after migration 61. The current
+migration-62 historical profile passes 116/116, preserving that release evidence.
 
 ### Historical Stage 2 observations
 
