@@ -32,7 +32,10 @@ or unfinished, one approved historical rollback, 15/15 checks and 116/116
 historical invariants. Earlier isolated proof passed 116 historical and 98 canonical
 checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
-The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted. Stop for independent review of the Phase 2 navigation correction. Final Access
+Phase 2 implementation and correction review are complete; Khaled Helmy accepted
+Phase 2 on 9 September 2026. R1/R2 are closed. The immediate stop is review of the
+acceptance documentation before separately authorized publication.
+The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted and requiring its own authorization. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
@@ -1975,8 +1978,15 @@ than assuming one rule for every workflow. Test with real volumes.
       list/detail/contact pages and existing-logo display, read-only for all roles.
       See the [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
 
-      **Stop now:** independent review of the Phase 2 navigation correction.
-      See the [R1/R2 correction report](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md).
+      **Phase 2 accepted by Khaled Helmy, 9 September 2026:** independent
+      implementation and correction review are complete. R1/R2 are closed at
+      `0fc988e5f0809a215d405d52f2e0cfef31dc5464`, whose implementation parent is
+      `7872a52b19f838ab76bd02a901424e8d75758b4d`.
+      See the [original review](docs/reviews/2026-09-09-task-4-1-phase-2-independent-review.md),
+      [correction review](docs/reviews/2026-09-09-task-4-1-phase-2-correction-independent-review.md)
+      and [correction report and acceptance addendum](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md#acceptance-addendum--9-september-2026).
+      **Stop now:** review of this acceptance documentation before separately
+      authorized publication. Acceptance does not authorize a push or Phase 3.
       **Next development return point:** Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
       Later implementation and D43/D51 final cutover require their own authorization.
 

@@ -344,8 +344,12 @@ filters. Historical identities, unnamed contacts, main contacts, lawyer text and
 date-only values remain explicit. Existing logos use bounded validated local reads
 and a client-name fallback. No mutation controls, schema or migration changes.
 
-The immediate stop is independent Phase 2 navigation-correction review; Phase 3
-is the next development phase. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
-See the [R1/R2 correction report](task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md).
+Khaled Helmy accepted Phase 2 on 9 September 2026 after independent implementation
+and correction review. R1/R2 are closed; see the [correction review](reviews/2026-09-09-task-4-1-phase-2-correction-independent-review.md)
+and [dated acceptance addendum](task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md#acceptance-addendum--9-september-2026).
+The immediate stop is review of the acceptance documentation before separately
+authorized publication. Phase 3 remains the next development phase, unstarted
+and requiring its own authorization. Task 4.1 overall, Phases 3–4 and Task 4.1a
+remain unchecked. D43/D51 final reconciliation remains separate.
 See the [Phase 2 implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md)
 for exact test, browser, query-plan and unchanged-project evidence.

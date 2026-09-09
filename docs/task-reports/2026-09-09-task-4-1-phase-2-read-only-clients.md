@@ -1,5 +1,11 @@
 # Task 4.1 Phase 2 — read-only clients, contacts and existing logos
 
+**Acceptance pointer — 9 September 2026:** Khaled Helmy accepted Phase 2 after
+independent correction review closed R1/R2. See the [dated acceptance addendum](2026-09-09-task-4-1-phase-2-navigation-correction.md#acceptance-addendum--9-september-2026).
+The implementation and correction checkpoints below remain historical evidence.
+The current stop is review of the acceptance documentation before separately
+authorized publication; Phase 3 remains unstarted.
+
 **Subsequent review and correction, 9 September 2026:** this report records the
 original implementation checkpoint. The [independent review](../reviews/2026-09-09-task-4-1-phase-2-independent-review.md)
 identified two untested exceptions to its navigation-state claim: the empty-results

@@ -1,5 +1,9 @@
 # Task 4.1 Phase 2 — navigation correction R1/R2
 
+**Later acceptance — 9 September 2026:** independent correction review passed
+and Khaled Helmy accepted Phase 2. See the [acceptance addendum](#acceptance-addendum--9-september-2026).
+The original correction checkpoint below is retained as historical evidence.
+
 Correction checkpoint: 9 September 2026. Independent correction review and owner
 acceptance are pending. The owner's same-chat correction mandate authorizes only
 R1/R2, one additional local commit (`fix: preserve client navigation state`) and
@@ -178,3 +182,64 @@ The immediate stop is independent Phase 2 correction review. No checkbox was
 changed and no owner acceptance is claimed. Phase 3 remains the next development
 phase, unstarted and requiring its own authorization. Task 4.1 overall, Phases
 3–4 and Task 4.1a remain unchecked; D43/D51 final Access cutover remains separate.
+
+## Acceptance addendum — 9 September 2026
+
+Khaled Helmy explicitly accepted Task 4.1 Phase 2 by sending the same-chat
+acceptance mandate on 9 September 2026. This owner decision follows the
+[independent correction review](../reviews/2026-09-09-task-4-1-phase-2-correction-independent-review.md),
+which passed and closed both R1 and R2 with no new blocking finding in its scope.
+The review alone did not grant acceptance; the subsequent owner mandate did.
+
+Accepted correction: `0fc988e5f0809a215d405d52f2e0cfef31dc5464`,
+`fix: preserve client navigation state`, 9 files, +451/−7. Its exact implementation
+parent is `7872a52b19f838ab76bd02a901424e8d75758b4d`. The
+[original independent review](../reviews/2026-09-09-task-4-1-phase-2-independent-review.md)
+and [implementation report](2026-09-09-task-4-1-phase-2-read-only-clients.md)
+remain preserved; the correction evidence above explains the two closed paths.
+The correction review is preserved byte-for-byte, SHA-256
+`28bfad73fdb222f09b7ef5e97de095e356349910c59711acd364b6ed33c42ea8`.
+No business decision is added or renumbered; D52–D57 remain the approved contract.
+
+This acceptance task is Local Windows, in the same GPT-6 Astra conversation,
+with no subagents. The owner requested Light/Low effort; the agent cannot verify
+or change the desktop selector. Expected usage is Low: bounded documentation
+and Git checks reuse reviewed evidence, with no new expense or infrastructure.
+
+Pre-edit Git verification found clean `main`, including untracked files, at the
+accepted correction, two ahead/zero behind recorded `origin/main`
+`9962c9792180b5c46f9307aac03548edc4e9e597`, with no operation or lock. The exact
+commit chain, correction subject/statistics and all four original/correction
+patch/ZIP hashes matched their recorded receipts. No fetch was needed or run.
+
+Evidence distinction: the correction task freshly ran all eleven static checks,
+its production build and 58 browser proofs (50 zero-violation axe audits), plus
+15/15 setup checks, 116/116 invariants and complete preservation comparisons.
+It explicitly reused unchanged service, 448-permission and successful regression
+groups, retaining the original partial failure and affected audit rerun. Those
+are reviewed historical results, not new executions in this acceptance task.
+The artifact-based independent review's limits remain as stated in that review.
+
+This task performs documentation/Git validation only: installed Markdown parsing,
+local links/anchors, encoding, exact review bytes, unchanged checkbox states,
+current-reference consistency, `git diff --check` and the complete staged scope.
+Markdown retains the repository's existing exclusion from automatic Prettier
+reflow. The external acceptance receipt records the exact check results, enclosing
+commit/parent, patch statistics/hash and verified evidence manifest. There is no
+new application build, browser run, Docker/database command or live preservation
+claim, and no application/test, dependency, governance, migration or configuration
+change. Existing resources, recovery packages and earlier artifacts are retained.
+
+Exactly six documentation files comprise this acceptance change: `README.md`,
+`TASKS.md`, `docs/PRD.md`, this correction report, the implementation report's dated
+pointer, and `docs/reviews/2026-09-09-task-4-1-phase-2-correction-independent-review.md`.
+The single local commit is `docs: accept Task 4.1 Phase 2`; only that commit is
+exported as a full-index binary-safe patch, reverse-checked without applying.
+
+Phase 2 remains checked and is accepted. Task 4.1 overall, Phases 3–4 and Task
+4.1a remain unchecked; no other checkbox changes. Implementation and correction
+review are complete. **Immediate stop: independent review of this acceptance
+documentation before separately authorized publication.** The next development
+phase is Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted
+and requiring its own authorization. No push, history rewrite, deployment or
+later-phase work is authorized here. D43/D51 final reconciliation remains separate.
