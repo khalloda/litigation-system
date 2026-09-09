@@ -10,10 +10,10 @@
   `156d4221b21ee31d2d0dcd3b586a92143a6e1799`.
 - Starting parent: `65797993f29c97d757049f28c2da92f237512aa9`.
 - Starting subject: `docs: record approved Task 4.1 client contract`.
-- Final commit: the enclosing single implementation commit, whose full SHA,
-  parent, subject, file inventory, patch size/hash and reverse-check result are
-  recorded in the external delivery manifest after creation. A commit cannot
-  contain its own final hash.
+- Original implementation commit: `46846646c27746383280ab1dbb074e7f15658c99`,
+  preserved unchanged. Its original external delivery manifest records its
+  parent, subject, 36-file inventory and patch size/hash. The correction below
+  is a separate local commit, recorded in its own external delivery manifest.
 - Push status: not pushed.
 - Authorized stop and next return point: **independent review of Task 4.1 Phase 1**.
 
@@ -246,3 +246,126 @@ the full-index patch. The implementation changes exactly these files:
 - `scripts/test-user-management.ts`
 - `sql/transform-clients-contacts.sql`
 - `TASKS.md`
+
+## Independent-review correction — 9 September 2026
+
+The owner's bounded correction mandate preserves the original implementation
+commit and permits exactly one additional local commit, a correction-only patch
+and sanitized evidence. The return point is **independent review of the Task 4.1
+Phase 1 correction**. No fetch, push, project deployment, Access access, browser
+test or later-phase work is included. Two bounded read-only source/test reviewers
+reviewed the correction; the primary agent owns all edits and database operations.
+Requested configuration remains GPT-6 Astra, High reasoning, in this local
+Desktop task. Moderate expected usage was an estimate, not a fixed budget.
+
+Preflight matched clean `main` at `46846646c27746383280ab1dbb074e7f15658c99`,
+parent/cached `origin/main` `156d4221b21ee31d2d0dcd3b586a92143a6e1799`, ahead/behind
+1/0, no operation or lock, and the exact original 36 files / 2,938 additions /
+260 deletions. All three migration hashes above matched. Only Task 4.1 Phase 1
+is checked; the overall task, later phases and Task 4.1a remain unchecked.
+
+### Reproduced failures and correction
+
+The shared fixture copier first needed to honor a verified isolated source:
+it previously always dumped `litigation-db`, even when the configured connection
+pointed at an isolated source. It now binds the actual source connection to its
+container/database identity, verifies the existing ownership descriptor, and
+copies only that source through read-only, in-memory `pg_dump`. Default operation
+still copies the project. No project ACL, role or service setting is changed.
+
+With only that copying correction in place, the otherwise unchanged runners
+were exercised against an independently verified full-state clone: 107 checks
+at 61, ordinary migration deployment, then 116 checks at 62. All five ordinary
+paths failed with `62 !== 61`: `test:audit`, `test:audit-events`,
+`test:client-regressions`, `test:staff-read-only`, and its `--project-read-only`
+option. These initial failure logs are retained separately from acceptance.
+
+`assertCurrentClientSource` now requires exact historical 61 or 62, reconciles
+the complete repository/ledger checksums and actual profile evidence, and checks
+the complete staff boundary. At 62 it additionally checks immutable client/contact
+imports and valid operational state. `prepareCurrentClientSource` upgrades only
+an owned 61 clone; the complete-62 branch never invokes migration deployment or
+the old untouched-live-row oracle. The historical 61→62 acceptance path keeps
+that oracle and requires exact 61. Earlier staff 60→61 and audit 53–60 source
+guards remain unchanged. Canonical replay remains independent and mandatory.
+
+Staff read-only source selection now comes from database evidence, independently
+of fixture-borrowing flags. Both ordinary invocation and forced read-only mode
+support the exact historical 61/62 states. `HANDOFF.md` and directly affected
+command/status documentation now point to this correction's independent review.
+
+The permanent `test-client-regression-source.ts` proof uses an actual 61 source,
+verifies one migration invocation for its isolated upgrade, and supplies a callback
+that fails if deployment is invoked at 62. Full row, ledger, boundary, sequence and
+catalog receipts also prove that 62 preparation changes nothing. Seventeen
+transactional negative probes cover partial boundaries, unfinished migrations,
+current/prerequisite/earlier checksum defects, hybrid staged source, an unsupported
+later ledger, a missing relationship constraint and disabled/unknown boundary
+objects. Every probe rolls back and re-establishes exact state equality.
+
+Legitimate runtime gateway changes deliberately edit one imported client and
+contact, create one native client/contact pair, archive the contact and parent,
+then restore only the parent. All immutable import evidence remains byte-exact;
+116 historical checks pass with those live changes retained. That changed database
+is the source for the ordinary command acceptance run, not an untouched replacement.
+
+### Correction verification
+
+| Command / proof | Result |
+| --- | --- |
+| `test-client-regression-source.ts --entry-points` | Pass; 17 negative states with exact rollback; valid 61/62; one deployment invocation for 61, zero for 62; changed 62 source passes 116; source unchanged after all ordinary commands |
+| `npm run test:staff-read-only` | Pass on both 61 and changed 62 using ordinary invocation, without a borrowing flag |
+| Same entry with `-- --project-read-only` | Pass on changed 62 with forced read-only connections and exact preservation |
+| `npm run test:client-regressions` | Full pass from changed 62: authentication/accounts on canonical and restored fixtures, 448 permissions, staff reads/service/races/22 gateway groups, audit/events on both fixture types, 60/60 pure Gate 4 fixtures |
+| `npm run test:audit` | Pass through the normal entry from changed 62, including canonical/restored audit and event suites |
+| `npm run test:audit-events` | Separate normal entry passes from changed 62, including canonical/restored events and 45,463-event volume/indexed paging proof |
+| Historical acceptance command against complete 62 | Expected refusal before upgrade work; no earlier checkpoint manufactured |
+| `npm run test:client-contacts` | Strict historical 61→62 and independent canonical replay both pass, including malformed-state refusals, migration atomicity, exact import/unrelated-state preservation and client/contact mutation groups; final invariant totals remain 116 historical / 98 canonical |
+| `npm run check` | Entire existing static chain passes, including all semantic/D35 rejection fixtures |
+| Final read-only project verification | SQL 15/15 and historical `db:check` 107/107; exactly 61 deployed and migration 62 solely pending |
+| Project preservation and isolated cleanup | Before/after receipts byte-identical; all 103 tables, full sequences, catalog, roles/grants, audit evidence, service identity and 54 logos preserved; no fixture container, volume or network remains |
+| Scope and documentation-link verification | 12-file correction; 137 protected files byte-identical; all 79 relative links/anchors resolve; prior review artifacts unchanged |
+
+The full regression run supplies evidence for its included suites; those were
+not separately rerun outside the three specifically requested command entries.
+No production build is necessary for this test-orchestration/documentation-only
+correction. No browser or Access-based reconciliation was run.
+
+The initial TypeScript check found an unsupported assertion overload in the new
+proof; the supported message overload fixed it before database acceptance.
+Sandbox subprocess/status restrictions were resolved through authorized execution
+permissions. No automatic approval rejection or safety override was bypassed.
+The first complete database proof passed; the five initial old-runner failures
+and ordinary tooling failures remain distinguished from passing evidence.
+
+The correction's before and after project receipts both have SHA-256
+`7accf4a2a83a270cf3a85a31de4edfa7ee2f5a508f0ed9f3935dfbf71e2998fd`,
+also matching the original implementation's final receipt. No new project
+migration was applied, and the original patch, evidence ZIP and delivery
+manifest remain byte-identical. The correction-only full-index binary patch,
+its reverse-application check (without applying it), exact byte size/SHA-256,
+file inventory and focused evidence are recorded in a separate delivery
+manifest outside Git. Initial refusals, expected negative acceptance and final
+passing checks are labeled separately. The single additional local commit is
+`fix: preserve current regressions after client boundary`; the required final
+state is clean `main`, 2 ahead / 0 behind unchanged cached `origin/main`.
+The exact return point remains independent review of this Phase 1 correction.
+
+### Correction file scope
+
+The correction changes exactly these 12 files. Application source, Prisma
+schema, every migration SQL file including 62, dependencies/package entries,
+lockfile, D1–D57, governance and the older audit/staff upgrade guards are unchanged.
+
+- `HANDOFF.md`
+- `README.md`
+- `TASKS.md`
+- `docs/DATABASE.md`
+- `docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md`
+- `docs/testing/task-4-1-phase1-invariants.md`
+- `scripts/lib/client-regression-source.ts`
+- `scripts/lib/current-client-fixture.ts`
+- `scripts/lib/isolated-postgres-fixture.ts`
+- `scripts/test-client-contacts.ts`
+- `scripts/test-client-regression-source.ts`
+- `scripts/test-staff-read-only.ts`

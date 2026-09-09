@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import type { ClientBase } from 'pg';
 import { withApprovedMigrationClient } from './migration-principal';
 import { assertIsolatedTestCluster } from './isolated-postgres-fixture';
-import { assertStaffCheckpoint } from './staff-roster-checkpoint';
+import { assertCurrentClientSource } from './client-regression-source';
 import { withIsolatedPostgres, type IsolatedPostgres } from './isolated-postgres-fixture';
 import { auditDataFailures } from './audit-structure';
 import { historicalHighImpactClient, readApplicationState } from './high-impact-application-state';
@@ -34,7 +34,7 @@ export async function withCurrentClientFixture(
   await withApprovedMigrationClient(
     async (db) => {
       await assertIsolatedTestCluster(db, source);
-      assert.equal(await assertStaffCheckpoint(db, 'historical-full-state-upgrade'), 62);
+      assert.equal(await assertCurrentClientSource(db), 62);
     },
     {
       databaseUrl: source.toString(),
@@ -106,7 +106,7 @@ export async function createCurrentClientFixture(
     async (db) => {
       await assertIsolatedTestCluster(db, source);
       assert.equal(
-        await assertStaffCheckpoint(db, 'historical-full-state-upgrade'),
+        await assertCurrentClientSource(db),
         62,
         'Restored regression requires complete historical migration62 source',
       );

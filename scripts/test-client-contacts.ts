@@ -24,12 +24,13 @@ import { proveClientContactMutations } from './lib/client-contact-fixture-tests'
 import { migrateFixtureThroughCheckpoint } from './lib/fixture-migration-checkpoint';
 import { assertStaffCheckpoint } from './lib/staff-roster-checkpoint';
 import { loadAccounting } from './lib/gate4-database';
+import { prepareCurrentClientSource } from './lib/client-regression-source';
 import {
   proveClientContactPrestateRefusals,
   proveClientContactMalformedBoundary,
 } from './lib/client-contact-state-tests';
 
-async function initialiseActors(migrationUrl: string, runtimeUrl: string) {
+export async function initialiseActors(migrationUrl: string, runtimeUrl: string) {
   const owner = await createApprovedMigrationPrismaClient(migrationUrl);
   const runtime = createDatabaseClient(runtimeUrl);
   try {
@@ -232,6 +233,7 @@ async function main() {
     ].includes(process.argv[2]!),
   );
   const acceptance = process.argv[2]!.includes('acceptance');
+  const currentRegression = process.argv[2]!.includes('regression-proof');
   const suite = process.argv[3];
   assert.ok(
     process.argv.length === 3 ||
@@ -248,35 +250,33 @@ async function main() {
   const selected = (name: string) => suite === undefined || suite === '--suite=' + name;
   await withIsolatedPostgres(async (fixture) => {
     await fixture.restoreProject();
-    await withApprovedMigrationClient(
-      async (db) => {
-        await assertIsolatedTestCluster(db, new URL(fixture.migrationUrl), fixture.environment);
-        assert.equal(
-          (
-            await db.query(
-              'SELECT count(*)::integer n FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL',
-            )
-          ).rows[0].n,
-          61,
-        );
-        await proveClientImportSource(db);
-        if (process.argv[2] === '--baseline-gaps') await reproduce(db);
-        if (process.argv[2] === '--sql-smoke') {
-          try {
-            await db.query(
-              readFileSync(
-                'prisma/migrations/20260909120000_client_contact_database_boundary/migration.sql',
-                'utf8',
-              ),
-            );
-          } catch (error) {
-            await db.query('ROLLBACK');
-            throw error;
+    if (!currentRegression)
+      await withApprovedMigrationClient(
+        async (db) => {
+          await assertIsolatedTestCluster(db, new URL(fixture.migrationUrl), fixture.environment);
+          assert.equal(
+            await assertStaffCheckpoint(db, 'historical-full-state-upgrade'),
+            61,
+            'Historical client upgrade proof requires the exact untouched migration61 source',
+          );
+          await proveClientImportSource(db);
+          if (process.argv[2] === '--baseline-gaps') await reproduce(db);
+          if (process.argv[2] === '--sql-smoke') {
+            try {
+              await db.query(
+                readFileSync(
+                  'prisma/migrations/20260909120000_client_contact_database_boundary/migration.sql',
+                  'utf8',
+                ),
+              );
+            } catch (error) {
+              await db.query('ROLLBACK');
+              throw error;
+            }
           }
-        }
-      },
-      { databaseUrl: fixture.migrationUrl },
-    );
+        },
+        { databaseUrl: fixture.migrationUrl },
+      );
     if (process.argv[2] === '--migration-smoke') {
       const result = spawnSync(
         process.execPath,
@@ -296,8 +296,10 @@ async function main() {
       );
       assert.equal(result.status, 0, 'Migration 62 isolated deployment failed');
     }
-    if (process.argv[2]!.includes('regression-proof')) {
-      child('scripts/run-prisma-migration.ts', ['deploy'], fixture.environment);
+    if (currentRegression) {
+      await prepareCurrentClientSource(fixture.migrationUrl, fixture.environment, () =>
+        child('scripts/run-prisma-migration.ts', ['deploy'], fixture.environment),
+      );
       const all = process.argv[2] === '--regression-proof';
       if (all) {
         for (const script of [
@@ -311,11 +313,7 @@ async function main() {
         if (selected('accounts'))
           child('scripts/test-user-management-ui.ts', [], fixture.environment);
         if (selected('staff')) {
-          child(
-            'scripts/test-staff-read-only.ts',
-            ['--restored-client-fixture'],
-            fixture.environment,
-          );
+          child('scripts/test-staff-read-only.ts', [], fixture.environment);
           child(
             'scripts/test-staff-mutations.ts',
             ['--restored-client-fixture'],
@@ -464,12 +462,13 @@ async function main() {
     }
   });
 }
-main().catch((error: unknown) => {
-  console.error(
-    (error instanceof Error ? error.message : 'Client/contact fixture failed').replace(
-      /postgres(?:ql)?:\/\/[^\s"']+/gu,
-      '[redacted database URL]',
-    ),
-  );
-  process.exitCode = 1;
-});
+if (process.argv[1]?.replaceAll('\\', '/').endsWith('/test-client-contacts.ts'))
+  void main().catch((error: unknown) => {
+    console.error(
+      (error instanceof Error ? error.message : 'Client/contact fixture failed').replace(
+        /postgres(?:ql)?:\/\/[^\s"']+/gu,
+        '[redacted database URL]',
+      ),
+    );
+    process.exitCode = 1;
+  });

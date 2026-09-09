@@ -54,19 +54,37 @@ of that proof.
   permission decisions, accounts, staff reads/mutations, audit/event and pure
   Gate 4 regressions. Authentication/accounts/audit/events each run on both
   independent canonical replays and exact historical-62 clones. Staff proofs
-  explicitly borrow the verified upgraded cluster and own their child databases.
+  use the normal read-only entry point and bounded borrowed mutation fixtures.
+  The outer source must be the complete historical profile at exactly 61 or 62.
+  Only a disposable 61 clone is upgraded. Complete 62 reuses its boundary and
+  never invokes migration deployment or the untouched-live-row import oracle.
+  Immutable imports and valid operational changes are checked separately.
   `--suite=authentication|accounts|staff|audit|gate4` selects a focused rerun when
   passed directly to `scripts/test-client-contacts.ts --regression-proof`.
 - `npm run test:audit` and `npm run test:audit-events`: current migration-62
-  isolated wrappers; `test:audit:historical` remains the separate exact 53–60
+  isolated wrappers accepting the same exact historical 61/62 source states;
+  `test:audit:historical` remains the separate exact 53–60
   historical proof and is unavailable from the project migration-61 source.
 - `npm run db:check -- --profile=historical-full-state-upgrade`: read-only
   project predeployment verification (107), or explicit upgraded fixture (116).
 - Canonical checking requires the generated fixture URL and explicit
   `--profile=canonical-clean-replay` (98); it cannot stand in for historical proof.
+- `npm run test:staff-read-only` and `-- --project-read-only`: derive the exact
+  supported 61/62 checkpoint from actual database evidence, independently of
+  fixture borrowing. The project-only option retains forced read-only connections.
+- `npx --no-install tsx scripts/test-client-regression-source.ts --entry-points`: start from
+  actual historical 61, prove exact 61/62 handling and rejected malformed states,
+  invoke migration deployment exactly once for the owned 61 copy and zero times
+  for complete 62, then run the ordinary npm entries against 62 after legitimate
+  imported edits, native additions and archive/restore. Normal staff is exercised
+  on both states. Omit the flag for the focused source proof. This separate proof
+  never forges an earlier migration ledger or removes the boundary to simulate 61.
 
 The wrappers independently check cluster identity, task ownership, PostgreSQL
 version, isolated storage/network and a loopback-only port other than 5433.
 They remove their own databases, credentials, container, volume and network.
+An existing isolated descriptor selects that verified source's `litigation`
+database for read-only copying; default invocation selects the project. A mismatched
+connection/descriptor fails before fixture creation. No source is silently replaced.
 No Access file is read. The full `reconcile:gate4` Access comparison is outside
 this phase; its affected PostgreSQL accounting and pure fixture suite are tested.

@@ -21,7 +21,7 @@ import {
 } from '../src/lib/staff-roster-query';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import { withCurrentClientFixture } from './lib/current-client-fixture';
-import { assertStaffCheckpoint } from './lib/staff-roster-checkpoint';
+import { assertCurrentClientSource } from './lib/client-regression-source';
 import { staffReadOnlyState } from './lib/staff-read-only-state';
 import { auditStructureFailures, auditDataFailures } from './lib/audit-structure';
 import { auditEventStructureFailures, auditEventDataFailures } from './lib/audit-event-structure';
@@ -267,7 +267,6 @@ export async function proveStaffReads(
 
 async function main() {
   const projectOnly = process.argv.includes('--project-read-only');
-  const checkpoint = process.argv.includes('--restored-client-fixture') ? 62 : 61;
   assert.ok(
     process.argv
       .slice(2)
@@ -275,7 +274,7 @@ async function main() {
   );
   const before = await withApprovedMigrationClient(
     async (db) => {
-      assert.equal(await assertStaffCheckpoint(db, 'historical-full-state-upgrade'), checkpoint);
+      const checkpoint = await assertCurrentClientSource(db);
       assert.deepEqual(
         (
           await db.query(
@@ -324,6 +323,10 @@ async function main() {
   } else {
     await withCurrentClientFixture(async (fixture) => {
       await fixture.restoreProject();
+      await withApprovedMigrationClient(assertCurrentClientSource, {
+        databaseUrl: fixture.migrationUrl,
+        clientConfig: { options: '-c default_transaction_read_only=on' },
+      });
       // Restored roles have new generated credentials; role catalog hashes
       // exclude passwords and the template has the original database ACL.
       const database = createDatabaseClient(fixture.runtimeUrl);

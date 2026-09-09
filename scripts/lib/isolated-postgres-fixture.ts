@@ -129,6 +129,12 @@ export async function withIsolatedPostgres<T>(
   const project = inspect(PROJECT);
   assert.equal(project.State.Running, true, 'project must already be running');
   const originalProject = projectIdentity(project);
+  // Normal entry points may be launched by an outer fixture against its
+  // existing 61 or 62 source. Validate the actual connection and descriptor
+  // before selecting the dump container; never silently fall back to project.
+  const sourceName = process.env['TASK40A_ISOLATED_CONTAINER'] ?? PROJECT;
+  const sourceContainer = inspect(sourceName);
+  const originalSource = projectIdentity(sourceContainer);
   const image = JSON.parse(docker(['image', 'inspect', project.Image]).toString())[0] as {
     Id: string;
     RepoDigests: string[];
@@ -144,7 +150,7 @@ export async function withIsolatedPostgres<T>(
     'exec',
     '-e',
     'PGOPTIONS=-c default_transaction_read_only=on',
-    PROJECT,
+    sourceName,
     'psql',
     '-X',
     '-U',
@@ -157,6 +163,45 @@ export async function withIsolatedPostgres<T>(
     .toString()
     .trim();
   assert.match(sourceClusterId, /^\d+$/u);
+  assert.equal(sourceContainer.Image, project.Image, 'source must use the approved cached image');
+  const databaseAcl = await withApprovedMigrationClient(
+    async (db) => {
+      const actual = (
+        await db.query(
+          'SELECT current_database() database,system_identifier::text id FROM pg_control_system()',
+        )
+      ).rows[0];
+      assert.deepEqual(
+        actual,
+        { database: 'litigation', id: sourceClusterId },
+        'configured source connection differs from the selected dump container',
+      );
+      if (sourceName !== PROJECT) {
+        const port = sourceContainer.NetworkSettings.Ports['5432/tcp']?.[0]?.HostPort;
+        await assertIsolatedTestCluster(db, new URL(`postgresql://127.0.0.1:${port}/litigation`));
+      } else {
+        assert.ok(
+          !process.env['TASK40A_ISOLATED_TOKEN'] && !process.env['TASK40A_ISOLATED_CLUSTER'],
+          'partial isolated source descriptor',
+        );
+      }
+      const acl = (
+        await db.query(
+          'SELECT ARRAY(SELECT unnest(datacl)::text ORDER BY 1) acl FROM pg_database WHERE datname=current_database()',
+        )
+      ).rows[0]?.acl as string[];
+      const expected = ['=c/litigation', 'litigation=CTc/litigation'];
+      if (sourceName !== PROJECT && acl.includes('litigation_runtime=c/litigation'))
+        expected.push('litigation_runtime=c/litigation');
+      assert.deepEqual(
+        acl,
+        expected,
+        'Source database ACL differs from the approved full-state clone profile',
+      );
+      return acl;
+    },
+    { clientConfig: { options: '-c default_transaction_read_only=on' } },
+  );
   const token = randomUUID();
   const name = PREFIX + token;
   const volume = name + '-data';
@@ -374,25 +419,12 @@ export async function withIsolatedPostgres<T>(
     };
     const restoreProject = async () => {
       assert.deepEqual(projectIdentity(inspect(PROJECT)), originalProject);
-      const databaseAcl = await withApprovedMigrationClient(
-        async (db) =>
-          (
-            await db.query(
-              'SELECT ARRAY(SELECT unnest(datacl)::text ORDER BY 1) acl FROM pg_database WHERE datname=current_database()',
-            )
-          ).rows[0]?.acl,
-        { clientConfig: { options: '-c default_transaction_read_only=on' } },
-      );
-      assert.deepEqual(
-        databaseAcl,
-        ['=c/litigation', 'litigation=CTc/litigation'],
-        'Source database ACL differs from the approved full-state clone profile',
-      );
+      assert.deepEqual(projectIdentity(inspect(sourceName)), originalSource);
       let dump = docker([
         'exec',
         '-e',
         'PGOPTIONS=-c default_transaction_read_only=on',
-        PROJECT,
+        sourceName,
         'pg_dump',
         '-U',
         'litigation',
@@ -427,6 +459,8 @@ export async function withIsolatedPostgres<T>(
               clusterId,
             );
             await db.query('REVOKE TEMPORARY ON DATABASE litigation FROM PUBLIC');
+            if (databaseAcl.includes('litigation_runtime=c/litigation'))
+              await db.query('GRANT CONNECT ON DATABASE litigation TO litigation_runtime');
             assert.deepEqual(
               (
                 await db.query(
@@ -490,6 +524,11 @@ export async function withIsolatedPostgres<T>(
       projectIdentity(inspect(PROJECT)),
       originalProject,
       'project Docker identity/configuration changed',
+    );
+    assert.deepEqual(
+      projectIdentity(inspect(sourceName)),
+      originalSource,
+      'source Docker identity/configuration changed',
     );
     assert.deepEqual(resourceNames('container'), before.containers);
     assert.deepEqual(resourceNames('volume'), before.volumes);

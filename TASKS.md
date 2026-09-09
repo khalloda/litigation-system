@@ -30,7 +30,7 @@ Task 4.1 Phase 1 is implemented and verified on isolated databases; not deployed
 to the project. Project PostgreSQL remains at migration 61 with 62 solely pending,
 15/15 checks and 107/107 invariants. Isolated migration 62 passes 116 historical
 and 98 canonical checks. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
-The next return point is **independent review of Task 4.1 Phase 1**. Project
+The next return point is **independent review of the Task 4.1 Phase 1 correction**. Project
 deployment requires separate authorization. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
@@ -1958,7 +1958,7 @@ than assuming one rule for every workflow. Test with real volumes.
         Produce dated acceptance evidence without treating documentation
         approval, clean replay or isolated proof as deployment authorization.
 
-      **Stop now:** independent review of Task 4.1 Phase 1. Task 4.1 overall,
+      **Stop now:** independent review of the Task 4.1 Phase 1 correction. Task 4.1 overall,
       Phases 2–4 and Task 4.1a remain unchecked. Project deployment, later
       implementation and D43/D51 final cutover require their own authorization.
 

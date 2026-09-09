@@ -517,7 +517,7 @@ checks pass 15/15 and historical invariants pass 107/107. Browser mutations and
 all regression fixtures were separately owned and removed. See the
 [Phase 4 completion report](task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 Task 4.0a overall and Phase 4 are checked. The next return point is
-**independent review of Task 4.1 Phase 1**; its database foundation is implemented
+**independent review of the Task 4.1 Phase 1 correction**; its database foundation is implemented
 in isolation. Task 4.1 overall and Phases 2–4 remain unchecked. The Litigation
 Department continues using Access;
 final delta reconciliation and cutover remain separate work under D43 and D51.
@@ -639,10 +639,26 @@ client/contact delete-and-rebuild transform after the operational boundary.
 `npm run test:client-contacts` owns a separate PostgreSQL 17.11 cluster and proves
 historical 61→62 (116 checks) and canonical replay (98 checks). The 18
 historical-only checks still require their actual imported artifacts.
-`npm run test:client-regressions` serially runs the affected current suites on
-the upgraded historical state and independent clean replays. `test:audit` and
-`test:audit-events` now use that migration-62 wrapper; the old staff 60→61 and
-audit 53–60 proofs retain their exact source requirements.
+`npm run test:client-regressions`, `npm run test:audit` and
+`npm run test:audit-events` accept an exact complete historical source at 61 or
+62. They copy it into a separate owned cluster. A 61 copy is upgraded there;
+a 62 copy uses its existing boundary without invoking migration deployment or
+the untouched-live-row import oracle. Exact immutable import evidence and valid
+operational state are checked separately, so authorized edits, native additions
+and archive transitions remain valid. Independent canonical child replays remain
+mandatory; a canonical source cannot substitute for the historical source.
+The normal `npm run test:staff-read-only` and its `-- --project-read-only` option
+derive 61/62 from database evidence, independently of fixture-borrowing flags.
+The latter forces read-only connections and creates no synthetic fixture rows.
+When an outer test supplies the established isolated descriptor, normal commands
+copy that verified source container's `litigation` database, rather than silently
+copying the project. Default invocation still reads the project source only.
+The old staff 60→61 and audit 53–60 proofs retain their exact source requirements.
+Run `npx --no-install tsx scripts/test-client-regression-source.ts --entry-points` for the
+permanent source-selection, malformed-state, no-replay and normal-command proof;
+it requires the actual historical migration-61 source. Omit `--entry-points`
+for the focused source proof, including normal staff paths. Installed dependencies
+are sufficient; no package installation is needed.
 The updated read-only `db:check -- --profile=historical-full-state-upgrade`
 accepts the complete project migration-61 predeployment state (107 checks),
 reporting 62 as solely pending. Neither isolated proof nor this documentation

@@ -31,7 +31,7 @@ The Access-source derivative disposition is recorded in
 with its [dated evidence summary](docs/reviews/2026-09-07-access-source-identity-discrepancy.md).
 Task 4.1's approved contract is recorded in D52–D57 and its
 [dated readiness review and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
-The next return point is **independent review of Task 4.1 Phase 1**. See its
+The next return point is **independent review of the Task 4.1 Phase 1 correction**. See its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
 Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked. Project deployment
