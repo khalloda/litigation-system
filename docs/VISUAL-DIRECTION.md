@@ -198,9 +198,8 @@ forms, confirmation dialogs, focused validation and stale/conflict recovery.
 Its [implementation report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
 records local desktop, mobile, keyboard, zoom and accessibility evidence.
 Phase 4 completes browser interaction, accessibility and final visual evidence.
-The next development return point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
-unstarted. Task 4.1 Phase 1 is checked, deployed and operationally complete under
-D52–D57; the overall task, Phases 2–4 and Task 4.1a remain unchecked.
+The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted. Task 4.1 Phase 1 is checked, deployed and operationally complete under
+D52–D57; the overall task, Phases 3–4 and Task 4.1a remain unchecked.
 
 The Arabic-first RTL route set is `/staff`, `/staff/new`, `/staff/[id]` and
 `/staff/[id]/edit`. The roster defaults to the 23 active internal staff and can
@@ -253,11 +252,11 @@ programmatically, dialog Tab focus stays contained, pending/results receive
 focus, and error-link targets have space for their focus outlines. Live-region
 roles and properties were inspected; screen-reader speech was not tested.
 
-## 8a. Clients and contacts — approved Task 4.1 direction, screens unstarted
+## 8a. Clients and contacts — Phase 2 read-only screens implemented
 
 The [migration-62 deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md)
-records database completion and 116/116 historical invariants. Deployment adds
-no client/contact application screens; the direction below remains for Phases 2–4.
+records database completion and 116/116 historical invariants. Phase 2 now implements
+read-only screens; mutation interactions below remain the approved direction for Phases 3–4.
 
 Use the established light Arabic-first RTL layout, logical CSS, bundled font,
 centralized strings, Western numerals and explicit absence/error states. Client
@@ -289,8 +288,7 @@ images use the client's name, including a late image-load failure. Task 4.1a
 owns upload, replacement, resizing, preview and recoverable removal. Future
 acceptance requires separately authorized local browser checks for keyboard,
 focus, labels/errors, confirmations, status announcements, contrast, 200% zoom
-and 320-pixel RTL reflow; mutation flows use isolated databases. No screen or
-browser implementation is part of this documentation checkpoint.
+and 320-pixel RTL reflow; mutation flows use isolated databases. Phase 2 browser evidence covers the read-only screens; mutation acceptance remains later work.
 
 ## 9. Audit history — owner-approved direction, deferred
 
@@ -334,3 +332,17 @@ screen context and responsive behavior when Task 4.9 begins.
 
 Fonts in the mockups were wrong (system Arabic). The real thing uses **Noto
 Naskh Arabic, bundled**, per `docs/BRAND.md`.
+
+### Task 4.1 Phase 2 implementation — 9 September 2026
+
+Three read-only pages now use the existing light RTL tokens and bundled Arabic
+font. Separate status/archive filters, match disclosure, independent contact
+history, explicit missing names and separate system/Access IDs make the source
+semantics visible. Multiline/mixed-script values wrap. Existing logos fall back
+to the client name even if loading fails before hydration or later. Focused
+errors, retry, loading, empty and missing states follow the staff lessons.
+The implementation report records desktop/390px/320px, keyboard, axe and genuine
+200% zoom evidence. Mutation confirmations remain future Phase 3/4 work.
+
+Stop for independent Phase 2 review; Phase 3 is the next development phase.
+See the [implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).

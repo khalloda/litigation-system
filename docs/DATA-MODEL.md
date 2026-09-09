@@ -495,8 +495,7 @@ isolated PostgreSQL instances and distinct historical-upgrade/canonical-replay
 profiles. The separately authorized project deployment passed 15/15 database
 checks and 116/116 historical invariants on 9 September 2026: 62 applied, zero
 pending or unfinished. Phase 1 is operationally complete; the next development
-return point is Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display,
-unstarted. See the [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
+return point is Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted. See the [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 
 ### `client_logos` — 54 rows
 Extracted from an Access Attachment column.
@@ -1212,3 +1211,15 @@ These are **expected**. Load them; do not try to fix them silently.
 | Current matters with no target lawyer relationship | **1,000 of 1,744** (read-only database count after Task 3.5B; the historical Task 2.7 count was 981 of 1,689) |
 | Hearings with no matter | 4 |
 | Powers of attorney with no client | 1 |
+
+### Task 4.1 Phase 2 implementation — 9 September 2026
+
+The read service uses explicit client/contact projections and stored PostgreSQL
+relationships. Nested contact reads constrain both IDs; home_phone is excluded.
+Date columns return date-only text; main contact and historical lawyer text stay
+separate. Each client's contact history has its own 25-row paging; matter count
+is a scalar query, including the 378-matter client, never a loaded collection.
+No schema, migration, constraint, grant or data-model change was introduced.
+
+Stop for independent Phase 2 review; Phase 3 is the next development phase.
+See the [implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).

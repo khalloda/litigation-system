@@ -90,10 +90,9 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
-unstarted. The D52–D57 database foundation is now deployed and operationally
+point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted. The D52–D57 database foundation is now deployed and operationally
 complete at migration 62, with 15/15 checks and 116/116 historical invariants.
-Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
+Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
 The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
@@ -171,10 +170,9 @@ Administrator-only archive/restore, plus existing-logo display and the
 client-name fallback. Upload/replacement/resizing/recoverable logo removal
 remain Task 4.1a. Phase 1 implements database enforcement, proved in isolation
 and deployed under separate owner authorization on 9 September 2026. Project
-PostgreSQL has 62 applied migrations, zero pending or unfinished; no client/contact
-application screens are implemented. See the
+PostgreSQL has 62 applied migrations, zero pending or unfinished; Phase 2 now implements read-only client/contact screens and existing-logo display. See the
 [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
-Screens and application mutations remain Phases 2–4. [TASKS.md](../TASKS.md) owns phase status;
+Application mutations and final acceptance remain Phases 3–4. [TASKS.md](../TASKS.md) owns phase status;
 the [dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
 separates findings from later owner resolutions.
 
@@ -335,3 +333,18 @@ the later approved audit-history UI.
 splitting.
 
 **Phase 3 (possible)** — bilingual interface.
+
+### Task 4.1 Phase 2 implementation — 9 September 2026
+
+Read-only `/clients`, `/clients/[id]` and `/clients/[id]/contacts/[contactId]`
+are implemented for all four roles, with independently guarded read services
+and logo GET/HEAD. Search includes Arabic, full/English client names and contact
+names, with contact-match disclosure, distinct 25-row pages and separate status/archive
+filters. Historical identities, unnamed contacts, main contacts, lawyer text and
+date-only values remain explicit. Existing logos use bounded validated local reads
+and a client-name fallback. No mutation controls, schema or migration changes.
+
+The immediate stop is independent Phase 2 review; Phase 3 is the next development
+phase. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
+See the [Phase 2 implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md)
+for exact test, browser, query-plan and unchanged-project evidence.

@@ -49,6 +49,38 @@ export type RouteInventoryEntry = {
 export const ROUTE_INVENTORY = [
   {
     kind: 'page',
+    source: 'src/app/clients/page.tsx',
+    route: '/clients',
+    classification: { access: 'permission', area: 'clients', action: 'view' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/clients/[id]/page.tsx',
+    route: '/clients/[id]',
+    classification: { access: 'permission', area: 'clients', action: 'view' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/clients/[id]/contacts/[contactId]/page.tsx',
+    route: '/clients/[id]/contacts/[contactId]',
+    classification: { access: 'permission', area: 'contacts', action: 'view' },
+  },
+  {
+    kind: 'route',
+    source: 'src/app/clients/[id]/logo/route.ts',
+    route: '/clients/[id]/logo',
+    exportName: 'GET',
+    classification: { access: 'permission', area: 'clientLogoUpload', action: 'view' },
+  },
+  {
+    kind: 'route',
+    source: 'src/app/clients/[id]/logo/route.ts',
+    route: '/clients/[id]/logo',
+    exportName: 'HEAD',
+    classification: { access: 'permission', area: 'clientLogoUpload', action: 'view' },
+  },
+  {
+    kind: 'page',
     source: 'src/app/staff/new/page.tsx',
     route: '/staff/new',
     classification: { access: 'permission', area: 'staff', action: 'manage' },

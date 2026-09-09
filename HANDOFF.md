@@ -35,9 +35,11 @@ unfinished, one approved historical rollback, 15/15 database checks and 116/116
 historical invariants. The earlier isolated proof passed 116 historical and 98
 canonical invariants. Its current-regression correction separates exact 61→62
 upgrade proof from current 61/62 source selection and preserves valid operational
-client/contact changes. The next development return point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
-unstarted. Stop for independent review of this documentation acceptance commit.
-Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
+client/contact changes. Task 4.1 Phase 2 is implemented and locally verified: read-only client/contact
+pages, distinct search/filter/paging and independently guarded existing-logo display
+for all four roles. See the [Phase 2 implementation report](docs/task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
+The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted. Stop for independent review of the Phase 2 implementation.
+Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
 The [migration-62 acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md)
 separates the retained migration-61 recovery package, authorized deployment and fresh checks.
 See the [client Phase 1 report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)

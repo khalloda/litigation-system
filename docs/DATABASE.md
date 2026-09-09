@@ -517,9 +517,8 @@ checks passed 15/15 and historical invariants passed 107/107. Browser mutations 
 all regression fixtures were separately owned and removed. See the
 [Phase 4 completion report](task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 Task 4.0a overall and Phase 4 are checked. The next return point is
-**Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
-unstarted; its Phase 1 database foundation is now deployed and operationally
-complete at migration 62. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked. The Litigation
+**Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted; its Phase 1 database foundation is now deployed and operationally
+complete at migration 62. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked. The Litigation
 Department continues using Access;
 final delta reconciliation and cutover remain separate work under D43 and D51.
 
@@ -906,3 +905,16 @@ recorded. Never enable it for an untrusted direct deployment.
 Not yet. Backups are task 7.2, and decision **D16** sets out what is required:
 nightly, database *and* the client-logo folder in one operation, copied off the
 machine, and a restore actually tested before go-live.
+
+### Task 4.1 Phase 2 implementation — 9 September 2026
+
+Read services use parameterized SELECTs in read-only repeatable-read snapshots.
+Counts and pages share predicates, and EXISTS prevents contact matches from
+duplicating clients. Ordering is Arabic collation then ID; pages contain 25 rows.
+The full query closure and eight read/transaction sites are pinned in the audit
+inventory. No grant, schema or migration change. Isolated tests restore verified
+migration 62 without redeployment; the full project-preservation receipt covers
+107 tables, 48 complete sequences, catalogs/roles/grants and all 54 logo files.
+
+Stop for independent Phase 2 review; Phase 3 is the next development phase.
+See the [implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).

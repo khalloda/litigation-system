@@ -31,12 +31,14 @@ The Access-source derivative disposition is recorded in
 with its [dated evidence summary](docs/reviews/2026-09-07-access-source-identity-discrepancy.md).
 Task 4.1's approved contract is recorded in D52–D57 and its
 [dated readiness review and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
-The next development return point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
-unstarted. See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
+Task 4.1 Phase 2 is implemented and locally verified: read-only client/contact
+pages, distinct search/filter/paging and independently guarded existing-logo display
+for all four roles. See the [Phase 2 implementation report](docs/task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
+The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted. See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
-Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked. The current stop is
-independent review of the documentation acceptance commit.
+Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked. The current stop is
+independent review of the Phase 2 implementation.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).

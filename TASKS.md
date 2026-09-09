@@ -31,9 +31,8 @@ owner authorization. Project PostgreSQL has 62 applied migrations, zero pending
 or unfinished, one approved historical rollback, 15/15 checks and 116/116
 historical invariants. Earlier isolated proof passed 116 historical and 98 canonical
 checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
-Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
-The next development return point is **Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**,
-unstarted. Stop for independent review of this documentation acceptance commit. Final Access
+Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
+The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted. Stop for independent review of the Phase 2 implementation. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
@@ -1719,7 +1718,7 @@ than assuming one rule for every workflow. Test with real volumes.
       invariants. Phases 2–4 are implemented and verified. Task 4.1 remains
       incomplete under the approved D52–D57 contract. Its Phase 1 database
       foundation is now deployed and operationally complete at migration 62;
-      Phase 2 — Read-only client/contact screens and existing-logo display is next, unstarted.
+      Phase 2 is implemented and verified; independent review is the immediate stop. Phase 3 is next, unstarted.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1886,7 +1885,7 @@ than assuming one rule for every workflow. Test with real volumes.
       **Historical Phase 4 stop point:** independent Task 4.0a review; no push
       or Task 4.1 implementation occurred in that completion task. Task 4.0a
       was subsequently published at `6579799`. The current return point is
-      Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display, unstarted.
+      Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted.
 
 - [ ] **4.1 Clients** — Phase 1 deployed and operationally complete (**D52–D57**).
       Client/contact list, detail and authorized creation/editing; optional main
@@ -1934,7 +1933,7 @@ than assuming one rule for every workflow. Test with real volumes.
         distinguishes this from the retained migration-61 recovery backup and
         earlier isolated implementation/correction proofs.
 
-  - [ ] **Phase 2 — Read-only client/contact screens and existing-logo display.**
+  - [x] **Phase 2 — Read-only client/contact screens and existing-logo display.**
         Implement guarded client list/detail and client-owned contact views;
         normalized Arabic and retained English-name search, contact-match
         disclosure, distinct deterministic 25-row pagination, separate business
@@ -1972,9 +1971,12 @@ than assuming one rule for every workflow. Test with real volumes.
         Produce dated acceptance evidence without treating documentation
         approval, clean replay or isolated proof as deployment authorization.
 
-      **Stop now:** independent review of the documentation acceptance commit.
-      **Next development return point:** Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display,
-      unstarted. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
+      **Phase 2 implemented and locally verified, 9 September 2026:** guarded
+      list/detail/contact pages and existing-logo display, read-only for all roles.
+      See the [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
+
+      **Stop now:** independent review of the Phase 2 implementation.
+      **Next development return point:** Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
       Later implementation and D43/D51 final cutover require their own authorization.
 
 - [ ] **4.1a Client logo upload**

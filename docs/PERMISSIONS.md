@@ -97,8 +97,9 @@ Runtime direct table writes and sequence access are revoked. Archive/restore
 is Administrator-only. Business mutations and audit events commit together.
 After isolated verification and separate owner authorization, migration 62 is
 deployed on project PostgreSQL with 15/15 database checks and 116/116 historical
-invariants. Phase 1 is operationally complete; no client/contact application
-screen or handler is supplied by this deployment. See the
+invariants. Phase 1 is operationally complete. Phase 2 now adds three guarded
+read-only pages and independently guarded logo GET/HEAD; application mutation
+controls remain Phase 3. See the
 [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 
 The matrix above is unchanged: Administrator view/create/update/archive/restore;
@@ -126,7 +127,7 @@ guard; logo upload/replacement/resizing/recoverable removal stay Task 4.1a.
 Responsible-lawyer text is historical-only; staff assignment/mapping is
 deferred. No physical deletion is authorized. See D52–D57 and
 [TASKS.md](../TASKS.md) for phase status. The next development return point is
-Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display, unstarted.
+Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted.
 
 ## User management — implemented Task 3.4
 
@@ -272,3 +273,16 @@ pages and ordinary 401/403 responses for handlers instead.
 7. **User management is implemented.** Task 3.4 supplies the Administrator-only
    `/users` screen, six permission-wrapped actions, reviewed lifecycle service
    and database guards without changing any of the 448 decisions.
+
+### Task 4.1 Phase 2 implementation — 9 September 2026
+
+All four roles can view the three new client/contact pages and logo GET/HEAD.
+Each page guards its first awaited operation; read services independently enforce
+clients/view and contacts/view. Logo handlers, metadata reads and filesystem
+reads independently enforce clientLogoUpload/view. Sessions come from existing
+validated server authentication. Five new inventory entries bring the total to
+34, without changing the 448-decision matrix. No client/contact mutation route,
+Server Action, edit/archive button or logo-upload control is added.
+
+Stop for independent Phase 2 review; Phase 3 is the next development phase.
+See the [implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).

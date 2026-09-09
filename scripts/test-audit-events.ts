@@ -714,7 +714,17 @@ async function main(): Promise<void> {
            WHERE actor_id=1001 AND action='record_created' ORDER BY id LIMIT 1`)
       ).rows[0]!.role;
       await owner.query('BEGIN');
-      await setPgContext(owner, 1, [randomUUID(), randomUUID(), randomUUID()]);
+      // This is a historical-snapshot proof, not a self-role-change bypass.
+      // Use the fixture's distinct Administrator and retain the production guard.
+      const administrator = await owner.query<{ id: number }>(`
+        SELECT id FROM user_accounts
+         WHERE role_code='Administrator' AND is_enabled AND id<>1 ORDER BY id`);
+      assert.equal(administrator.rows.length, 1);
+      await setPgContext(owner, administrator.rows[0]!.id, [
+        randomUUID(),
+        randomUUID(),
+        randomUUID(),
+      ]);
       await owner.query(
         `UPDATE user_accounts SET role_code='Paralegal',session_version=session_version+1 WHERE id=1`,
       );

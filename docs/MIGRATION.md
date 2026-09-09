@@ -3324,7 +3324,7 @@ accessibility and regression acceptance with the same full project-preservation
 result. Task 4.0a overall and Phase 4 are checked. Task 4.1 remains unchecked and
 incomplete under the approved D52–D57 contract. Phase 1's client/contact foundation
 is now deployed and operationally complete at migration 62. The next development return point is
-**Task 4.1 Phase 2 — Read-only client/contact screens and existing-logo display**, unstarted.
+**Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted.
 See the
 [Phase 2 implementation report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 The [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
@@ -3397,7 +3397,20 @@ Future mutation, race and rollback tests remain isolated. The accepted historica
 current migration-62 project. Current regression commands can reuse complete 62
 without redeployment. Historical 61→62 passes 116
 invariants; canonical replay passes 98. The 18 historical-only checks are
-unchanged. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked; Access
+unchanged. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked; Access
 remains in departmental use and D43/D51 final cutover remains separate. See the
 [Phase 1 report](task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [profile inventory](testing/task-4-1-phase1-invariants.md).
+
+### Task 4.1 Phase 2 implementation — 9 September 2026
+
+Phase 2 performs no migration, deployment or project-data write. Read-only source
+clones supply real-volume fixture tests; verified migration 62 is reused without
+redeployment. Native/archive test changes, authentication writes and deliberately
+unusable logo copies belong only to disposable fixtures. Full before/after
+receipts compare 107 tables, 48 complete sequences including log_cnt/is_called,
+catalogs, roles/grants, migrations/audit, container configuration and 54 logos.
+Existing recovery packages, source evidence and D43/D51 cutover rules are unchanged.
+
+Stop for independent Phase 2 review; Phase 3 is the next development phase.
+See the [implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).

@@ -19,6 +19,9 @@ export const AUDIT_AUTH_SERVICE = 'src/lib/auth/service.ts';
 export const AUDIT_USER_MANAGEMENT_SERVICE = 'src/lib/auth/user-management.ts';
 export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
+const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
+const CLIENT_READ_SERVICE_SHA256 =
+  '3f1c6a49cf182eff3280e1ba8d1b81fc30d0f2ce587f3a73501a913ae2f9b4e9';
 const STAFF_MUTATION_SERVICE = 'src/lib/staff-mutations.ts';
 const STAFF_MUTATION_SERVICE_SHA256 =
   '85444fe58ebe365574c1deb6b659c0d2b2c186fdfd2ad3371b42e30cda591666';
@@ -71,6 +74,7 @@ const REVIEWED_RUNTIME_ENVIRONMENT_KEYS = new Set([
   'AUTH_SECRET',
   'DATABASE_URL',
   'NODE_ENV',
+  'CLIENT_LOGO_ROOT',
 ]);
 const RAW_SQL_METHODS = new Set([
   '$queryRaw',
@@ -85,6 +89,46 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    CLIENT_READ_SERVICE,
+    'readClientSnapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    CLIENT_READ_SERVICE,
+    'readClients',
+    '084ebdd0e60e7370627b53a9c77a89c2b3698ff850d3dca7a96a38a202eb47b8',
+  ],
+  [
+    CLIENT_READ_SERVICE,
+    'readClients',
+    '699ab86054a63b2a2abe4c9f22f9936f9e3a55c1bef689356e5f21e3f47dab75',
+  ],
+  [
+    CLIENT_READ_SERVICE,
+    'readClient',
+    '31c5076c431cc26ae0614b75b7c016d5f2e45a770b8ed9b5d6495342fe36e3a6',
+  ],
+  [
+    CLIENT_READ_SERVICE,
+    'readClientContacts',
+    'a64c2b25c8406429b6e06e74535cd2ad3d1fd1535ab2124d9fd099ae5886535a',
+  ],
+  [
+    CLIENT_READ_SERVICE,
+    'readClientContacts',
+    'f969a13eec98b9e42878e59998a0f8e252619523198fb5fc12456f23dfdb4cd1',
+  ],
+  [
+    CLIENT_READ_SERVICE,
+    'readContact',
+    'ee0234007c7789c0c1eaf928014a88b4f35770b5141f6fb39e34f20f3536d3b6',
+  ],
+  [
+    CLIENT_READ_SERVICE,
+    'readLogoMetadata',
+    '095044c2723fd0942c01f5ba99e1d7c3463930f4db9f4e73458703e90fbd9d2b',
+  ],
   [
     STAFF_MUTATION_SERVICE,
     'person',
@@ -1551,6 +1595,16 @@ export function auditRuntimeSourceFailures(
       isAuthService || isUserManagementService || isStaffMutationService;
     const isDatabaseModule = absolute === databaseAbsolute;
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
+    const isClientReadService = source.path === CLIENT_READ_SERVICE;
+    if (
+      isClientReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        CLIENT_READ_SERVICE_SHA256
+    ) {
+      failures.add(
+        `${CLIENT_READ_SERVICE}: read-only query closure differs from reviewed inventory`,
+      );
+    }
     if (
       isStaffMutationService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -1829,7 +1883,10 @@ export function auditRuntimeSourceFailures(
             argument.tag.name.text === 'sql' &&
             prismaSymbol !== undefined &&
             resolvedSymbol(checker, argument.tag.expression) === prismaSymbol;
-          if (!(isGateway || isReviewedAuthService || isStaffReadService) || !reviewedSql) {
+          if (
+            !(isGateway || isReviewedAuthService || isStaffReadService || isClientReadService) ||
+            !reviewedSql
+          ) {
             add(node, `${method} is outside the exact reviewed static Prisma.sql call sites`);
           } else {
             rawCalls.push({
