@@ -84,10 +84,18 @@ deactivate; their rows and values are retained. Client-logo removal must
 eventually be recoverable and retain the file and its evidence. Those other
 lifecycle screens, handlers, database representations, archived-record
 visibility, filters and reporting behavior remain to be implemented with their
-relevant tasks. D52–D57 now settle the client/contact contract below; its implementation
-remains unstarted. Other areas retain their existing task boundaries.
+relevant tasks. D52–D57 settle the client/contact contract below. Phase 1
+implements database enforcement in isolation; application handlers and screens
+remain later work. Other areas retain their existing task boundaries.
 
-## Clients and contacts — approved Task 4.1 contract, unstarted
+## Clients and contacts — Task 4.1 database foundation implemented in isolation
+
+Migration 62 grants runtime access only to three client/contact mutation
+gateways. Each resolves the current trusted human actor, enabled account and
+active login-eligible staff identity on the server, then enforces this matrix.
+Runtime direct table writes and sequence access are revoked. Archive/restore
+is Administrator-only. Business mutations and audit events commit together.
+This is verified on isolated databases; project migration 61 remains unchanged.
 
 The matrix above is unchanged: Administrator view/create/update/archive/restore;
 Litigation Assistant view/create/update; Lawyer and Paralegal view. All four
@@ -113,7 +121,7 @@ changes hidden in ordinary edits. Existing-logo viewing uses its own view
 guard; logo upload/replacement/resizing/recoverable removal stay Task 4.1a.
 Responsible-lawyer text is historical-only; staff assignment/mapping is
 deferred. No physical deletion is authorized. See D52–D57 and
-[TASKS.md](../TASKS.md) for the four unchecked implementation phases.
+[TASKS.md](../TASKS.md) for phase status and the independent Phase 1 review stop.
 
 ## User management — implemented Task 3.4
 

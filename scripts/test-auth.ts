@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { createCurrentClientFixture } from './lib/current-client-fixture';
 import { setFixtureStaffActive } from './lib/staff-roster-test-adapter';
 import { assertDisposableFixtureSource } from './lib/isolated-postgres-fixture';
 import assert from 'node:assert/strict';
@@ -120,9 +121,10 @@ async function main(): Promise<void> {
       [fixtureName],
     );
     assert.equal(prior.rows[0]?.count, '0');
-    await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
+    const restored = await createCurrentClientFixture(admin, parsed, fixtureName);
+    if (!restored) await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
     created = true;
-    migrate(fixtureUrl.toString());
+    if (!restored) migrate(fixtureUrl.toString());
 
     const database = createDatabaseClient(runtimeUrl.toString());
     const migrationDatabase = new PrismaClient({
@@ -150,7 +152,7 @@ async function main(): Promise<void> {
       assert.deepEqual(await authStructureFailures(catalog), []);
       assert.deepEqual(await authDataFailures(catalog), []);
       assert.deepEqual(await auditEventStructureFailures(catalog), []);
-      assert.deepEqual(await auditEventDataFailures(catalog), []);
+      assert.deepEqual(await auditEventDataFailures(catalog, { historicalLive: restored }), []);
 
       const priorSecret = process.env['AUTH_SECRET'];
       delete process.env['AUTH_SECRET'];
@@ -197,7 +199,6 @@ async function main(): Promise<void> {
           email: row.person.email,
           native: row.person.isApplicationNative,
           canLogin: row.person.canLogin,
-          initialized: row.passwordHash !== null,
         })),
         [
           {
@@ -208,7 +209,6 @@ async function main(): Promise<void> {
             email: 'ihamdy@sarieldin.com',
             native: false,
             canLogin: true,
-            initialized: false,
           },
           {
             username: 'KHelmy',
@@ -218,7 +218,6 @@ async function main(): Promise<void> {
             email: 'khelmy@sarieldin.com',
             native: true,
             canLogin: true,
-            initialized: false,
           },
           {
             username: 'MHussien',
@@ -228,7 +227,6 @@ async function main(): Promise<void> {
             email: 'mhussien@sarieldin.com',
             native: true,
             canLogin: true,
-            initialized: false,
           },
           {
             username: 'SKhattab',
@@ -238,7 +236,6 @@ async function main(): Promise<void> {
             email: 'skhattab@sarieldin.com',
             native: false,
             canLogin: true,
-            initialized: false,
           },
         ],
       );
@@ -251,6 +248,11 @@ async function main(): Promise<void> {
       assert.equal(await database.person.count({ where: { isApplicationNative: false } }), 135);
       assert.equal(await database.person.count({ where: { isApplicationNative: true } }), 2);
       assert.equal(await database.personNameAlias.count(), 350);
+      if (!restored)
+        assert.ok(
+          mappings.every((row) => row.passwordHash === null),
+          'Canonical replay starts passwordless',
+        );
       const auditActors = (
         await catalog.query<{
           id: number;
@@ -323,6 +325,12 @@ async function main(): Promise<void> {
 
       const temporaryPassword = `A ${randomBytes(18).toString('base64url')}`;
       const replacementPassword = `B ${randomBytes(18).toString('base64url')}`;
+      const initializationAction = mappings.find((row) => row.username === 'KHelmy')!.passwordHash
+        ? 'password_reset'
+        : 'password_initialized';
+      const priorInitializationEvent = (
+        await catalog.query('SELECT coalesce(max(id),0)::text id FROM audit_events')
+      ).rows[0].id;
       await setApprovedAccountPassword('kHeLmY', temporaryPassword, {
         database: migrationDatabase,
         auditMetadata: createMaintenanceAuditMetadata(),
@@ -342,14 +350,17 @@ async function main(): Promise<void> {
           actor_key: string;
           target_actor_id: number;
           action: string;
-        }>(`
+        }>(
+          `
           SELECT actor_key_snapshot actor_key,target_actor_id,action FROM audit_events
-           WHERE action='password_initialized' ORDER BY id DESC LIMIT 1`)
+           WHERE action=$1 AND id>$2::bigint ORDER BY id DESC LIMIT 1`,
+          [initializationAction, priorInitializationEvent],
+        )
       ).rows[0];
       assert.deepEqual(initializedEvent, {
         actor_key: 'system_administration',
         target_actor_id: actorIdForAccount(initialized.id),
-        action: 'password_initialized',
+        action: initializationAction,
       });
       await assert.rejects(
         withMaintenanceContext(migrationDatabase, (transaction) =>
@@ -867,7 +878,7 @@ async function main(): Promise<void> {
       assert.deepEqual(await authStructureFailures(catalog), []);
       assert.deepEqual(await authDataFailures(catalog), []);
       assert.deepEqual(await auditEventStructureFailures(catalog), []);
-      assert.deepEqual(await auditEventDataFailures(catalog), []);
+      assert.deepEqual(await auditEventDataFailures(catalog, { historicalLive: restored }), []);
       const eventSummary = await catalog.query<{ action: string; count: string }>(`
         SELECT action,count(*)::text count FROM audit_events
          GROUP BY action ORDER BY action`);
@@ -876,7 +887,7 @@ async function main(): Promise<void> {
         'login_failed',
         'login_succeeded',
         'password_changed',
-        'password_initialized',
+        initializationAction,
         'password_reset',
       ]) {
         assert.ok(eventSummary.rows.some((row) => row.action === action && Number(row.count) > 0));

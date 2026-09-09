@@ -3322,9 +3322,9 @@ Project verification still passes 15/15 and 107/107 with all 103 table, sequence
 catalog, audit and logo fingerprints unchanged. Phase 4 completes final browser,
 accessibility and regression acceptance with the same full project-preservation
 result. Task 4.0a overall and Phase 4 are checked. Task 4.1 remains unchecked and
-unstarted under the approved D52–D57 contract. The next return point is
-**independent review of the Task 4.1 documentation contract**, followed by
-separately authorized Phase 1 work.
+incomplete under the approved D52–D57 contract. Phase 1 now implements the
+client/contact foundation in isolation. The next return point is
+**independent review of Task 4.1 Phase 1**.
 See the
 [Phase 2 implementation report](task-reports/2026-09-08-task-4-0a-phase-2-read-only-staff-roster.md).
 The [Phase 3 report](task-reports/2026-09-08-task-4-0a-phase-3-administrator-staff-mutations.md)
@@ -3336,20 +3336,20 @@ migration, schema, decision, source or cutover operation occurred in Phase 4.
 The Litigation Department continues using Access. This is not final Access
 cutover; final delta reconciliation remains governed by D43 and D51.
 
-## Task 4.1 client/contact evidence contract — approved, unimplemented
+## Task 4.1 client/contact evidence — Phase 1 implemented in isolation
 
 D52–D57 approve a separation of immutable import evidence from editable live
-clients and contacts. This documentation-only checkpoint changes no database,
-source artifact, code or applied migration. The
+clients and contacts. Migration 62 implements that separation on isolated
+databases. The project remains at migration 61 with only 62 pending. The
 [dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
 records the earlier read-only aggregate verification and its remote-freshness
 limitation; the subsequent owner resolutions are separate.
 
-Current DB-052–DB-056 checks still compare all live clients/contacts against
-staging, count live empty cash strings and require a NULL main contact. Before
-exposing application writes, validate and retain each original system/Access
-identity association, staging durable key/fingerprint, exact source payload,
-initial transformed value and contact-parent association in immutable evidence.
+DB-052–DB-056 use the original live tables at checkpoint 61, and the immutable
+original-row views after 62. The migration validates each original system/Access
+identity association against the existing high-impact `before_inventory`, and
+retains the staging durable key/fingerprint, exact source payload, initial
+transformed value and contact-parent association in owner-only immutable tables.
 Historical checks must verify the exact imported population and original
 values, including the two empty strings at their original identities. Separate
 live checks must allow authorized native creation and deliberate edits while
@@ -3368,19 +3368,23 @@ contact ownership changes and requires preserving the six unnamed imported
 contacts without blocking unrelated edits. The old unanswered workbook rows
 are historical artifacts; this documentation approval does not update them.
 
-Gate 4 client/contact accounting must count the exact imported population,
-separately from native additions. Preserve accepted historical workbook labels
-and manifests. The old client/contact transform deletes and rebuilds its target
-tables; it must fail closed after the operational boundary and must not be used
-to import Access deltas. Reuse existing truthful actor/event infrastructure for
-current edits, add explicit audit field classifications, and prove atomic
-archive/restore and audit-failure rollback. No full staff alias/roster ledger is
-required merely because that earlier task used one.
+Gate 4 client/contact accounting counts the exact imported population,
+separately from native additions. Historical workbook lookups and protected-row
+digests use the original-row views. The legacy client/contact transform now
+refuses before any context, delete or sequence work if any boundary surface
+exists; it cannot import Access deltas. Three trusted gateways reuse the actor
+and event infrastructure, with ten explicit field classifications. Creation
+receipts are scoped by actor, entity type and submission UUID; the complete
+request payload is compared on retry. No duplicate full-row change ledger,
+staff alias system or name/email uniqueness is added.
 
 Database-foundation proofs require isolated PostgreSQL instances and distinct,
 mandatory historical-upgrade and canonical-replay profiles. Preserve each
 profile's evidence and do not substitute clean replay for historical proof.
 Future mutation, race and rollback tests remain isolated. Project-database
-deployment needs separate owner authorization. Task 4.1 and its four phases
-remain unchecked and unstarted; Access remains in departmental use and D43/D51
-final cutover remains separate.
+deployment needs separate owner authorization. Historical 61→62 passes 116
+invariants; canonical replay passes 98. The 18 historical-only checks are
+unchanged. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked; Access
+remains in departmental use and D43/D51 final cutover remains separate. See the
+[Phase 1 report](task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
+and [profile inventory](testing/task-4-1-phase1-invariants.md).

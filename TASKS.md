@@ -6,7 +6,7 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 8 September 2026:** Stages 2 and 3 are complete. The
+**Current checkpoint — 9 September 2026:** Stages 2 and 3 are complete. The
 independent Task 3.5B evidence review is accepted; migration 60 and the approved
 real application each executed exactly once, all 382 decisions reconciled, and
 the permanent invariant set passed 93/93 at that checkpoint. Task 3.5 is
@@ -26,10 +26,12 @@ accessibility and final verification are complete; Task 4.0a is checked.
 Task 4.0a and all four phases are complete and published. Task 4.1's approved
 contract is recorded in D52–D57 and the
 [dated readiness review and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
-Task 4.1 and all four implementation phases remain unchecked and unstarted.
-The next return point is **independent review of the Task 4.1 documentation
-contract**, followed by separately authorized Phase 1 work. No implementation
-or deployment is authorized by this documentation checkpoint. Final Access
+Task 4.1 Phase 1 is implemented and verified on isolated databases; not deployed
+to the project. Project PostgreSQL remains at migration 61 with 62 solely pending,
+15/15 checks and 107/107 invariants. Isolated migration 62 passes 116 historical
+and 98 canonical checks. Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked.
+The next return point is **independent review of Task 4.1 Phase 1**. Project
+deployment requires separate authorization. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
@@ -1712,8 +1714,8 @@ than assuming one rule for every workflow. Test with real volumes.
       Phase 1 is operationally complete: migration 61 is deployed and verified
       on project PostgreSQL, with 107/107 permanent historical-profile
       invariants. Phases 2–4 are implemented and verified. Task 4.1 remains
-      unchecked and unstarted under the approved D52–D57 contract. The current
-      return point is independent review of that documentation contract.
+      incomplete under the approved D52–D57 contract. Its Phase 1 database
+      foundation is implemented in isolation; independent Phase 1 review is next.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1880,9 +1882,9 @@ than assuming one rule for every workflow. Test with real volumes.
       **Historical Phase 4 stop point:** independent Task 4.0a review; no push
       or Task 4.1 implementation occurred in that completion task. Task 4.0a
       was subsequently published at `6579799`. The current return point is
-      independent review of the approved Task 4.1 documentation contract.
+      independent review of Task 4.1 Phase 1.
 
-- [ ] **4.1 Clients** — approved contract, not implementation (**D52–D57**).
+- [ ] **4.1 Clients** — Phase 1 implemented in isolation (**D52–D57**).
       Client/contact list, detail and authorized creation/editing; optional main
       contact; Administrator-only non-cascading archive/restore; existing-logo
       display and client-name fallback. All four roles view; Litigation
@@ -1894,7 +1896,7 @@ than assuming one rule for every workflow. Test with real volumes.
       responsible-staff assignment/mapping and Task 4.1a logo mutations are
       outside scope. See the [readiness evidence and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
 
-  - [ ] **Phase 1 — Database foundation and operational invariants.** Validate
+  - [x] **Phase 1 — Database foundation and operational invariants.** Validate
         and preserve immutable client/contact import identity, source payload,
         fingerprints, initial values and original ownership. Separate historical
         reconciliation from authorized live edits/native creation without
@@ -1907,6 +1909,16 @@ than assuming one rule for every workflow. Test with real volumes.
         repeated-submission protection. Prove mandatory, distinct historical-
         upgrade and canonical-replay acceptance profiles on isolated PostgreSQL
         instances. Project-database deployment requires separate authorization.
+
+        **Completed locally, 9 September 2026:** migration 62
+        `20260909120000_client_contact_database_boundary`. **Implemented and
+        verified on isolated databases; not deployed to the project.** Historical
+        116/116 and canonical 98/98; current authentication, 448 permissions,
+        account, staff, audit/event and affected Gate 4 regressions pass. Full
+        static checks and isolated production build pass. Project remains at 61,
+        15/15 and 107/107, with exact before/after preservation and all 54 logos
+        unchanged. See the [Phase 1 report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
+        and [profile inventory](docs/testing/task-4-1-phase1-invariants.md).
 
   - [ ] **Phase 2 — Read-only client/contact screens and existing-logo display.**
         Implement guarded client list/detail and client-owned contact views;
@@ -1946,9 +1958,9 @@ than assuming one rule for every workflow. Test with real volumes.
         Produce dated acceptance evidence without treating documentation
         approval, clean replay or isolated proof as deployment authorization.
 
-      **Stop now:** independent review of this documentation commit. Task 4.1
-      and all four phases remain unchecked and unstarted. Implementation,
-      project deployment and D43/D51 final cutover require their own authorization.
+      **Stop now:** independent review of Task 4.1 Phase 1. Task 4.1 overall,
+      Phases 2–4 and Task 4.1a remain unchecked. Project deployment, later
+      implementation and D43/D51 final cutover require their own authorization.
 
 - [ ] **4.1a Client logo upload**
       Upload field on the client screen (Administrator and Litigation

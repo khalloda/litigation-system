@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { createCurrentClientFixture } from './lib/current-client-fixture';
 import { assertDisposableFixtureSource } from './lib/isolated-postgres-fixture';
 import { migrateFixtureThroughCheckpoint } from './lib/fixture-migration-checkpoint';
 import assert from 'node:assert/strict';
@@ -164,9 +165,10 @@ async function main(): Promise<void> {
   let created = false;
   try {
     await proveFailedMigrationAtomic(admin, source);
-    await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
+    const restored = await createCurrentClientFixture(admin, source, fixtureName);
+    if (!restored) await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
     created = true;
-    migrate(fixtureUrl.toString());
+    if (!restored) migrate(fixtureUrl.toString());
     const owner = new Client({ connectionString: fixtureUrl.toString() });
     const runtime = new Client({ connectionString: runtimeUrl.toString() });
     const runtimePrisma = createDatabaseClient(runtimeUrl.toString());
@@ -174,8 +176,10 @@ async function main(): Promise<void> {
     await runtime.connect();
     try {
       assert.deepEqual(await auditEventStructureFailures(owner), []);
-      assert.deepEqual(await auditEventDataFailures(owner), []);
-      assert.equal((await owner.query('SELECT count(*) FROM audit_events')).rows[0].count, '1');
+      assert.deepEqual(await auditEventDataFailures(owner, { historicalLive: restored }), []);
+      const initialEventCount = (await owner.query('SELECT count(*)::integer n FROM audit_events'))
+        .rows[0].n;
+      if (!restored) assert.equal(initialEventCount, 1);
 
       await owner.query('ALTER TABLE lookup_importance ADD COLUMN task33b_unclassified text');
       assert.ok(
@@ -724,7 +728,7 @@ async function main(): Promise<void> {
       assert.equal(snapshotDuring, snapshotBefore);
 
       assert.deepEqual(await auditEventStructureFailures(owner), []);
-      assert.deepEqual(await auditEventDataFailures(owner), []);
+      assert.deepEqual(await auditEventDataFailures(owner, { historicalLive: restored }), []);
       const currentDigest = await auditEventDigest(owner);
       assert.match(currentDigest, /^[0-9a-f]{64}$/u);
       console.log(

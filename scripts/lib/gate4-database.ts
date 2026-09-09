@@ -378,21 +378,21 @@ async function loadReports(db: ClientBase): Promise<readonly Gate4Dataset[]> {
   return reports;
 }
 
-async function loadAccounting(
+export async function loadAccounting(
   db: ClientBase,
 ): Promise<ReadonlyMap<string, Readonly<{ target: number; quarantine: number }>>> {
   const result = await db.query<{ name: string; target: number; quarantine: number }>(`
     SELECT * FROM (VALUES
       ('admin work table',(SELECT count(*)::int FROM admin_tasks WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.admin_task_transform)),
       ('Attendance',(SELECT count(*)::int FROM attendance WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.attendance_transform)),
-      ('Contacts',(SELECT count(*)::int FROM contacts),(0)),
+      ('Contacts',(SELECT count(*)::int FROM contacts WHERE legacy_id IS NOT NULL),(0)),
       ('lawyers',(SELECT count(DISTINCT p.id)::int FROM staging."lawyers" s JOIN people p ON p.name_en=CASE WHEN s."Title"='Dr.' THEN 'Dr. '||s."LawyerName" ELSE s."LawyerName" END OR EXISTS (SELECT 1 FROM person_name_alias a WHERE a.person_id=p.id AND a.alias_ar=s."اسم المحامي") WHERE s."اسم المحامي"<>'**'),(0)),
       ('إجراءات المهام',(SELECT count(*)::int FROM task_actions WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.task_action_transform)),
       ('التوكيلات',(SELECT count(*)::int FROM powers_of_attorney WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.power_of_attorney_transform)),
       ('الجلسات',(SELECT count(*)::int FROM hearings WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.hearing_transform)),
       ('الدعاوى',(SELECT count(*)::int FROM matters WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.matter_transform)),
       ('السداد',(SELECT count(*)::int FROM payments WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.payment_transform)),
-      ('العملاء',(SELECT count(*)::int FROM clients),(0)),
+      ('العملاء',(SELECT count(*)::int FROM clients WHERE legacy_id IS NOT NULL),(0)),
       ('الفواتير',(SELECT count(*)::int FROM invoices WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.invoice_transform)),
       ('المستندات',(SELECT count(*)::int FROM documents WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.document_transform)),
       ('تقسيم التحصيلات',(SELECT count(*)::int FROM invoice_allocations WHERE legacy_source_record_key IS NOT NULL),(SELECT count(*)::int FROM quarantine.invoice_allocation_transform)),

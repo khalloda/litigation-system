@@ -1,11 +1,15 @@
 import 'dotenv/config';
+import {
+  createCurrentClientFixture,
+  currentFixtureAuditDataFailures,
+} from './lib/current-client-fixture';
 import { assertDisposableFixtureSource } from './lib/isolated-postgres-fixture';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Client } from 'pg';
-import { setHumanAuditContext, setMigrationAuditContext } from '../src/lib/audit';
+import { setHumanAuditContext, setAdministrationAuditContext } from '../src/lib/audit';
 import {
   createMaintenanceAuditMetadata,
   createRequestAuditMetadata,
@@ -23,7 +27,7 @@ import {
 } from '../src/lib/auth/user-management';
 import { createDatabaseClient } from '../src/lib/db';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client';
-import { auditDataFailures, auditStructureFailures } from './lib/audit-structure';
+import { auditStructureFailures } from './lib/audit-structure';
 import { authDataFailures, authStructureFailures } from './lib/auth-structure';
 import { auditEventDataFailures, auditEventStructureFailures } from './lib/audit-event-structure';
 
@@ -75,12 +79,14 @@ function requestMetadata() {
   );
 }
 
-async function withMigrationContext<T>(
+async function withFixtureAdministrationContext<T>(
   database: PrismaClient,
   operation: (transaction: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
   return database.$transaction(async (transaction) => {
-    await setMigrationAuditContext(transaction, createMaintenanceAuditMetadata());
+    // Synthetic post-boundary fixture setup is administration, not another
+    // historical import. Preserve the frozen migration-actor population.
+    await setAdministrationAuditContext(transaction, createMaintenanceAuditMetadata());
     return operation(transaction);
   });
 }
@@ -89,7 +95,7 @@ async function addPerson(
   database: PrismaClient,
   input: { name: string; staff?: boolean; active?: boolean; primaryAlias?: boolean },
 ): Promise<number> {
-  return withMigrationContext(database, async (transaction) => {
+  return withFixtureAdministrationContext(database, async (transaction) => {
     const person = await transaction.person.create({
       data: {
         nameAr: input.name,
@@ -148,9 +154,10 @@ async function main(): Promise<void> {
       [fixtureName],
     );
     assert.equal(prior.rows[0]?.count, '0');
-    await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
+    const restored = await createCurrentClientFixture(admin, parsed, fixtureName);
+    if (!restored) await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
     created = true;
-    migrate(fixtureUrl.toString());
+    if (!restored) migrate(fixtureUrl.toString());
 
     const runtime = createDatabaseClient(runtimeUrl.toString());
     const owner = new PrismaClient({
@@ -164,9 +171,9 @@ async function main(): Promise<void> {
       assert.deepEqual(await authStructureFailures(catalog), []);
       assert.deepEqual(await authDataFailures(catalog), []);
       assert.deepEqual(await auditStructureFailures(catalog), []);
-      assert.deepEqual(await auditDataFailures(catalog), []);
+      assert.deepEqual(await currentFixtureAuditDataFailures(catalog, restored), []);
       assert.deepEqual(await auditEventStructureFailures(catalog), []);
-      assert.deepEqual(await auditEventDataFailures(catalog), []);
+      assert.deepEqual(await auditEventDataFailures(catalog, { historicalLive: restored }), []);
 
       const administrator = await owner.userAccount.findFirstOrThrow({
         where: { username: 'KHelmy' },
@@ -213,7 +220,7 @@ async function main(): Promise<void> {
         /exactly one active primary/iu,
       );
       await assert.rejects(
-        withMigrationContext(owner, async (transaction) => {
+        withFixtureAdministrationContext(owner, async (transaction) => {
           const p = await transaction.person.create({
             data: { nameAr: '__TASK34_MISMATCHED_ALIAS_STAFF__', isApplicationNative: true },
             select: { id: true },
@@ -452,7 +459,7 @@ async function main(): Promise<void> {
         1,
       );
 
-      await withMigrationContext(owner, (transaction) =>
+      await withFixtureAdministrationContext(owner, (transaction) =>
         transaction.userAccount.update({
           where: { id: createdAccountId },
           data: {
@@ -535,7 +542,21 @@ async function main(): Promise<void> {
       const originalBeforeInitialization = await owner.userAccount.findUniqueOrThrow({
         where: { id: originalOther.id },
       });
-      assert.equal(originalBeforeInitialization.passwordHash, null);
+      if (!restored)
+        assert.ok(
+          originalBeforeInitialization.passwordHash === null,
+          'Canonical original account must start passwordless',
+        );
+      const originalPasswordAction = originalBeforeInitialization.passwordHash
+        ? 'password_reset'
+        : 'password_initialized';
+      const originalTargetActor = await owner.auditActor.findUniqueOrThrow({
+        where: { userAccountId: originalOther.id },
+        select: { id: true },
+      });
+      const originalPasswordEvents = await owner.auditEvent.count({
+        where: { targetActorId: originalTargetActor.id, action: originalPasswordAction },
+      });
       await resetManagedPassword(
         administrator.id,
         {
@@ -547,9 +568,9 @@ async function main(): Promise<void> {
       );
       assert.equal(
         await owner.auditEvent.count({
-          where: { targetActorId: 1003, action: 'password_initialized' },
+          where: { targetActorId: originalTargetActor.id, action: originalPasswordAction },
         }),
-        1,
+        originalPasswordEvents + 1,
       );
 
       const adminCurrent = await owner.userAccount.findUniqueOrThrow({
@@ -750,9 +771,9 @@ async function main(): Promise<void> {
       assert.deepEqual(await authStructureFailures(catalog), []);
       assert.deepEqual(await authDataFailures(catalog), []);
       assert.deepEqual(await auditStructureFailures(catalog), []);
-      assert.deepEqual(await auditDataFailures(catalog), []);
+      assert.deepEqual(await currentFixtureAuditDataFailures(catalog, restored), []);
       assert.deepEqual(await auditEventStructureFailures(catalog), []);
-      assert.deepEqual(await auditEventDataFailures(catalog), []);
+      assert.deepEqual(await auditEventDataFailures(catalog, { historicalLive: restored }), []);
 
       const trail = (
         await catalog.query<{ trail: string }>(

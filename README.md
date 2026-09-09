@@ -23,16 +23,19 @@ gateways. Task 4.0a is complete and published, including Phase 4 browser interac
 accessibility and final verification. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md)
 for the final browser matrix, five focused accessibility corrections, regression
-results and project-preservation evidence. Task 4.1 remains unstarted.
+results and project-preservation evidence. Task 4.1 Phase 1 now implements the
+client/contact database foundation on isolated databases; project PostgreSQL
+remains at migration 61, with migration 62 solely pending.
 The Access-source derivative disposition is recorded in
 [D51](docs/DECISIONS.md#d51--access-source-derivative-and-migration-61-readiness)
 with its [dated evidence summary](docs/reviews/2026-09-07-access-source-identity-discrepancy.md).
 Task 4.1's approved contract is recorded in D52–D57 and its
 [dated readiness review and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
-Task 4.1 and all four implementation phases remain unchecked and unstarted.
-The next return point is **independent review of the Task 4.1 documentation
-contract**, followed by separately authorized Phase 1 work. This checkpoint
-authorizes neither implementation nor project-database deployment.
+The next return point is **independent review of Task 4.1 Phase 1**. See its
+[implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
+and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
+Task 4.1 overall, Phases 2–4 and Task 4.1a remain unchecked. Project deployment
+requires separate authorization.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).

@@ -1,4 +1,8 @@
 import type { ClientBase } from 'pg';
+import {
+  clientContactBoundaryApplied,
+  historicalClientContactClient,
+} from './client-contact-checkpoint';
 
 /**
  * Everything completed before Task 2.9. New Task 2.9 targets are deliberately
@@ -6,6 +10,7 @@ import type { ClientBase } from 'pg';
  * evidence, source associations, IDs, timestamps, or review answers.
  */
 export async function task29ProtectedState(db: ClientBase): Promise<string> {
+  db = historicalClientContactClient(db, await clientContactBoundaryApplied(db));
   const result = await db.query<{ digest: string }>(`
     SELECT encode(sha256(convert_to(string_agg(payload, E'\\n' ORDER BY kind, identity), 'UTF8')), 'hex') digest
       FROM (

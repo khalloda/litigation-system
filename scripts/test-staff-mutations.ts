@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { Session } from 'next-auth';
 import { randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { withIsolatedPostgres } from './lib/isolated-postgres-fixture';
+import { withCurrentClientFixture } from './lib/current-client-fixture';
 import { withApprovedMigrationClient } from './lib/migration-principal';
 import { staffReadOnlyState } from './lib/staff-read-only-state';
 import { createDatabaseClient } from '../src/lib/db';
@@ -26,7 +26,7 @@ async function main() {
   const before = await withApprovedMigrationClient(staffReadOnlyState, {
     clientConfig: { options: '-c default_transaction_read_only=on' },
   });
-  await withIsolatedPostgres(async (fixture) => {
+  await withCurrentClientFixture(async (fixture) => {
     await fixture.restoreProject();
     const serviceUrl = await fixture.createDatabase(
       'litigation_task40a_phase3_service',
@@ -640,7 +640,7 @@ async function main() {
       );
       assert.equal(result.status, 0, 'all historical invariants after gateway mutation proofs');
     }
-  });
+  }, process.env['MIGRATION_DATABASE_URL']);
   const after = await withApprovedMigrationClient(staffReadOnlyState, {
     clientConfig: { options: '-c default_transaction_read_only=on' },
   });

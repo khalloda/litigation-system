@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { basename, isAbsolute, relative, resolve, sep } from 'node:path';
 import type { ClientBase, QueryResultRow } from 'pg';
+import {
+  clientContactBoundaryApplied,
+  historicalClientContactSql,
+} from './client-contact-checkpoint';
 import ExcelJS from 'exceljs';
 
 export const HIGH_IMPACT_WORKBOOK_PATH =
@@ -633,13 +637,22 @@ export async function readHighImpactReviewSnapshotInTransaction(
 ): Promise<HighImpactReviewSnapshot> {
   const matters = await selectRows<MatterDatabaseRow>(database, MATTER_QUERY, 'matter review');
   const hearings = await selectRows<HearingDatabaseRow>(database, HEARING_QUERY, 'hearing review');
-  const lookups = await selectRows<DatabaseLookup>(database, LOOKUP_QUERY, 'review lookups');
+  const clientBoundary = await clientContactBoundaryApplied(database);
+  const lookups = await selectRows<DatabaseLookup>(
+    database,
+    historicalClientContactSql(LOOKUP_QUERY, clientBoundary),
+    'review lookups',
+  );
   const evidence = await selectRows<DigestRow>(
     database,
     EVIDENCE_DIGEST_QUERY,
     'quarantine evidence digest',
   );
-  const lookupDigest = await selectRows<DigestRow>(database, LOOKUP_DIGEST_QUERY, 'lookup digest');
+  const lookupDigest = await selectRows<DigestRow>(
+    database,
+    historicalClientContactSql(LOOKUP_DIGEST_QUERY, clientBoundary),
+    'lookup digest',
+  );
   if (evidence.length !== 1 || lookupDigest.length !== 1)
     fail('database digest query was incomplete');
   const snapshot: HighImpactReviewSnapshot = {

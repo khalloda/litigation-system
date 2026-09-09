@@ -90,9 +90,10 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of the Task 4.1 documentation contract**.
-Task 4.1 and its four implementation phases remain unchecked and unstarted
-under D52–D57. The Litigation Department continues using Access;
+point is **independent review of Task 4.1 Phase 1**. Its D52–D57 database
+foundation is implemented on isolated databases; project PostgreSQL remains
+at migration 61. Task 4.1 overall and Phases 2–4 remain unchecked.
+The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [migration-61 deployment report](task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md).
@@ -162,13 +163,14 @@ focus, labels, errors, status announcements, colour independence, target size,
 zoom/reflow and mobile/desktop layout. Browser mutations use only an isolated
 disposable database; project data does not leave the machine.
 
-### Clients and contacts — approved Task 4.1 contract, unstarted
+### Clients and contacts — Task 4.1 database foundation implemented in isolation
 
 D52–D57 approve client/contact list, detail, authorized create/edit and
 Administrator-only archive/restore, plus existing-logo display and the
 client-name fallback. Upload/replacement/resizing/recoverable logo removal
-remain Task 4.1a. No implementation or deployment is authorized by the
-documentation checkpoint. [TASKS.md](../TASKS.md) records four unchecked phases;
+remain Task 4.1a. Phase 1 implements database enforcement and its isolated
+proofs; screens and application mutations remain Phases 2–4. No project
+deployment has occurred. [TASKS.md](../TASKS.md) owns phase status;
 the [dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
 separates findings from later owner resolutions.
 

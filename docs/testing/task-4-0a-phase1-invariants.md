@@ -10,10 +10,11 @@ permanent historical profile passed 107/107 on 7 September 2026; see the
 The upgrade/rollback proofs below used the preserved predeployment migration-60
 state. They remain dated evidence, separate from post-deployment checks.
 
-**Task 4.1 documentation clarification, 8 September 2026:** DB-052–DB-056
-still describe the implemented historical client/contact checks. D53/D57
-approve their future separation into immutable import evidence and current
-operational invariants; no checker changes have been made. DB-054's title is
+**Task 4.1 Phase 1 update, 9 September 2026:** DB-052–DB-056 retain the
+historical client/contact checks through immutable original-row views at
+checkpoint 62, and live original rows at 61. Nine separate CLIENT checks bring
+the new totals to 116/98; see the [current inventory](task-4-1-phase1-invariants.md).
+No frozen digest or historical-only classification changes. DB-054's title is
 legacy executable wording, not proof of how the empty strings arose. Observed
 cash values are 316 populated, two empty strings and zero NULLs.
 
@@ -45,13 +46,14 @@ reclassify it. Default classification is both profiles.
   They do not downgrade a source or reconstruct unavailable historical state.
 - Current Phase 3 staff service/race and gateway proof: `npm run test:staff-mutations`.
 - Authentication, 448 authorization decisions and account lifecycle:
-  `node node_modules/tsx/dist/cli.mjs scripts/test-staff-roster.ts --regression-proof`.
-- Current migration-61 audit regression: `npm run test:audit`, equivalent to
-  `node node_modules/tsx/dist/cli.mjs scripts/test-staff-roster.ts --audit-regression-proof`.
+  `npm run test:client-regressions` now verifies the upgraded 62 state; the old
+  staff harness remains available for its distinct earlier proof.
+- Current migration-62 audit regression: `npm run test:audit`, equivalent to
+  `node node_modules/tsx/dist/cli.mjs scripts/test-client-contacts.ts --audit-regression-proof`.
 - Separate audit-event regression: `npm run test:audit-events`, equivalent to
-  the same harness with `--audit-events-regression-proof`.
+  the client/contact harness with `--audit-events-regression-proof`.
 - Historical migration-53–60 audit upgrade: `npm run test:audit:historical`,
-  equivalent to the same harness with `--historical-audit-regression-proof`.
+  equivalent to the staff-roster harness with `--historical-audit-regression-proof`.
   This requires the exact verified migration-60 full-state source. It is
   unavailable from the current migration-61 source and deliberately fails
   there with `Legacy fixture source must still be at migration 60`.
@@ -65,13 +67,13 @@ does not deploy anything. Canonical acceptance runs only with the harness's
 generated isolated target. The affected standalone authentication/audit fixture scripts now
 refuse the project cluster; use the harness, not a database-name prefix on 5433.
 
-The current audit command explicitly selects `test-audit.ts
---profile=current-state-61`. It fails closed unless the restored source has
-the exact complete migration-61 ledger, checksums, historical data profile and
-boundary, then requires all 107 permanent invariants, including actor and event
+The current audit wrapper upgrades its isolated 61 clone and explicitly selects
+`test-audit.ts --profile=current-state-62`. It fails closed unless that target has
+the exact complete migration-62 ledger, checksums, historical data profile and
+boundary, then requires all 116 permanent invariants, including actor and event
 structure, data and protected historical evidence. It runs every shared audit
 group: migration-principal preflight, password provisioning, canonical replay
-through 61, role/ACL/session attacks, actor registry, attribution/spoofing,
+through 62 and an upgraded historical clone, role/ACL/session attacks, actor registry, attribution/spoofing,
 Prisma/direct-SQL/junction writes, rollback, pooled/concurrent actor isolation
 and denied bypasses. It then actually executes `scripts/test-audit-events.ts`:
 classification, append-only access, redaction/context, semantic atomicity,

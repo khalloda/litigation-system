@@ -517,8 +517,8 @@ checks pass 15/15 and historical invariants pass 107/107. Browser mutations and
 all regression fixtures were separately owned and removed. See the
 [Phase 4 completion report](task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 Task 4.0a overall and Phase 4 are checked. The next return point is
-**independent review of the Task 4.1 documentation contract**; Task 4.1 and
-its four phases remain unchecked and unstarted under D52–D57. The Litigation
+**independent review of Task 4.1 Phase 1**; its database foundation is implemented
+in isolation. Task 4.1 overall and Phases 2–4 remain unchecked. The Litigation
 Department continues using Access;
 final delta reconciliation and cutover remain separate work under D43 and D51.
 
@@ -617,34 +617,37 @@ Source copying is read-only and memory-only. No project roles, sessions,
 networks, volumes or container configuration are changed. See the
 [Phase 1 acceptance report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md).
 
-## Task 4.1 database foundation — approved contract, unstarted
+## Task 4.1 database foundation — isolated implementation, not deployed
 
 D57 requires a small, validated immutable client/contact import-evidence layer
 and separate current operational invariants. Preserve original system/Access
 IDs, staging identities/fingerprints, source and initial transformed values,
 raw evidence and imported contact ownership. Current native additions and
 authorized edits must not weaken historical checks or replace frozen digests.
-Current code has not yet implemented this boundary, archive/version fields,
-same-client main-contact enforcement or repeated-submission protection.
+Migration 62 (`20260909120000_client_contact_database_boundary`) implements this
+boundary, archive/version fields, same-client main-contact enforcement and
+transactional repeated-submission protection. Project PostgreSQL remains at 61.
 
-Future changes must enforce D52/D55 client/contact archive rules, fixed contact
-ownership and same-client unarchived main contacts at the database and server
-boundaries. Stale edits must fail safely; actor/event attribution and
+The database gateways enforce D52/D55 archive rules, fixed contact ownership
+and same-client unarchived main contacts. Stale edits fail safely; actor/event attribution and
 archive/restore semantics must commit with the business change or roll back
 together. Classify every added audit field explicitly. Preserve D53's exact
 historical classification values during unrelated/no-op edits. Extend the
 affected permanent checks and imported-only Gate 4 accounting; refuse the old
 client/contact delete-and-rebuild transform after the operational boundary.
 
-Proofs will use isolated PostgreSQL instances with independently mandatory
-historical-upgrade and canonical-replay acceptance profiles. Future mutation,
-race and rollback tests may not write to the project database. Neither isolated
-proof nor approval of documentation authorizes deployment: any project-database
-migration requires separate owner authorization. No database or Docker operation
-ran in the decision-recording task. The migration-61/107-check figures above
-remain prior verified evidence. See [TASKS.md](../TASKS.md) for the four
-unchecked phases and the [dated review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
-for readiness evidence and separately recorded owner resolutions.
+`npm run test:client-contacts` owns a separate PostgreSQL 17.11 cluster and proves
+historical 61→62 (116 checks) and canonical replay (98 checks). The 18
+historical-only checks still require their actual imported artifacts.
+`npm run test:client-regressions` serially runs the affected current suites on
+the upgraded historical state and independent clean replays. `test:audit` and
+`test:audit-events` now use that migration-62 wrapper; the old staff 60→61 and
+audit 53–60 proofs retain their exact source requirements.
+The updated read-only `db:check -- --profile=historical-full-state-upgrade`
+accepts the complete project migration-61 predeployment state (107 checks),
+reporting 62 as solely pending. Neither isolated proof nor this documentation
+authorizes project deployment. See the [profile inventory](testing/task-4-1-phase1-invariants.md)
+and [Phase 1 report](task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md).
 
 ## Task 3.5B accepted database state
 

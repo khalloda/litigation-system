@@ -449,10 +449,13 @@ a document heading and is deliberately dropped.
 `cash_or_probono`, `status`, `poa_location`, `documents_location`,
 `contact_person_id`, `client_start`, `client_end`.
 
-#### Approved operational model — Task 4.1 unstarted
+#### Operational model — Task 4.1 Phase 1 implemented in isolation
 
-D52–D57 require separate archive state and database-owned row versions; these
-columns and safeguards do not yet exist on clients/contacts. `status` remains
+D52–D57 are implemented by migration 62 on isolated fixtures. Both tables add
+`is_application_native`, `is_archived`, positive bigint `row_version`, and
+paired `application_modified_at`/`application_modified_by` fields. Imports begin
+at version 1 with no invented modification attribution; real changes increment
+once and record the trusted human actor. `status` remains
 business data, never an archive marker. Client archive retains every related
 record, the selected main contact and each contact's individual archive state.
 Parent restoration does not restore separately archived contacts. Require a
@@ -460,13 +463,15 @@ restored parent before contact create/edit/archive/restore. Existing matters
 and their report inclusion remain independent of client archive state.
 
 The optional `contact_person_id` must reference an unarchived contact owned by
-that client. The existing plain foreign key proves only existence; Phase 1
-must add permanent same-client/eligibility enforcement, including concurrency.
+that client. A composite foreign key enforces ownership, and locking database
+gateways/triggers enforce eligibility under competing lifecycle transactions.
 Explicitly clear or replace the selection before archiving that contact.
 Contact reassignment is outside Task 4.1; ordinary edits cannot change
 `contacts.client_id`. Imported ownership evidence remains immutable.
 
-Use a small immutable client/contact import-evidence layer to preserve the
+Four owner-only `_migration.client_contact_*` tables retain imported client
+and contact evidence, a profile receipt, and creation-submission results.
+Two historical views preserve the original pre-62 row shape. They preserve the
 verified original system/Access ID mapping, staging keys/fingerprints, exact
 source payload and initial transformed values. Separate historical
 reconciliation from current operational invariants. Preserve raw evidence and
@@ -484,10 +489,10 @@ unrelated/no-op saves cannot recode them. Blank values remain blank without
 deliberate change. Observed source values are 316 populated, two empty strings
 and zero NULLs; no editing history is inferred from those counts.
 
-The four unchecked phases are in [TASKS.md](../TASKS.md). Their proofs use
+Phase status is in [TASKS.md](../TASKS.md). The database proofs use
 isolated PostgreSQL instances and distinct historical-upgrade/canonical-replay
-profiles. Implementation and project-database deployment remain separately
-authorized work.
+profiles. Project deployment and the later application phases remain separate
+work; the project database is still at migration 61.
 
 ### `client_logos` — 54 rows
 Extracted from an Access Attachment column.

@@ -1,4 +1,8 @@
 import type { ClientBase } from 'pg';
+import {
+  clientContactBoundaryApplied,
+  CLIENT_CONTACT_FIELD_RULES,
+} from './client-contact-checkpoint';
 import { AUDITED_TABLES, RUNTIME_DATABASE_ROLE } from './audit-structure';
 import { staffBoundaryApplied, STAFF_FIELD_RULES } from './staff-roster-checkpoint';
 
@@ -143,12 +147,18 @@ export async function auditEventStructureFailures(
 ): Promise<string[]> {
   const failures: string[] = [];
   const staffBoundary = await staffBoundaryApplied(db);
+  const clientBoundary = await clientContactBoundaryApplied(db);
+  const currentFieldRules = [
+    ...(staffBoundary ? STAFF_FIELD_RULES : []),
+    ...(clientBoundary ? CLIENT_CONTACT_FIELD_RULES : []),
+  ];
   // Exact new identities only: classifying an old field with a new-looking
   // reason must never remove it from the frozen historical digest.
-  const newFieldPredicate = staffBoundary
-    ? `(entity_schema='public' AND (entity_table,field_name) IN (${STAFF_FIELD_RULES.map(([table, field]) => `('${table}','${field}')`).join(',')}))`
-    : 'false';
-  if (staffBoundary) {
+  const newFieldPredicate =
+    currentFieldRules.length > 0
+      ? `(entity_schema='public' AND (entity_table,field_name) IN (${currentFieldRules.map(([table, field]) => `('${table}','${field}')`).join(',')}))`
+      : 'false';
+  if (currentFieldRules.length > 0) {
     const rules = (
       await db.query<{
         entity_table: string;
@@ -160,17 +170,17 @@ export async function auditEventStructureFailures(
         `SELECT entity_table,field_name,max_text_characters,capture_mode,classification_reason FROM audit_event_fields WHERE ${newFieldPredicate} ORDER BY entity_table,field_name`,
       )
     ).rows;
-    const expected = STAFF_FIELD_RULES.map(
-      ([entity_table, field_name, max_text_characters, classification_reason]) => ({
+    const expected = currentFieldRules
+      .map(([entity_table, field_name, max_text_characters, classification_reason]) => ({
         entity_table,
         field_name,
         max_text_characters,
         capture_mode: 'value',
         classification_reason,
-      }),
-    ).sort((a, b) =>
-      `${a.entity_table}.${a.field_name}`.localeCompare(`${b.entity_table}.${b.field_name}`),
-    );
+      }))
+      .sort((a, b) =>
+        `${a.entity_table}.${a.field_name}`.localeCompare(`${b.entity_table}.${b.field_name}`),
+      );
     if (JSON.stringify(rules) !== JSON.stringify(expected))
       failures.push('Phase 1 audit classification identities or rules differ');
   }

@@ -20,7 +20,7 @@ import {
   StaffFilterError,
 } from '../src/lib/staff-roster-query';
 import { withApprovedMigrationClient } from './lib/migration-principal';
-import { withIsolatedPostgres } from './lib/isolated-postgres-fixture';
+import { withCurrentClientFixture } from './lib/current-client-fixture';
 import { assertStaffCheckpoint } from './lib/staff-roster-checkpoint';
 import { staffReadOnlyState } from './lib/staff-read-only-state';
 import { auditStructureFailures, auditDataFailures } from './lib/audit-structure';
@@ -267,17 +267,22 @@ export async function proveStaffReads(
 
 async function main() {
   const projectOnly = process.argv.includes('--project-read-only');
-  assert.ok(process.argv.slice(2).every((arg) => arg === '--project-read-only'));
+  const checkpoint = process.argv.includes('--restored-client-fixture') ? 62 : 61;
+  assert.ok(
+    process.argv
+      .slice(2)
+      .every((arg) => ['--project-read-only', '--restored-client-fixture'].includes(arg)),
+  );
   const before = await withApprovedMigrationClient(
     async (db) => {
-      assert.equal(await assertStaffCheckpoint(db, 'historical-full-state-upgrade'), 61);
+      assert.equal(await assertStaffCheckpoint(db, 'historical-full-state-upgrade'), checkpoint);
       assert.deepEqual(
         (
           await db.query(
             `SELECT count(*) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL)::integer applied,count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NULL)::integer unfinished FROM _prisma_migrations`,
           )
         ).rows,
-        [{ applied: 61, unfinished: 0 }],
+        [{ applied: checkpoint, unfinished: 0 }],
       );
       return staffReadOnlyState(db);
     },
@@ -317,7 +322,7 @@ async function main() {
     runtimeUrl.searchParams.set('options', '-c default_transaction_read_only=on');
     await run(runtimeUrl.toString());
   } else {
-    await withIsolatedPostgres(async (fixture) => {
+    await withCurrentClientFixture(async (fixture) => {
       await fixture.restoreProject();
       // Restored roles have new generated credentials; role catalog hashes
       // exclude passwords and the template has the original database ACL.
@@ -406,7 +411,7 @@ async function main() {
         { env: fixture.environment, stdio: 'inherit', windowsHide: true },
       );
       assert.equal(result.status, 0, 'authorization regression');
-    });
+    }, process.env['MIGRATION_DATABASE_URL']);
   }
   const after = await withApprovedMigrationClient(staffReadOnlyState, {
     clientConfig: { options: '-c default_transaction_read_only=on' },

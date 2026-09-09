@@ -258,7 +258,7 @@ async function proveOperationalBoundary(
         BigInt(before.max) > BigInt(before.count),
         'Boundary max must not be an event count',
       );
-    assert.equal(runIsolated('scripts/run-prisma-migration.ts', ['deploy'], environment), 0);
+    await migrateFixtureThroughCheckpoint(url, 61, environment);
     await connect(async (db) => {
       const boundary = (
         await db.query(
@@ -572,12 +572,7 @@ async function main(): Promise<void> {
     if (mode === '--profile-acceptance' || mode === '--mutation-proof')
       await proveOperationalBoundary(fixture);
     if (upgrade) {
-      const historicalDeploy = runIsolated(
-        'scripts/run-prisma-migration.ts',
-        ['deploy'],
-        fixture.environment,
-      );
-      assert.equal(historicalDeploy, 0, 'historical migration 61 failed');
+      await migrateFixtureThroughCheckpoint(fixture.migrationUrl, 61, fixture.environment);
       await withApprovedMigrationClient(
         async (db) => {
           await proveMigrationPreservation(db, before);
@@ -682,13 +677,7 @@ async function main(): Promise<void> {
         MIGRATION_DATABASE_URL: cleanUrl,
         DATABASE_URL: runtime.toString(),
       };
-      const deploy = runIsolated('scripts/run-prisma-migration.ts', ['deploy'], environment);
-      assert.equal(deploy, 0, 'canonical migrations failed');
-      assert.equal(
-        runIsolated('scripts/run-prisma-migration.ts', ['status'], environment),
-        0,
-        'canonical migration status failed',
-      );
+      await migrateFixtureThroughCheckpoint(cleanUrl, 61, environment);
       await withApprovedMigrationClient(
         async (db) => {
           if (upgrade) {

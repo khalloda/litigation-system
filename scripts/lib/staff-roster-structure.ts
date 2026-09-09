@@ -273,7 +273,10 @@ export async function assertStaffBoundary(
   db: ClientBase,
   profile: StaffProfile,
 ): Promise<readonly StaffInvariant[]> {
-  assert.equal(await assertStaffCheckpoint(db, profile), 61, 'complete Phase 1 boundary required');
+  assert.ok(
+    [61, 62].includes(await assertStaffCheckpoint(db, profile)),
+    'complete staff boundary required',
+  );
   const population = (
     await db.query(`SELECT
     (SELECT count(*)::integer FROM _migration.staff_roster_person) people,

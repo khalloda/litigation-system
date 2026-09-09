@@ -610,10 +610,12 @@ model AuditActor {
   lookupCourtUpdated              LookupCourt[]              @relation("LookupCourtUpdatedBy")
   clientCreated                   Client[]                   @relation("ClientCreatedBy")
   clientUpdated                   Client[]                   @relation("ClientUpdatedBy")
+  clientApplicationModified       Client[]                   @relation("ClientApplicationModifiedBy")
   clientLogoCreated               ClientLogo[]               @relation("ClientLogoCreatedBy")
   clientLogoUpdated               ClientLogo[]               @relation("ClientLogoUpdatedBy")
   contactCreated                  Contact[]                  @relation("ContactCreatedBy")
   contactUpdated                  Contact[]                  @relation("ContactUpdatedBy")
+  contactApplicationModified      Contact[]                  @relation("ContactApplicationModifiedBy")
   matterCreated                   Matter[]                   @relation("MatterCreatedBy")
   matterUpdated                   Matter[]                   @relation("MatterUpdatedBy")
   hearingCreated                  Hearing[]                  @relation("HearingCreatedBy")
@@ -973,6 +975,14 @@ model Client {
   /// Access ID_client. See the legacy_id convention above.
   legacyId Int? @unique @map("legacy_id")
 
+  /// D57: import evidence is immutable; these are database-owned live fields.
+  isApplicationNative        Boolean     @default(true) @map("is_application_native")
+  isArchived                 Boolean     @default(false) @map("is_archived")
+  rowVersion                 BigInt      @default(1) @map("row_version")
+  applicationModifiedAt      DateTime?   @map("application_modified_at") @db.Timestamptz(6)
+  applicationModifiedBy      Int?        @map("application_modified_by")
+  applicationModifiedByActor AuditActor? @relation("ClientApplicationModifiedBy", fields: [applicationModifiedBy], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
   /// 100% filled in the Access data.
   nameAr             String  @map("name_ar")
   /// Kept in step by a database TRIGGER, never written by the application —
@@ -1020,7 +1030,7 @@ model Client {
   /// relation rather than a required one: clients and contacts point at each
   /// other, so one side has to be able to arrive first.
   contactPersonId Int?     @map("contact_person_id")
-  contactPerson   Contact? @relation("ClientPrimaryContact", fields: [contactPersonId], references: [id])
+  contactPerson   Contact? @relation("ClientPrimaryContact", fields: [contactPersonId, id], references: [id, clientId], onDelete: Restrict, onUpdate: Restrict, map: "clients_same_client_main_contact")
 
   createdAt      DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy      Int                         @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
@@ -1049,6 +1059,8 @@ model Client {
   @@index([fullNameNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
   @@index([createdBy], map: "clients_created_by_idx")
   @@index([updatedBy], map: "clients_updated_by_idx")
+  @@index([isArchived, nameAr, id], map: "clients_archive_name_id_idx")
+  @@index([applicationModifiedBy], map: "clients_application_modified_by_idx")
   @@map("clients")
 }
 
@@ -1128,8 +1140,16 @@ model Contact {
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
 
-  /// Nullable: a contact whose client cannot be resolved loads with a null
-  /// link and is queued for review, never dropped.
+  isApplicationNative        Boolean     @default(true) @map("is_application_native")
+  isArchived                 Boolean     @default(false) @map("is_archived")
+  rowVersion                 BigInt      @default(1) @map("row_version")
+  applicationModifiedAt      DateTime?   @map("application_modified_at") @db.Timestamptz(6)
+  applicationModifiedBy      Int?        @map("application_modified_by")
+  applicationModifiedByActor AuditActor? @relation("ContactApplicationModifiedBy", fields: [applicationModifiedBy], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  /// Nullable storage is retained for the historical transform declaration.
+  /// Migration 62's checked constraint requires every operational contact parent;
+  /// any future unmappable source belongs in separate review evidence.
   clientId Int?    @map("client_id")
   client   Client? @relation("ClientContacts", fields: [clientId], references: [id])
 
@@ -1177,6 +1197,7 @@ model Contact {
   /// The clients for whom this person is the main contact.
   primaryFor     Client[]   @relation("ClientPrimaryContact")
 
+  @@unique([id, clientId], map: "contacts_id_client_id_key")
   @@index([clientId])
   /// The trigram index that makes a LIKE '%…%' search fast. DECLARED HERE ON
   /// PURPOSE: when it lived only in raw SQL, the next `prisma migrate dev`
@@ -1185,6 +1206,8 @@ model Contact {
   @@index([contactNameNormalised(ops: raw("gin_trgm_ops"))], type: Gin)
   @@index([createdBy], map: "contacts_created_by_idx")
   @@index([updatedBy], map: "contacts_updated_by_idx")
+  @@index([clientId, isArchived, id], map: "contacts_parent_archive_id_idx")
+  @@index([applicationModifiedBy], map: "contacts_application_modified_by_idx")
   @@map("contacts")
 }
 

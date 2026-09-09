@@ -7,9 +7,9 @@
 --  ONE transaction with its assertions inside it, so a failure leaves the
 --  target tables exactly as they were.
 --
---  SAFE TO RE-RUN. Both tables are rebuilt from staging, which is itself
---  rebuilt from the extraction. Nothing here holds a human decision — the
---  firm's answers live in `quarantine`, which this never touches.
+--  PRE-BOUNDARY REBUILD ONLY. Migration 62 closes this path permanently:
+--  operational identities, edits and audit history must never be rebuilt.
+--  A D43 delta import requires separate reviewed implementation.
 --
 --  WHAT IS DELIBERATELY NOT SET, AND WHY
 --
@@ -30,6 +30,19 @@
 -- =========================================================================
 
 BEGIN;
+-- D57: this rebuild is never a differential import or an operational writer.
+-- Refuse even malformed/partial boundary surfaces before context or DELETE.
+DO $operational_boundary$
+BEGIN
+  IF EXISTS(SELECT 1 FROM public._prisma_migrations WHERE migration_name='20260909120000_client_contact_database_boundary')
+     OR EXISTS(SELECT 1 FROM pg_tables WHERE schemaname='_migration' AND tablename LIKE 'client_contact_%')
+     OR EXISTS(SELECT 1 FROM pg_views WHERE schemaname='_migration' AND viewname LIKE 'client_contact_%')
+     OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','_migration') AND p.proname LIKE 'client_contact_%')
+     OR EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('clients','contacts') AND column_name IN ('is_application_native','is_archived','row_version','application_modified_at','application_modified_by')) THEN
+    RAISE EXCEPTION 'Client/contact operational boundary exists; legacy delete-and-rebuild is prohibited. D43 delta import requires separate reviewed work';
+  END IF;
+END
+$operational_boundary$;
 SELECT public.audit_set_migration_context();
 SELECT public.audit_set_event_context(
   gen_random_uuid(),

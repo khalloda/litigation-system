@@ -11,6 +11,10 @@
 
 import 'dotenv/config';
 import {
+  assertClientContactBoundary,
+  clientContactHistoricalCounts,
+} from './lib/client-contact-checkpoint';
+import {
   assertStaffCheckpoint,
   historicalStaffClient,
   type StaffProfile,
@@ -134,19 +138,21 @@ async function main() {
     'use an explicit accepted database profile',
   );
   const historical = profile === 'historical-full-state-upgrade';
-  const { staffBoundary, rosterBaseline, staffChecks } = await withApprovedMigrationClient(
-    async (current) => {
+  const { checkpoint, clientBoundary, clientChecks, staffBoundary, rosterBaseline, staffChecks } =
+    await withApprovedMigrationClient(async (current) => {
       const checkpoint = await assertStaffCheckpoint(current, profile);
-      const staffChecks = checkpoint === 61 ? await assertStaffBoundary(current, profile) : [];
+      const staffChecks = checkpoint !== 60 ? await assertStaffBoundary(current, profile) : [];
       return {
-        staffBoundary: checkpoint === 61,
-        rosterBaseline: await readRosterBaseline(current, checkpoint === 61),
+        checkpoint,
+        clientBoundary: checkpoint === 62,
+        clientChecks: checkpoint === 62 ? await assertClientContactBoundary(current, profile) : [],
+        staffBoundary: checkpoint !== 60,
+        rosterBaseline: await readRosterBaseline(current, checkpoint !== 60),
         staffChecks,
       };
-    },
-  );
+    });
   console.log(
-    `Verification profile: ${profile}; migration ${staffBoundary ? 61 : 60}${staffBoundary ? '' : ' (migration 61 intentionally pending)'}`,
+    `Verification profile: ${profile}; migration ${checkpoint}${checkpoint === 62 ? '' : checkpoint === 61 ? ' (migration 62 solely pending)' : ' (migration 61/62 pending)'}`,
   );
   const db = await migrationDbReady;
   const highImpactState = await withApprovedMigrationClient(async (current) => {
@@ -1958,35 +1964,8 @@ async function main() {
     //  down here. 318 and 188 drift with the firm's file; "the target equals
     //  what was staged" does not.
   }
-  const transformed = one(
-    await db.$queryRaw<
-      {
-        clients: bigint;
-        staged_clients: bigint;
-        contacts: bigint;
-        staged_contacts: bigint;
-        orphan_contacts: bigint;
-        cleared_target: bigint;
-        cleared_staged: bigint;
-        lawyer_mismatch: bigint;
-        invented_branch: bigint;
-      }[]
-    >`
-      SELECT
-        (SELECT count(*) FROM clients)                                       AS clients,
-        (SELECT count(*) FROM staging."العملاء")                             AS staged_clients,
-        (SELECT count(*) FROM contacts)                                      AS contacts,
-        (SELECT count(*) FROM staging."Contacts")                            AS staged_contacts,
-        (SELECT count(*) FROM contacts WHERE client_id IS NULL)              AS orphan_contacts,
-        (SELECT count(*) FROM clients WHERE cash_or_probono = '')            AS cleared_target,
-        (SELECT count(*) FROM staging."العملاء" WHERE "Cash/probono" = '')   AS cleared_staged,
-        (SELECT count(*) FROM staging."العملاء" s
-           JOIN clients c ON c.legacy_id = s."ID_client"::integer
-          WHERE c.legacy_contact_lawyer_raw IS DISTINCT FROM s."contactLawyer") AS lawyer_mismatch,
-        (SELECT count(*) FROM clients
-          WHERE branch_id IS NOT NULL OR legacy_branch_raw IS NOT NULL
-             OR contact_person_id IS NOT NULL)                               AS invented_branch`,
-    'clients and contacts',
+  const transformed = await withApprovedMigrationClient((current) =>
+    clientContactHistoricalCounts(current, clientBoundary),
   );
 
   record(
@@ -2001,10 +1980,9 @@ async function main() {
     String(transformed.contacts),
     transformed.contacts === transformed.staged_contacts && transformed.orphan_contacts === 0n,
   );
-  //     The whole NULL-versus-'' argument, at its destination. Two clients had
-  //     something typed into Cash/probono and cleared it. A transform that
-  //     trimmed or coalesced would make them indistinguishable from "never
-  //     entered", and nothing would look wrong.
+  // D53: two original empty strings and zero NULLs are observed facts; no
+  // editing history is inferred. Preserve their exact original identities
+  // and values through the historical view after the operational boundary.
   record(
     'Cleared values still differ from never-entered',
     `${transformed.cleared_staged} empty strings (staging)`,
@@ -2608,7 +2586,7 @@ async function main() {
       .sort(),
     'Permanent invariant coverage differs from the explicit profile inventory',
   );
-  for (const invariant of staffChecks)
+  for (const invariant of [...staffChecks, ...clientChecks])
     checks.push({
       id: invariant.id,
       name: invariant.description,

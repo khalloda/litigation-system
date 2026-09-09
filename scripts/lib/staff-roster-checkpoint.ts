@@ -3,6 +3,10 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
 import {
+  CLIENT_CONTACT_MIGRATION,
+  clientContactBoundaryApplied,
+} from './client-contact-checkpoint';
+import {
   gate4MigrationIdentityDigest,
   readGate4RepositoryMigrationInventory,
   reconcileGate4Migrations,
@@ -179,12 +183,14 @@ export async function staffBoundaryApplied(db: ClientBase): Promise<boolean> {
 export async function assertStaffCheckpoint(
   db: ClientBase,
   profile: StaffProfile,
-): Promise<60 | 61> {
+): Promise<60 | 61 | 62> {
   assert.ok(
     ['historical-full-state-upgrade', 'canonical-clean-replay'].includes(profile),
     'explicit accepted profile required',
   );
   const applied = await staffBoundaryApplied(db);
+  const clientsApplied = await clientContactBoundaryApplied(db);
+  assert.ok(!clientsApplied || applied, 'Client boundary requires complete staff boundary');
   const history = (
     await db.query<Gate4MigrationHistoryRow>(
       `SELECT migration_name "migrationName",checksum,finished_at::text "finishedAt",rolled_back_at::text "rolledBackAt",applied_steps_count "appliedStepsCount" FROM _prisma_migrations ORDER BY migration_name,started_at,id`,
@@ -192,18 +198,22 @@ export async function assertStaffCheckpoint(
   ).rows;
   const repository = await readGate4RepositoryMigrationInventory();
   assert.deepEqual(repository.defects, []);
-  assert.equal(repository.migrations.length, 61, 'exact 60 plus one Phase 1 migration required');
-  assert.equal(repository.migrations.at(-1)?.name, STAFF_MIGRATION);
-  const checkpointFiles = applied
-    ? repository.migrations
-    : repository.migrations.filter((row) => row.name !== STAFF_MIGRATION);
+  assert.ok(
+    [61, 62].includes(repository.migrations.length),
+    'Exact reviewed repository checkpoint required',
+  );
+  assert.equal(repository.migrations[60]?.name, STAFF_MIGRATION);
+  if (repository.migrations.length === 62)
+    assert.equal(repository.migrations[61]?.name, CLIENT_CONTACT_MIGRATION);
+  const checkpoint = clientsApplied ? 62 : applied ? 61 : 60;
+  const checkpointFiles = repository.migrations.slice(0, checkpoint);
   const evidence = reconcileGate4Migrations(history, {
     ...repository,
     migrations: checkpointFiles,
     digest: gate4MigrationIdentityDigest(checkpointFiles),
   });
   assert.deepEqual(evidence.defects, [], 'checkpoint-specific migration ledger differs');
-  assert.equal(evidence.totalApplied, applied ? 61 : 60);
+  assert.equal(evidence.totalApplied, checkpoint);
   assert.equal(
     evidence.acceptedDatabaseProfile,
     profile === 'historical-full-state-upgrade' ? 'historical-live' : 'canonical-clean-replay',
@@ -216,7 +226,7 @@ export async function assertStaffCheckpoint(
     assert.deepEqual(boundary, [{ profile }], 'boundary profile is missing, duplicated or hybrid');
   }
   await assertStaffSourceProfile(db, profile);
-  return applied ? 61 : 60;
+  return checkpoint;
 }
 
 /** Read-only historical reconciliation only. Never use for a writer or UI. */
