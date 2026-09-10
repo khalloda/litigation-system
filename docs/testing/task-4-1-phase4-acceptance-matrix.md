@@ -113,3 +113,38 @@ explains fresh/reused evidence, corrections, exact preservation and future
 matter/report UI obligations. The reused index verifies all 135 prior manifest
 entries (136 ZIP members including its manifest) and compares 374 accepted Git
 dependency entries, with exact original assertion/log references.
+
+## Owner acceptance addendum — 10 September 2026
+
+The original execution checkpoint above is preserved byte-for-byte, including
+its historical limitations and pending-acceptance wording. This addendum records
+the later owner decision; it does not rewrite completed matrix rows, the initial
+matrix, runtime results or original evidence packages.
+
+Independent review passed with no blocking finding, required correction commit
+or missing attachment. Khaled Helmy accepted Phase 4 and Task 4.1 overall on
+10 September 2026 at verification commit
+`d4eed39612cf16b3a44808e056a21857642dc167`. See the byte-identical
+[independent review](../reviews/2026-09-10-task-4-1-phase-4-independent-review.md).
+Its earlier recommendation and speech-testing alternative are historical context;
+the owner's subsequent acceptance and exclusion govern current scope.
+
+Actual screen-reader speech actions are excluded by the owner. Do not plan,
+set up, run, observe, coordinate or request speech testing unless Khaled explicitly
+reopens that scope. There is no pending speech follow-up or speech acceptance
+blocker. Historical speech results remain untested: no unperformed test is marked
+passed and no full accessibility conformance is claimed. Keyboard use, labels,
+focus, programmatic status/error announcements, Arabic/RTL, zoom, reflow and the
+existing implementation remain required. No application-code removal is authorized.
+
+Tasks 4.2 and 6.2 retain their required future matter/report screen and export
+integration checks, including D52's archive-independent visibility. Acceptance
+does not mark those tasks or Task 4.1a complete and does not begin later work.
+
+This acceptance is recorded in one additional documentation-only local commit.
+Its resulting identity belongs in the separate external receipt, not this
+committed addendum. Runtime and database-preservation evidence remains historical;
+only documentation, file-preservation and local Git checks are fresh in this task.
+The immediate stop is independent acceptance-documentation review before any
+separately authorized publication. Nothing is pushed or deployed; the Litigation
+Department continues using Access and D43/D51 final cutover remains separate.

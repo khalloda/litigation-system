@@ -90,11 +90,11 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent Task 4.1 Phase 4 review**, after its separately authorized
-local verification. Task 4.1 Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
+point is **independent acceptance-documentation review** for Task 4.1, before a
+separate publication decision. Task 4.1 Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
 The D52–D57 database foundation is now deployed and operationally
 complete at migration 62, with 15/15 checks and 116/116 historical invariants.
-Task 4.1 overall and Task 4.1a remain unchecked; Phase 4 is locally verified.
+Task 4.1 overall and Phases 1–4 are accepted and checked; Task 4.1a remains unchecked.
 The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
@@ -165,7 +165,7 @@ focus, labels, errors, status announcements, colour independence, target size,
 zoom/reflow and mobile/desktop layout. Browser mutations use only an isolated
 disposable database; project data does not leave the machine.
 
-### Clients and contacts — Task 4.1 database foundation deployed and verified
+### Clients and contacts — Task 4.1 accepted
 
 D52–D57 approve client/contact list, detail, authorized create/edit and
 Administrator-only archive/restore, plus existing-logo display and the
@@ -178,7 +178,9 @@ Phase 3 application mutations passed [independent review](reviews/2026-09-10-tas
 and were accepted by Khaled Helmy on 10 September 2026 at
 `77baf2af2d079457f28ce1632f68e3f411cbdc48`, then published through
 `9f61ba481fbebdb2b0d54e470e43cd8d26014265`. Phase 4's separately authorized final
-verification passed locally; [TASKS.md](../TASKS.md) owns phase status;
+verification passed independent review. Khaled Helmy accepted Phase 4 and
+Task 4.1 overall on 10 September 2026 at
+`d4eed39612cf16b3a44808e056a21857642dc167`; [TASKS.md](../TASKS.md) owns phase status;
 the [dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
 separates findings from later owner resolutions.
 
@@ -383,9 +385,27 @@ unchanged. The separately authorized Phase 4 records a fresh
 [verification report](task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md).
 Phase 4 passed local service/query, real-volume read/logo, production browser,
 static, preservation and cleanup verification, with precise reuse of unchanged
-reviewed mutation/current-62 regressions. Actual screen-reader speech remains
-unverified and explicitly retained for review. Its stop is independent Phase 4
-review, before overall Task 4.1 owner acceptance.
-Task 4.1 overall and Task 4.1a remain unchecked. Existing database/query proof
+reviewed mutation/current-62 regressions. These are historical runtime results;
+no runtime checks are repeated for the documentation-only acceptance record.
+Independent review passed, and Khaled Helmy accepted Phase 4 and Task 4.1 overall
+on 10 September 2026 at `d4eed39612cf16b3a44808e056a21857642dc167`.
+See the preserved [independent review](reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
+[report acceptance addendum](task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md#owner-acceptance-addendum--10-september-2026)
+and [matrix acceptance addendum](testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
+Older report/review wording, including the review's speech-testing alternative,
+describes earlier checkpoints and does not override the owner's later instruction.
+
+Actual screen-reader speech actions are excluded by the owner. Do not plan,
+set up, run, observe, coordinate or request speech testing unless Khaled explicitly
+reopens that scope. Historical speech remains untested, with no pending speech
+follow-up or acceptance blocker; no unperformed test is marked passed and no full
+accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
+status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
+remain required. This acceptance authorizes no application-code removal.
+
+The immediate stop is independent acceptance-documentation review before
+separately authorized publication. Task 4.1 overall is accepted and checked;
+Task 4.1a remains unchecked and unstarted. Existing database/query proof
 does not claim future matter/report UI or exports have been tested; their later
-implementation must retain D52's archive-independent visibility.
+implementation under Tasks 4.2 and 6.2 must retain D52's archive-independent
+visibility and complete its own screen/export integration checks.

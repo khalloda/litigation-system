@@ -31,7 +31,7 @@ owner authorization. Project PostgreSQL has 62 applied migrations, zero pending
 or unfinished, one approved historical rollback, 15/15 checks and 116/116
 historical invariants. Earlier isolated proof passed 116 historical and 98 canonical
 checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
-Task 4.1 overall and Task 4.1a remain unchecked; Phase 4 is locally verified.
+Task 4.1 overall and Phases 1–4 are accepted and checked; Task 4.1a remains unchecked.
 Phase 2 was accepted by Khaled Helmy on 9 September 2026 after independent
 implementation/correction review, and was subsequently published through
 `82ca95c439e554bc8b55ffb3de0873827f8f3751`; R1/R2 remain closed.
@@ -40,13 +40,28 @@ and was accepted by Khaled Helmy on 10 September 2026 at
 `77baf2af2d079457f28ce1632f68e3f411cbdc48`; see its [dated acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md#acceptance-addendum--10-september-2026).
 Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`;
 the preserved [publication review](docs/reviews/2026-09-10-task-4-1-phase-3-publication-independent-review.md)
-records its independent verification. Phase 4's separately authorized final
-verification passed locally. The next gate is independent Phase 4 review,
-then the owner's overall Task 4.1 acceptance decision. Final Access
+records its independent verification. Phase 4's independent review passed, and
+Khaled Helmy accepted Phase 4 and Task 4.1 overall on 10 September 2026 at
+`d4eed39612cf16b3a44808e056a21857642dc167`. See the preserved
+[independent review](docs/reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
+[report acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md#owner-acceptance-addendum--10-september-2026)
+and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
+The immediate stop is independent acceptance-documentation review before a
+separate publication decision. Older reports/reviews retain their historical
+checkpoints. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
 order. Dated reviews and task reports are evidence, not priority authorities.
+
+**Current owner scope — 10 September 2026:** actual screen-reader speech actions
+are excluded by the owner. Do not plan, set up, run, observe, coordinate or request
+speech testing unless Khaled explicitly reopens that scope. Historical speech
+remains untested, with no pending speech follow-up or acceptance blocker; no
+unperformed test is marked passed and no full accessibility conformance is claimed.
+Keyboard use, labels, focus, programmatic status/error announcements, Arabic/RTL,
+zoom, reflow and existing implementation remain required. Future matter/report
+screen and export integration checks under Tasks 4.2 and 6.2 remain required.
 
 ---
 
@@ -1725,12 +1740,14 @@ than assuming one rule for every workflow. Test with real volumes.
       but must not create, enable, disable, reset or otherwise manage accounts.
       Phase 1 is operationally complete: migration 61's 7 September project
       deployment passed 107/107 permanent historical-profile
-      invariants. Phases 2–4 are implemented and verified. Task 4.1 remains
-      incomplete under the approved D52–D57 contract. Its Phase 1 database
+      invariants. Phases 2–4 are implemented and verified. At that historical
+      checkpoint, Task 4.1 was incomplete under the approved D52–D57 contract.
+      Its Phase 1 database
       foundation is now deployed and operationally complete at migration 62;
       Phase 2 is accepted and published; Phase 3 passed independent review and was
       accepted on 10 September 2026 and published at `9f61ba4`.
-      The current Phase 4 checkpoint is recorded at the top of this file.
+      Task 4.1 was subsequently accepted overall; its current checkpoint is
+      recorded at the top of this file.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1899,7 +1916,7 @@ than assuming one rule for every workflow. Test with real volumes.
       was subsequently published at `6579799`. The former Task 4.1 Phase 3
       review return point is historical; use the current checkpoint above.
 
-- [ ] **4.1 Clients** — Phase 1 deployed and operationally complete (**D52–D57**).
+- [x] **4.1 Clients** — Phase 1 deployed and operationally complete (**D52–D57**).
       Client/contact list, detail and authorized creation/editing; optional main
       contact; Administrator-only non-cascading archive/restore; existing-logo
       display and client-name fallback. All four roles view; Litigation
@@ -2008,8 +2025,12 @@ than assuming one rule for every workflow. Test with real volumes.
         Existing query-contract evidence does not claim future matter/report
         screens or exports have been built or tested. Actual reader speech is
         unverified because no permitted speech observation was available.
-        Independent Phase 4 review and overall owner
-        acceptance remain subsequent gates.
+        Those were the execution-checkpoint limitations. Independent review
+        subsequently passed and Khaled Helmy accepted Phase 4 and Task 4.1
+        overall on 10 September 2026 at `d4eed39612cf16b3a44808e056a21857642dc167`.
+        Speech actions are excluded by the owner under the current scope above;
+        no pending speech follow-up remains. The original report and matrix
+        retain their execution history, followed by dated owner acceptance addenda.
 
       **Phase 2 implemented and locally verified, 9 September 2026:** guarded
       list/detail/contact pages and existing-logo display, read-only for all roles.
@@ -2029,9 +2050,10 @@ than assuming one rule for every workflow. Test with real volumes.
       implementation. That review passed and Khaled Helmy accepted Phase 3 on 10 September
       2026 at `77baf2af2d079457f28ce1632f68e3f411cbdc48`. Its acceptance documentation
       was subsequently published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
-      **Current gate:** independent Phase 4 review of the locally verified work;
-      overall Task 4.1 owner acceptance is not claimed.
-      Task 4.1 overall and Task 4.1a remain unchecked.
+      **Current gate:** independent acceptance-documentation review before
+      separately authorized publication. Phase 4 and Task 4.1 overall are accepted;
+      Task 4.1a remains unchecked and unstarted. Runtime evidence remains historical;
+      this acceptance record adds only fresh documentation and local Git checks.
       Later implementation and D43/D51 final cutover require their own authorization.
 
 - [ ] **4.1a Client logo upload**

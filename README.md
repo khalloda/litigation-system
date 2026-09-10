@@ -47,19 +47,34 @@ Phase 3 is accepted and published through
 The separately authorized Phase 4 final verification passed locally; its
 [report](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md) and
 [pre-execution matrix](docs/testing/task-4-1-phase4-acceptance-matrix.md) distinguish
-fresh evidence, accepted evidence reuse and remaining limitations. The next gate
-is independent Phase 4 review, followed by the owner's overall acceptance decision.
+fresh evidence, accepted evidence reuse and historical limitations.
+Independent Phase 4 review passed, and Khaled Helmy accepted Phase 4 and
+Task 4.1 overall on 10 September 2026 at
+`d4eed39612cf16b3a44808e056a21857642dc167`. See the preserved
+[independent review](docs/reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
+[report acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md#owner-acceptance-addendum--10-september-2026)
+and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
+The immediate stop is independent acceptance-documentation review before a
+separate publication decision. Older report/review wording records earlier checkpoints.
 See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
-Task 4.1 overall and Task 4.1a remain unchecked. The Phase 3 report retains its
+Task 4.1 overall is accepted and checked; Task 4.1a remains unchecked. The Phase 3 report retains its
 historical late-matrix and untested screen-reader speech limitations. Phase 4
 preserves its initial matrix, proves nonempty archive/report visibility and
-records fresh browser evidence; actual screen-reader speech remains unverified.
+records its browser evidence. Actual screen-reader speech actions are excluded
+by the owner: do not plan, set up, run, observe, coordinate or request speech
+testing unless Khaled explicitly reopens that scope. Historical speech remains
+untested, with no pending speech follow-up or acceptance blocker and no claim
+of full accessibility conformance. Keyboard use, labels, focus, programmatic
+status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
+remain required. Tasks 4.2 and 6.2 retain future matter/report screen and export
+integration checks, including archive-independent visibility.
 R1/R2 are closed; see the [correction review](docs/reviews/2026-09-09-task-4-1-phase-2-correction-independent-review.md)
 and [dated acceptance addendum](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md#acceptance-addendum--9-september-2026).
-Phase 4's authorized delivery is one local review commit, without publication,
-deployment or final Access cutover.
+This acceptance record adds one documentation-only local commit, without
+publication, deployment or final Access cutover. Runtime evidence is historical;
+only documentation and local Git checks are fresh in this acceptance task.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
