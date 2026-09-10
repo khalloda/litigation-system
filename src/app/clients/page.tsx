@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requirePagePermission } from '@/lib/auth/authorization';
+import { hasPermission } from '@/lib/auth/permissions';
 import { listClients } from '@/lib/clients';
 import {
   CLIENT_SEARCH_LIMIT,
@@ -49,6 +50,14 @@ export default async function ClientsPage({
           <p className={styles.eyebrow}>{t.app.system}</p>
           <h1>{t.clients.title}</h1>
           <p>{t.clients.subtitle}</p>
+          {hasPermission(session.user.role, 'clients', 'create') ? (
+            <Link
+              className={styles.link}
+              href={`/clients/new${clientListHref(filters).slice('/clients'.length)}`}
+            >
+              {t.clients.manage.titles['client-create']}
+            </Link>
+          ) : null}
         </div>
         <Link className={styles.link} href="/">
           {t.nav.dashboard}

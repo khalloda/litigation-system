@@ -6,7 +6,7 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 9 September 2026:** Stages 2 and 3 are complete. The
+**Current checkpoint — 10 September 2026:** Stages 2 and 3 are complete. The
 independent Task 3.5B evidence review is accepted; migration 60 and the approved
 real application each executed exactly once, all 382 decisions reconciled, and
 the permanent invariant set passed 93/93 at that checkpoint. Task 3.5 is
@@ -31,11 +31,14 @@ owner authorization. Project PostgreSQL has 62 applied migrations, zero pending
 or unfinished, one approved historical rollback, 15/15 checks and 116/116
 historical invariants. Earlier isolated proof passed 116 historical and 98 canonical
 checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
-Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
-Phase 2 implementation and correction review are complete; Khaled Helmy accepted
-Phase 2 on 9 September 2026. R1/R2 are closed. The immediate stop is review of the
-acceptance documentation before separately authorized publication.
-The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted and requiring its own authorization. Final Access
+Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked.
+Phase 2 was accepted by Khaled Helmy on 9 September 2026 after independent
+implementation/correction review, and was subsequently published through
+`82ca95c439e554bc8b55ffb3de0873827f8f3751`; R1/R2 remain closed.
+Phase 3 is implemented and locally verified under its separate owner mandate.
+The immediate stop is independent Phase 3 review; no owner acceptance or push
+is claimed. Phase 4 is the next development phase, unstarted and requiring
+its own authorization. See the [Phase 3 report](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md). Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
@@ -1721,7 +1724,8 @@ than assuming one rule for every workflow. Test with real volumes.
       invariants. Phases 2–4 are implemented and verified. Task 4.1 remains
       incomplete under the approved D52–D57 contract. Its Phase 1 database
       foundation is now deployed and operationally complete at migration 62;
-      Phase 2 is implemented and verified; independent review is the immediate stop. Phase 3 is next, unstarted.
+      Phase 2 is accepted and published; Phase 3 is implemented and locally verified.
+      Independent Phase 3 review is the immediate stop. Phase 4 is next, unstarted.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1888,7 +1892,7 @@ than assuming one rule for every workflow. Test with real volumes.
       **Historical Phase 4 stop point:** independent Task 4.0a review; no push
       or Task 4.1 implementation occurred in that completion task. Task 4.0a
       was subsequently published at `6579799`. The current return point is
-      Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted.
+      independent Task 4.1 Phase 3 review; Phase 4 is next, unstarted.
 
 - [ ] **4.1 Clients** — Phase 1 deployed and operationally complete (**D52–D57**).
       Client/contact list, detail and authorized creation/editing; optional main
@@ -1948,7 +1952,7 @@ than assuming one rule for every workflow. Test with real volumes.
         absent/unusable images show the client name. Include loading, empty,
         invalid-filter, not-found, forbidden and recoverable-error states.
 
-  - [ ] **Phase 3 — Authorized mutations and archive/restore.** Implement client
+  - [x] **Phase 3 — Authorized mutations and archive/restore.** Implement client
         and contact create/edit under the approved matrix; new contacts require
         a name, while unrelated edits to imported unnamed contacts remain valid.
         Archive/restore is Administrator-only, non-cascading and confirmed with
@@ -1962,6 +1966,13 @@ than assuming one rule for every workflow. Test with real volumes.
         Prove stale-input retention, duplicate-submission handling, no-op
         preservation, actor attribution and full rollback on audit failure.
         All mutation/race tests use isolated disposable databases.
+
+        **Implemented and locally verified, 10 September 2026:** eight guarded
+        pages/actions, pinned validation and three-gateway service, original-version
+        forms, exact submission retry, main-contact maintenance and confirmed
+        archive/restore. Full-volume service/race/rollback, production browser
+        and preservation evidence is in the [Phase 3 report](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md).
+        Independent review is the immediate stop; no owner acceptance or push.
 
   - [ ] **Phase 4 — Final acceptance.** Complete static, permission, audit,
         reconciliation, concurrency and real-volume checks. Cover 318 clients,
@@ -1985,9 +1996,12 @@ than assuming one rule for every workflow. Test with real volumes.
       See the [original review](docs/reviews/2026-09-09-task-4-1-phase-2-independent-review.md),
       [correction review](docs/reviews/2026-09-09-task-4-1-phase-2-correction-independent-review.md)
       and [correction report and acceptance addendum](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md#acceptance-addendum--9-september-2026).
-      **Stop now:** review of this acceptance documentation before separately
-      authorized publication. Acceptance does not authorize a push or Phase 3.
-      **Next development return point:** Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted. Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked.
+      **Historical Phase 2 stop:** acceptance-documentation review before separately
+      authorized publication. That publication subsequently reached
+      `82ca95c439e554bc8b55ffb3de0873827f8f3751`.
+      **Stop now:** independent Phase 3 review of the separately authorized local
+      implementation. **Next development return point:** Phase 4 — Final acceptance,
+      unstarted. Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked.
       Later implementation and D43/D51 final cutover require their own authorization.
 
 - [ ] **4.1a Client logo upload**

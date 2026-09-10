@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePagePermission } from '@/lib/auth/authorization';
+import { hasPermission } from '@/lib/auth/permissions';
 import { getClient, getClientContacts } from '@/lib/clients';
 import {
   ClientFilterError,
@@ -50,6 +51,7 @@ export default async function ClientPage({
   }
   if (!contacts) notFound();
   const detailHref = clientDetailHref(client.id, filters);
+  const returnQuery = detailHref.slice(detailHref.indexOf('?')) + `&contactsPage=${contacts.page}`;
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -66,6 +68,28 @@ export default async function ClientPage({
       {client.isArchived ? (
         <p className={`${styles.panel} ${styles.state}`}>{t.clients.archivedNotice}</p>
       ) : null}
+      <div className={styles.actions}>
+        {!client.isArchived && hasPermission(session.user.role, 'clients', 'update') ? (
+          <Link className={styles.link} href={`/clients/${client.id}/edit${returnQuery}`}>
+            {t.clients.manage.titles['client-update']}
+          </Link>
+        ) : null}
+        {!client.isArchived && hasPermission(session.user.role, 'contacts', 'create') ? (
+          <Link className={styles.link} href={`/clients/${client.id}/contacts/new${returnQuery}`}>
+            {t.clients.manage.titles['contact-create']}
+          </Link>
+        ) : null}
+        {hasPermission(session.user.role, 'clients', client.isArchived ? 'restore' : 'archive') ? (
+          <Link
+            className={styles.link}
+            href={`/clients/${client.id}/${client.isArchived ? 'restore' : 'archive'}${returnQuery}`}
+          >
+            {client.isArchived
+              ? t.clients.manage.titles['client-restore']
+              : t.clients.manage.titles['client-archive']}
+          </Link>
+        ) : null}
+      </div>
       <section className={styles.panel} aria-label={t.clients.details}>
         <h2>{t.clients.details}</h2>
         <dl className={styles.facts}>

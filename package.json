@@ -64,6 +64,8 @@
     "test:staff-browser": "node --import tsx scripts/test-staff-browser.mjs",
     "test:client-read-only": "tsx scripts/test-client-read-only.ts",
     "test:client-browser": "node --import tsx scripts/test-client-browser.mjs",
+    "test:client-mutations": "tsx scripts/test-client-mutations.ts",
+    "test:client-mutation-browser": "node --import tsx scripts/test-client-browser.mjs --phase3",
     "check:gitignore": "tsx scripts/check-gitignore.ts",
     "check:encoding": "tsx scripts/check-encoding.ts",
     "test:guard": "tsx scripts/test-db-reset-guard.ts",

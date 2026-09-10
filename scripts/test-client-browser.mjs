@@ -14,7 +14,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { resolve, join, sep } from 'node:path';
+import { resolve, join, sep, dirname, relative, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:net';
 import { withIsolatedPostgres } from './lib/isolated-postgres-fixture.ts';
@@ -36,6 +36,7 @@ import {
 import { t } from '../src/strings.ts';
 import { setupClientCases } from './test-client-read-only.ts';
 import { assertCurrentClientSource } from './lib/client-regression-source.ts';
+import { proveClientMutationBrowser } from './lib/client-mutation-browser.mjs';
 
 import {
   staffZoomExtension,
@@ -45,7 +46,12 @@ import {
 } from './lib/staff-accessibility-browser.mjs';
 
 const root = process.cwd();
-const output = resolve(process.env.CLIENT_EVIDENCE_DIR ?? 'test-results/task41-phase2/browser');
+assert.ok(process.env.CLIENT_EVIDENCE_DIR, 'Explicit external client evidence directory required');
+const output = resolve(process.env.CLIENT_EVIDENCE_DIR);
+assert.ok(
+  relative(root, output).startsWith('..') || isAbsolute(relative(root, output)),
+  'Evidence must remain outside repository',
+);
 const playwrightModule = process.env.STAFF_PLAYWRIGHT_MODULE ?? 'playwright';
 const { chromium } = await import(
   playwrightModule.startsWith('.') || /^[A-Za-z]:/u.test(playwrightModule)
@@ -87,6 +93,21 @@ async function freePort() {
   return port;
 }
 await withIsolatedPostgres(async (fixture) => {
+  writeFileSync(
+    join(output, 'browser-fixture.json'),
+    JSON.stringify(
+      {
+        container: fixture.container,
+        cluster: fixture.clusterId,
+        sourceCluster: fixture.sourceClusterId,
+        port: new URL(fixture.runtimeUrl).port,
+        runtimePrincipal: new URL(fixture.runtimeUrl).username,
+        cleaned: false,
+      },
+      null,
+      2,
+    ),
+  );
   await fixture.restoreProject();
   await withApprovedMigrationClient(
     async (db) => assert.equal(await assertCurrentClientSource(db), 62),
@@ -156,7 +177,7 @@ await withIsolatedPostgres(async (fixture) => {
   );
   // Keep the mirror on the dependency drive: Next's Windows webpack entries
   // cannot be relative across drives. Run source checks after mirror cleanup.
-  const buildRoot = resolve(root, 'build/litigation-client-builds');
+  const buildRoot = resolve(dirname(root), 'litigation-client-builds');
   mkdirSync(buildRoot, { recursive: true });
   const mirror = mkdtempSync(join(buildRoot, 'client-browser-'));
   assert.ok(realpathSync(mirror).startsWith(realpathSync(buildRoot) + sep));
@@ -178,7 +199,23 @@ await withIsolatedPostgres(async (fixture) => {
     const copiedLogos = join(mirror, 'client-logos');
     cpSync(process.env.CLIENT_LOGO_ROOT, copiedLogos, { recursive: true });
     const environment = {
-      ...fixture.environment,
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(([key]) =>
+          [
+            'SYSTEMROOT',
+            'WINDIR',
+            'PATH',
+            'PATHEXT',
+            'COMSPEC',
+            'TEMP',
+            'TMP',
+            'USERPROFILE',
+            'LOCALAPPDATA',
+            'APPDATA',
+          ].includes(key.toUpperCase()),
+        ),
+      ),
+      DATABASE_URL: fixture.runtimeUrl,
       NODE_ENV: 'production',
       CLIENT_LOGO_ROOT: copiedLogos,
       AUTH_SECRET: randomBytes(48).toString('base64url'),
@@ -252,6 +289,11 @@ await withIsolatedPostgres(async (fixture) => {
           runtimePrincipal: new URL(environment.DATABASE_URL).username,
           migrationCredentialPresent: Object.hasOwn(environment, 'MIGRATION_DATABASE_URL'),
           sourceEnvironmentCopied: false,
+          coordinatorCredentialPresent: Object.keys(environment).some((key) =>
+            key.startsWith('TASK40A_'),
+          ),
+          mirror,
+          copiedLogos,
         },
         null,
         2,
@@ -664,11 +706,32 @@ await withIsolatedPostgres(async (fixture) => {
       evidence,
       name: 'contact detail',
     });
+    if (process.argv.includes('--phase3'))
+      await proveClientMutationBrowser({
+        page,
+        context,
+        base,
+        goto,
+        login,
+        accounts,
+        fixture,
+        cases,
+        identities,
+        audit,
+        screenshot,
+        evidence,
+      });
     assert.deepEqual(remoteRequests, []);
     writeFileSync(
       join(output, 'browser-evidence.json'),
       JSON.stringify(
-        { browser: await browser.version(), evidence, remoteRequests, readOnlyNavigation: true },
+        {
+          browser: await browser.version(),
+          evidence,
+          remoteRequests,
+          readOnlyNavigation: true,
+          mutations: process.argv.includes('--phase3'),
+        },
         null,
         2,
       ),
@@ -689,6 +752,20 @@ await withIsolatedPostgres(async (fixture) => {
     assert.ok(realpathSync(mirror).startsWith(realpathSync(buildRoot) + sep));
     rmSync(mirror, { recursive: true });
     assert.equal(existsSync(mirror), false);
+    writeFileSync(
+      join(output, 'browser-cleanup.json'),
+      JSON.stringify(
+        {
+          mirror,
+          removed: true,
+          serverStopped: !next || next.child.exitCode !== null || next.child.signalCode !== null,
+          browserClosed: true,
+          dependencyLinkRemoved: !existsSync(dependencyLink),
+        },
+        null,
+        2,
+      ),
+    );
   }
 });
 assert.deepEqual(
@@ -698,3 +775,7 @@ assert.deepEqual(
   preservation,
 );
 console.log('PASS client browser/build cleanup and project preservation');
+writeFileSync(
+  join(output, 'browser-preservation.json'),
+  JSON.stringify({ fullProjectStateUnchanged: true, clusterCleanupVerified: true }, null, 2),
+);

@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import {
   mkdtempSync,
   mkdirSync,
@@ -14,7 +15,7 @@ import {
   chmodSync,
   statSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, relative, isAbsolute, sep } from 'node:path';
 import type { Session } from 'next-auth';
 import sharp from 'sharp';
 import type { PrismaClient } from '../src/generated/prisma/client';
@@ -408,8 +409,8 @@ async function proveLogoFailures(viewer: Session, root: string, metadata: LogoMe
     { fileName: 'file:stream.png' },
   ])
     assert.equal(await readClientLogoFile(viewer, root, { ...metadata, ...patch }), null);
-  mkdirSync('build/client-logo-tests', { recursive: true });
-  const dir = mkdtempSync(resolve('build/client-logo-tests/owned-'));
+  const logoFixtureRoot = resolve(tmpdir());
+  const dir = mkdtempSync(join(logoFixtureRoot, 'litigation-client-logos-'));
   const parent = join(dir, String(metadata.clientId));
   mkdirSync(parent);
   const file = join(parent, metadata.fileName);
@@ -441,20 +442,54 @@ async function proveLogoFailures(viewer: Session, root: string, metadata: LogoMe
     rmSync(file, { recursive: true });
     cpSync(join(root, metadata.relativePath), file);
     assert.ok(await readClientLogoFile(viewer, dir, metadata));
-    // Restrict only this task-created copy and restore its permissions in finally.
+    // A task-owned exclusive file handle proves unreadability without changing
+    // Windows ACLs, the sandbox, or the source logo's permissions.
     if (process.platform === 'win32') {
-      const identity = execFileSync('whoami', ['/user', '/fo', 'csv', '/nh'], {
-        encoding: 'utf8',
-        windowsHide: true,
-      });
-      const sid = identity.match(/S-1-[0-9-]+/u)?.[0];
-      assert.ok(sid);
-      execFileSync('icacls', [file, '/deny', '*' + sid + ':(R)'], { windowsHide: true });
+      const holder = spawn(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          "$stream=[System.IO.File]::Open($env:TASK_CLIENT_LOGO_FILE,[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::None); try { [Console]::Out.WriteLine('held'); [Console]::Out.Flush(); [Console]::In.ReadLine() | Out-Null } finally { $stream.Dispose() }",
+        ],
+        {
+          windowsHide: true,
+          env: {
+            NODE_ENV: 'test',
+            SystemRoot: process.env.SystemRoot,
+            PATH: process.env.PATH,
+            TASK_CLIENT_LOGO_FILE: file,
+          },
+          stdio: ['pipe', 'pipe', 'pipe'],
+        },
+      );
+      const exited = new Promise<number | null>((done) => holder.once('exit', done));
       try {
-        assert.throws(() => readFileSync(file), { code: 'EPERM' });
+        await new Promise<void>((done, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error('exclusive fixture handle was not established')),
+            5000,
+          );
+          holder.once('error', (error) => {
+            clearTimeout(timer);
+            reject(error);
+          });
+          holder.stdout.once('data', (value) => {
+            clearTimeout(timer);
+            if (value.toString().trim() === 'held') done();
+            else reject(new Error('unexpected fixture readiness'));
+          });
+          holder.once('exit', () => {
+            clearTimeout(timer);
+            reject(new Error('fixture handle holder exited early'));
+          });
+        });
+        assert.throws(() => readFileSync(file));
         assert.equal(await readClientLogoFile(viewer, dir, metadata), null);
       } finally {
-        execFileSync('icacls', [file, '/remove:d', '*' + sid], { windowsHide: true });
+        holder.stdin.end('\n');
+        assert.equal(await exited, 0);
       }
     } else {
       const mode = statSync(file).mode;
@@ -497,15 +532,20 @@ async function proveLogoFailures(viewer: Session, root: string, metadata: LogoMe
       'PASS logo absent/unreadable/undecodable/corrupt/mismatch/size/path/ADS/directory/junction rejection and valid file',
     );
   } finally {
-    assert.ok(
-      dir.startsWith(resolve('build/client-logo-tests') + '\\') ||
-        dir.startsWith(resolve('build/client-logo-tests') + '/'),
-    );
+    assert.ok(resolve(dir).startsWith(logoFixtureRoot + sep + 'litigation-client-logos-'));
     rmSync(dir, { recursive: true });
   }
 }
 async function main() {
-  const output = resolve('test-results/task41-phase2');
+  assert.ok(
+    process.env.CLIENT_READ_EVIDENCE_DIR,
+    'Explicit external read-proof evidence directory required',
+  );
+  const output = resolve(process.env.CLIENT_READ_EVIDENCE_DIR);
+  assert.ok(
+    relative(process.cwd(), output).startsWith('..') || isAbsolute(relative(process.cwd(), output)),
+    'Evidence must remain outside repository',
+  );
   mkdirSync(output, { recursive: true });
   await withIsolatedPostgres(async (fixture) => {
     await fixture.restoreProject();

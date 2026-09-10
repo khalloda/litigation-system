@@ -20,6 +20,12 @@ export const AUDIT_USER_MANAGEMENT_SERVICE = 'src/lib/auth/user-management.ts';
 export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
+const CLIENT_MUTATION_SERVICE = 'src/lib/client-mutations.ts';
+const CLIENT_MUTATION_INPUT = 'src/lib/client-mutation-input.ts';
+const CLIENT_MUTATION_INPUT_SHA256 =
+  '7a910a21bd53be2a3b33580e9a113af39b736537594d54f741f547cc74b842fd';
+const CLIENT_MUTATION_SERVICE_SHA256 =
+  'f6beddf9b04248394555edba032fad6994fe47b334ff2d824905eba4036ca334';
 const CLIENT_READ_SERVICE_SHA256 =
   '3f1c6a49cf182eff3280e1ba8d1b81fc30d0f2ce587f3a73501a913ae2f9b4e9';
 const STAFF_MUTATION_SERVICE = 'src/lib/staff-mutations.ts';
@@ -89,6 +95,73 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  // BEGIN CLIENT MUTATION CALLS
+  [
+    'src/lib/client-mutations.ts',
+    'currentActor',
+    'cacabbf8d65f100cfb1d4315b534aca854f8f38e5fa8ccad149e8610d9a61a6b',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'parentRecord',
+    'cf2a758f4e9980c85d25af142e6156baa196715d98918eaa4ce623f579cd411c',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'currentRecord',
+    'ed6f7c04d71e15f5d2ff9264afd3b1905e29fd5c5ecd7bac3a3477a428db7e75',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'currentRecord',
+    'e6bd2d6f29bc24755cbac02f515b2ea19f16052a4cb5c85dab86c6fce80c8e07',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'readClientMutation',
+    '8b5eaaa87acd107836f4eb0368d4277757ebcf9fa90b243ed10519df88ec7b1c',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'readClientMutation',
+    '0a0ecdb370efb7acdf8e29293f3fbf4569b341d80a54f225cb1800252fd6ebc1',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'readClientMutation',
+    '8adb22e5d292a35d67fd44205c57633a3dcc0acd132e19c7fac7fd4ee77f9514',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'mutateClient',
+    'a83a94a128b6c813deb3384ad723b57f265f5d91c4a86e6f6580c0bdef8ab75e',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'mutateClient',
+    'b613c6d21264727a4aaf3a45c68afeaff2d307c42a3a0b809184bed44e2505d3',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'mutateClient',
+    'f8a0e46aee64fec33fdfe05b6454c8ceab5119b5f6c39164235c370ddc62259f',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'mutateClient',
+    'f9fb644aa6453c3b74766bc8ac29c879f40b82e5b15f5b15ec20bf9d57ed8bf4',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'mutateClient',
+    '45e54e0f8e29f1abd2adb26907e2a083ea724e4ceaa19a0a522a0529723d506e',
+  ],
+  [
+    'src/lib/client-mutations.ts',
+    'mutateClient',
+    'ce11a8c163d4cea89481c2560faccb3a11ed99214be773a5c9be112baabe032f',
+  ],
+  // END CLIENT MUTATION CALLS
   [
     CLIENT_READ_SERVICE,
     'readClientSnapshot',
@@ -1591,11 +1664,28 @@ export function auditRuntimeSourceFailures(
     const isAuthService = absolute === serviceAbsolute;
     const isUserManagementService = absolute === userManagementServiceAbsolute;
     const isStaffMutationService = source.path === STAFF_MUTATION_SERVICE;
+    const isClientMutationService = source.path === CLIENT_MUTATION_SERVICE;
     const isReviewedAuthService =
-      isAuthService || isUserManagementService || isStaffMutationService;
+      isAuthService || isUserManagementService || isStaffMutationService || isClientMutationService;
     const isDatabaseModule = absolute === databaseAbsolute;
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
     const isClientReadService = source.path === CLIENT_READ_SERVICE;
+    if (
+      source.path === CLIENT_MUTATION_INPUT &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        CLIENT_MUTATION_INPUT_SHA256
+    )
+      failures.add(
+        `${CLIENT_MUTATION_INPUT}: fixed operation/field validation differs from reviewed inventory`,
+      );
+    if (
+      isClientMutationService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        CLIENT_MUTATION_SERVICE_SHA256
+    )
+      failures.add(
+        `${CLIENT_MUTATION_SERVICE}: three-gateway mutation closure differs from reviewed inventory`,
+      );
     if (
       isClientReadService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -1678,7 +1768,7 @@ export function auditRuntimeSourceFailures(
             const imported = element.propertyName?.text ?? element.name.text;
             const approvedHelpers = isAuthService
               ? AUTH_SERVICE_HELPERS
-              : isStaffMutationService
+              : isStaffMutationService || isClientMutationService
                 ? new Set(['setHumanAuditContext'])
                 : USER_MANAGEMENT_SERVICE_HELPERS;
             if (element.propertyName || !approvedHelpers.has(imported)) {
@@ -1996,6 +2086,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'mutateClient',
+        'transaction,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'mutateStaff',

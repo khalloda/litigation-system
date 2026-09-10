@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import postcss from 'postcss';
@@ -9,7 +10,15 @@ import {
   discoverAuthorizationEntrypoints,
 } from './lib/authorization-route-inventory';
 
-/** Enforce the Phase 2 read-only client/contact boundary. */
+// Exact reviewed Phase 3 exceptions. The Phase 2 query/logo closure remains read-only.
+const REVIEWED_MUTATIONS: Record<string, string> = {
+  'src/lib/client-mutation-input.ts':
+    '7a910a21bd53be2a3b33580e9a113af39b736537594d54f741f547cc74b842fd',
+  'src/lib/client-mutations.ts': 'f6beddf9b04248394555edba032fad6994fe47b334ff2d824905eba4036ca334',
+  'src/app/clients/actions.ts': 'c07a904e449e43ac2ee204f570781b1745aa2268707d52e0664e8b29413be337',
+  'src/app/clients/client-editor.tsx':
+    'c6e93da757bb9ebe0f0f7ec83a294dfec70d6fadf1ab14da6ad261858119e9a1',
+};
 function failures(sources: AuditRuntimeSource[]): string[] {
   const errors: string[] = [];
   for (const { path, text } of sources.filter(
@@ -23,10 +32,23 @@ function failures(sources: AuditRuntimeSource[]): string[] {
       path.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
     );
     const queryFile = path === 'src/lib/client-query.ts';
+    const reviewed = REVIEWED_MUTATIONS[path];
+    if (
+      reviewed &&
+      createHash('sha256').update(text.replaceAll('\r\n', '\n')).digest('hex') !== reviewed
+    )
+      errors.push('client mutation closure differs from reviewed inventory');
+    const mutationService = path === 'src/lib/client-mutations.ts';
+    const actionFile = path === 'src/app/clients/actions.ts';
+    const editorFile = path === 'src/app/clients/client-editor.tsx';
     const visit = (node: ts.Node): void => {
       if (ts.isStringLiteral(node)) {
-        if (node.text === 'use server') errors.push('unreviewed client server action');
-        if (/^@\/lib\/(audit|auth\/(user-management|service))$/u.test(node.text))
+        if (node.text === 'use server' && !actionFile)
+          errors.push('unreviewed client server action');
+        if (
+          /^@\/lib\/(audit|auth\/(user-management|service))$/u.test(node.text) &&
+          !mutationService
+        )
           errors.push('mutation service import');
       }
       if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
@@ -50,7 +72,7 @@ function failures(sources: AuditRuntimeSource[]): string[] {
           )
         )
           errors.push('write or unsafe database call');
-        if (member?.startsWith('$') && !queryFile)
+        if (member?.startsWith('$') && !queryFile && !mutationService)
           errors.push('database access outside query service');
         if (member === '$executeRaw') errors.push('execute outside SELECT inventory');
       }
@@ -60,6 +82,7 @@ function failures(sources: AuditRuntimeSource[]): string[] {
           : node.template.head.text +
             node.template.templateSpans.map((s) => s.literal.text).join(' ');
         if (
+          !mutationService &&
           /\b(INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP|CREATE|CALL|client_contact_create|client_contact_update|client_contact_set_archived)\b/iu.test(
             sql,
           )
@@ -72,12 +95,13 @@ function failures(sources: AuditRuntimeSource[]): string[] {
           const method = attrs.find((a) => a.name.getText(tree) === 'method')?.initializer;
           const action = attrs.find((a) => a.name.getText(tree) === 'action')?.initializer;
           if (
-            !method ||
-            !ts.isStringLiteral(method) ||
-            method.text !== 'get' ||
-            !action ||
-            !ts.isStringLiteral(action) ||
-            action.text !== '/clients'
+            !editorFile &&
+            (!method ||
+              !ts.isStringLiteral(method) ||
+              method.text !== 'get' ||
+              !action ||
+              !ts.isStringLiteral(action) ||
+              action.text !== '/clients')
           )
             errors.push('non-GET client form');
         }
@@ -94,16 +118,23 @@ function main() {
   assert.deepEqual(failures(sources), []);
   assert.deepEqual(routeInventoryFailures(discoverAuthorizationEntrypoints(process.cwd())), []);
   const entries = ROUTE_INVENTORY.filter((e) => e.source.startsWith('src/app/clients/'));
-  assert.equal(entries.length, 5);
+  assert.equal(entries.length, 21);
   assert.ok(
     entries.every(
       (entry) =>
-        entry.classification.access === 'permission' && entry.classification.action === 'view',
+        entry.classification.access === 'permission' &&
+        ['view', 'create', 'update', 'archive', 'restore'].includes(entry.classification.action),
     ),
   );
   assert.deepEqual(
     entries
       .filter((e) => e.kind === 'page')
+      .filter(
+        (e) =>
+          e.kind === 'page' &&
+          e.classification.access === 'permission' &&
+          e.classification.action === 'view',
+      )
       .map((e) => e.route)
       .sort(),
     ['/clients', '/clients/[id]', '/clients/[id]/contacts/[contactId]'],
@@ -127,6 +158,15 @@ function main() {
     'db.$queryRaw(Prisma.sql`SELECT * FROM people`);',
   ])
     assert.ok(failures([{ path: 'src/app/clients/fixture.tsx', text }]).length > 0, text);
+  for (const path of Object.keys(REVIEWED_MUTATIONS)) {
+    const text = sources.find((source) => source.path === path)!.text;
+    for (const injection of [
+      '\n db.client.update({});',
+      '\n const actor = request.actor;',
+      '\n export async function unreviewed() {}',
+    ])
+      assert.ok(failures([{ path, text: text + injection }]).length > 0);
+  }
   const css = postcss.parse(readFileSync('src/app/clients/clients.module.css', 'utf8'));
   const tokens = new Set(
     [...readFileSync('src/app/globals.css', 'utf8').matchAll(/(--[a-z0-9-]+)\s*:/gu)].map(
@@ -138,7 +178,7 @@ function main() {
       assert.ok(tokens.has(m[1]), `undefined token ${m[1]}`);
   });
   console.log(
-    'PASS client structure: three view pages, GET/HEAD logo handler, no mutations or UI database access, defined RTL tokens; nine rejecting fixtures',
+    'PASS client structure: unchanged view/logo boundary; eight permission-protected mutation pages/actions; three exact reviewed exceptions and pinned input validation; 21 rejecting fixtures; defined RTL tokens',
   );
 }
 main();

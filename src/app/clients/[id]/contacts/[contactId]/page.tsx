@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePagePermission } from '@/lib/auth/authorization';
+import { hasPermission } from '@/lib/auth/permissions';
 import { getContact } from '@/lib/clients';
 import {
   clientId,
@@ -70,6 +71,32 @@ export default async function ContactPage({
       ) : null}
       {contact.isArchived ? (
         <p className={`${styles.panel} ${styles.state}`}>{t.clients.contactArchivedNotice}</p>
+      ) : null}
+      {!contact.parentArchived ? (
+        <div className={styles.actions}>
+          {!contact.isArchived && hasPermission(session.user.role, 'contacts', 'update') ? (
+            <Link
+              className={styles.link}
+              href={`/clients/${contact.clientId}/contacts/${contact.id}/edit${back.slice(back.indexOf('?'))}`}
+            >
+              {t.clients.manage.titles['contact-update']}
+            </Link>
+          ) : null}
+          {hasPermission(
+            session.user.role,
+            'contacts',
+            contact.isArchived ? 'restore' : 'archive',
+          ) ? (
+            <Link
+              className={styles.link}
+              href={`/clients/${contact.clientId}/contacts/${contact.id}/${contact.isArchived ? 'restore' : 'archive'}${back.slice(back.indexOf('?'))}`}
+            >
+              {contact.isArchived
+                ? t.clients.manage.titles['contact-restore']
+                : t.clients.manage.titles['contact-archive']}
+            </Link>
+          ) : null}
+        </div>
       ) : null}
       <section className={styles.panel} aria-label={t.clients.contactDetails}>
         <h2>{t.clients.contactDetails}</h2>

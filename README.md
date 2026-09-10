@@ -35,14 +35,21 @@ Task 4.1 Phase 2 was accepted by Khaled Helmy on 9 September 2026 after independ
 implementation and correction review: read-only client/contact
 pages, distinct search/filter/paging and independently guarded existing-logo display
 for all four roles. See the [Phase 2 implementation report](docs/task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
-The next development return point is **Task 4.1 Phase 3 — Authorized mutations and archive/restore**, unstarted. See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
+Phase 2 and its acceptance documentation were subsequently published through
+`82ca95c439e554bc8b55ffb3de0873827f8f3751`. Task 4.1 Phase 3 now implements authorized
+client/contact creation/editing and Administrator archive/restore through the
+existing gateways. Its isolated service, production browser and preservation
+evidence is in the [Phase 3 report](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md).
+The immediate stop is independent Phase 3 review. Phase 4 is the next development
+phase, unstarted and requiring its own authorization. See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
-Task 4.1 overall, Phases 3–4 and Task 4.1a remain unchecked. The current stop is
-review of the acceptance documentation before separately authorized publication.
+Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked. Phase 3 is implemented
+and locally verified, with no owner acceptance or publication claimed.
 R1/R2 are closed; see the [correction review](docs/reviews/2026-09-09-task-4-1-phase-2-correction-independent-review.md)
 and [dated acceptance addendum](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md#acceptance-addendum--9-september-2026).
-Phase 3 requires its own authorization. No publication is included in this acceptance.
+The separately authorized Phase 3 work produces one local commit and stops for
+independent review; it includes no push or Phase 4 work.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
