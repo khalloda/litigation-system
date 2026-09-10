@@ -243,3 +243,28 @@ sequence rollback. No-op proofs separately compare complete sequence state.
 The next action is independent Phase 3 review. Phase 4 remains the next development
 phase, unstarted and requiring its own authorization. D43/D51 final reconciliation
 and Task 4.1a remain outside this mandate.
+
+## Acceptance addendum — 10 September 2026
+
+After this implementation report and its external delivery receipt were completed,
+the preserved [independent Phase 3 review](../reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
+passed with no blocking implementation finding. Khaled Helmy accepted Task 4.1
+Phase 3 on 10 September 2026 at implementation commit
+`77baf2af2d079457f28ce1632f68e3f411cbdc48`.
+
+This is a later owner decision, not a change to the implementation checkpoint.
+All application, browser and database results in this report remain supplied
+historical implementation evidence. This documentation-only acceptance task runs
+fresh documentation and Git checks only; it does not rerun or newly claim those
+application results.
+
+The late acceptance-matrix documentation and untested screen-reader speech remain
+disclosed limitations. A later Phase 4 mandate must record its acceptance matrix
+before execution and define any screen-reader speech verification; neither item is
+claimed resolved here.
+
+Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked. The immediate stop is
+independent review of this acceptance-documentation commit before separately
+authorized publication. Phase 4 — Final acceptance remains the next development
+phase, unstarted and requiring its own authorization. D43/D51 reconciliation and
+final cutover remain separate.

@@ -90,7 +90,8 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent Task 4.1 Phase 3 review**. Phase 4 is next, unstarted. The D52–D57 database foundation is now deployed and operationally
+point is **independent review of the Task 4.1 Phase 3 acceptance documentation**
+before separately authorized publication. Phase 4 is next, unstarted. The D52–D57 database foundation is now deployed and operationally
 complete at migration 62, with 15/15 checks and 116/116 historical invariants.
 Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked.
 The Litigation Department continues using Access;
@@ -172,7 +173,9 @@ remain Task 4.1a. Phase 1 implements database enforcement, proved in isolation
 and deployed under separate owner authorization on 9 September 2026. Project
 PostgreSQL has 62 applied migrations, zero pending or unfinished; Phase 2 now implements read-only client/contact screens and existing-logo display. See the
 [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
-Phase 3 application mutations are implemented and locally verified, awaiting independent review; Phase 4 final acceptance is unstarted. [TASKS.md](../TASKS.md) owns phase status;
+Phase 3 application mutations passed [independent review](reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
+and were accepted by Khaled Helmy on 10 September 2026 at
+`77baf2af2d079457f28ce1632f68e3f411cbdc48`; Phase 4 final acceptance is unstarted. [TASKS.md](../TASKS.md) owns phase status;
 the [dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
 separates findings from later owner resolutions.
 
@@ -364,7 +367,12 @@ Main contacts require explicit clear/replacement before archive; client archival
 is non-cascading and parent restoration precedes every contact mutation.
 
 Phase 3 is implemented and locally verified with isolated full-volume mutation,
-concurrency, audit-failure and production-browser evidence. The immediate stop is
-independent Phase 3 review; no owner acceptance or publication is claimed. Phase 4
-is next, unstarted and requiring its own authorization. Task 4.1 overall, Phase 4
-and Task 4.1a remain unchecked. See the [Phase 3 report](task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md).
+concurrency, audit-failure and production-browser evidence. Its
+[independent review](reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
+passed, and Khaled Helmy accepted Phase 3 on 10 September 2026 at
+`77baf2af2d079457f28ce1632f68e3f411cbdc48`; see the [dated acceptance addendum](task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md#acceptance-addendum--10-september-2026).
+The immediate stop is independent review of this documentation-only acceptance
+commit before separately authorized publication. Phase 4 is next, unstarted and
+requiring its own authorization. Task 4.1 overall, Phase 4 and Task 4.1a remain
+unchecked. The late acceptance matrix and untested screen-reader speech remain
+explicit Phase 4 scope; no additional testing is claimed here.

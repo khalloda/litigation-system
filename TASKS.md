@@ -35,10 +35,12 @@ Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked.
 Phase 2 was accepted by Khaled Helmy on 9 September 2026 after independent
 implementation/correction review, and was subsequently published through
 `82ca95c439e554bc8b55ffb3de0873827f8f3751`; R1/R2 remain closed.
-Phase 3 is implemented and locally verified under its separate owner mandate.
-The immediate stop is independent Phase 3 review; no owner acceptance or push
-is claimed. Phase 4 is the next development phase, unstarted and requiring
-its own authorization. See the [Phase 3 report](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md). Final Access
+Phase 3 passed [independent review](docs/reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
+and was accepted by Khaled Helmy on 10 September 2026 at
+`77baf2af2d079457f28ce1632f68e3f411cbdc48`; see its [dated acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md#acceptance-addendum--10-september-2026).
+The immediate stop is independent review of this acceptance-documentation commit
+before separately authorized publication; no push is claimed. Phase 4 is the next
+development phase, unstarted and requiring its own authorization. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
@@ -1724,8 +1726,9 @@ than assuming one rule for every workflow. Test with real volumes.
       invariants. Phases 2–4 are implemented and verified. Task 4.1 remains
       incomplete under the approved D52–D57 contract. Its Phase 1 database
       foundation is now deployed and operationally complete at migration 62;
-      Phase 2 is accepted and published; Phase 3 is implemented and locally verified.
-      Independent Phase 3 review is the immediate stop. Phase 4 is next, unstarted.
+      Phase 2 is accepted and published; Phase 3 passed independent review and was
+      accepted on 10 September 2026. The immediate stop is independent review of
+      the acceptance-documentation commit before publication. Phase 4 is next, unstarted.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1972,7 +1975,13 @@ than assuming one rule for every workflow. Test with real volumes.
         forms, exact submission retry, main-contact maintenance and confirmed
         archive/restore. Full-volume service/race/rollback, production browser
         and preservation evidence is in the [Phase 3 report](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md).
-        Independent review is the immediate stop; no owner acceptance or push.
+        Independent review passed and Khaled Helmy accepted Phase 3 on 10 September
+        2026 at `77baf2af2d079457f28ce1632f68e3f411cbdc48`; see the
+        [independent review](docs/reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
+        and [acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md#acceptance-addendum--10-september-2026).
+        The late acceptance matrix and untested screen-reader speech remain disclosed.
+        Independent review of this documentation-only acceptance commit is the immediate
+        stop before separately authorized publication; no push.
 
   - [ ] **Phase 4 — Final acceptance.** Complete static, permission, audit,
         reconciliation, concurrency and real-volume checks. Cover 318 clients,
@@ -1999,8 +2008,11 @@ than assuming one rule for every workflow. Test with real volumes.
       **Historical Phase 2 stop:** acceptance-documentation review before separately
       authorized publication. That publication subsequently reached
       `82ca95c439e554bc8b55ffb3de0873827f8f3751`.
-      **Stop now:** independent Phase 3 review of the separately authorized local
-      implementation. **Next development return point:** Phase 4 — Final acceptance,
+      **Historical Phase 3 stop:** independent review of the separately authorized local
+      implementation. That review passed and Khaled Helmy accepted Phase 3 on 10 September
+      2026 at `77baf2af2d079457f28ce1632f68e3f411cbdc48`. **Stop now:** independent review
+      of this acceptance-documentation commit before separately authorized publication.
+      **Next development return point:** Phase 4 — Final acceptance,
       unstarted. Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked.
       Later implementation and D43/D51 final cutover require their own authorization.
 
