@@ -2170,6 +2170,27 @@ index, foreign-key, trigger and function definitions, including empty
 per-function configuration. The PostgreSQL major-upgrade warning in
 `docs/DATABASE.md` applies unchanged.
 
+### Task 4.1a candidate: operational logo history
+
+Task 4.1a candidate migration 63 adds recoverable current-logo maintenance;
+it is not applied to the actual project database by the implementation task.
+The original 54 imports, their digests and exact source/client associations
+remain frozen. Current and retained uploaded versions are reconciled separately,
+including archived/replaced files and exact originating submissions. New
+permanent checks compare the precise added catalog and gateway boundary rather
+than relaxing the historical baseline. Both original logo/client rebuild
+transforms refuse operational history.
+
+Coherent D15/D16 backups must include the whole logo tree and the current,
+retained-version, submission, import and audit tables. Never copy only the
+current paths or delete replaced/archived images. A failed or uncertain SQL
+outcome can leave a complete unreferenced file, reported by integrity; keep it
+until requests are quiesced and its uncommitted identity is proved. Recovery
+restores exact backup bytes against retained hashes. See the
+[Task 4.1a report](task-reports/2026-09-10-task-4-1a-client-logos.md) for the
+tested ordering and its Windows power-loss limitation. Task 7.2 retains
+scheduling, email and off-machine deployment work.
+
 ## Load order
 
 Parents before children.

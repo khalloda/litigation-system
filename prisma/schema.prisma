@@ -613,6 +613,8 @@ model AuditActor {
   clientApplicationModified       Client[]                   @relation("ClientApplicationModifiedBy")
   clientLogoCreated               ClientLogo[]               @relation("ClientLogoCreatedBy")
   clientLogoUpdated               ClientLogo[]               @relation("ClientLogoUpdatedBy")
+  logoVersions                    ClientLogoVersion[]
+  logoSubmissions                 ClientLogoSubmission[]
   contactCreated                  Contact[]                  @relation("ContactCreatedBy")
   contactUpdated                  Contact[]                  @relation("ContactUpdatedBy")
   contactApplicationModified      Contact[]                  @relation("ContactApplicationModifiedBy")
@@ -1041,6 +1043,8 @@ model Client {
   contacts       Contact[]                   @relation("ClientContacts")
   logo           ClientLogo?
   logoImports    MigrationClientLogoImport[]
+  logoVersions   ClientLogoVersion[]
+  logoSubmissions ClientLogoSubmission[]
   matters        Matter[]
   poas           PowerOfAttorney[]
   documents      Document[]
@@ -1087,6 +1091,9 @@ model ClientLogo {
   /// the weekly integrity job required by D15 report a CHANGED file rather
   /// than only a missing one.
   sha256       String
+  rowVersion   BigInt @default(1) @map("row_version")
+  isArchived   Boolean @default(false) @map("is_archived")
+  retainedVersion ClientLogoVersion @relation(fields: [clientId, relativePath], references: [clientId, relativePath], onDelete: Restrict, onUpdate: Restrict, map: "client_logos_retained_version_fkey")
 
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy      Int        @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
@@ -1098,6 +1105,48 @@ model ClientLogo {
   @@index([createdBy], map: "client_logos_created_by_idx")
   @@index([updatedBy], map: "client_logos_updated_by_idx")
   @@map("client_logos")
+}
+
+/// Immutable file-version provenance. Mutations are restricted to a fixed SQL
+/// gateway; current ClientLogo changes supply atomic row/semantic audit events.
+model ClientLogoVersion {
+  id String @id @db.Uuid
+  clientId Int @map("client_id")
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  relativePath String @unique @map("relative_path")
+  fileName String @map("file_name")
+  originalName String @map("original_name")
+  contentType String @map("content_type")
+  byteSize Int @map("byte_size")
+  sha256 String
+  origin String
+  registeredAt DateTime @default(dbgenerated("statement_timestamp()")) @map("registered_at") @db.Timestamptz(6)
+  registeredBy Int @map("registered_by")
+  actor AuditActor @relation(fields: [registeredBy], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  currentLogos ClientLogo[]
+  submissions ClientLogoSubmission[]
+  @@unique([clientId, relativePath])
+  @@index([clientId, registeredAt, id], map: "client_logo_versions_client_time_idx")
+  @@index([registeredBy], map: "client_logo_versions_actor_idx")
+  @@map("client_logo_versions")
+}
+
+/// Immutable successful-operation receipt; never stores image payloads/secrets.
+model ClientLogoSubmission {
+  submissionId String @id @map("submission_id") @db.Uuid
+  actorId Int @map("actor_id")
+  actor AuditActor @relation(fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  clientId Int @map("client_id")
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  requestPayload Json @map("request_payload")
+  resultVersion BigInt @map("result_version")
+  resultId String @map("result_id") @db.Uuid
+  result ClientLogoVersion @relation(fields: [resultId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  recordedAt DateTime @default(dbgenerated("statement_timestamp()")) @map("recorded_at") @db.Timestamptz(6)
+  @@index([actorId], map: "client_logo_submissions_actor_idx")
+  @@index([clientId], map: "client_logo_submissions_client_idx")
+  @@index([resultId], map: "client_logo_submissions_result_idx")
+  @@map("client_logo_submissions")
 }
 
 /// Immutable historical evidence for the 54 Access logos imported at Task

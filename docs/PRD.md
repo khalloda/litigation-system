@@ -90,11 +90,16 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent acceptance-documentation review** for Task 4.1, before a
-separate publication decision. Task 4.1 Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
+point is **independent Task 4.1a implementation review**. Task 4.1 publication
+review is closed. Task 4.1 Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
 The D52–D57 database foundation is now deployed and operationally
 complete at migration 62, with 15/15 checks and 116/116 historical invariants.
-Task 4.1 overall and Phases 1–4 are accepted and checked; Task 4.1a remains unchecked.
+Task 4.1 overall and Phases 1–4 remain accepted and checked. Task 4.1a is locally
+verified and checked, pending independent review, owner acceptance and separate
+migration-63 deployment. Project PostgreSQL remains unchanged at 62 applied
+migrations. The [logo report](task-reports/2026-09-10-task-4-1a-client-logos.md)
+records preview/save, replacement, resizing, retained-version recovery and the
+unchanged role matrix.
 The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
@@ -171,8 +176,9 @@ D52–D57 approve client/contact list, detail, authorized create/edit and
 Administrator-only archive/restore, plus existing-logo display and the
 client-name fallback. Upload/replacement/resizing/recoverable logo removal
 remain Task 4.1a. Phase 1 implements database enforcement, proved in isolation
-and deployed under separate owner authorization on 9 September 2026. Project
-PostgreSQL has 62 applied migrations, zero pending or unfinished; Phase 2 now implements read-only client/contact screens and existing-logo display. See the
+and deployed under separate owner authorization on 9 September 2026. At that
+acceptance PostgreSQL had 62 applied migrations, zero pending or unfinished;
+Phase 2 implements read-only client/contact screens and existing-logo display. See the
 [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 Phase 3 application mutations passed [independent review](reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
 and were accepted by Khaled Helmy on 10 September 2026 at
@@ -386,7 +392,7 @@ unchanged. The separately authorized Phase 4 records a fresh
 Phase 4 passed local service/query, real-volume read/logo, production browser,
 static, preservation and cleanup verification, with precise reuse of unchanged
 reviewed mutation/current-62 regressions. These are historical runtime results;
-no runtime checks are repeated for the documentation-only acceptance record.
+no runtime checks were repeated for that documentation-only acceptance record.
 Independent review passed, and Khaled Helmy accepted Phase 4 and Task 4.1 overall
 on 10 September 2026 at `d4eed39612cf16b3a44808e056a21857642dc167`.
 See the preserved [independent review](reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
@@ -403,9 +409,10 @@ accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
 status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
 remain required. This acceptance authorizes no application-code removal.
 
-The immediate stop is independent acceptance-documentation review before
-separately authorized publication. Task 4.1 overall is accepted and checked;
-Task 4.1a remains unchecked and unstarted. Existing database/query proof
+The current stop is independent Task 4.1a implementation review; Task 4.1
+publication review is closed. Task 4.1 overall remains accepted and checked.
+Task 4.1a is locally verified, pending review, owner acceptance and separate
+deployment of candidate migration 63. Existing database/query proof
 does not claim future matter/report UI or exports have been tested; their later
 implementation under Tasks 4.2 and 6.2 must retain D52's archive-independent
 visibility and complete its own screen/export integration checks.

@@ -10,6 +10,7 @@
  */
 
 import 'dotenv/config';
+import { assertClientLogoBoundary } from './lib/client-logo-checkpoint';
 import {
   assertClientContactBoundary,
   clientContactHistoricalCounts,
@@ -138,21 +139,29 @@ async function main() {
     'use an explicit accepted database profile',
   );
   const historical = profile === 'historical-full-state-upgrade';
-  const { checkpoint, clientBoundary, clientChecks, staffBoundary, rosterBaseline, staffChecks } =
-    await withApprovedMigrationClient(async (current) => {
-      const checkpoint = await assertStaffCheckpoint(current, profile);
-      const staffChecks = checkpoint !== 60 ? await assertStaffBoundary(current, profile) : [];
-      return {
-        checkpoint,
-        clientBoundary: checkpoint === 62,
-        clientChecks: checkpoint === 62 ? await assertClientContactBoundary(current, profile) : [],
-        staffBoundary: checkpoint !== 60,
-        rosterBaseline: await readRosterBaseline(current, checkpoint !== 60),
-        staffChecks,
-      };
-    });
+  const {
+    checkpoint,
+    clientBoundary,
+    clientChecks,
+    logoChecks,
+    staffBoundary,
+    rosterBaseline,
+    staffChecks,
+  } = await withApprovedMigrationClient(async (current) => {
+    const checkpoint = await assertStaffCheckpoint(current, profile);
+    const staffChecks = checkpoint !== 60 ? await assertStaffBoundary(current, profile) : [];
+    return {
+      checkpoint,
+      clientBoundary: checkpoint >= 62,
+      clientChecks: checkpoint >= 62 ? await assertClientContactBoundary(current, profile) : [],
+      logoChecks: checkpoint === 63 ? await assertClientLogoBoundary(current) : [],
+      staffBoundary: checkpoint !== 60,
+      rosterBaseline: await readRosterBaseline(current, checkpoint !== 60),
+      staffChecks,
+    };
+  });
   console.log(
-    `Verification profile: ${profile}; migration ${checkpoint}${checkpoint === 62 ? '' : checkpoint === 61 ? ' (migration 62 solely pending)' : ' (migration 61/62 pending)'}`,
+    `Verification profile: ${profile}; migration ${checkpoint}${checkpoint === 63 ? '' : checkpoint === 62 ? ' (candidate migration 63 pending)' : checkpoint === 61 ? ' (migrations 62/63 pending)' : ' (migrations 61/62/63 pending)'}`,
   );
   const db = await migrationDbReady;
   const highImpactState = await withApprovedMigrationClient(async (current) => {
@@ -2586,7 +2595,7 @@ async function main() {
       .sort(),
     'Permanent invariant coverage differs from the explicit profile inventory',
   );
-  for (const invariant of [...staffChecks, ...clientChecks])
+  for (const invariant of [...staffChecks, ...clientChecks, ...logoChecks])
     checks.push({
       id: invariant.id,
       name: invariant.description,

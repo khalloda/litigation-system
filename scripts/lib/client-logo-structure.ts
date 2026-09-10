@@ -1,4 +1,5 @@
 import type { ClientBase } from 'pg';
+import { assertClientLogoBoundary, clientLogoBoundaryApplied } from './client-logo-checkpoint';
 
 type ConstraintRow = {
   name: string;
@@ -254,7 +255,12 @@ export async function clientLogoStructureFailures(db: ClientBase): Promise<strin
     )
       failures.push(`constraint definition: ${name}${row ? ` [${row.definition}]` : ''}`);
   }
-  if (constraintRows.rows.length !== Object.keys(constraintDefinitions).length)
+  const operational = await clientLogoBoundaryApplied(db);
+  if (operational) await assertClientLogoBoundary(db);
+  if (
+    constraintRows.rows.length !==
+    Object.keys(constraintDefinitions).length + (operational ? 2 : 0)
+  )
     failures.push(`Task 2.11 constraint inventory: ${constraintRows.rows.length}`);
 
   for (const [name, table, unique, columns] of indexes) {

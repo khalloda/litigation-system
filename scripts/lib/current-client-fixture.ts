@@ -105,10 +105,9 @@ export async function createCurrentClientFixture(
   await withApprovedMigrationClient(
     async (db) => {
       await assertIsolatedTestCluster(db, source);
-      assert.equal(
-        await assertCurrentClientSource(db),
-        62,
-        'Restored regression requires complete historical migration62 source',
+      assert.ok(
+        [62, 63].includes(await assertCurrentClientSource(db)),
+        'Restored regression requires complete historical migration62 or 63 source',
       );
     },
     {

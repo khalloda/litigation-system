@@ -12,6 +12,16 @@ import {
 
 // Exact reviewed Phase 3 exceptions. The Phase 2 query/logo closure remains read-only.
 const REVIEWED_MUTATIONS: Record<string, string> = {
+  'src/lib/client-logo-management.ts':
+    '5d665fcbcacbf390916f7ca554ae62c4a59d70c8c83ef7e512d4d1a0bf8bd79e',
+  'src/lib/client-logo-request.ts':
+    '3040f21ae54d086111b6924bb8c4e7d8536f37b4eb9c59ca474c064642bf1826',
+  'src/lib/client-logo-upload.ts':
+    '7573c94f56996dcf771c6f40b6de9f284085f1293380572e38901e0c5c60a9d7',
+  'src/lib/client-logo-storage.ts':
+    '8531e37fa093e576de5b1c324337f6f3f4e59b878f440a9858790879c7473176',
+  'src/app/clients/logo-manager.tsx':
+    '767f1774440b0dccda55710ee04ff302b5a5cd91e59bb9e2f0c012af83d0a026',
   'src/lib/client-mutation-input.ts':
     '7a910a21bd53be2a3b33580e9a113af39b736537594d54f741f547cc74b842fd',
   'src/lib/client-mutations.ts': 'f6beddf9b04248394555edba032fad6994fe47b334ff2d824905eba4036ca334',
@@ -38,7 +48,8 @@ function failures(sources: AuditRuntimeSource[]): string[] {
       createHash('sha256').update(text.replaceAll('\r\n', '\n')).digest('hex') !== reviewed
     )
       errors.push('client mutation closure differs from reviewed inventory');
-    const mutationService = path === 'src/lib/client-mutations.ts';
+    const mutationService =
+      path === 'src/lib/client-mutations.ts' || path === 'src/lib/client-logo-management.ts';
     const actionFile = path === 'src/app/clients/actions.ts';
     const editorFile = path === 'src/app/clients/client-editor.tsx';
     const visit = (node: ts.Node): void => {
@@ -57,7 +68,11 @@ function failures(sources: AuditRuntimeSource[]): string[] {
           : node.argumentExpression?.getText(tree).replace(/['"]/gu, '');
         // The pure image validator hashes bytes; Hash.update is not a database write.
         const imageHashUpdate =
-          path === 'src/lib/client-logo-image.ts' &&
+          [
+            'src/lib/client-logo-image.ts',
+            'src/lib/client-logo-upload.ts',
+            'src/lib/client-logo-storage.ts',
+          ].includes(path) &&
           member === 'update' &&
           ts.isCallExpression(node.expression) &&
           node.expression.expression.getText(tree) === 'createHash' &&
@@ -118,7 +133,7 @@ function main() {
   assert.deepEqual(failures(sources), []);
   assert.deepEqual(routeInventoryFailures(discoverAuthorizationEntrypoints(process.cwd())), []);
   const entries = ROUTE_INVENTORY.filter((e) => e.source.startsWith('src/app/clients/'));
-  assert.equal(entries.length, 21);
+  assert.equal(entries.length, 29);
   assert.ok(
     entries.every(
       (entry) =>
@@ -137,14 +152,19 @@ function main() {
       )
       .map((e) => e.route)
       .sort(),
-    ['/clients', '/clients/[id]', '/clients/[id]/contacts/[contactId]'],
+    [
+      '/clients',
+      '/clients/[id]',
+      '/clients/[id]/contacts/[contactId]',
+      '/clients/[id]/logo/manage',
+    ],
   );
   assert.deepEqual(
     entries
       .filter((e) => e.kind === 'route')
       .map((e) => e.exportName)
       .sort(),
-    ['GET', 'HEAD'],
+    ['GET', 'GET', 'GET', 'HEAD', 'POST', 'POST', 'POST', 'POST', 'POST'],
   );
   for (const text of [
     "'use server'; export async function change(){}",

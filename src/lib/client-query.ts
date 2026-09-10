@@ -242,7 +242,7 @@ export async function readLogoMetadata(
   if (id === null) return null;
   return readClientSnapshot(database, async (tx) => {
     const rows = await tx.$queryRaw<LogoMetadata[]>(
-      Prisma.sql`SELECT l.client_id AS "clientId",l.relative_path AS "relativePath",l.file_name AS "fileName",l.content_type AS "contentType",l.byte_size AS "byteSize",l.sha256 FROM public.client_logos l JOIN public.clients c ON c.id=l.client_id WHERE c.id=${id}`,
+      Prisma.sql`SELECT l.client_id AS "clientId",l.relative_path AS "relativePath",l.file_name AS "fileName",l.content_type AS "contentType",l.byte_size AS "byteSize",l.sha256 FROM public.client_logos l JOIN public.clients c ON c.id=l.client_id WHERE c.id=${id} AND NOT l.is_archived`,
     );
     if (rows.length > 1) throw new Error('Client logo cardinality differs');
     return rows[0] ?? null;

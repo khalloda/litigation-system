@@ -17,6 +17,7 @@ import { assertIsolatedTestCluster } from './isolated-postgres-fixture';
 import { withApprovedMigrationClient, migrationDatabaseTarget } from './migration-principal';
 import { readGate4RepositoryMigrationInventory } from './gate4-migrations';
 import { CLIENT_CONTACT_MIGRATION } from './client-contact-checkpoint';
+import { CLIENT_LOGO_MIGRATION } from './client-logo-checkpoint';
 
 const CHECKPOINT_61_TARGET =
   /^(?:litigation|litigation_task41_canonical_prestate|litigation_task40a_canonical_checkpoint|litigation_task40a_boundary_(?:historical|canonical)_(?:login|gap|account|structural))$/u;
@@ -33,10 +34,12 @@ function reviewedRepository(
   repository: Awaited<ReturnType<typeof readGate4RepositoryMigrationInventory>>,
 ) {
   assert.deepEqual(repository.defects, []);
-  assert.ok([61, 62].includes(repository.migrations.length));
+  assert.ok([61, 62, 63].includes(repository.migrations.length));
   assert.equal(repository.migrations[60]?.name, '20260906180000_staff_roster_database_boundary');
-  if (repository.migrations.length === 62)
+  if (repository.migrations.length >= 62)
     assert.equal(repository.migrations[61]?.name, CLIENT_CONTACT_MIGRATION);
+  if (repository.migrations.length === 63)
+    assert.equal(repository.migrations[62]?.name, CLIENT_LOGO_MIGRATION);
 }
 
 function configText(): string {

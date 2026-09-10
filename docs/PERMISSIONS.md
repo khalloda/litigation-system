@@ -126,8 +126,20 @@ changes hidden in ordinary edits. Existing-logo viewing uses its own view
 guard; logo upload/replacement/resizing/recoverable removal stay Task 4.1a.
 Responsible-lawyer text is historical-only; staff assignment/mapping is
 deferred. No physical deletion is authorized. See D52–D57 and
-[TASKS.md](../TASKS.md) for phase status. The next development return point is
-Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted.
+[TASKS.md](../TASKS.md) for current phase status; the preceding paragraph records
+the Task 4.1 client/contact contract.
+
+### Client logos — Task 4.1a candidate
+
+Task 4.1a implements `clientLogoUpload` without changing the matrix:
+Administrator may view/create/update/archive/restore; Litigation Assistant may
+view/create/update; Lawyer and Paralegal may view. An archived parent client
+must be restored before any logo mutation. An archived logo must be restored
+by Administrator before replacement. Empty/forged updates cannot clear or
+implicitly restore a logo. Page/read/request/service checks and the committing
+database gateway independently enforce the boundary. The local implementation
+requires separate review, acceptance and migration-63 deployment; see the
+[logo report](task-reports/2026-09-10-task-4-1a-client-logos.md).
 
 ## User management — implemented Task 3.4
 

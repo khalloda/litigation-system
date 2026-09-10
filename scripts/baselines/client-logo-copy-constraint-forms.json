@@ -1,0 +1,62 @@
+[
+  {
+    "source": {
+      "nspname": "_migration",
+      "relname": "attendee_source_cell",
+      "conname": "attendee_source_cell_column",
+      "pg_get_constraintdef": "CHECK (((((((source_column = 'الحاضر'::text) AND (source_column_ordinal = 1)) OR ((source_column = 'حاضر 1'::text) AND (source_column_ordinal = 2))) OR ((source_column = 'حاضر 2'::text) AND (source_column_ordinal = 3))) OR ((source_column = 'حاضر 3'::text) AND (source_column_ordinal = 4))) OR ((source_column = 'حاضر 4'::text) AND (source_column_ordinal = 5))))",
+      "convalidated": true,
+      "condeferrable": false,
+      "condeferred": false
+    },
+    "copy": {
+      "nspname": "_migration",
+      "relname": "attendee_source_cell",
+      "conname": "attendee_source_cell_column",
+      "pg_get_constraintdef": "CHECK ((((source_column = 'الحاضر'::text) AND (source_column_ordinal = 1)) OR ((source_column = 'حاضر 1'::text) AND (source_column_ordinal = 2)) OR ((source_column = 'حاضر 2'::text) AND (source_column_ordinal = 3)) OR ((source_column = 'حاضر 3'::text) AND (source_column_ordinal = 4)) OR ((source_column = 'حاضر 4'::text) AND (source_column_ordinal = 5))))",
+      "convalidated": true,
+      "condeferrable": false,
+      "condeferred": false
+    }
+  },
+  {
+    "source": {
+      "nspname": "public",
+      "relname": "audit_events",
+      "conname": "audit_events_device_shape",
+      "pg_get_constraintdef": "CHECK (((device_class)::text = ANY ((ARRAY['system'::character varying, 'desktop'::character varying, 'mobile'::character varying, 'tablet'::character varying, 'bot'::character varying, 'unknown'::character varying])::text[])))",
+      "convalidated": true,
+      "condeferrable": false,
+      "condeferred": false
+    },
+    "copy": {
+      "nspname": "public",
+      "relname": "audit_events",
+      "conname": "audit_events_device_shape",
+      "pg_get_constraintdef": "CHECK (((device_class)::text = ANY (ARRAY[('system'::character varying)::text, ('desktop'::character varying)::text, ('mobile'::character varying)::text, ('tablet'::character varying)::text, ('bot'::character varying)::text, ('unknown'::character varying)::text])))",
+      "convalidated": true,
+      "condeferrable": false,
+      "condeferred": false
+    }
+  },
+  {
+    "source": {
+      "nspname": "public",
+      "relname": "user_accounts",
+      "conname": "user_accounts_lockout_shape",
+      "pg_get_constraintdef": "CHECK ((((failed_login_attempts >= 0) AND (failed_login_attempts <= 5)) AND (((failed_login_attempts < 5) AND (locked_until IS NULL)) OR ((failed_login_attempts = 5) AND (locked_until IS NOT NULL)))))",
+      "convalidated": true,
+      "condeferrable": false,
+      "condeferred": false
+    },
+    "copy": {
+      "nspname": "public",
+      "relname": "user_accounts",
+      "conname": "user_accounts_lockout_shape",
+      "pg_get_constraintdef": "CHECK (((failed_login_attempts >= 0) AND (failed_login_attempts <= 5) AND (((failed_login_attempts < 5) AND (locked_until IS NULL)) OR ((failed_login_attempts = 5) AND (locked_until IS NOT NULL)))))",
+      "convalidated": true,
+      "condeferrable": false,
+      "condeferred": false
+    }
+  }
+]

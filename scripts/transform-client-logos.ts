@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { clientLogoBoundaryApplied } from './lib/client-logo-checkpoint';
 import assert from 'node:assert/strict';
 import { constants as fsConstants } from 'node:fs';
 import { copyFile, mkdir, mkdtemp, readdir, rename, rm, rmdir, stat } from 'node:fs/promises';
@@ -229,6 +230,11 @@ export async function runClientLogoTransform(options: Options = {}): Promise<Run
   if (enforceLive) assertLiveTarget(migrationDatabaseTarget(options.databaseUrl));
   return withApprovedMigrationClient(
     async (db) => {
+      assert.equal(
+        await clientLogoBoundaryApplied(db),
+        false,
+        'Logo transform is retired after operational logo history; use recoverable logo management',
+      );
       let published: { createdRoot: boolean; restoreEmptyRoot: boolean } | null = null;
       const protectedBefore = enforceLive ? await task211ProtectedState(db) : null;
       const preview = await buildClientLogoPlan(db, paths, enforceLive);

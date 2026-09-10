@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePagePermission } from '@/lib/auth/authorization';
@@ -63,12 +64,15 @@ export default async function ClientPage({
             {t.clients.back}
           </Link>
         </div>
-        <ClientLogo key={client.id} id={client.id} name={client.nameAr} />
+        <ClientLogo key={client.id} id={client.id} name={client.nameAr} version={randomUUID()} />
       </header>
       {client.isArchived ? (
         <p className={`${styles.panel} ${styles.state}`}>{t.clients.archivedNotice}</p>
       ) : null}
       <div className={styles.actions}>
+        <Link className={styles.link} href={`/clients/${client.id}/logo/manage${returnQuery}`}>
+          {t.logos.title}
+        </Link>
         {!client.isArchived && hasPermission(session.user.role, 'clients', 'update') ? (
           <Link className={styles.link} href={`/clients/${client.id}/edit${returnQuery}`}>
             {t.clients.manage.titles['client-update']}

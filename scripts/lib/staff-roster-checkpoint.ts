@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
+import { clientLogoBoundaryApplied, CLIENT_LOGO_MIGRATION } from './client-logo-checkpoint';
 import {
   CLIENT_CONTACT_MIGRATION,
   clientContactBoundaryApplied,
@@ -183,13 +184,15 @@ export async function staffBoundaryApplied(db: ClientBase): Promise<boolean> {
 export async function assertStaffCheckpoint(
   db: ClientBase,
   profile: StaffProfile,
-): Promise<60 | 61 | 62> {
+): Promise<60 | 61 | 62 | 63> {
   assert.ok(
     ['historical-full-state-upgrade', 'canonical-clean-replay'].includes(profile),
     'explicit accepted profile required',
   );
   const applied = await staffBoundaryApplied(db);
   const clientsApplied = await clientContactBoundaryApplied(db);
+  const logosApplied = await clientLogoBoundaryApplied(db);
+  assert.ok(!logosApplied || clientsApplied, 'Logo boundary requires complete client boundary');
   assert.ok(!clientsApplied || applied, 'Client boundary requires complete staff boundary');
   const history = (
     await db.query<Gate4MigrationHistoryRow>(
@@ -199,13 +202,15 @@ export async function assertStaffCheckpoint(
   const repository = await readGate4RepositoryMigrationInventory();
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62].includes(repository.migrations.length),
+    [61, 62, 63].includes(repository.migrations.length),
     'Exact reviewed repository checkpoint required',
   );
   assert.equal(repository.migrations[60]?.name, STAFF_MIGRATION);
-  if (repository.migrations.length === 62)
+  if (repository.migrations.length >= 62)
     assert.equal(repository.migrations[61]?.name, CLIENT_CONTACT_MIGRATION);
-  const checkpoint = clientsApplied ? 62 : applied ? 61 : 60;
+  if (repository.migrations.length === 63)
+    assert.equal(repository.migrations[62]?.name, CLIENT_LOGO_MIGRATION);
+  const checkpoint = logosApplied ? 63 : clientsApplied ? 62 : applied ? 61 : 60;
   const checkpointFiles = repository.migrations.slice(0, checkpoint);
   const evidence = reconcileGate4Migrations(history, {
     ...repository,

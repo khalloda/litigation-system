@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { ClientBase } from 'pg';
 import { clientContactBoundaryApplied, CLIENT_CONTACT_GATEWAYS } from './client-contact-checkpoint';
+import { clientLogoBoundaryApplied, CLIENT_LOGO_GATEWAYS } from './client-logo-checkpoint';
 import {
   staffBoundaryApplied,
   STAFF_ROSTER_TABLES,
@@ -342,13 +343,16 @@ export async function runtimeRoleBoundaryFailures(
   const failures: string[] = [];
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
+  const logoBoundary = await clientLogoBoundaryApplied(db);
   const rosterLocked = (table: string) =>
     (staffBoundary && STAFF_ROSTER_TABLES.includes(table)) ||
-    (clientBoundary && ['clients', 'contacts'].includes(table));
+    (clientBoundary && ['clients', 'contacts'].includes(table)) ||
+    (logoBoundary && table === 'client_logos');
   const approvedDefiners: readonly string[] = [
     ...APPROVED_RUNTIME_SECURITY_DEFINERS,
     ...(staffBoundary ? STAFF_RUNTIME_GATEWAYS : []),
     ...(clientBoundary ? CLIENT_CONTACT_GATEWAYS : []),
+    ...(logoBoundary ? CLIENT_LOGO_GATEWAYS : []),
   ];
   if (!/^[a-z][a-z0-9_]*$/u.test(roleName)) return ['runtime role name is invalid'];
 

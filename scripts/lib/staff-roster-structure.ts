@@ -274,7 +274,7 @@ export async function assertStaffBoundary(
   profile: StaffProfile,
 ): Promise<readonly StaffInvariant[]> {
   assert.ok(
-    [61, 62].includes(await assertStaffCheckpoint(db, profile)),
+    [61, 62, 63].includes(await assertStaffCheckpoint(db, profile)),
     'complete staff boundary required',
   );
   const population = (

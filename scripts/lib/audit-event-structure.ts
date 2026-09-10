@@ -1,4 +1,5 @@
 import type { ClientBase } from 'pg';
+import { clientLogoBoundaryApplied, CLIENT_LOGO_FIELD_RULES } from './client-logo-checkpoint';
 import {
   clientContactBoundaryApplied,
   CLIENT_CONTACT_FIELD_RULES,
@@ -148,9 +149,11 @@ export async function auditEventStructureFailures(
   const failures: string[] = [];
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
+  const logoBoundary = await clientLogoBoundaryApplied(db);
   const currentFieldRules = [
     ...(staffBoundary ? STAFF_FIELD_RULES : []),
     ...(clientBoundary ? CLIENT_CONTACT_FIELD_RULES : []),
+    ...(logoBoundary ? CLIENT_LOGO_FIELD_RULES : []),
   ];
   // Exact new identities only: classifying an old field with a new-looking
   // reason must never remove it from the frozen historical digest.

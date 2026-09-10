@@ -27,11 +27,16 @@ Task 4.0a and all four phases are complete and published. Task 4.1's approved
 contract is recorded in D52–D57 and the
 [dated readiness review and owner resolutions](docs/reviews/2026-09-08-task-4-1-clients-readiness-review.md).
 Task 4.1 Phase 1 is deployed, verified and operationally complete after separate
-owner authorization. Project PostgreSQL has 62 applied migrations, zero pending
+owner authorization. At that acceptance, PostgreSQL had 62 applied migrations, zero pending
 or unfinished, one approved historical rollback, 15/15 checks and 116/116
 historical invariants. Earlier isolated proof passed 116 historical and 98 canonical
 checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
-Task 4.1 overall and Phases 1–4 are accepted and checked; Task 4.1a remains unchecked.
+Task 4.1 overall and Phases 1–4 remain accepted and checked. Task 4.1a is locally
+verified and checked, pending independent implementation review, owner acceptance
+and separate deployment. The actual project remains unchanged at 62 applied
+migrations; candidate migration 63 is pending. See the
+[logo report](docs/task-reports/2026-09-10-task-4-1a-client-logos.md) and
+[acceptance matrix](docs/testing/task-4-1a-acceptance-matrix.md).
 Phase 2 was accepted by Khaled Helmy on 9 September 2026 after independent
 implementation/correction review, and was subsequently published through
 `82ca95c439e554bc8b55ffb3de0873827f8f3751`; R1/R2 remain closed.
@@ -46,8 +51,8 @@ Khaled Helmy accepted Phase 4 and Task 4.1 overall on 10 September 2026 at
 [independent review](docs/reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
 [report acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md#owner-acceptance-addendum--10-september-2026)
 and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
-The immediate stop is independent acceptance-documentation review before a
-separate publication decision. Older reports/reviews retain their historical
+The current stop is independent Task 4.1a implementation review. Task 4.1
+publication review is closed. Older reports/reviews retain their historical
 checkpoints. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
@@ -2050,19 +2055,30 @@ than assuming one rule for every workflow. Test with real volumes.
       implementation. That review passed and Khaled Helmy accepted Phase 3 on 10 September
       2026 at `77baf2af2d079457f28ce1632f68e3f411cbdc48`. Its acceptance documentation
       was subsequently published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
-      **Current gate:** independent acceptance-documentation review before
-      separately authorized publication. Phase 4 and Task 4.1 overall are accepted;
-      Task 4.1a remains unchecked and unstarted. Runtime evidence remains historical;
-      this acceptance record adds only fresh documentation and local Git checks.
+      **Historical acceptance-documentation gate:** Phase 4 and Task 4.1 overall
+      were accepted, then published; the supplied
+      [publication review](docs/reviews/2026-09-10-task-4-1-publication-independent-review.md)
+      is preserved unchanged. Task 4.1a now has separate fresh local implementation
+      evidence and awaits independent implementation review and owner acceptance.
       Later implementation and D43/D51 final cutover require their own authorization.
 
-- [ ] **4.1a Client logo upload**
+- [x] **4.1a Client logo upload**
       Upload field on the client screen (Administrator and Litigation
       Assistant). PNG / JPG / GIF, max 2 MB, resized to a sensible print width.
       Stored in the folder per **D15**. Preview before saving.
       A missing file must fall back to the client's name in text.
       Removal must be recoverable and retain the file and its evidence (D25);
       design that behavior here rather than in the Task 3.2 policy correction.
+      **Locally verified — 10 September 2026:** explicit preview/save, replacement,
+      1,200-pixel print width without upscaling, bounded GIF first-frame conversion,
+      and Administrator archive/restore of retained versions. Server/database role,
+      session, parent-state and expected-version checks preserve history and audit.
+      Historical upgrade, canonical replay, focused failure/race/recovery tests,
+      permission/client/audit/Gate 4 regressions, production browser/accessibility
+      and project preservation passed. See the report/matrix above. This checkbox
+      records local implementation verification only; independent review, owner
+      acceptance and project migration-63 deployment remain separate. No later task
+      or final Access cutover is included.
 - [ ] **4.2 Matters** — the biggest screen. Classification, parties, lawyers.
       Integrate D52's archive-independent access to existing matters. Task 4.1
       Phase 4 proves current client reads and report queries; this future screen

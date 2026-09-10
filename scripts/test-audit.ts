@@ -1,5 +1,10 @@
 import 'dotenv/config';
 import {
+  CLIENT_LOGO_MIGRATION,
+  CLIENT_LOGO_GATEWAYS,
+  clientLogoBoundaryApplied,
+} from './lib/client-logo-checkpoint';
+import {
   createCurrentClientFixture,
   currentFixtureAuditDataFailures,
 } from './lib/current-client-fixture';
@@ -119,7 +124,7 @@ async function setFixtureEventContext(db: Client): Promise<void> {
   ]);
 }
 
-async function gate4MigrationEvidence(db: Client, checkpoint?: 60 | 61 | 62) {
+async function gate4MigrationEvidence(db: Client, checkpoint?: 60 | 61 | 62 | 63) {
   const migrationRows = await db.query<{
     migration_name: string;
     checksum: string;
@@ -140,10 +145,12 @@ async function gate4MigrationEvidence(db: Client, checkpoint?: 60 | 61 | 62) {
   }));
   const repository = await readGate4RepositoryMigrationInventory();
   if (checkpoint !== undefined) {
-    assert.ok([61, 62].includes(repository.migrations.length));
+    assert.ok([61, 62, 63].includes(repository.migrations.length));
     assert.equal(repository.migrations[60]?.name, STAFF_MIGRATION);
-    if (repository.migrations.length === 62)
+    if (repository.migrations.length >= 62)
       assert.equal(repository.migrations[61]?.name, CLIENT_CONTACT_MIGRATION);
+    if (repository.migrations.length === 63)
+      assert.equal(repository.migrations[62]?.name, CLIENT_LOGO_MIGRATION);
     const migrations = repository.migrations.slice(0, checkpoint);
     return reconcileGate4Migrations(migrationHistory, {
       ...repository,
@@ -403,13 +410,14 @@ async function grantProbeRuntimeBoundary(
 ): Promise<void> {
   const staff = await staffBoundaryApplied(owner);
   const clients = await clientContactBoundaryApplied(owner);
+  const logos = await clientLogoBoundaryApplied(owner);
   await owner.query(
     `GRANT CONNECT ON DATABASE ${identifier(fixtureName)} TO ${identifier(roleName)}`,
   );
   await owner.query(`GRANT USAGE ON SCHEMA public TO ${identifier(roleName)}`);
   for (const table of AUDITED_TABLES) {
     await owner.query(
-      `GRANT ${(staff && ['people', 'person_name_alias', 'lookup_team'].includes(table)) || (clients && ['clients', 'contacts'].includes(table)) ? 'SELECT' : `SELECT,UPDATE${table === 'user_accounts' ? '' : ',INSERT'}`} ON TABLE public.${identifier(table)} TO ${identifier(roleName)}`,
+      `GRANT ${(staff && ['people', 'person_name_alias', 'lookup_team'].includes(table)) || (clients && ['clients', 'contacts'].includes(table)) || (logos && table === 'client_logos') ? 'SELECT' : `SELECT,UPDATE${table === 'user_accounts' ? '' : ',INSERT'}`} ON TABLE public.${identifier(table)} TO ${identifier(roleName)}`,
     );
   }
   const sequences = await owner.query<{ schema_name: string; sequence_name: string }>(
@@ -424,6 +432,7 @@ async function grantProbeRuntimeBoundary(
   );
   for (const sequence of sequences.rows) {
     if (sequence.sequence_name === 'user_accounts_id_seq') continue;
+    if (logos && sequence.sequence_name === 'client_logos_id_seq') continue;
     if (clients && ['clients_id_seq', 'contacts_id_seq'].includes(sequence.sequence_name)) continue;
     if (
       staff &&
@@ -459,6 +468,9 @@ async function grantProbeRuntimeBoundary(
       await owner.query(`GRANT EXECUTE ON FUNCTION ${signature} TO ${identifier(roleName)}`);
   if (clients)
     for (const signature of CLIENT_CONTACT_GATEWAYS)
+      await owner.query(`GRANT EXECUTE ON FUNCTION ${signature} TO ${identifier(roleName)}`);
+  if (logos)
+    for (const signature of CLIENT_LOGO_GATEWAYS)
       await owner.query(`GRANT EXECUTE ON FUNCTION ${signature} TO ${identifier(roleName)}`);
 }
 
@@ -504,6 +516,11 @@ async function proveRoleBoundaryAdversarial(
     );
     const staffBoundary = await staffBoundaryApplied(owner);
     const clientBoundary = await clientContactBoundaryApplied(owner);
+    const logoBoundary = await clientLogoBoundaryApplied(owner);
+    if (logoBoundary)
+      await owner.query(
+        `GRANT INSERT,UPDATE ON client_logos TO ${identifier(probeRole)}; GRANT USAGE,SELECT ON SEQUENCE client_logos_id_seq TO ${identifier(probeRole)}`,
+      );
     if (clientBoundary)
       await owner.query(
         `GRANT INSERT,UPDATE ON clients,contacts TO ${identifier(probeRole)}; GRANT USAGE,SELECT ON SEQUENCE clients_id_seq,contacts_id_seq TO ${identifier(probeRole)}`,
@@ -541,6 +558,12 @@ async function proveRoleBoundaryAdversarial(
             : '') +
           (clientBoundary
             ? CLIENT_CONTACT_GATEWAYS.map(
+                (signature) =>
+                  ",\n        '" + signature.replace(/\bp_[a-z_]+ /gu, '') + "'::regprocedure",
+              ).join('')
+            : '') +
+          (logoBoundary
+            ? CLIENT_LOGO_GATEWAYS.map(
                 (signature) =>
                   ",\n        '" + signature.replace(/\bp_[a-z_]+ /gu, '') + "'::regprocedure",
               ).join('')
@@ -582,6 +605,10 @@ async function proveRoleBoundaryAdversarial(
       if (clientBoundary)
         await owner.query(
           `REVOKE INSERT,UPDATE ON clients,contacts FROM ${identifier(probeRole)}; REVOKE ALL ON SEQUENCE clients_id_seq,contacts_id_seq FROM ${identifier(probeRole)}`,
+        );
+      if (logoBoundary)
+        await owner.query(
+          `REVOKE INSERT,UPDATE ON client_logos FROM ${identifier(probeRole)}; REVOKE ALL ON SEQUENCE client_logos_id_seq FROM ${identifier(probeRole)}`,
         );
       await assert.rejects(
         activeRuntime.query('SELECT 1'),
@@ -1193,9 +1220,10 @@ async function main(): Promise<void> {
     (process.argv.length === 3 ||
       (process.argv.length === 4 &&
         process.argv[3] === '--restored-client-fixture' &&
-        profile === '--profile=current-state-62')) &&
+        (profile === '--profile=current-state-62' || profile === '--profile=current-state-63'))) &&
       (profile === '--profile=current-state-61' ||
         profile === '--profile=current-state-62' ||
+        profile === '--profile=current-state-63' ||
         profile === '--profile=historical-53-60'),
     'Explicit audit profile required: --profile=current-state-61 or --profile=historical-53-60; use the isolated test-staff-roster.ts harness',
   );
@@ -1204,12 +1232,20 @@ async function main(): Promise<void> {
   const source = new URL(sourceUrl);
   assert.ok(['localhost', '127.0.0.1'].includes(source.hostname));
   await assertDisposableFixtureSource(source);
-  if (profile === '--profile=current-state-61' || profile === '--profile=current-state-62') {
+  if (
+    profile === '--profile=current-state-61' ||
+    profile === '--profile=current-state-62' ||
+    profile === '--profile=current-state-63'
+  ) {
     await withApprovedMigrationClient(
       async (db) => {
         assert.equal(
           await assertStaffCheckpoint(db, 'historical-full-state-upgrade'),
-          profile === '--profile=current-state-62' ? 62 : 61,
+          profile === '--profile=current-state-63'
+            ? 63
+            : profile === '--profile=current-state-62'
+              ? 62
+              : 61,
           'Current-state audit regression requires the selected exact migration checkpoint',
         );
       },
@@ -1338,6 +1374,7 @@ async function main(): Promise<void> {
           TASK35B_MIGRATION,
           STAFF_MIGRATION,
           CLIENT_CONTACT_MIGRATION,
+          ...((await clientLogoBoundaryApplied(owner)) ? [CLIENT_LOGO_MIGRATION] : []),
         ],
       );
       assert.deepEqual(await auditStructureFailures(owner), []);

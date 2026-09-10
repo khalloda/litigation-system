@@ -10,14 +10,14 @@ const PROFILE = 'historical-full-state-upgrade';
 
 /** Current full-state source, independent of how a fixture is owned/copied.
  * Canonical replay remains a separate mandatory acceptance profile. */
-export async function assertCurrentClientSource(db: ClientBase): Promise<61 | 62> {
+export async function assertCurrentClientSource(db: ClientBase): Promise<61 | 62 | 63> {
   const checkpoint = await assertStaffCheckpoint(db, PROFILE);
   assert.ok(
-    checkpoint === 61 || checkpoint === 62,
-    'Current regressions require complete 61 or 62',
+    checkpoint === 61 || checkpoint === 62 || checkpoint === 63,
+    'Current regressions require complete 61, 62 or 63',
   );
   await assertStaffBoundary(db, PROFILE);
-  if (checkpoint === 62) await assertClientContactBoundary(db, PROFILE);
+  if (checkpoint >= 62) await assertClientContactBoundary(db, PROFILE);
   return checkpoint;
 }
 
@@ -27,7 +27,7 @@ export async function prepareCurrentClientSource(
   migrationUrl: string,
   environment: NodeJS.ProcessEnv,
   migrate: () => Promise<void> | void,
-): Promise<61 | 62> {
+): Promise<61 | 62 | 63> {
   const inspect = () =>
     withApprovedMigrationClient(
       async (db) => {

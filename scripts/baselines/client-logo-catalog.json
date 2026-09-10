@@ -1,0 +1,367 @@
+{
+  "constraints": [
+    {
+      "name": "client_logo_submissions_actor_id_fkey",
+      "definition": "FOREIGN KEY (actor_id) REFERENCES audit_actors(id) ON UPDATE RESTRICT ON DELETE RESTRICT",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_submissions_client_id_fkey",
+      "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON UPDATE RESTRICT ON DELETE RESTRICT",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_submissions_pkey",
+      "definition": "PRIMARY KEY (submission_id)",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_submissions_result_id_fkey",
+      "definition": "FOREIGN KEY (result_id) REFERENCES client_logo_versions(id) ON UPDATE RESTRICT ON DELETE RESTRICT",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_byte_size_check",
+      "definition": "CHECK (((byte_size >= 1) AND (byte_size <= 2097152)))",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_client_id_fkey",
+      "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON UPDATE RESTRICT ON DELETE RESTRICT",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_client_id_relative_path_key",
+      "definition": "UNIQUE (client_id, relative_path)",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_content_type_check",
+      "definition": "CHECK ((content_type = ANY (ARRAY['image/png'::text, 'image/jpeg'::text, 'image/gif'::text])))",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_origin_check",
+      "definition": "CHECK ((origin = ANY (ARRAY['import'::text, 'upload'::text])))",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_path",
+      "definition": "CHECK (((relative_path = (((client_id)::text || '/'::text) || file_name)) AND (file_name !~ '[/\\\\\\\\<>:\"|?*[:cntrl:]]'::text) AND (file_name <> ALL (ARRAY['.'::text, '..'::text])) AND (file_name !~ '[. ]$'::text)))",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_pkey",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_registered_by_fkey",
+      "definition": "FOREIGN KEY (registered_by) REFERENCES audit_actors(id) ON UPDATE RESTRICT ON DELETE RESTRICT",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_relative_path_key",
+      "definition": "UNIQUE (relative_path)",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logo_versions_sha256_check",
+      "definition": "CHECK ((sha256 ~ '^[a-f0-9]{64}$'::text))",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logos_retained_version_fkey",
+      "definition": "FOREIGN KEY (client_id, relative_path) REFERENCES client_logo_versions(client_id, relative_path) ON UPDATE RESTRICT ON DELETE RESTRICT",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    },
+    {
+      "name": "client_logos_row_version_check",
+      "definition": "CHECK ((row_version > 0))",
+      "validated": true,
+      "deferrable": false,
+      "deferred": false
+    }
+  ],
+  "columns": [
+    {
+      "table_name": "client_logo_submissions",
+      "column_name": "submission_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_submissions",
+      "column_name": "actor_id",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_submissions",
+      "column_name": "client_id",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_submissions",
+      "column_name": "request_payload",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_submissions",
+      "column_name": "result_version",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_submissions",
+      "column_name": "result_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_submissions",
+      "column_name": "recorded_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "statement_timestamp()"
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "client_id",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "relative_path",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "file_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "original_name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "content_type",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "byte_size",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "sha256",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "origin",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "registered_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "statement_timestamp()"
+    },
+    {
+      "table_name": "client_logo_versions",
+      "column_name": "registered_by",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "client_logos",
+      "column_name": "row_version",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": "1"
+    },
+    {
+      "table_name": "client_logos",
+      "column_name": "is_archived",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "column_default": "false"
+    }
+  ],
+  "indexes": [
+    {
+      "name": "client_logo_submissions_actor_idx",
+      "unique": false,
+      "valid": true,
+      "ready": true,
+      "definition": "CREATE INDEX client_logo_submissions_actor_idx ON public.client_logo_submissions USING btree (actor_id)"
+    },
+    {
+      "name": "client_logo_submissions_client_idx",
+      "unique": false,
+      "valid": true,
+      "ready": true,
+      "definition": "CREATE INDEX client_logo_submissions_client_idx ON public.client_logo_submissions USING btree (client_id)"
+    },
+    {
+      "name": "client_logo_submissions_pkey",
+      "unique": true,
+      "valid": true,
+      "ready": true,
+      "definition": "CREATE UNIQUE INDEX client_logo_submissions_pkey ON public.client_logo_submissions USING btree (submission_id)"
+    },
+    {
+      "name": "client_logo_submissions_result_idx",
+      "unique": false,
+      "valid": true,
+      "ready": true,
+      "definition": "CREATE INDEX client_logo_submissions_result_idx ON public.client_logo_submissions USING btree (result_id)"
+    },
+    {
+      "name": "client_logo_versions_actor_idx",
+      "unique": false,
+      "valid": true,
+      "ready": true,
+      "definition": "CREATE INDEX client_logo_versions_actor_idx ON public.client_logo_versions USING btree (registered_by)"
+    },
+    {
+      "name": "client_logo_versions_client_id_relative_path_key",
+      "unique": true,
+      "valid": true,
+      "ready": true,
+      "definition": "CREATE UNIQUE INDEX client_logo_versions_client_id_relative_path_key ON public.client_logo_versions USING btree (client_id, relative_path)"
+    },
+    {
+      "name": "client_logo_versions_client_time_idx",
+      "unique": false,
+      "valid": true,
+      "ready": true,
+      "definition": "CREATE INDEX client_logo_versions_client_time_idx ON public.client_logo_versions USING btree (client_id, registered_at, id)"
+    },
+    {
+      "name": "client_logo_versions_pkey",
+      "unique": true,
+      "valid": true,
+      "ready": true,
+      "definition": "CREATE UNIQUE INDEX client_logo_versions_pkey ON public.client_logo_versions USING btree (id)"
+    },
+    {
+      "name": "client_logo_versions_relative_path_key",
+      "unique": true,
+      "valid": true,
+      "ready": true,
+      "definition": "CREATE UNIQUE INDEX client_logo_versions_relative_path_key ON public.client_logo_versions USING btree (relative_path)"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "client_logo_no_truncate",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER client_logo_no_truncate BEFORE TRUNCATE ON public.client_logos FOR EACH STATEMENT EXECUTE FUNCTION client_logo_guard()"
+    },
+    {
+      "name": "client_logo_submission_immutable",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER client_logo_submission_immutable BEFORE DELETE OR UPDATE ON public.client_logo_submissions FOR EACH ROW EXECUTE FUNCTION client_logo_refuse_evidence_change()"
+    },
+    {
+      "name": "client_logo_submission_no_truncate",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER client_logo_submission_no_truncate BEFORE TRUNCATE ON public.client_logo_submissions FOR EACH STATEMENT EXECUTE FUNCTION client_logo_refuse_evidence_change()"
+    },
+    {
+      "name": "client_logo_version_immutable",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER client_logo_version_immutable BEFORE DELETE OR UPDATE ON public.client_logo_versions FOR EACH ROW EXECUTE FUNCTION client_logo_refuse_evidence_change()"
+    },
+    {
+      "name": "client_logo_version_no_truncate",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER client_logo_version_no_truncate BEFORE TRUNCATE ON public.client_logo_versions FOR EACH STATEMENT EXECUTE FUNCTION client_logo_refuse_evidence_change()"
+    },
+    {
+      "name": "zz_client_logo_guard",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER zz_client_logo_guard BEFORE INSERT OR DELETE OR UPDATE ON public.client_logos FOR EACH ROW EXECUTE FUNCTION client_logo_guard()"
+    }
+  ],
+  "evidenceAccess": [
+    {
+      "relname": "client_logo_submissions",
+      "owner": "litigation",
+      "other_grants": []
+    },
+    {
+      "relname": "client_logo_versions",
+      "owner": "litigation",
+      "other_grants": []
+    }
+  ]
+}

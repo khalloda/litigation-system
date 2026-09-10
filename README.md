@@ -3,7 +3,14 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Status:** Stages 2 and 3 are complete. Task 3.5's high-impact quarantine
+**Current status — 10 September 2026:** Task 4.1a logo management is locally
+verified, pending independent implementation review, owner acceptance and
+separate deployment. Project PostgreSQL remains unchanged at 62 applied
+migrations; candidate migration 63 is pending. See the
+[implementation report](docs/task-reports/2026-09-10-task-4-1a-client-logos.md)
+and [acceptance matrix](docs/testing/task-4-1a-acceptance-matrix.md).
+
+**Earlier accepted checkpoints:** Stages 2 and 3 are complete. Task 3.5's high-impact quarantine
 checkpoint is completed and accepted: migration 60 and the approved Task 3.5B
 real application each executed exactly once against the local project
 PostgreSQL database, producing 1,744 matters and 13,382 hearings while retaining
@@ -24,7 +31,7 @@ accessibility and final verification. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md)
 for the final browser matrix, five focused accessibility corrections, regression
 results and project-preservation evidence. Task 4.1 Phase 1 is now deployed,
-verified and operationally complete. Project PostgreSQL has 62 applied migrations,
+verified and operationally complete. At that acceptance, PostgreSQL had 62 applied migrations,
 zero pending or unfinished, 15/15 database checks and 116/116 historical invariants.
 The Access-source derivative disposition is recorded in
 [D51](docs/DECISIONS.md#d51--access-source-derivative-and-migration-61-readiness)
@@ -54,12 +61,15 @@ Task 4.1 overall on 10 September 2026 at
 [independent review](docs/reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
 [report acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md#owner-acceptance-addendum--10-september-2026)
 and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
-The immediate stop is independent acceptance-documentation review before a
-separate publication decision. Older report/review wording records earlier checkpoints.
+Task 4.1 publication review is closed; its supplied
+[publication review](docs/reviews/2026-09-10-task-4-1-publication-independent-review.md)
+is preserved byte-identically. The current stop is independent Task 4.1a
+implementation review. Older report/review wording records earlier checkpoints.
 See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
-Task 4.1 overall is accepted and checked; Task 4.1a remains unchecked. The Phase 3 report retains its
+Task 4.1 overall remains accepted and checked; Task 4.1a is checked for local
+verification only. The Phase 3 report retains its
 historical late-matrix and untested screen-reader speech limitations. Phase 4
 preserves its initial matrix, proves nonempty archive/report visibility and
 records its browser evidence. Actual screen-reader speech actions are excluded
@@ -72,9 +82,10 @@ remain required. Tasks 4.2 and 6.2 retain future matter/report screen and export
 integration checks, including archive-independent visibility.
 R1/R2 are closed; see the [correction review](docs/reviews/2026-09-09-task-4-1-phase-2-correction-independent-review.md)
 and [dated acceptance addendum](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md#acceptance-addendum--9-september-2026).
-This acceptance record adds one documentation-only local commit, without
-publication, deployment or final Access cutover. Runtime evidence is historical;
-only documentation and local Git checks are fresh in this acceptance task.
+The preceding Task 4.1 acceptance record added one documentation-only commit;
+its runtime evidence was historical. Task 4.1a has separate fresh implementation
+evidence and does not imply owner acceptance, publication, deployment or final
+Access cutover.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).

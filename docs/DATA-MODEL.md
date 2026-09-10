@@ -495,7 +495,8 @@ isolated PostgreSQL instances and distinct historical-upgrade/canonical-replay
 profiles. The separately authorized project deployment passed 15/15 database
 checks and 116/116 historical invariants on 9 September 2026: 62 applied, zero
 pending or unfinished. Phase 1 is operationally complete; the next development
-return point is Task 4.1 Phase 3 — Authorized mutations and archive/restore, unstarted. See the [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
+return point at that checkpoint was Task 4.1 Phase 3. Current status is in
+`TASKS.md`. See the [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 
 ### `client_logos` — 54 rows
 Extracted from an Access Attachment column.
@@ -529,6 +530,18 @@ Mandatory safeguards (D15):
 
 See `docs/MIGRATION.md` for extraction. **A normal CSV export destroys these
 (D11).**
+
+#### Task 4.1a candidate — retained logo versions
+
+Task 4.1a candidate migration 63 extends the preceding logo model with
+`client_logos.row_version` and `is_archived`, immutable `client_logo_versions`
+and immutable `client_logo_submissions`. Every current path references one
+same-client retained version. The original current-row IDs and all 54 immutable
+imports remain exact. Each upload version has an originating successful
+submission and actor; archive/restore receipts identify the selected version.
+Runtime writes use two fixed gateways, with no direct table/sequence writes.
+The actual project remains at migration 62 until separately authorized
+deployment. See the [implementation report](task-reports/2026-09-10-task-4-1a-client-logos.md).
 
 ### `contacts` — 188 rows
 Client contact people. Note `Contacts.Attachments` in Access is **empty**.

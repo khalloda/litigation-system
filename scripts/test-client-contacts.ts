@@ -297,8 +297,10 @@ async function main() {
       assert.equal(result.status, 0, 'Migration 62 isolated deployment failed');
     }
     if (currentRegression) {
-      await prepareCurrentClientSource(fixture.migrationUrl, fixture.environment, () =>
-        child('scripts/run-prisma-migration.ts', ['deploy'], fixture.environment),
+      const sourceCheckpoint = await prepareCurrentClientSource(
+        fixture.migrationUrl,
+        fixture.environment,
+        () => child('scripts/run-prisma-migration.ts', ['deploy'], fixture.environment),
       );
       const all = process.argv[2] === '--regression-proof';
       if (all) {
@@ -327,7 +329,7 @@ async function main() {
           if (process.argv[2] !== '--audit-events-regression-proof')
             child(
               'scripts/test-audit.ts',
-              ['--profile=current-state-62', ...args],
+              [`--profile=current-state-${sourceCheckpoint === 63 ? 63 : 62}`, ...args],
               fixture.environment,
             );
           child('scripts/test-audit-events.ts', args, fixture.environment);

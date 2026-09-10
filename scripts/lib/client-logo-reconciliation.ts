@@ -3,6 +3,7 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import type { ClientBase } from 'pg';
 import { CLIENT_LOGO_RESULT_BASELINE, CLIENT_LOGO_SOURCE_BASELINE } from './client-logo-baseline';
+import { assertClientLogoBoundary, clientLogoBoundaryApplied } from './client-logo-checkpoint';
 
 type SourceRow = {
   parent_key: string;
@@ -198,6 +199,8 @@ export async function reconcileClientLogos(
   options: ClientLogoReconciliationOptions,
 ): Promise<ClientLogoReconciliation> {
   const defects: string[] = [];
+  const operational = await clientLogoBoundaryApplied(db);
+  if (operational) await assertClientLogoBoundary(db);
   const source = await db.query<SourceRow>(`
     SELECT s.parent_key,s.file_name,s.file_type,s.byte_size,s.stored_path,
            s.src_record_key source_record_key,
@@ -355,6 +358,21 @@ export async function reconcileClientLogos(
     );
   }
   const runtimeFiles = await recursiveRelativeFiles(options.logoRoot);
+  if (operational) {
+    const retained = (
+      await db.query<CurrentRow>('SELECT * FROM client_logo_versions ORDER BY client_id,id')
+    ).rows;
+    for (const row of retained) {
+      allowedRuntime.add(row.relative_path.toLocaleLowerCase('en-US'));
+      const path = runtimePath(options.logoRoot, row.relative_path);
+      sameEvidence(
+        `retained logo ${row.id}`,
+        { byteSize: row.byte_size, sha256: row.sha256, contentType: row.content_type },
+        path === null ? null : await fileEvidence(path),
+        defects,
+      );
+    }
+  }
   for (const relative of runtimeFiles)
     if (!allowedRuntime.has(relative.toLocaleLowerCase('en-US')))
       defects.push(`unexpected runtime file: ${relative}`);
