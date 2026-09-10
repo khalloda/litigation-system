@@ -90,10 +90,11 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of the Task 4.1 Phase 3 acceptance documentation**
-before separately authorized publication. Phase 4 is next, unstarted. The D52–D57 database foundation is now deployed and operationally
+point is **independent Task 4.1 Phase 4 review**, after its separately authorized
+local verification. Task 4.1 Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
+The D52–D57 database foundation is now deployed and operationally
 complete at migration 62, with 15/15 checks and 116/116 historical invariants.
-Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked.
+Task 4.1 overall and Task 4.1a remain unchecked; Phase 4 is locally verified.
 The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
@@ -175,7 +176,9 @@ PostgreSQL has 62 applied migrations, zero pending or unfinished; Phase 2 now im
 [deployment acceptance report](task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 Phase 3 application mutations passed [independent review](reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
 and were accepted by Khaled Helmy on 10 September 2026 at
-`77baf2af2d079457f28ce1632f68e3f411cbdc48`; Phase 4 final acceptance is unstarted. [TASKS.md](../TASKS.md) owns phase status;
+`77baf2af2d079457f28ce1632f68e3f411cbdc48`, then published through
+`9f61ba481fbebdb2b0d54e470e43cd8d26014265`. Phase 4's separately authorized final
+verification passed locally; [TASKS.md](../TASKS.md) owns phase status;
 the [dated readiness review](reviews/2026-09-08-task-4-1-clients-readiness-review.md)
 separates findings from later owner resolutions.
 
@@ -371,8 +374,18 @@ concurrency, audit-failure and production-browser evidence. Its
 [independent review](reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
 passed, and Khaled Helmy accepted Phase 3 on 10 September 2026 at
 `77baf2af2d079457f28ce1632f68e3f411cbdc48`; see the [dated acceptance addendum](task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md#acceptance-addendum--10-september-2026).
-The immediate stop is independent review of this documentation-only acceptance
-commit before separately authorized publication. Phase 4 is next, unstarted and
-requiring its own authorization. Task 4.1 overall, Phase 4 and Task 4.1a remain
-unchecked. The late acceptance matrix and untested screen-reader speech remain
-explicit Phase 4 scope; no additional testing is claimed here.
+Phase 3 and its acceptance documentation are published at
+`9f61ba481fbebdb2b0d54e470e43cd8d26014265`; see the preserved
+[publication review](reviews/2026-09-10-task-4-1-phase-3-publication-independent-review.md).
+Its historical late acceptance matrix and untested speech limitations remain
+unchanged. The separately authorized Phase 4 records a fresh
+[pre-execution matrix](testing/task-4-1-phase4-acceptance-matrix.md) and
+[verification report](task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md).
+Phase 4 passed local service/query, real-volume read/logo, production browser,
+static, preservation and cleanup verification, with precise reuse of unchanged
+reviewed mutation/current-62 regressions. Actual screen-reader speech remains
+unverified and explicitly retained for review. Its stop is independent Phase 4
+review, before overall Task 4.1 owner acceptance.
+Task 4.1 overall and Task 4.1a remain unchecked. Existing database/query proof
+does not claim future matter/report UI or exports have been tested; their later
+implementation must retain D52's archive-independent visibility.

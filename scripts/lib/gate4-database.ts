@@ -270,7 +270,17 @@ function mapAmounts(
   return new Map(rows.map((row) => [row.currency, { rows: row.rows, amount: row.amount }]));
 }
 
-async function loadReports(db: ClientBase): Promise<readonly Gate4Dataset[]> {
+/** Reuse the actual report queries on an explicitly supplied read-only snapshot.
+ * This does not select a connection or relax the normal Gate 4 target guard. */
+export async function loadReports(db: ClientBase): Promise<readonly Gate4Dataset[]> {
+  const settings = (
+    await db.query(`SELECT current_database() AS database,
+      current_setting('transaction_read_only') AS "readOnly",
+      current_setting('transaction_isolation') AS isolation,
+      current_setting('port')::integer AS "serverPort"`)
+  ).rows;
+  assert.equal(settings.length, 1);
+  assertReadOnlySnapshot(settings[0]);
   const loaders = [
     () =>
       queryDataset(

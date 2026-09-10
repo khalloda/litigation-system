@@ -411,6 +411,7 @@ async function proveLogoFailures(viewer: Session, root: string, metadata: LogoMe
     assert.equal(await readClientLogoFile(viewer, root, { ...metadata, ...patch }), null);
   const logoFixtureRoot = resolve(tmpdir());
   const dir = mkdtempSync(join(logoFixtureRoot, 'litigation-client-logos-'));
+  console.log('TASK owned logo failure fixture: ' + dir);
   const parent = join(dir, String(metadata.clientId));
   mkdirSync(parent);
   const file = join(parent, metadata.fileName);
@@ -534,6 +535,7 @@ async function proveLogoFailures(viewer: Session, root: string, metadata: LogoMe
   } finally {
     assert.ok(resolve(dir).startsWith(logoFixtureRoot + sep + 'litigation-client-logos-'));
     rmSync(dir, { recursive: true });
+    console.log('PASS owned logo failure fixture removed: ' + dir);
   }
 }
 async function main() {
@@ -547,15 +549,61 @@ async function main() {
     'Evidence must remain outside repository',
   );
   mkdirSync(output, { recursive: true });
+  const preservedSource = await withApprovedMigrationClient(staffReadOnlyState, {
+    clientConfig: { options: '-c default_transaction_read_only=on' },
+  });
   await withIsolatedPostgres(async (fixture) => {
     await fixture.restoreProject();
     await withApprovedMigrationClient(
-      async (db) => assert.equal(await assertCurrentClientSource(db), 62),
-      { databaseUrl: fixture.migrationUrl },
+      async (db) => {
+        await assertIsolatedTestCluster(db, new URL(fixture.migrationUrl), fixture.environment);
+        assert.equal(await assertCurrentClientSource(db), 62);
+        assert.deepEqual((await staffReadOnlyState(db)).tables, preservedSource.tables);
+      },
+      {
+        databaseUrl: fixture.migrationUrl,
+        clientConfig: { options: '-c default_transaction_read_only=on' },
+      },
     );
-    await initialiseActors(fixture.migrationUrl, fixture.runtimeUrl);
-    await proveClientReads(fixture, process.env.CLIENT_LOGO_ROOT!, output);
+    const copyRoot = mkdtempSync(join(tmpdir(), 'litigation-client-read-logos-'));
+    writeFileSync(
+      join(output, 'read-isolation.json'),
+      JSON.stringify(
+        {
+          container: fixture.container,
+          cluster: fixture.clusterId,
+          sourceCluster: fixture.sourceClusterId,
+          port: new URL(fixture.runtimeUrl).port,
+          database: 'litigation',
+          runtimePrincipal: 'litigation_runtime',
+          restoredTablesEqualBeforeActors: true,
+          copiedLogos: copyRoot,
+        },
+        null,
+        2,
+      ),
+    );
+    try {
+      cpSync(process.env.CLIENT_LOGO_ROOT!, copyRoot, { recursive: true });
+      await initialiseActors(fixture.migrationUrl, fixture.runtimeUrl);
+      await proveClientReads(fixture, copyRoot, output);
+    } finally {
+      assert.ok(
+        resolve(copyRoot).startsWith(resolve(tmpdir()) + sep + 'litigation-client-read-logos-'),
+      );
+      rmSync(copyRoot, { recursive: true });
+      writeFileSync(
+        join(output, 'read-cleanup.json'),
+        JSON.stringify({ copiedLogos: copyRoot, removed: true }, null, 2),
+      );
+    }
   });
+  assert.deepEqual(
+    await withApprovedMigrationClient(staffReadOnlyState, {
+      clientConfig: { options: '-c default_transaction_read_only=on' },
+    }),
+    preservedSource,
+  );
 }
 if (process.argv[1]?.replaceAll('\\', '/').endsWith('/test-client-read-only.ts'))
   void main().catch((error) => {

@@ -31,16 +31,18 @@ owner authorization. Project PostgreSQL has 62 applied migrations, zero pending
 or unfinished, one approved historical rollback, 15/15 checks and 116/116
 historical invariants. Earlier isolated proof passed 116 historical and 98 canonical
 checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
-Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked.
+Task 4.1 overall and Task 4.1a remain unchecked; Phase 4 is locally verified.
 Phase 2 was accepted by Khaled Helmy on 9 September 2026 after independent
 implementation/correction review, and was subsequently published through
 `82ca95c439e554bc8b55ffb3de0873827f8f3751`; R1/R2 remain closed.
 Phase 3 passed [independent review](docs/reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
 and was accepted by Khaled Helmy on 10 September 2026 at
 `77baf2af2d079457f28ce1632f68e3f411cbdc48`; see its [dated acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md#acceptance-addendum--10-september-2026).
-The immediate stop is independent review of this acceptance-documentation commit
-before separately authorized publication; no push is claimed. Phase 4 is the next
-development phase, unstarted and requiring its own authorization. Final Access
+Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`;
+the preserved [publication review](docs/reviews/2026-09-10-task-4-1-phase-3-publication-independent-review.md)
+records its independent verification. Phase 4's separately authorized final
+verification passed locally. The next gate is independent Phase 4 review,
+then the owner's overall Task 4.1 acceptance decision. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
 `docs/DECISIONS.md` owns approved decisions; this file owns status and work
@@ -1727,8 +1729,8 @@ than assuming one rule for every workflow. Test with real volumes.
       incomplete under the approved D52–D57 contract. Its Phase 1 database
       foundation is now deployed and operationally complete at migration 62;
       Phase 2 is accepted and published; Phase 3 passed independent review and was
-      accepted on 10 September 2026. The immediate stop is independent review of
-      the acceptance-documentation commit before publication. Phase 4 is next, unstarted.
+      accepted on 10 September 2026 and published at `9f61ba4`.
+      The current Phase 4 checkpoint is recorded at the top of this file.
 
   - [x] **Phase 1 — database boundary and operational invariants.** Preserve an
         immutable snapshot of which imported people are inside the application
@@ -1894,8 +1896,8 @@ than assuming one rule for every workflow. Test with real volumes.
 
       **Historical Phase 4 stop point:** independent Task 4.0a review; no push
       or Task 4.1 implementation occurred in that completion task. Task 4.0a
-      was subsequently published at `6579799`. The current return point is
-      independent Task 4.1 Phase 3 review; Phase 4 is next, unstarted.
+      was subsequently published at `6579799`. The former Task 4.1 Phase 3
+      review return point is historical; use the current checkpoint above.
 
 - [ ] **4.1 Clients** — Phase 1 deployed and operationally complete (**D52–D57**).
       Client/contact list, detail and authorized creation/editing; optional main
@@ -1980,10 +1982,10 @@ than assuming one rule for every workflow. Test with real volumes.
         [independent review](docs/reviews/2026-09-10-task-4-1-phase-3-independent-review.md)
         and [acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-3-client-contact-mutations.md#acceptance-addendum--10-september-2026).
         The late acceptance matrix and untested screen-reader speech remain disclosed.
-        Independent review of this documentation-only acceptance commit is the immediate
-        stop before separately authorized publication; no push.
+        Its acceptance documentation was independently reviewed and published at
+        `9f61ba481fbebdb2b0d54e470e43cd8d26014265`; the earlier publication stop is historical.
 
-  - [ ] **Phase 4 — Final acceptance.** Complete static, permission, audit,
+  - [x] **Phase 4 — Final acceptance.** Complete static, permission, audit,
         reconciliation, concurrency and real-volume checks. Cover 318 clients,
         188 contacts, duplicate-name identities, clients without contacts and
         the largest observed client with 378 matters. Under separate local
@@ -1993,6 +1995,21 @@ than assuming one rule for every workflow. Test with real volumes.
         archive cannot hide existing matters or suppress them from reports.
         Produce dated acceptance evidence without treating documentation
         approval, clean replay or isolated proof as deployment authorization.
+
+        **Locally verified, 10 September 2026:** see the
+        [Phase 4 report](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md)
+        and [pre-execution matrix](docs/testing/task-4-1-phase4-acceptance-matrix.md).
+        Fresh service/query proof retained the fixed client's 82 matters and the
+        largest client's 378 matters through archive/restore; the counterexample
+        was detected. Browser proof passed 121 states/proofs and 98 zero-violation
+        scans, including genuine 200% zoom and 320 CSS pixels. Eleven static
+        checks passed; exact project/file preservation and cleanup passed.
+        Unchanged reviewed mutation/current-62 regressions are explicitly reused.
+        Existing query-contract evidence does not claim future matter/report
+        screens or exports have been built or tested. Actual reader speech is
+        unverified because no permitted speech observation was available.
+        Independent Phase 4 review and overall owner
+        acceptance remain subsequent gates.
 
       **Phase 2 implemented and locally verified, 9 September 2026:** guarded
       list/detail/contact pages and existing-logo display, read-only for all roles.
@@ -2010,10 +2027,11 @@ than assuming one rule for every workflow. Test with real volumes.
       `82ca95c439e554bc8b55ffb3de0873827f8f3751`.
       **Historical Phase 3 stop:** independent review of the separately authorized local
       implementation. That review passed and Khaled Helmy accepted Phase 3 on 10 September
-      2026 at `77baf2af2d079457f28ce1632f68e3f411cbdc48`. **Stop now:** independent review
-      of this acceptance-documentation commit before separately authorized publication.
-      **Next development return point:** Phase 4 — Final acceptance,
-      unstarted. Task 4.1 overall, Phase 4 and Task 4.1a remain unchecked.
+      2026 at `77baf2af2d079457f28ce1632f68e3f411cbdc48`. Its acceptance documentation
+      was subsequently published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
+      **Current gate:** independent Phase 4 review of the locally verified work;
+      overall Task 4.1 owner acceptance is not claimed.
+      Task 4.1 overall and Task 4.1a remain unchecked.
       Later implementation and D43/D51 final cutover require their own authorization.
 
 - [ ] **4.1a Client logo upload**
@@ -2024,6 +2042,9 @@ than assuming one rule for every workflow. Test with real volumes.
       Removal must be recoverable and retain the file and its evidence (D25);
       design that behavior here rather than in the Task 3.2 policy correction.
 - [ ] **4.2 Matters** — the biggest screen. Classification, parties, lawyers.
+      Integrate D52's archive-independent access to existing matters. Task 4.1
+      Phase 4 proves current client reads and report queries; this future screen
+      still needs its own archived-client visibility acceptance.
       **Case number field must display multiple lines (D9).**
       `docs/VISUAL-DIRECTION.md` makes the stacked case number the hero of this
       screen, in descending weight — D9 made visible.
@@ -2084,6 +2105,10 @@ than assuming one rule for every workflow. Test with real volumes.
       branch, lawyer), Excel via ExcelJS with `rightToLeft`, PDF via Playwright
       with bundled fonts and the firm letterhead.
 - [ ] **6.2 Client reports**
+      Integrate D52's archive-independent inclusion without changing ordinary
+      matter-status/date criteria. Task 4.1 Phase 4 protects the existing nonempty
+      query contract; future report screens and Excel/PDF delivery require their
+      own integration proof.
       **`client_branch` is settled — D19, D39 and Task 3.5B.** A branch is a
       site or subsidiary of a client. The current list has 18 values: the 15
       historical reviewed sites plus the three D39-approved branches. "Filter

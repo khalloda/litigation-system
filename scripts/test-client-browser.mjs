@@ -17,7 +17,10 @@ import { createRequire } from 'node:module';
 import { resolve, join, sep, dirname, relative, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:net';
-import { withIsolatedPostgres } from './lib/isolated-postgres-fixture.ts';
+import {
+  withIsolatedPostgres,
+  assertIsolatedTestCluster,
+} from './lib/isolated-postgres-fixture.ts';
 import {
   withApprovedMigrationClient,
   createApprovedMigrationPrismaClient,
@@ -37,6 +40,7 @@ import { t } from '../src/strings.ts';
 import { setupClientCases } from './test-client-read-only.ts';
 import { assertCurrentClientSource } from './lib/client-regression-source.ts';
 import { proveClientMutationBrowser } from './lib/client-mutation-browser.mjs';
+import { proveClientArchiveBrowser } from './lib/client-archive-browser.mjs';
 
 import {
   staffZoomExtension,
@@ -110,8 +114,15 @@ await withIsolatedPostgres(async (fixture) => {
   );
   await fixture.restoreProject();
   await withApprovedMigrationClient(
-    async (db) => assert.equal(await assertCurrentClientSource(db), 62),
-    { databaseUrl: fixture.migrationUrl },
+    async (db) => {
+      await assertIsolatedTestCluster(db, new URL(fixture.migrationUrl), fixture.environment);
+      assert.equal(await assertCurrentClientSource(db), 62);
+      assert.deepEqual((await staffReadOnlyState(db)).tables, preservation.tables);
+    },
+    {
+      databaseUrl: fixture.migrationUrl,
+      clientConfig: { options: '-c default_transaction_read_only=on' },
+    },
   );
   const adminDb = await createApprovedMigrationPrismaClient(fixture.migrationUrl);
   const runtime = createDatabaseClient(fixture.runtimeUrl);
@@ -717,6 +728,18 @@ await withIsolatedPostgres(async (fixture) => {
         fixture,
         cases,
         identities,
+        audit,
+        screenshot,
+        evidence,
+      });
+    if (process.argv.includes('--phase4'))
+      await proveClientArchiveBrowser({
+        page,
+        base,
+        goto,
+        login,
+        accounts,
+        fixture,
         audit,
         screenshot,
         evidence,
