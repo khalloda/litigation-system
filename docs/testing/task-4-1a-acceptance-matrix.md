@@ -83,3 +83,34 @@ PostgreSQL/separate-process publication proof, current-63/62 staff dispatch,
 fresh service/browser/static/build verification and exact dependency reuse.
 Project migration 62 and original evidence remain protected; migration 63 stays
 pending. The next stop is independent correction review, not acceptance.
+
+## Owner acceptance addendum — 11 September 2026
+
+Khaled Helmy explicitly accepted the implementation at
+`9bac6c6f0c0472771c8cf8c07f93b2025e415693` and the R1/R2 correction at
+`0bb729562c96668bc8f5e37789eef9ac68d69c16`. The preserved
+[independent correction review](../reviews/2026-09-11-task-4-1a-correction-independent-review.md)
+is PASS and closes both findings. This addendum does not invent the resulting
+documentation commit identity; its external delivery receipt records that later.
+
+R1's reviewed protocol writes/flushed private bytes before no-overwrite
+publication, verifies/flushed adoption independently and restricts cleanup to
+private names. R2 retains complete checkpoint validation, permits only verified
+62/63 fixture dispatch and makes the historical path stop exactly at 62.
+
+Existing service, concurrency/recovery, staff-wrapper, permission, static/build,
+browser, preservation and cleanup outcomes remain historical reviewed evidence;
+no runtime suite was repeated for this documentation-only acceptance record.
+The reviewed project state was migration 62 applied with 63 pending. Acceptance
+does not claim actual-project migration 63 or logo-management deployment.
+
+Windows directory-entry power-loss durability remains limited. Future deployment
+needs hard-link-capable storage, old writers quiesced, coherent database/all-
+retained-logo backup and reconciliation; retained or orphaned files must not be
+guessed safe to delete. Screen-reader speech actions remain excluded, historical
+speech remains untested without a pending blocker, and other accessibility plus
+future matter/report integration requirements remain unchanged.
+
+The immediate stop is independent acceptance-documentation review. Publication,
+controlled migration/deployment/operational verification and Task 4.2 remain
+separate decisions.

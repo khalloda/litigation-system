@@ -157,3 +157,39 @@ correction adds no schema migration, privilege or SQL gateway. All 83 TASKS
 checkbox states and the three additional PATCHES checkbox states are preserved.
 Task 4.1a's checked marker remains local verification, not owner acceptance.
 No speech action, push, deployment, Access operation or later task is included.
+
+## Owner acceptance addendum — 11 September 2026
+
+Khaled Helmy explicitly accepted the implementation at
+`9bac6c6f0c0472771c8cf8c07f93b2025e415693` and its correction at
+`0bb729562c96668bc8f5e37789eef9ac68d69c16`. The preserved
+[independent correction review](../reviews/2026-09-11-task-4-1a-correction-independent-review.md)
+is PASS and closes R1/R2. This addendum records owner acceptance only; the
+resulting documentation commit is identified in its external delivery receipt.
+
+R1 now writes and flushes a private file before no-overwrite hard-link
+publication; an adopter independently verifies and flushes the published file,
+and cleanup is restricted to the creator's private name. R2 retains complete
+checkpoint validation, supports only the verified 62/63 fixture dispatches and
+explicitly stops the historical upgrade path at 62.
+
+The service, concurrency/recovery, staff-wrapper, permission, static/build,
+browser, preservation and cleanup results above are historical reviewed evidence.
+No runtime suite was repeated for this acceptance-documentation record. At that
+reviewed checkpoint, project migration 62 was applied and candidate migration 63
+was pending. Acceptance of the code does not claim that migration 63 or logo
+management has been deployed to the project.
+
+Windows directory-entry durability after power loss remains a documented
+limitation. A future deployment requires hard-link-capable storage, old writer
+processes stopped, coherent database-plus-all-retained-logo backup and
+reconciliation. Retained or orphaned files must not be guessed safe to delete.
+These are separate operational obligations, not new work in this documentation
+task.
+
+All screen-reader speech actions remain excluded by the owner's standing
+instruction. Historical speech is untested, with no pending speech follow-up or
+blocker. Other accessibility requirements and future matter/report integration
+remain unchanged. The immediate stop is independent acceptance-documentation
+review; publication, controlled migration/deployment/operational verification and
+Task 4.2 remain separate decisions.

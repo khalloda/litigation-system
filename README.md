@@ -3,13 +3,15 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Current status — 11 September 2026:** Task 4.1a logo management has R1/R2
-corrections pending independent correction review, owner acceptance and
-separate deployment. Project PostgreSQL remains unchanged at 62 applied
-migrations; candidate migration 63 is pending. See the
+**Current status — 11 September 2026:** Khaled Helmy accepted the corrected
+Task 4.1a logo-management implementation after the independent R1/R2 PASS
+review. The immediate stop is independent review of this acceptance-documentation
+commit; publication, migration and deployment remain separate. Project PostgreSQL
+remains at 62 applied migrations; candidate migration 63 is pending. See the
 [implementation report](docs/task-reports/2026-09-10-task-4-1a-client-logos.md)
 and [acceptance matrix](docs/testing/task-4-1a-acceptance-matrix.md), with the
-[R1/R2 correction report](docs/task-reports/2026-09-11-task-4-1a-corrections.md).
+[R1/R2 correction report and acceptance addendum](docs/task-reports/2026-09-11-task-4-1a-corrections.md#owner-acceptance-addendum--11-september-2026)
+and preserved [independent correction review](docs/reviews/2026-09-11-task-4-1a-correction-independent-review.md).
 
 **Earlier accepted checkpoints:** Stages 2 and 3 are complete. Task 3.5's high-impact quarantine
 checkpoint is completed and accepted: migration 60 and the approved Task 3.5B
@@ -64,13 +66,15 @@ Task 4.1 overall on 10 September 2026 at
 and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
 Task 4.1 publication review is closed; its supplied
 [publication review](docs/reviews/2026-09-10-task-4-1-publication-independent-review.md)
-is preserved byte-identically. The current stop is independent Task 4.1a
-R1/R2 correction review. Older report/review wording records earlier checkpoints.
+is preserved byte-identically. Task 4.1a's R1/R2 correction review passed and
+Khaled Helmy accepted the corrected implementation on 11 September 2026. The
+current stop is independent review of its acceptance-documentation commit. Older
+report/review wording records earlier checkpoints.
 See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
-Task 4.1 overall remains accepted and checked; Task 4.1a is checked for local
-verification only. The Phase 3 report retains its
+Task 4.1 overall remains accepted and checked; Task 4.1a is accepted locally but
+not published, migrated or deployed. The Phase 3 report retains its
 historical late-matrix and untested screen-reader speech limitations. Phase 4
 preserves its initial matrix, proves nonempty archive/report visibility and
 records its browser evidence. Actual screen-reader speech actions are excluded
@@ -84,9 +88,9 @@ integration checks, including archive-independent visibility.
 R1/R2 are closed; see the [correction review](docs/reviews/2026-09-09-task-4-1-phase-2-correction-independent-review.md)
 and [dated acceptance addendum](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md#acceptance-addendum--9-september-2026).
 The preceding Task 4.1 acceptance record added one documentation-only commit;
-its runtime evidence was historical. Task 4.1a has separate fresh implementation
-evidence and does not imply owner acceptance, publication, deployment or final
-Access cutover.
+its runtime evidence was historical. Task 4.1a's reviewed implementation and
+correction now have owner acceptance, while publication, deployment and final
+Access cutover remain separate.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
