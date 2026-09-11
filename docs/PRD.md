@@ -90,23 +90,33 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of Task 4.1a's acceptance-documentation commit**.
+point is **independent review of the migration-63 development-acceptance
+documentation commit**, followed by its separate publication checkpoint and
+a separate Task 4.2 mandate.
 Task 4.1 publication
 review is closed. Task 4.1 Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
-The D52–D57 database foundation is now deployed and operationally
-complete at migration 62, with 15/15 checks and 116/116 historical invariants.
+The D52–D57 database foundation was accepted at migration 62, with
+15/15 checks and 116/116 historical invariants at that dated checkpoint.
 Task 4.1 overall and Phases 1–4 remain accepted and checked. Khaled Helmy accepted
 the corrected Task 4.1a implementation on 11 September 2026 after the independent
-R1/R2 PASS review. Publication and separate migration-63 deployment remain pending.
-Project PostgreSQL remains unchanged at 62 applied
-migrations. The [logo report](task-reports/2026-09-10-task-4-1a-client-logos.md)
+R1/R2 PASS review. Implementation/correction/acceptance is published through
+`2b866bae7929149c1ad200661225f4c2098f366d`. He accepted the reviewed local
+migration-63 operational milestone on 11 September 2026 after independent PASS.
+The captured development database has 63 applied migrations, one historical
+rollback and zero unfinished; 121 invariant and 15 setup checks passed. See the
+[development acceptance record](task-reports/2026-09-11-migration63-development-acceptance.md)
+and preserved [operational review](reviews/2026-09-11-migration63-operational-independent-review.md).
+Windows is development. The final app and database will run on an Ubuntu VM
+with Docker, requiring target-specific deployment validation; a laptop
+production-mode build does not establish production acceptance.
+The [logo report](task-reports/2026-09-10-task-4-1a-client-logos.md)
 records preview/save, replacement, resizing, retained-version recovery and the
 unchanged role matrix. The 11 September
 [R1/R2 correction report](task-reports/2026-09-11-task-4-1a-corrections.md)
 records private file publication and the verified current staff regression path;
 its [acceptance addendum](task-reports/2026-09-11-task-4-1a-corrections.md#owner-acceptance-addendum--11-september-2026)
 and [independent correction review](reviews/2026-09-11-task-4-1a-correction-independent-review.md)
-record closure. Deployment remains separate.
+record implementation closure. Production deployment remains separate.
 The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
@@ -416,10 +426,11 @@ accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
 status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
 remain required. This acceptance authorizes no application-code removal.
 
-The current stop is independent review of the Task 4.1a acceptance-documentation
-commit; Task 4.1 publication review is closed. Task 4.1 overall remains accepted
-and checked. Task 4.1a is owner-accepted locally, while separate deployment of
-candidate migration 63 remains pending. Existing database/query proof
+The current stop is independent review of the new, unpublished migration-63
+development-acceptance documentation commit; Task 4.1 publication review is closed.
+Task 4.1 overall and Task 4.1a remain accepted and checked. Task 4.1a source is
+published and its local migration/activation milestone is accepted; production
+deployment remains separate. Existing database/query proof
 does not claim future matter/report UI or exports have been tested; their later
 implementation under Tasks 4.2 and 6.2 must retain D52's archive-independent
 visibility and complete its own screen/export integration checks.

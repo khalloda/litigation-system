@@ -3435,3 +3435,47 @@ Existing recovery packages, source evidence and D43/D51 cutover rules are unchan
 
 Stop for independent Phase 2 review; Phase 3 is the next development phase.
 See the [implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
+
+
+## Migration 63 local operational acceptance and recovery — 11 September 2026
+
+Khaled Helmy accepted the reviewed local-development operational milestone after
+[independent operational PASS](reviews/2026-09-11-migration63-operational-independent-review.md).
+This addendum supersedes earlier current-status wording above while preserving
+those dated records. Source implementation/correction/acceptance is published at
+`2b866bae7929149c1ad200661225f4c2098f366d`. See the
+[development acceptance record](task-reports/2026-09-11-migration63-development-acceptance.md)
+for authority, evidence identities, limitations and the next stop.
+
+Historical execution evidence records one successful migration-63 invocation:
+63 applied, one historical rollback, zero unfinished; 109 tables, 54 retained
+imports, zero submissions and 602 audit classifications. Original data
+projections, all 48 complete live sequences and 54 logos were preserved.
+Captured native validation passed 121 invariant and 15 setup checks. Isolated
+restore/rehearsal and owned-fixture cleanup passed under the recorded narrow
+restore exceptions. The reviewer passed 101 offline comparisons; this
+acceptance-documentation task performs no fresh database or runtime check.
+
+Development logos: `D:\Projects\LitigationData\client-logos`.
+Local recovery point:
+`D:\Projects\LitigationData\DB-Backup\migration63\predeploy-20260911T150003164Z-0d643b99-9a2f-40c2-ab0c-d91a627d1d23`.
+The owner explicitly selected local-only backup for this development execution.
+Preserve it and the original trees/recovery evidence. Do not replay 63 or blindly
+restore over newer data; any recovery must preserve newer state, rehearse in
+isolation and obtain approval for reconciliation and switching targets.
+
+Windows is development; the final app and database target an Ubuntu VM with
+Docker. The temporary Windows artifact shares checkout node_modules, with the
+reviewed dependency/ancestor-permission limitation; directory-entry durability
+across power loss was not proved. No further Windows production-hardening phase
+is required to close this milestone. Authenticated client/logo/recovery views
+remain unobserved under the approved no-session fallback. Speech actions remain
+excluded with no pending speech follow-up.
+
+Production must validate its actual Linux image/dependencies, runtime identity
+and secrets, mounted storage, exposure, authenticated workflows, durability and
+coordinated recovery. Linux/Docker alone proves none of these. Stage 7 and D15/D16
+backup/retention/off-VM/integrity/spare-machine-and-printed-logo obligations remain
+separate; the local exception does not satisfy them. Final Access cutover is
+unperformed. Stop for independent review of this documentation commit, then the
+separate documentation/publication checkpoint and Task 4.2 mandate.

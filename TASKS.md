@@ -6,7 +6,7 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 10 September 2026:** Stages 2 and 3 are complete. The
+**Current checkpoint — 11 September 2026:** Stages 2 and 3 are complete. The
 independent Task 3.5B evidence review is accepted; migration 60 and the approved
 real application each executed exactly once, all 382 decisions reconciled, and
 the permanent invariant set passed 93/93 at that checkpoint. Task 3.5 is
@@ -33,9 +33,16 @@ historical invariants. Earlier isolated proof passed 116 historical and 98 canon
 checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 Task 4.1 overall and Phases 1–4 remain accepted and checked. Khaled Helmy accepted
 the corrected Task 4.1a implementation on 11 September 2026 after its independent
-R1/R2 PASS review. It remains checked, local and pending separate publication and
-deployment. The actual project remains unchanged at 62 applied
-migrations; candidate migration 63 is pending. See the
+R1/R2 PASS review. Implementation/correction/acceptance is published through
+`2b866bae7929149c1ad200661225f4c2098f366d`. He accepted the reviewed local
+migration-63 operational milestone on 11 September 2026 after independent PASS.
+The captured development boundary is 63 applied, one historical rollback and
+zero unfinished; 121 invariant and 15 setup checks passed. See the
+[development acceptance record](docs/task-reports/2026-09-11-migration63-development-acceptance.md)
+and [operational review](docs/reviews/2026-09-11-migration63-operational-independent-review.md).
+Windows is development; the final app and database will run on an Ubuntu VM
+with Docker. Target-specific production validation remains under Stage 7.
+See the
 [logo report](docs/task-reports/2026-09-10-task-4-1a-client-logos.md) and
 [acceptance matrix](docs/testing/task-4-1a-acceptance-matrix.md). The 11 September
 [correction report](docs/task-reports/2026-09-11-task-4-1a-corrections.md) records
@@ -55,8 +62,10 @@ Khaled Helmy accepted Phase 4 and Task 4.1 overall on 10 September 2026 at
 [independent review](docs/reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
 [report acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md#owner-acceptance-addendum--10-september-2026)
 and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
-The current stop is independent review of the Task 4.1a acceptance-documentation
-commit. Task 4.1 publication review is closed. Older reports/reviews retain their historical
+The current stop is independent review of this migration-63 development-acceptance
+documentation commit, which remains unpublished. Task 4.2 is next only after the
+documentation/publication checkpoint and a separate mandate. Task 4.1 publication
+review is closed. Older reports/reviews retain their historical
 checkpoints. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
@@ -2062,8 +2071,9 @@ than assuming one rule for every workflow. Test with real volumes.
       **Historical acceptance-documentation gate:** Phase 4 and Task 4.1 overall
       were accepted, then published; the supplied
       [publication review](docs/reviews/2026-09-10-task-4-1-publication-independent-review.md)
-      is preserved unchanged. Task 4.1a has accepted local implementation and
-      correction evidence; publication and deployment remain separate.
+      is preserved unchanged. Task 4.1a implementation/correction/acceptance was
+      published through `2b866bae7929149c1ad200661225f4c2098f366d`; its reviewed
+      migration-63 local-development milestone is accepted. Production remains separate.
       Later implementation and D43/D51 final cutover require their own authorization.
 
 - [x] **4.1a Client logo upload**
@@ -2081,9 +2091,12 @@ than assuming one rule for every workflow. Test with real volumes.
       permission/client/audit/Gate 4 regressions, production browser/accessibility
       and project preservation passed. See the report/matrix above. This checkbox
       records the already-complete local implementation. Independent correction
-      review passed and Khaled Helmy accepted it on 11 September 2026; publication
-      and project migration-63 deployment remain separate. No later task or final
-      Access cutover is included.
+      review passed and Khaled Helmy accepted it on 11 September 2026. The reviewed
+      source is published through `2b866bae7929149c1ad200661225f4c2098f366d`.
+      Migration 63 and bounded loopback activation subsequently passed operational
+      review and were accepted for Windows development on 11 September 2026.
+      See the development acceptance record above. Ubuntu VM/Docker production,
+      later task work and final Access cutover remain separate.
 - [ ] **4.2 Matters** — the biggest screen. Classification, parties, lawyers.
       Integrate D52's archive-independent access to existing matters. Task 4.1
       Phase 4 proves current client reads and report queries; this future screen

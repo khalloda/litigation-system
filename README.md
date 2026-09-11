@@ -3,11 +3,18 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Current status — 11 September 2026:** Khaled Helmy accepted the corrected
-Task 4.1a logo-management implementation after the independent R1/R2 PASS
-review. The immediate stop is independent review of this acceptance-documentation
-commit; publication, migration and deployment remain separate. Project PostgreSQL
-remains at 62 applied migrations; candidate migration 63 is pending. See the
+**Current status — 11 September 2026:** Khaled Helmy accepted the reviewed
+migration-63 local-development milestone after independent operational PASS.
+Task 4.1a implementation/correction/acceptance is published through
+`2b866bae7929149c1ad200661225f4c2098f366d`. The captured development database
+has 63 applied migrations, one historical rollback and zero unfinished, with
+121 invariant and 15 setup checks passed. The immediate stop is independent
+review of this new, unpublished documentation commit. See the
+[development acceptance record](docs/task-reports/2026-09-11-migration63-development-acceptance.md)
+and preserved [operational review](docs/reviews/2026-09-11-migration63-operational-independent-review.md).
+Windows is development; the final app and database target an Ubuntu VM with
+Docker. Production validation and final Access cutover remain separate.
+See the
 [implementation report](docs/task-reports/2026-09-10-task-4-1a-client-logos.md)
 and [acceptance matrix](docs/testing/task-4-1a-acceptance-matrix.md), with the
 [R1/R2 correction report and acceptance addendum](docs/task-reports/2026-09-11-task-4-1a-corrections.md#owner-acceptance-addendum--11-september-2026)
@@ -68,13 +75,15 @@ Task 4.1 publication review is closed; its supplied
 [publication review](docs/reviews/2026-09-10-task-4-1-publication-independent-review.md)
 is preserved byte-identically. Task 4.1a's R1/R2 correction review passed and
 Khaled Helmy accepted the corrected implementation on 11 September 2026. The
-current stop is independent review of its acceptance-documentation commit. Older
-report/review wording records earlier checkpoints.
+current stop is independent review of the migration-63 development-acceptance
+documentation commit. Older report/review wording records earlier checkpoints.
 See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).
-Task 4.1 overall remains accepted and checked; Task 4.1a is accepted locally but
-not published, migrated or deployed. The Phase 3 report retains its
+Task 4.1 overall and Task 4.1a remain accepted and checked. Task 4.1a is
+published through the reviewed source above; migration 63 and bounded loopback
+activation are accepted for local development. Production deployment is separate.
+The Phase 3 report retains its
 historical late-matrix and untested screen-reader speech limitations. Phase 4
 preserves its initial matrix, proves nonempty archive/report visibility and
 records its browser evidence. Actual screen-reader speech actions are excluded
@@ -89,8 +98,10 @@ R1/R2 are closed; see the [correction review](docs/reviews/2026-09-09-task-4-1-p
 and [dated acceptance addendum](docs/task-reports/2026-09-09-task-4-1-phase-2-navigation-correction.md#acceptance-addendum--9-september-2026).
 The preceding Task 4.1 acceptance record added one documentation-only commit;
 its runtime evidence was historical. Task 4.1a's reviewed implementation and
-correction now have owner acceptance, while publication, deployment and final
-Access cutover remain separate.
+correction are published; the reviewed local migration and activation now have
+owner acceptance. This documentation commit remains unpublished. Task 4.2 needs
+a separate mandate after the documentation/publication checkpoint; production
+deployment and final Access cutover remain separate.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
 and [complete invariant inventory](docs/testing/task-4-0a-phase1-invariants.md).
