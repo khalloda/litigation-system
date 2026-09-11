@@ -19,7 +19,7 @@ const REVIEWED_MUTATIONS: Record<string, string> = {
   'src/lib/client-logo-upload.ts':
     '7573c94f56996dcf771c6f40b6de9f284085f1293380572e38901e0c5c60a9d7',
   'src/lib/client-logo-storage.ts':
-    '8531e37fa093e576de5b1c324337f6f3f4e59b878f440a9858790879c7473176',
+    'aefa62f3faf787a2fdcc410d01227cbb2a7cb5d421f3ef83525413b38bb91266',
   'src/app/clients/logo-manager.tsx':
     '767f1774440b0dccda55710ee04ff302b5a5cd91e59bb9e2f0c012af83d0a026',
   'src/lib/client-mutation-input.ts':

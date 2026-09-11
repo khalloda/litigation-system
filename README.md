@@ -3,12 +3,13 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Current status — 10 September 2026:** Task 4.1a logo management is locally
-verified, pending independent implementation review, owner acceptance and
+**Current status — 11 September 2026:** Task 4.1a logo management has R1/R2
+corrections pending independent correction review, owner acceptance and
 separate deployment. Project PostgreSQL remains unchanged at 62 applied
 migrations; candidate migration 63 is pending. See the
 [implementation report](docs/task-reports/2026-09-10-task-4-1a-client-logos.md)
-and [acceptance matrix](docs/testing/task-4-1a-acceptance-matrix.md).
+and [acceptance matrix](docs/testing/task-4-1a-acceptance-matrix.md), with the
+[R1/R2 correction report](docs/task-reports/2026-09-11-task-4-1a-corrections.md).
 
 **Earlier accepted checkpoints:** Stages 2 and 3 are complete. Task 3.5's high-impact quarantine
 checkpoint is completed and accepted: migration 60 and the approved Task 3.5B
@@ -64,7 +65,7 @@ and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.
 Task 4.1 publication review is closed; its supplied
 [publication review](docs/reviews/2026-09-10-task-4-1-publication-independent-review.md)
 is preserved byte-identically. The current stop is independent Task 4.1a
-implementation review. Older report/review wording records earlier checkpoints.
+R1/R2 correction review. Older report/review wording records earlier checkpoints.
 See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
 and [116/98-check profile inventory](docs/testing/task-4-1-phase1-invariants.md).

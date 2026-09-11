@@ -32,11 +32,13 @@ or unfinished, one approved historical rollback, 15/15 checks and 116/116
 historical invariants. Earlier isolated proof passed 116 historical and 98 canonical
 checks. See the [deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md).
 Task 4.1 overall and Phases 1–4 remain accepted and checked. Task 4.1a is locally
-verified and checked, pending independent implementation review, owner acceptance
+verified and checked, pending independent R1/R2 correction review, owner acceptance
 and separate deployment. The actual project remains unchanged at 62 applied
 migrations; candidate migration 63 is pending. See the
 [logo report](docs/task-reports/2026-09-10-task-4-1a-client-logos.md) and
-[acceptance matrix](docs/testing/task-4-1a-acceptance-matrix.md).
+[acceptance matrix](docs/testing/task-4-1a-acceptance-matrix.md). The 11 September
+[correction report](docs/task-reports/2026-09-11-task-4-1a-corrections.md) records
+the authorized R1/R2 fixes; all task checkbox states remain unchanged.
 Phase 2 was accepted by Khaled Helmy on 9 September 2026 after independent
 implementation/correction review, and was subsequently published through
 `82ca95c439e554bc8b55ffb3de0873827f8f3751`; R1/R2 remain closed.
@@ -51,7 +53,7 @@ Khaled Helmy accepted Phase 4 and Task 4.1 overall on 10 September 2026 at
 [independent review](docs/reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
 [report acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md#owner-acceptance-addendum--10-september-2026)
 and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
-The current stop is independent Task 4.1a implementation review. Task 4.1
+The current stop is independent Task 4.1a R1/R2 correction review. Task 4.1
 publication review is closed. Older reports/reviews retain their historical
 checkpoints. Final Access
 delta reconciliation remains separate under D43 and D51. See the

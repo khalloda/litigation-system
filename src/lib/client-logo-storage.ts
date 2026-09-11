@@ -1,7 +1,7 @@
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, realpath, unlink } from 'node:fs/promises';
+import { link, lstat, mkdir, open, realpath, unlink } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { platform } from 'node:os';
 import { LogoError, type PreparedLogo } from './client-logo-upload';
 
@@ -18,9 +18,10 @@ export function logoSubmission(value: unknown): string {
   return value;
 }
 
-/** Exclusive immutable filename. Flush complete validated bytes before SQL can
- * expose them. Never unlink after the committing transaction has been attempted:
- * a lost response does not prove rollback. Exact retries verify the same file.
+/** Flush a private attempt before atomic, no-overwrite hard-link publication.
+ * Every adopter independently verifies and flushes the published file. Cleanup
+ * can unlink only the private name, never the final name another process may use.
+ * There is no request/process lock to wait for or reclaim after a crash.
  * The OS-owned storage root must not be writable by untrusted local processes. */
 export async function persistPreparedLogo(
   root: string | undefined,
@@ -32,8 +33,7 @@ export async function persistPreparedLogo(
   if (!root || !Number.isSafeInteger(clientId) || clientId < 1) throw new LogoError('storage');
   const fileName = `${submission}.${logo.extension}`;
   let handle: Awaited<ReturnType<typeof open>> | undefined;
-  let created = false;
-  let path: string | undefined;
+  let privatePath: string | undefined;
   let createdIdentity: { dev: number; ino: number } | undefined;
   try {
     const configured = resolve(root);
@@ -51,14 +51,41 @@ export async function persistPreparedLogo(
       (await realpath(directory)) !== directory
     )
       throw new LogoError('storage');
-    path = resolve(directory, fileName);
+    const path = resolve(directory, fileName);
     if (!beneath(directory, path)) throw new LogoError('storage');
     try {
-      handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
-      created = true;
-      createdIdentity = await handle.stat();
+      await lstat(path);
     } catch (error) {
-      if (!(error instanceof Error) || !('code' in error) || error.code !== 'EEXIST') throw error;
+      if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error;
+      privatePath = resolve(directory, `.${submission}.${randomUUID()}.tmp`);
+      handle = await open(
+        privatePath,
+        constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL,
+        0o600,
+      );
+      createdIdentity = await handle.stat();
+      await handle.writeFile(logo.bytes);
+      await handle.sync();
+      await handle.close();
+      handle = undefined;
+      const privateEntry = await lstat(privatePath);
+      if (
+        !privateEntry.isFile() ||
+        privateEntry.isSymbolicLink() ||
+        privateEntry.dev !== createdIdentity.dev ||
+        privateEntry.ino !== createdIdentity.ino ||
+        (await realpath(privatePath)) !== privatePath
+      )
+        throw new LogoError('storage');
+      try {
+        // link fails EEXIST without replacing the winner. A private file is never
+        // adopted by another request, even while its write/flush is incomplete.
+        await link(privatePath, path);
+      } catch (error) {
+        if (!(error instanceof Error) || !('code' in error) || error.code !== 'EEXIST') throw error;
+      }
+    }
+    {
       const entry = await lstat(path);
       if (
         !entry.isFile() ||
@@ -67,7 +94,9 @@ export async function persistPreparedLogo(
         (await realpath(path)) !== path
       )
         throw new LogoError('storage');
-      handle = await open(path, constants.O_RDONLY);
+      // Windows FlushFileBuffers requires a writable handle. No writes occur on
+      // this handle; imports and all published versions remain byte-immutable.
+      handle = await open(path, constants.O_RDWR);
       const before = await handle.stat();
       if (before.dev !== entry.dev || before.ino !== entry.ino) throw new LogoError('storage');
       const bytes = Buffer.alloc(logo.bytes.length + 1);
@@ -83,10 +112,9 @@ export async function persistPreparedLogo(
       )
         throw new LogoError('submission');
     }
-    if (created) {
-      await handle.writeFile(logo.bytes);
-      await handle.sync();
-    }
+    // Reuse is not proof that a prior caller completed persistence. The adopter
+    // performs its own flush before SQL, including after another process exits.
+    await handle.sync();
     const after = await handle.stat();
     const entry = await lstat(path);
     if (
@@ -114,21 +142,23 @@ export async function persistPreparedLogo(
   } catch (error) {
     await handle?.close().catch(() => {});
     handle = undefined;
-    // SQL has not started, and only this call's exclusive creation is eligible.
-    if (created && path && createdIdentity) {
-      const entry = await lstat(path).catch(() => null);
+    if (error instanceof LogoError) throw error;
+    throw new LogoError('storage');
+  } finally {
+    await handle?.close().catch(() => {});
+    // Only this unique private name is eligible, even if link succeeded. Removing
+    // that name cannot remove the separately published hard link. A failed cleanup
+    // or process exit leaves a private orphan for quiesced reconciliation.
+    if (privatePath && createdIdentity) {
+      const entry = await lstat(privatePath).catch(() => null);
       if (
         entry?.isFile() &&
         !entry.isSymbolicLink() &&
         entry.dev === createdIdentity.dev &&
         entry.ino === createdIdentity.ino &&
-        (await realpath(path).catch(() => null)) === path
+        (await realpath(privatePath).catch(() => null)) === privatePath
       )
-        await unlink(path).catch(() => {});
+        await unlink(privatePath).catch(() => {});
     }
-    if (error instanceof LogoError) throw error;
-    throw new LogoError('storage');
-  } finally {
-    await handle?.close().catch(() => {});
   }
 }

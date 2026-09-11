@@ -71,3 +71,15 @@ Final status documents do not change tested behavior. Post-commit Git/patch/ZIP
 proof is necessarily supplied in the external delivery receipt rather than
 embedding a self-referential commit/archive identity in this committed file.
 Independent review, owner acceptance and deployment remain separate.
+
+## R1/R2 correction addendum — 11 September 2026
+
+The original matrix above is preserved as an exact byte prefix. The supplied
+independent review's R1/R2 findings have authorized corrections documented in
+the [correction report](../task-reports/2026-09-11-task-4-1a-corrections.md).
+The immutable pre-test correction matrix and final per-requirement evidence map
+are in the separate task41a-correction-review package. They distinguish actual
+PostgreSQL/separate-process publication proof, current-63/62 staff dispatch,
+fresh service/browser/static/build verification and exact dependency reuse.
+Project migration 62 and original evidence remain protected; migration 63 stays
+pending. The next stop is independent correction review, not acceptance.

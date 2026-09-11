@@ -219,3 +219,14 @@ remains untested without a pending speech action or blocker. Keyboard, focus,
 programmatic labels/status, RTL, reflow, genuine zoom and automated accessibility
 checks remain in scope. Tasks 4.2/6.2 retain future matter/report integration and
 export checks. No deployment, push, Access cutover or later task is included.
+
+## R1/R2 correction addendum — 11 September 2026
+
+The independent implementation review found concurrent file-publication cleanup
+and migration-63 staff-regression dispatch defects. The owner's subsequent
+explicit mandate authorized both corrections. See the [correction report](2026-09-11-task-4-1a-corrections.md)
+for the private publication protocol, exact current/historical fixture targets,
+fresh failure and wrapper proof, preservation comparison and evidence reuse.
+The original report above is preserved as an exact byte prefix. Its original
+results remain historical evidence; correction review, owner acceptance and
+deployment are separate. No task checkbox state changes in this correction.

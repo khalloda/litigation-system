@@ -21,7 +21,11 @@ import { CLIENT_LOGO_MIGRATION } from './client-logo-checkpoint';
 
 const CHECKPOINT_61_TARGET =
   /^(?:litigation|litigation_task41_canonical_prestate|litigation_task40a_canonical_checkpoint|litigation_task40a_boundary_(?:historical|canonical)_(?:login|gap|account|structural))$/u;
-function checkpointFor(database: string): 56 | 60 | 61 {
+function checkpointFor(database: string, clientBoundary = false): 56 | 60 | 61 | 62 {
+  if (clientBoundary) {
+    assert.match(database, /^(?:litigation|litigation_task41_canonical_prestate)$/u);
+    return 62;
+  }
   if (/^litigation_task33b_failed_[0-9_]+$/u.test(database)) return 56;
   if (CHECKPOINT_61_TARGET.test(database)) return 61;
   assert.match(
@@ -54,7 +58,9 @@ export async function validateFixtureMigrationConfig(config: string): Promise<st
   const target = migrationDatabaseTarget();
   assert.equal(target.hostname, '127.0.0.1');
   assert.notEqual(target.port, 5433);
-  const checkpoint = checkpointFor(target.database);
+  const configName = basename(config);
+  assert.ok(['prisma.config.ts', 'prisma.client62.config.ts'].includes(configName));
+  const checkpoint = checkpointFor(target.database, configName === 'prisma.client62.config.ts');
   await withApprovedMigrationClient((db) =>
     assertIsolatedTestCluster(
       db,
@@ -65,9 +71,9 @@ export async function validateFixtureMigrationConfig(config: string): Promise<st
   const directory = dirname(actual);
   const temporary = await realpath(tmpdir());
   assert.equal(actual.toLowerCase(), resolve(config).toLowerCase());
-  assert.equal(basename(actual), 'prisma.config.ts');
+  assert.equal(basename(actual), configName);
   assert.match(relative(temporary, directory), /^litigation-task40a-checkpoint-[A-Za-z0-9]+$/u);
-  assert.deepEqual((await readdir(directory)).sort(), ['migrations', 'prisma.config.ts']);
+  assert.deepEqual((await readdir(directory)).sort(), ['migrations', configName].sort());
   assert.equal((await lstat(actual)).isSymbolicLink(), false);
   assert.equal(await readFile(actual, 'utf8'), configText());
   const repository = await readGate4RepositoryMigrationInventory();
@@ -98,21 +104,23 @@ export async function validateFixtureMigrationConfig(config: string): Promise<st
 /** Exact pre-61 fixture construction for legacy audit replay and Phase 1
  * rollback tests. Never a release acceptance shortcut, source-database target
  * or failed-migration override. Historical proofs stop at their exact reviewed
- * checkpoint; the separate Task 4.1 acceptance deploys 62 normally afterward. */
+ * checkpoint. The explicit client62 config applies only 1–62, even while later
+ * candidates exist; it is limited to the two reviewed client fixture targets. */
 export async function migrateFixtureThroughCheckpoint(
   databaseUrl: string,
-  checkpoint: 56 | 60 | 61,
+  checkpoint: 56 | 60 | 61 | 62,
   environment = process.env,
 ): Promise<void> {
   const target = new URL(databaseUrl);
-  assert.equal(checkpointFor(target.pathname.slice(1)), checkpoint);
+  assert.equal(checkpointFor(target.pathname.slice(1), checkpoint === 62), checkpoint);
   await withApprovedMigrationClient((db) => assertIsolatedTestCluster(db, target, environment), {
     databaseUrl,
   });
   const repository = await readGate4RepositoryMigrationInventory();
   reviewedRepository(repository);
   const temporary = await mkdtemp(join(tmpdir(), 'litigation-task40a-checkpoint-'));
-  const owned = new Set(['prisma.config.ts', 'migrations', 'migrations/migration_lock.toml']);
+  const configName = checkpoint === 62 ? 'prisma.client62.config.ts' : 'prisma.config.ts';
+  const owned = new Set([configName, 'migrations', 'migrations/migration_lock.toml']);
   try {
     await mkdir(join(temporary, 'migrations'));
     await copyFile(
@@ -129,14 +137,14 @@ export async function migrateFixtureThroughCheckpoint(
         join(temporary, directory, 'migration.sql'),
       );
     }
-    await writeFile(join(temporary, 'prisma.config.ts'), configText(), 'utf8');
+    await writeFile(join(temporary, configName), configText(), 'utf8');
     const result = spawnSync(
       process.execPath,
       [
         'node_modules/tsx/dist/cli.mjs',
         'scripts/run-prisma-migration.ts',
         'deploy-fixture-checkpoint',
-        join(temporary, 'prisma.config.ts'),
+        join(temporary, configName),
       ],
       {
         windowsHide: true,

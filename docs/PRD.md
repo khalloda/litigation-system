@@ -90,7 +90,7 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent Task 4.1a implementation review**. Task 4.1 publication
+point is **independent Task 4.1a R1/R2 correction review**. Task 4.1 publication
 review is closed. Task 4.1 Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
 The D52–D57 database foundation is now deployed and operationally
 complete at migration 62, with 15/15 checks and 116/116 historical invariants.
@@ -99,7 +99,10 @@ verified and checked, pending independent review, owner acceptance and separate
 migration-63 deployment. Project PostgreSQL remains unchanged at 62 applied
 migrations. The [logo report](task-reports/2026-09-10-task-4-1a-client-logos.md)
 records preview/save, replacement, resizing, retained-version recovery and the
-unchanged role matrix.
+unchanged role matrix. The 11 September
+[R1/R2 correction report](task-reports/2026-09-11-task-4-1a-corrections.md)
+records private file publication and the verified current staff regression path;
+owner acceptance and deployment remain separate.
 The Litigation Department continues using Access;
 final cutover remains governed by D43 and D51. See the
 [Phase 1 implementation report](task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)
@@ -409,7 +412,7 @@ accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
 status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
 remain required. This acceptance authorizes no application-code removal.
 
-The current stop is independent Task 4.1a implementation review; Task 4.1
+The current stop is independent Task 4.1a R1/R2 correction review; Task 4.1
 publication review is closed. Task 4.1 overall remains accepted and checked.
 Task 4.1a is locally verified, pending review, owner acceptance and separate
 deployment of candidate migration 63. Existing database/query proof

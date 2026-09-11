@@ -34,7 +34,14 @@ export async function withCurrentClientFixture(
   await withApprovedMigrationClient(
     async (db) => {
       await assertIsolatedTestCluster(db, source);
-      assert.equal(await assertCurrentClientSource(db), 62);
+      const checkpoint = await assertCurrentClientSource(db);
+      assert.ok(
+        [62, 63].includes(checkpoint),
+        'Staff regressions require complete historical 62 or 63',
+      );
+      console.log(
+        `PASS staff adapter: verified current checkpoint ${checkpoint}; entering owned fixture`,
+      );
     },
     {
       databaseUrl: source.toString(),

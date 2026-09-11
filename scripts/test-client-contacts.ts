@@ -277,30 +277,13 @@ async function main() {
         },
         { databaseUrl: fixture.migrationUrl },
       );
-    if (process.argv[2] === '--migration-smoke') {
-      const result = spawnSync(
-        process.execPath,
-        ['node_modules/tsx/dist/cli.mjs', 'scripts/run-prisma-migration.ts', 'deploy'],
-        {
-          windowsHide: true,
-          encoding: 'utf8',
-          env: fixture.environment,
-          maxBuffer: 16 * 1024 * 1024,
-        },
-      );
-      console.log(
-        (result.stdout + result.stderr).replace(
-          /postgres(?:ql)?:\/\/[^\s"']+/gu,
-          '[redacted database URL]',
-        ),
-      );
-      assert.equal(result.status, 0, 'Migration 62 isolated deployment failed');
-    }
+    if (process.argv[2] === '--migration-smoke')
+      await migrateFixtureThroughCheckpoint(fixture.migrationUrl, 62, fixture.environment);
     if (currentRegression) {
       const sourceCheckpoint = await prepareCurrentClientSource(
         fixture.migrationUrl,
         fixture.environment,
-        () => child('scripts/run-prisma-migration.ts', ['deploy'], fixture.environment),
+        () => migrateFixtureThroughCheckpoint(fixture.migrationUrl, 62, fixture.environment),
       );
       const all = process.argv[2] === '--regression-proof';
       if (all) {
@@ -398,7 +381,7 @@ async function main() {
           },
           { databaseUrl: migrationUrl },
         );
-        child('scripts/run-prisma-migration.ts', ['deploy'], environment);
+        await migrateFixtureThroughCheckpoint(migrationUrl, 62, environment);
         await withApprovedMigrationClient(
           async (db) => {
             await assertClientContactBoundary(db, profile);
