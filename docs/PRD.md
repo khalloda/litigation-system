@@ -90,8 +90,9 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of the authorized Task 4.2 Phase 2 R1–R3
-corrections** after local verification. Khaled Helmy accepted Phase 1 at
+point is **independent review of the authorized Task 4.2 Phase 2 nullable-party-order
+R3 follow-up** after local verification. R1/R2 are closed by the correction review.
+Khaled Helmy accepted Phase 1 at
 `2f8820a3053ab65a60ee183882cbd6a2462559bc` on 12 September 2026; its
 [independent PASS review](reviews/2026-09-12-task-4-2-phase-1-independent-review.md)
 is preserved byte-identically. Migration-63 documentation
@@ -432,8 +433,11 @@ accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
 status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
 remain required. This acceptance authorizes no application-code removal.
 
-The current work is the authorized Task 4.2 Phase 2 R1–R3 correction, stopping for independent
-correction review after local verification and one local correction commit. Migration-63
+The current work is the authorized Task 4.2 Phase 2 nullable-party-order R3 follow-up,
+stopping for independent review after local verification and one local commit.
+See the [follow-up report](task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
+[matrix](testing/task-4-2-phase2-r3-ordering-matrix.md). R1/R2 are closed; Phase 2 is
+not accepted. Migration-63
 documentation publication and Task 4.1 publication review are closed.
 Task 4.1 overall and Task 4.1a remain accepted and checked. Task 4.1a source is
 published and its local migration/activation milestone is accepted; production

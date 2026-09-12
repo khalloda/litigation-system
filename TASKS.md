@@ -2134,7 +2134,11 @@ than assuming one rule for every workflow. Test with real volumes.
         The [independent review](docs/reviews/2026-09-12-task-4-2-phase-2-independent-review.md)
         identified R1–R3. See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)
         and [correction matrix](docs/testing/task-4-2-phase2-correction-matrix.md).
-        Stop for independent correction review; migration 64 remains pending on the real database.
+        The [correction review](docs/reviews/2026-09-12-task-4-2-phase-2-correction-independent-review.md)
+        closed R1/R2. Stop for independent review of the nullable-party-order R3
+        [follow-up](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
+        [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
+        Migration 64 remains pending on the real database; Phase 2 is not accepted.
   - [ ] **Later matter archive/restore:** outside Phase 2; requires its own mandate.
 - [ ] **4.3 Hearings** — 13,382 current target rows need paging and fast
       filters. The 327 original high-impact quarantine/source rows remain as

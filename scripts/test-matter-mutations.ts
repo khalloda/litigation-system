@@ -185,6 +185,43 @@ async function main() {
     )
       check('invariants-before', 'scripts/check-db.ts');
     await initialiseActors(fixture.migrationUrl, fixture.runtimeUrl);
+    if (process.argv.includes('--nullable-order')) {
+      const setup = spawnSync(
+        'docker',
+        [
+          'exec',
+          '-i',
+          '-e',
+          'PGOPTIONS=-c default_transaction_read_only=on',
+          fixture.container,
+          'psql',
+          '-X',
+          '-v',
+          'ON_ERROR_STOP=1',
+          '-U',
+          'litigation',
+          '-d',
+          'litigation',
+        ],
+        { input: readFileSync('docker/postgres/verify.sql'), windowsHide: true, encoding: 'utf8' },
+      );
+      writeFileSync(join(output, 'database-setup.log'), setup.stdout + setup.stderr);
+      assert.equal(setup.status, 0, 'Database setup proof');
+      const { seedNullablePartyOrder, proveNullablePartyOrder } =
+        await import('./lib/matter-nullable-order-browser.mjs');
+      const runtime = createDatabaseClient(fixture.runtimeUrl);
+      try {
+        const cases = await seedNullablePartyOrder(runtime);
+        const { proveMatterBrowser } = await import('./test-matter-browser.mjs');
+        await proveMatterBrowser(fixture, output, null, (ctx: unknown) =>
+          proveNullablePartyOrder(ctx, cases, process.argv.includes('--reproduce')),
+        );
+      } finally {
+        await runtime.$disconnect();
+      }
+      check('invariants-after-nullable-order', 'scripts/check-db.ts');
+      return;
+    }
     if (process.argv.includes('--selection-controls')) {
       await proveMatterCorrections(
         fixture,

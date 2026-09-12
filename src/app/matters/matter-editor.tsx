@@ -53,6 +53,15 @@ function move<T>(rows: T[], index: number, delta: number): T[] {
 function groupParties(rows: MatterPartyInput[]): MatterPartyInput[] {
   return ['client', 'opponent'].flatMap((side) => rows.filter((p) => p.side === side));
 }
+function appendParty(rows: MatterPartyInput[], party: MatterPartyInput): MatterPartyInput[] {
+  // Encode this explicit append in display order, including previously NULL
+  // positions. Untouched groups and saves keep their original positions.
+  const destination = [...rows.filter((p) => p.side === party.side), party].map((p, i) => ({
+    ...p,
+    ordinal: i + 1,
+  }));
+  return groupParties([...rows.filter((p) => p.side !== party.side), ...destination]);
+}
 export function MatterEditor(props: {
   snapshot: MatterMutationSnapshot;
   submission: string;
@@ -94,15 +103,7 @@ export function MatterEditor(props: {
       const party = old.at(index)!;
       if (party.side === side) return old;
       const remaining = old.filter((_, i) => i !== index);
-      return groupParties([
-        ...remaining,
-        {
-          ...party,
-          side,
-          ordinal:
-            Math.max(0, ...remaining.filter((p) => p.side === side).map((p) => p.ordinal ?? 0)) + 1,
-        },
-      ]);
+      return appendParty(remaining, { ...party, side });
     });
   const focusList = () =>
     requestAnimationFrame(() =>
@@ -468,22 +469,15 @@ export function MatterEditor(props: {
           <button
             type="button"
             onClick={() =>
-              setParties(
-                groupParties([
-                  ...parties,
-                  {
-                    id: null,
-                    side: 'client',
-                    party_name: '',
-                    gender: null,
-                    ordinal:
-                      Math.max(
-                        0,
-                        ...parties.filter((p) => p.side === 'client').map((p) => p.ordinal ?? 0),
-                      ) + 1,
-                    roles: [],
-                  },
-                ]),
+              setParties((old) =>
+                appendParty(old, {
+                  id: null,
+                  side: 'client',
+                  party_name: '',
+                  gender: null,
+                  ordinal: null,
+                  roles: [],
+                }),
               )
             }
           >
