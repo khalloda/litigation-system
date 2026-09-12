@@ -1269,3 +1269,26 @@ No schema, migration, constraint, grant or data-model change was introduced.
 
 Stop for independent Phase 2 review; Phase 3 is the next development phase.
 See the [implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
+
+
+### Task 4.2 Phase 3 — D58
+
+Forward migration 65 adds `matters.is_archived boolean NOT NULL DEFAULT false`,
+separate from status/dates, plus an archive/case-number/id index. No prior
+migration is changed. Archive/restore updates this flag, row version and audit
+metadata only, with existing atomic submission/history records. Historical
+aggregate JSON is normalized to initial `false` only when checked; stored
+import/old change evidence remains intact. Parties/capacities/lawyers are
+read-only while archived, preserving IDs/order/retirement. No child, client,
+financial or legacy record cascades. POAs are linked to clients, not directly
+to matters; confirmation does not invent a matter-POA count. Real migration
+checkpoint remains 63; application of 64/65 needs separate authority.
+
+At candidate 65, the common audit writer allocates `audit_events.id` from the private transactional
+`_migration.matter_lifecycle_audit_counter` allocator. Existing events and
+`audit_events_id_seq` are untouched. The single counter row starts at the
+existing sequence's last allocated/reserved value; failed transactions roll back allocation. Current
+checks bind its initial value to that frozen sequence and its current value to
+the greatest committed event ID/initial value. Runtime has no direct counter
+table or allocator execution privilege; existing audit writers retain their
+actor, context, bounded-field and append-only checks.

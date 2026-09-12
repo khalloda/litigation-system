@@ -1,3 +1,4 @@
+import { matterLifecycleApplied, currentMatterEditSql } from './matter-lifecycle-checkpoint';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -174,7 +175,7 @@ export async function assertMatterEditBoundary(db: ClientBase, profile: string) 
       "SELECT n.nspname schema,p.proname name,p.prosrc body,p.prosecdef,p.proconfig,has_function_privilege('litigation_runtime',p.oid,'EXECUTE') runtime, EXISTS(SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE') public FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','_migration') AND p.proname LIKE 'matter_edit_%'",
     )
   ).rows;
-  const source = matterEditSql();
+  const source = currentMatterEditSql(matterEditSql(), await matterLifecycleApplied(db));
   assert.equal(functions.length, [...source.matchAll(/CREATE FUNCTION /gu)].length);
   for (const fn of functions) {
     const match = source.match(

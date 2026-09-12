@@ -461,6 +461,30 @@ export const ROUTE_INVENTORY = [
   },
   {
     kind: 'page',
+    source: 'src/app/matters/[id]/archive/page.tsx',
+    route: '/matters/[id]/archive',
+    classification: { access: 'permission', area: 'matters', action: 'archive' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/matters/lifecycle-actions.ts',
+    exportName: 'archiveMatterAction',
+    classification: { access: 'permission', area: 'matters', action: 'archive' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/matters/[id]/restore/page.tsx',
+    route: '/matters/[id]/restore',
+    classification: { access: 'permission', area: 'matters', action: 'restore' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/matters/lifecycle-actions.ts',
+    exportName: 'restoreMatterAction',
+    classification: { access: 'permission', area: 'matters', action: 'restore' },
+  },
+  {
+    kind: 'page',
     source: 'src/app/matters/new/page.tsx',
     route: '/matters/new',
     classification: { access: 'permission', area: 'matters', action: 'create' },

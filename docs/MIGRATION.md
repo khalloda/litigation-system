@@ -3506,3 +3506,16 @@ backup/retention/off-VM/integrity/spare-machine-and-printed-logo obligations rem
 separate; the local exception does not satisfy them. Final Access cutover is
 unperformed. Stop for independent review of this documentation commit, then the
 separate documentation/publication checkpoint and Task 4.2 mandate.
+
+
+### D58 matter lifecycle forward migration
+
+Migrations1–64 remain byte-for-byte frozen. Candidate65 adds a default-false
+archive flag and audited lifecycle gateways. It does not rewrite import or old
+change JSON: validation interprets missing historical archive state as false
+in memory, then verifies continuous complete aggregate history. Native
+create/edit history from64 must survive lifecycle transitions and editing at65.
+Source mappings, child identities/order/retirement and billing remain intact.
+Strict live sequence log_cnt/is_called preservation is separate from portable
+restore reservations in owned disposable copies. Live64/65 application and
+final cutover remain separately gated.

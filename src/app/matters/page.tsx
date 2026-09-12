@@ -121,7 +121,17 @@ export default async function MattersPage({
               {t.matters.searchHint}
             </p>
           </div>
-          <div className={local.filters}>{primaryFilters.map(select)}</div>
+          <div className={local.filters}>
+            {primaryFilters.map(select)}
+            <div className={styles.field}>
+              <label htmlFor="matter-archive">{t.matters.lifecycle.archiveFilter}</label>
+              <select id="matter-archive" name="archive" defaultValue={filters.archive}>
+                <option value="current">{t.matters.lifecycle.current}</option>
+                <option value="archived">{t.matters.lifecycle.archivedFilter}</option>
+                <option value="all">{t.matters.lifecycle.all}</option>
+              </select>
+            </div>
+          </div>
           <details className={local.more} open={moreFilters.some(([, , value]) => value !== 'all')}>
             <summary>{t.matters.moreFilters}</summary>
             <div className={local.filters}>{moreFilters.map(select)}</div>
@@ -196,6 +206,12 @@ export default async function MattersPage({
                   <Field label={t.matters.filters.branch} value={row.branch} />
                 </dl>
                 <dl>
+                  {row.archived ? (
+                    <Field
+                      label={t.matters.lifecycle.archiveFilter}
+                      value={t.matters.lifecycle.archivedFilter}
+                    />
+                  ) : null}
                   <Field label={t.matters.filters.status} value={row.status} />
                   <Field label={t.matters.filters.type} value={row.type} />
                   <Field label={t.matters.filters.degree} value={row.degree} />

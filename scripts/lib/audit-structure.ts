@@ -1,3 +1,4 @@
+import { matterLifecycleApplied, MATTER_LIFECYCLE_GATEWAYS } from './matter-lifecycle-checkpoint';
 import { createHash } from 'node:crypto';
 import type { ClientBase } from 'pg';
 import { clientContactBoundaryApplied, CLIENT_CONTACT_GATEWAYS } from './client-contact-checkpoint';
@@ -350,6 +351,7 @@ export async function runtimeRoleBoundaryFailures(
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
   const matterBoundary = await matterEditApplied(db);
+  const lifecycle = await matterLifecycleApplied(db);
   const rosterLocked = (table: string) =>
     (staffBoundary && STAFF_ROSTER_TABLES.includes(table)) ||
     (clientBoundary && ['clients', 'contacts'].includes(table)) ||
@@ -361,6 +363,7 @@ export async function runtimeRoleBoundaryFailures(
     ...(clientBoundary ? CLIENT_CONTACT_GATEWAYS : []),
     ...(logoBoundary ? CLIENT_LOGO_GATEWAYS : []),
     ...(matterBoundary ? MATTER_EDIT_GATEWAYS : []),
+    ...(lifecycle ? MATTER_LIFECYCLE_GATEWAYS : []),
   ];
   if (!/^[a-z][a-z0-9_]*$/u.test(roleName)) return ['runtime role name is invalid'];
 

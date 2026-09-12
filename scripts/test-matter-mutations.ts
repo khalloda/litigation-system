@@ -11,6 +11,7 @@ import { staffReadOnlyState } from './lib/staff-read-only-state';
 import { clientLogoFixtureState } from './lib/client-logo-fixture-state';
 import { assertCurrentClientSource } from './lib/client-regression-source';
 import { assertMatterEditBoundary } from './lib/matter-edit-checkpoint';
+import { migrateFixtureThroughCheckpoint } from './lib/fixture-migration-checkpoint';
 import { initialiseActors } from './test-client-contacts';
 import { createDatabaseClient } from '../src/lib/db';
 import { createMaintenanceAuditMetadata } from '../src/lib/audit-metadata';
@@ -110,26 +111,13 @@ async function main() {
       assert.deepEqual((await staffReadOnlyState(db)).tables, source.state.tables);
     });
     pass('Complete candidate transaction rolls back without table changes');
-    const migration = spawnSync(
-      process.execPath,
-      ['node_modules/tsx/dist/cli.mjs', 'scripts/run-prisma-migration.ts', 'deploy'],
-      {
-        env: {
-          ...fixture.environment,
-          PRISMA_SCHEMA_ENGINE_BINARY: resolve(
-            'node_modules/@prisma/engines/schema-engine-windows.exe',
-          ),
-        },
-        windowsHide: true,
-        encoding: 'utf8',
-        maxBuffer: 16000000,
-      },
-    );
-    writeFileSync(
-      join(output, 'migration.log'),
-      (migration.stdout + migration.stderr).replace(/postgres(?:ql)?:\/\/[^\s"']+/gu, '[redacted]'),
-    );
-    if (migration.status !== 0) {
+    try {
+      await migrateFixtureThroughCheckpoint(fixture.migrationUrl, 64, fixture.environment);
+      writeFileSync(
+        join(output, 'migration.log'),
+        'PASS bounded checkpoint64 deployment through owned fixture gateway\n',
+      );
+    } catch (error) {
       await inspect(async (db) => {
         await db.query('ROLLBACK');
         writeFileSync(
@@ -148,12 +136,8 @@ async function main() {
           ),
         );
       });
+      throw error;
     }
-    assert.equal(
-      migration.status,
-      0,
-      'Migration failed; actual ledger/state preserved before cleanup',
-    );
     await inspect(async (db) => {
       await assertMatterEditBoundary(db, 'historical-full-state-upgrade');
     });

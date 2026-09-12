@@ -26,3 +26,18 @@ Phase 1 acceptance remains valid. Phase 2 is not accepted.
 The original and previous correction report/matrix bytes are wholly unchanged.
 All migration files, schema/gateway, decisions, governance, checkbox lines and
 Phase 1 acceptance are preserved. Stop at independent follow-up review.
+
+
+## Owner acceptance addendum — 12 September 2026
+
+Khaled Helmy explicitly accepted Task 4.2 Phase 2 at
+`6771218164c992781902374efb62f0b2f54b2a20` in the direct implementation mandate.
+The final R3 independent PASS review is preserved byte-for-byte at
+`docs/reviews/2026-09-12-task-4-2-phase-2-r3-ordering-independent-review.md`
+(9,907 bytes; SHA-256 `3d7ed89346e8831a9b1280e9ccc37cbb7d0624a832910a0ae3d5e1aaeda27de5`).
+R1–R3 are closed. The original matrix above is an exact historical prefix.
+This acceptance is recorded in the single authorized Phase 3 implementation
+commit. Phase 1 acceptance stands; Phase 3 and overall Task 4.2 acceptance
+remain pending independent review and owner decision. The actual database
+remains at 63, with accepted migration 64 pending; no publication or deployment
+is claimed. D58 records the separately approved matter lifecycle contract.

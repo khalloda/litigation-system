@@ -29,6 +29,7 @@ export type MatterFilters = Record<MatterFilterKey, string> & {
   q: string;
   page: number;
   fromClient: string;
+  archive: 'current' | 'archived' | 'all';
 };
 export class MatterFilterError extends Error {}
 
@@ -67,6 +68,9 @@ export function parseMatterFilters(params: ClientSearchParams): MatterFilters {
     if (Array.isArray(v)) throw new MatterFilterError('repeated filter');
     return v ?? fallback;
   };
+  const archive = single('archive', 'current');
+  if (!['current', 'archived', 'all'].includes(archive))
+    throw new MatterFilterError('invalid archive filter');
   const q = single('q', '').trim();
   const page = clientId(single('page', '1'));
   if (q.length > MATTER_SEARCH_LIMIT || /[\u0000-\u001f\u007f]/u.test(q) || page === null)
@@ -89,6 +93,7 @@ export function parseMatterFilters(params: ClientSearchParams): MatterFilters {
     q,
     page,
     fromClient: matterClientReturn(params.fromClient),
+    archive,
   } as MatterFilters;
 }
 export function matterListHref(filters: MatterFilters, page = filters.page): string {
@@ -96,6 +101,7 @@ export function matterListHref(filters: MatterFilters, page = filters.page): str
   for (const [key, value] of Object.entries(filters))
     if ((MATTER_FILTER_KEYS as readonly string[]).includes(key) && value !== 'all')
       params.set(key, String(value));
+  if (filters.archive !== 'current') params.set('archive', filters.archive);
   if (filters.q) params.set('q', filters.q);
   if (page !== 1) params.set('page', String(page));
   if (filters.fromClient) params.set('fromClient', filters.fromClient);
@@ -115,7 +121,10 @@ export function matterReturnHref(value: string | string[] | undefined): string {
   const url = new URL(value, 'http://localhost');
   const entries = new Map<string, string>();
   for (const [key, item] of url.searchParams) {
-    if (![...MATTER_FILTER_KEYS, 'q', 'page', 'fromClient'].includes(key) || entries.has(key))
+    if (
+      ![...MATTER_FILTER_KEYS, 'q', 'page', 'fromClient', 'archive'].includes(key) ||
+      entries.has(key)
+    )
       throw new MatterFilterError('invalid matter return');
     entries.set(key, item);
   }
@@ -135,6 +144,7 @@ export type MatterRow = {
   clientId: number | null;
   clientName: string | null;
   clientArchived: boolean | null;
+  archived: boolean;
   status: string | null;
   type: string | null;
   category: string | null;
@@ -197,7 +207,7 @@ const joins = Prisma.sql`FROM public.matters m
   LEFT JOIN public.lookup_degree d ON d.id=m.degree_id
   LEFT JOIN public.lookup_venue v ON v.id=m.venue_id
   LEFT JOIN public.lookup_client_branch b ON b.id=m.branch_id`;
-const projection = Prisma.sql`m.id,m.legacy_id AS "legacyId",m.case_number_ar AS "caseNumber",m.subject,
+const projection = Prisma.sql`m.id,m.legacy_id AS "legacyId",m.case_number_ar AS "caseNumber",m.subject,coalesce((to_jsonb(m)->>'is_archived')::boolean,false) AS archived,
   m.client_id AS "clientId",c.name_ar AS "clientName",c.is_archived AS "clientArchived",m.status,
   mt.label_ar AS type,mc.label_ar AS category,d.label_ar AS degree,v.label_ar AS venue,b.label_ar AS branch,
   (SELECT count(*)::int FROM public.matter_lawyers ml WHERE NOT ml.is_retired AND ml.matter_id=m.id) AS "lawyerCount"`;
@@ -205,6 +215,10 @@ const pattern = (q: string) =>
   Prisma.sql`('%' || public.ar_normalise(${q.replace(/[\\%_]/gu, '\\$&')}) || '%')`;
 function where(f: MatterFilters) {
   const predicates = [Prisma.sql`true`];
+  if (f.archive !== 'all')
+    predicates.push(
+      Prisma.sql`coalesce((to_jsonb(m)->>'is_archived')::boolean,false)=${f.archive === 'archived'}`,
+    );
   const columns = [
     [Prisma.sql`m.client_id`, f.client],
     [Prisma.sql`m.matter_type_id`, f.type],

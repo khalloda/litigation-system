@@ -6,13 +6,13 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 12 September 2026:** Khaled accepted Task 4.2 Phase 1
-at `2f8820a3053ab65a60ee183882cbd6a2462559bc`. Phase 2 implements matter
-creation/editing with parties, capacities and lawyers and stops for independent
-review. Overall Task 4.2 remains incomplete; migration 64 is pending on the real
-development database. See the
-[phase report](docs/task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md) and
-[final matrix](docs/testing/task-4-2-phase2-acceptance-matrix.md). The previous
+**Current checkpoint — 13 September 2026:** Phase 1 remains accepted. Khaled
+accepted Phase 2 on 12 September at `6771218164c992781902374efb62f0b2f54b2a20`
+after the final R3 PASS review. D58 Phase 3 matter archive/restore is the
+locally verified implementation, stopping for independent review. Overall
+Task 4.2 remains incomplete; migrations 64/65 remain pending on the real
+database at 63. See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
+and [matrix](docs/testing/task-4-2-phase3-acceptance-matrix.md). The previous
 migration-63 documentation publication is closed at
 `d84aa4b916e41e15abf543fc7dd2d4155bea7acf`, supported by the preserved
 [publication review](docs/reviews/2026-09-12-migration63-documentation-publication-independent-review.md).
@@ -2129,17 +2129,20 @@ than assuming one rule for every workflow. Test with real volumes.
   - [x] **Phase 2 — matter creation/editing, parties, capacities and lawyers:**
         implemented and locally verified for Administrator/Litigation Assistant,
         with disposable database/production browser proof and one local commit.
-        This is not owner acceptance. See the [report](docs/task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
+        Owner acceptance was given on 12 September 2026. See the [report](docs/task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
         and [matrix](docs/testing/task-4-2-phase2-acceptance-matrix.md).
         The [independent review](docs/reviews/2026-09-12-task-4-2-phase-2-independent-review.md)
         identified R1–R3. See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)
         and [correction matrix](docs/testing/task-4-2-phase2-correction-matrix.md).
         The [correction review](docs/reviews/2026-09-12-task-4-2-phase-2-correction-independent-review.md)
-        closed R1/R2. Stop for independent review of the nullable-party-order R3
+        closed R1/R2. The final PASS review closed the nullable-party-order R3
         [follow-up](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
         [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
-        Migration 64 remains pending on the real database; Phase 2 is not accepted.
-  - [ ] **Later matter archive/restore:** outside Phase 2; requires its own mandate.
+        Phase 2 accepted at `6771218164c992781902374efb62f0b2f54b2a20`; migration 64 remains pending.
+  - [x] **Phase 3 — matter archive/restore:** D58 authorized Administrator-only
+        non-cascading archive/restore, archived read-only access, independent client
+        state and preserved report inclusion. Implemented and locally verified;
+        owner acceptance remains pending independent review.
 - [ ] **4.3 Hearings** — 13,382 current target rows need paging and fast
       filters. The 327 original high-impact quarantine/source rows remain as
       immutable evidence of the reviewed release; they are not additional

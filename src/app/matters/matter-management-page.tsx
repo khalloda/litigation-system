@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { Session } from 'next-auth';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { t } from '@/strings';
+import styles from '../staff/staff.module.css';
 import { readMatterMutation } from '@/lib/matter-mutations';
 import { MatterMutationError } from '@/lib/matter-mutation-input';
 import { parseMatterFilters, matterDetailHref, matterListHref } from '@/lib/matter-query';
@@ -21,6 +24,16 @@ export async function MatterManagementPage({
     snapshot = await readMatterMutation(session, id === null ? 'create' : 'update', id);
   } catch (error) {
     if (error instanceof MatterMutationError && error.code === 'not-found') notFound();
+    if (error instanceof MatterMutationError && error.code === 'archived' && id !== null)
+      return (
+        <main className={styles.page}>
+          <h1>{t.matters.lifecycle.archived}</h1>
+          <p>{t.matters.lifecycle.notice}</p>
+          <Link className={styles.link} href={matterDetailHref(id, filters)}>
+            {t.clients.manage.backRecord}
+          </Link>
+        </main>
+      );
     throw error;
   }
   const cancel = id === null ? matterListHref(filters) : matterDetailHref(id, filters);

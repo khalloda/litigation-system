@@ -982,3 +982,13 @@ backup/retention/off-VM/integrity/spare-machine-and-printed-logo obligations rem
 separate; the local exception does not satisfy them. Final Access cutover is
 unperformed. Stop for independent review of this documentation commit, then the
 separate documentation/publication checkpoint and Task 4.2 mandate.
+
+
+### Task 4.2 Phase 3 candidate checkpoint
+
+The real database stays at63. Frozen candidate64 precedes D58 candidate65.
+Owned fixture dispatch supports exact historical63, accepted64 and candidate65
+with separate canonical/historical profiles. Old fixture paths stop at their
+requested checkpoint. Current checks enforce the archive default/index, exact
+functions/settings/privileges/triggers and complete audited matter history.
+Application to the real database remains separately authorized.

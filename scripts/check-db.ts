@@ -161,7 +161,7 @@ async function main() {
       clientBoundary: checkpoint >= 62,
       clientChecks: checkpoint >= 62 ? await assertClientContactBoundary(current, profile) : [],
       logoChecks: checkpoint >= 63 ? await assertClientLogoBoundary(current) : [],
-      matterChecks: checkpoint === 64 ? await assertMatterEditBoundary(current, profile) : [],
+      matterChecks: checkpoint >= 64 ? await assertMatterEditBoundary(current, profile) : [],
       staffBoundary: checkpoint !== 60,
       rosterBaseline: await readRosterBaseline(current, checkpoint !== 60),
       staffChecks,
@@ -1091,7 +1091,7 @@ async function main() {
   const twoLeads = await db.$queryRaw<{ count: bigint }[]>`
     SELECT count(*) AS count FROM (
       SELECT matter_id FROM matter_lawyers WHERE role = 'lead'
-       AND (${checkpoint !== 64} OR NOT coalesce((to_jsonb(matter_lawyers)->>'is_retired')::boolean,false))
+       AND (${checkpoint < 64} OR NOT coalesce((to_jsonb(matter_lawyers)->>'is_retired')::boolean,false))
        GROUP BY matter_id HAVING count(*) > 1) d`;
   const twoLeadsCount = Number(one(twoLeads, 'matters with two leads').count);
   if (twoLeadsCount > 0) guards.push(`${twoLeadsCount} matters have two lead lawyers`);
@@ -2117,7 +2117,7 @@ async function main() {
       await db.$queryRawUnsafe<MatterReconciliationRow[]>(
         historicalMatterSql(
           historicalHighImpactSql(MATTER_RECONCILIATION_SQL, highImpactState),
-          checkpoint === 64,
+          checkpoint >= 64,
         ),
       ),
       'permanent matter target and quarantine reconciliation',
@@ -2155,7 +2155,7 @@ async function main() {
   }
   await withApprovedMigrationClient(async (currentRelationshipDb) => {
     const relationshipDb = historicalHighImpactClient(
-      historicalMatterClient(currentRelationshipDb, checkpoint === 64),
+      historicalMatterClient(currentRelationshipDb, checkpoint >= 64),
       highImpactState,
     );
     const historicalRosterDb = historicalStaffClient(relationshipDb, staffBoundary);

@@ -1,3 +1,13 @@
+export const MATTER_COUNT_KEYS = [
+  'hearings',
+  'tasks',
+  'steps',
+  'documents',
+  'feeLetters',
+  'parties',
+  'capacities',
+  'lawyers',
+] as const;
 export const MATTER_TEXT_FIELDS = [
   'case_number_ar',
   'subject',
@@ -58,7 +68,7 @@ export type MatterMutationInput = {
   lawyers?: MatterLawyerInput[];
 };
 export type MatterMutationCode =
-  'invalid' | 'stale' | 'submission' | 'session' | 'not-found' | 'generic';
+  'invalid' | 'stale' | 'submission' | 'session' | 'not-found' | 'archived' | 'generic';
 export class MatterMutationError extends Error {
   constructor(
     public code: MatterMutationCode,

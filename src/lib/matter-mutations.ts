@@ -38,6 +38,8 @@ function authorize(session: Session | null, action: 'create' | 'update') {
 function translate(error: unknown): never {
   if (error instanceof MatterMutationError || error instanceof AuthorizationError) throw error;
   const message = error instanceof Error ? error.message : '';
+  if (message.includes('Restore archived matter before editing'))
+    throw new MatterMutationError('archived');
   if (message.includes('Matter version is stale')) throw new MatterMutationError('stale');
   if (message.includes('Matter submission payload differs'))
     throw new MatterMutationError('submission');

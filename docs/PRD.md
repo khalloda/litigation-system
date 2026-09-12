@@ -433,11 +433,11 @@ accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
 status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
 remain required. This acceptance authorizes no application-code removal.
 
-The current work is the authorized Task 4.2 Phase 2 nullable-party-order R3 follow-up,
+The current work is authorized Task 4.2 Phase 3 matter archive/restore under D58,
 stopping for independent review after local verification and one local commit.
 See the [follow-up report](task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
-[matrix](testing/task-4-2-phase2-r3-ordering-matrix.md). R1/R2 are closed; Phase 2 is
-not accepted. Migration-63
+[matrix](testing/task-4-2-phase2-r3-ordering-matrix.md). R1–R3 are closed; Khaled accepted Phase 2 on 12 September 2026 at
+`6771218164c992781902374efb62f0b2f54b2a20`. Migration-63
 documentation publication and Task 4.1 publication review are closed.
 Task 4.1 overall and Task 4.1a remain accepted and checked. Task 4.1a source is
 published and its local migration/activation milestone is accepted; production
@@ -448,10 +448,23 @@ filters, alias search and stable 25-row paging; its detail preserves full case
 numbers, independent classifications, ordered parties/capacities and recorded
 lawyer assignments. Two-way client links preserve navigation context. Matter
 creation/editing is authorized in Phase 2, including ordered parties/capacities and
-lawyers for Administrator/Litigation Assistant. The candidate migration is pending
-on the real database. See the [Phase 2 report](task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
+lawyers for Administrator/Litigation Assistant. Candidates 64 and 65 remain pending
+on the real database at 63. See the [Phase 2 report](task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
 and [matrix](testing/task-4-2-phase2-acceptance-matrix.md), with the
 [correction report](task-reports/2026-09-12-task-4-2-phase-2-corrections.md) and
-[correction matrix](testing/task-4-2-phase2-correction-matrix.md). Matter archive/restore and
-overall Task 4.2 remain incomplete. Stage 6 report/export
+[correction matrix](testing/task-4-2-phase2-correction-matrix.md). D58 Phase 3 implements matter archive/restore; Phase 3 and overall Task 4.2
+owner acceptance remain pending independent review. Stage 6 report/export
 screens still require their own D52 integration proof.
+
+
+### Task 4.2 Phase 3 — D58 lifecycle
+
+Administrator archive/restore is deliberate, recoverable and non-cascading.
+The default list shows unarchived matters, with explicit archived/all filters.
+All roles may read archived details and relationships. Administrator restoration
+is required before changing matter fields, parties, capacities or lawyers.
+Client state is independent; records and existing report contents/totals remain
+unchanged. Confirmation names the matter and gives current related counts.
+There is no requirement for a closed case, settled bill or empty relationship.
+Future matter pickers exclude archived new choices and retain existing references.
+See D58 and the [Phase 3 report](task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md).

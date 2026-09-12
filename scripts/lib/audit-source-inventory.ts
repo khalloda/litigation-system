@@ -21,13 +21,15 @@ export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
 const MATTER_READ_SERVICE = 'src/lib/matter-query.ts';
+const MATTER_LIFECYCLE_SERVICE = 'src/lib/matter-lifecycle.ts';
+const MATTER_LIFECYCLE_SHA256 = '86b767287c5cca470ac16b0d69927625f6ff483204d21e1fc19351843ccba5cf';
 const MATTER_MUTATION_SERVICE = 'src/lib/matter-mutations.ts';
 const MATTER_MUTATION_SERVICE_SHA256 =
-  'f9059ab80ccf9cdb0c00b1b6a7b2e8afa7653bf2a338ebc9da1b8785da8c1e8a';
+  'b4930cecc0d67bb0c9945ccd2673a43c88412eb581ac366ab3b563aae717c861';
 const MATTER_MUTATION_INPUT_SHA256 =
-  'a1b643db45c1beb65ad8c8c94e09a10abb9bf00cb4aea72758bbf16997d99388';
+  'fe15a2bdab5bac145d5aa9cd00734aba06bf3256c92e1a9cff0030419f98e3fa';
 const MATTER_READ_SERVICE_SHA256 =
-  '2aada49ed32821530e705004a6854b88b5bbe28f082002b17ec2e597f6de2545';
+  '5f742bae1111e13402031773353f0ffb43a12e777c35e2c459f69af2383a8661';
 const CLIENT_MUTATION_SERVICE = 'src/lib/client-mutations.ts';
 const LOGO_MUTATION_SERVICE = 'src/lib/client-logo-management.ts';
 const LOGO_MUTATION_SERVICE_SHA256 =
@@ -106,6 +108,21 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/matter-lifecycle.ts',
+    'readMatterLifecycle',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/matter-lifecycle.ts',
+    'readMatterLifecycle',
+    'deebaf0be6aa0be943d1b4ba0920982a5cf25f84041b0fbc7e9e72f4c763f644',
+  ],
+  [
+    'src/lib/matter-lifecycle.ts',
+    'mutateMatterLifecycle',
+    'fa47597ab6042c2992257153b724e8f3c6810cd7ce9953222fc2c80632f05cae',
+  ],
   // BEGIN MATTER MUTATION CALLS
   [
     'src/lib/matter-mutations.ts',
@@ -1752,6 +1769,13 @@ export function auditRuntimeSourceFailures(
     const isStaffMutationService = source.path === STAFF_MUTATION_SERVICE;
     const isClientMutationService = source.path === CLIENT_MUTATION_SERVICE;
     const isLogoMutationService = source.path === LOGO_MUTATION_SERVICE;
+    const isMatterLifecycleService = source.path === MATTER_LIFECYCLE_SERVICE;
+    if (
+      isMatterLifecycleService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        MATTER_LIFECYCLE_SHA256
+    )
+      failures.add('Matter lifecycle closure differs from reviewed inventory');
     const isMatterMutationService = source.path === MATTER_MUTATION_SERVICE;
     if (
       isMatterMutationService &&
@@ -1777,7 +1801,8 @@ export function auditRuntimeSourceFailures(
       isStaffMutationService ||
       isClientMutationService ||
       isLogoMutationService ||
-      isMatterMutationService;
+      isMatterMutationService ||
+      isMatterLifecycleService;
     const isDatabaseModule = absolute === databaseAbsolute;
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
     const isClientReadService = source.path === CLIENT_READ_SERVICE;
@@ -1891,7 +1916,8 @@ export function auditRuntimeSourceFailures(
               : isStaffMutationService ||
                   isClientMutationService ||
                   isLogoMutationService ||
-                  isMatterMutationService
+                  isMatterMutationService ||
+                  isMatterLifecycleService
                 ? new Set(['setHumanAuditContext'])
                 : USER_MANAGEMENT_SERVICE_HELPERS;
             if (element.propertyName || !approvedHelpers.has(imported)) {
@@ -2215,6 +2241,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'mutateMatterLifecycle',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'mutateMatter',

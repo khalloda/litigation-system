@@ -1524,3 +1524,64 @@ departmental use; D43/D51 final cutover remains separate.
 testing days for the bounded implementation, with overlapping component
 estimates and prompt business answers assumed. This is an estimate, not an
 authorization to execute or incur new infrastructure/licensing costs.
+
+
+## D58 — Matter archive and restore lifecycle
+
+**Approved by Khaled Helmy on 12 September 2026**, in the direct Task 4.2
+Phase 3 mandate adopting the MATTER LIFECYCLE CONTRACT. These are new Stage 4
+visibility and reporting decisions, not retrospective wording of D25.
+
+1. Administrator alone may archive/restore, enforced by pages, server actions,
+   services and committing database gateways. All four roles retain read
+   access; Administrator/Litigation Assistant may edit unarchived matters.
+2. Archive is reversible removal from ordinary use, never deletion or case
+   closure. Its boolean is independent of status and dates. Every existing
+   matter begins unarchived, including closed and archived-client matters.
+3. Ordinary lists default to unarchived, with explicit archived/all filters.
+   Archived matters retain direct, clearly labelled read-only access to their
+   complete details and relationships. Archive, search, other filters, paging
+   and client-return context remain independent through navigation.
+4. An archived matter's fields, parties, capacities and lawyer assignments
+   cannot be edited until Administrator restoration. Direct/forged writes are
+   rejected. Editing/retry must not silently restore; restoration preserves
+   the aggregate and its former editing permissions.
+5. Neither transition cascades: retain hearings, administrative works/steps,
+   documents, powers of attorney, fee-letter/billing links, parties/capacities/
+   lawyers, import/history/audit evidence and independent retired states.
+   Do not close records, clear assignments, change amounts or mutate clients.
+   Related records remain accessible under their existing permissions; this
+   phase adds no mutation policy outside the matter aggregate.
+6. Client and matter archive states are independent in both directions. An
+   archived client does not prevent archive/restore or ordinary editing of an
+   unarchived existing matter. Existing null/archived-client associations
+   remain valid; reassignment is excluded. New creation still excludes
+   archived clients.
+7. Existing report inclusion, criteria, counts and financial totals remain
+   unchanged by either archive state. Future report/export screens must
+   preserve this unless the owner approves an explicit report option.
+   Confirmation/help explains why reports differ from the operational list.
+8. Existing ordinary matter selectors must exclude archived choices, retaining
+   existing references and labelled read-only access. There is currently no
+   implemented child-record matter picker; future hearing/task/document forms
+   inherit this obligation, without adding those forms in this phase.
+9. Both transitions require deliberate confirmation naming the matter and
+   accurate related-record counts, explaining retention. Commit rechecks
+   identity, state, version, counts and current authorization. No prerequisite
+   of zero hearings, paid bills or closed status is introduced.
+
+The authorized implementation adds only forward migration 65 after frozen
+migrations 1–64; the real project stays at 63. Row-version locking, exact
+submission receipts, trusted actor context and complete current-state history
+provide atomic audited transitions. Old history is interpreted with an initial
+unarchived flag, never rewritten. Phase 3 requires independent review and
+owner acceptance; no deployment or later task authority is implied.
+
+**Implementation consequence of the refusal contract:** PostgreSQL sequence
+allocation does not roll back. Candidate65 therefore uses a private transactional
+row counter for the common audit writer. Every committed ID and the
+old sequence are preserved; a failed audit transaction rolls its allocation
+back with the event. No existing audit actor/append/permission guard changes.
+Audited writes serialize on this small counter; ordinary read-only pages do
+not. This is included in the candidate's isolated shared-audit and race proof,
+not authority to apply the candidate to the actual database.

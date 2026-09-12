@@ -298,3 +298,14 @@ Server Action, edit/archive button or logo-upload control is added.
 
 Stop for independent Phase 2 review; Phase 3 is the next development phase.
 See the [implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
+
+
+### Task 4.2 Phase 3 — D58
+
+D58 adds two Administrator-only pages (`/matters/[id]/archive`,
+`/matters/[id]/restore`) and their individually guarded server actions. Services
+and committing SQL routines independently verify current usable account, role,
+session version and expiry. All four roles retain archived read access;
+Administrator/Litigation Assistant editing requires an unarchived matter.
+The existing permission matrix is unchanged; restoration is required first.
+Related records retain their own permissions; client archive state is independent.

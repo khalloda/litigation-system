@@ -70,7 +70,7 @@ export default async function MatterPage({
   return (
     <main className={styles.page} data-matter-id={matter.id}>
       <header className={styles.header}>
-        {hasPermission(session.user.role, 'matters', 'update') ? (
+        {!matter.archived && hasPermission(session.user.role, 'matters', 'update') ? (
           <Link
             className={styles.button}
             href={`/matters/${matter.id}/edit${matterListHref(filters).slice('/matters'.length)}`}
@@ -98,6 +98,17 @@ export default async function MatterPage({
           {t.matters.back}
         </Link>
       </header>
+      {hasPermission(session.user.role, 'matters', matter.archived ? 'restore' : 'archive') ? (
+        <Link
+          className={styles.button}
+          href={`/matters/${matter.id}/${matter.archived ? 'restore' : 'archive'}${matterListHref(filters).slice('/matters'.length)}`}
+        >
+          {matter.archived ? t.matters.lifecycle.restore : t.matters.lifecycle.archive}
+        </Link>
+      ) : null}
+      {matter.archived ? (
+        <p className={`${styles.panel} ${styles.state}`}>{t.matters.lifecycle.notice}</p>
+      ) : null}
       {matter.clientArchived ? (
         <p className={`${styles.panel} ${styles.state}`}>{t.clients.archivedNotice}</p>
       ) : null}

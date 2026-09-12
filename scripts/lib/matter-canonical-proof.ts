@@ -43,8 +43,12 @@ export async function proveMatterCanonical(fixture: IsolatedPostgres, output: st
     await db.query('ROLLBACK');
     assert.deepEqual(await staffReadOnlyState(db), before);
   });
+  await migrateFixtureThroughCheckpoint(url, 64, environment);
+  writeFileSync(
+    join(output, 'canonical-deploy.log'),
+    'PASS bounded checkpoint64 deployment through owned fixture gateway\n',
+  );
   for (const [label, script, args] of [
-    ['canonical-deploy', 'scripts/run-prisma-migration.ts', ['deploy']],
     ['canonical-invariants', 'scripts/check-db.ts', ['--profile=canonical-clean-replay']],
   ] as const) {
     if (label === 'canonical-invariants') await initialiseActors(url, runtime.toString());

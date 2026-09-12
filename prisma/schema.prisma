@@ -1268,6 +1268,7 @@ model Contact {
 /// built (D1), and the classification is split into four independent lists
 /// (D8) instead of the two overloaded ones Access had.
 model Matter {
+  isArchived Boolean @default(false) @map("is_archived")
   rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
   /// Access matterID.

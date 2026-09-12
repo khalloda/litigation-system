@@ -132,3 +132,14 @@ GROUP BY matter_id HAVING count(*) = 1   -- not shared
 ```
 
 **Ask before merging two reports** — the firm may want both in the menu.
+
+
+### Task 4.2 Phase 3 — D58
+
+D58 preserves existing report inclusion, filters, complete related contents
+and financial totals during matter or client archive/restore. The default
+operational matter list excludes archived matters; that default must never be
+copied into reports implicitly. Future Stage 6 screens/exports must prove this
+with nonempty results and exact contents/totals, unless the owner separately
+approves an explicit archive report option. No report UI/export is added by
+Task 4.2 Phase 3.
