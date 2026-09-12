@@ -20,6 +20,9 @@ export const AUDIT_USER_MANAGEMENT_SERVICE = 'src/lib/auth/user-management.ts';
 export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
+const MATTER_READ_SERVICE = 'src/lib/matter-query.ts';
+const MATTER_READ_SERVICE_SHA256 =
+  '1071c274e2d727daa1b466e82a4abae01371b1a769f21a291c2dc8d88ed5981e';
 const CLIENT_MUTATION_SERVICE = 'src/lib/client-mutations.ts';
 const LOGO_MUTATION_SERVICE = 'src/lib/client-logo-management.ts';
 const LOGO_MUTATION_SERVICE_SHA256 =
@@ -98,6 +101,43 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  // BEGIN MATTER READ CALLS
+  [
+    'src/lib/matter-query.ts',
+    'snapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/matter-query.ts',
+    'readMatters',
+    '737090afdb81410a12ec7a3d8d7d28b8f2b60e3cbfe905aabaca5032c38a9d89',
+  ],
+  [
+    'src/lib/matter-query.ts',
+    'readMatters',
+    '307ccf3ea6619d70531026751690fd5ce3ba97b7ca17e9b34ffc199c26b6c8ff',
+  ],
+  [
+    'src/lib/matter-query.ts',
+    'readMatters',
+    '08ccbe1057b953dd1381f582cc1c5776be28f679136a453313316ac5a0c31a91',
+  ],
+  [
+    'src/lib/matter-query.ts',
+    'readMatter',
+    '7923e8a2a2da5b69f52aa0020abbce297d162efff3525dfd43cb24355105c378',
+  ],
+  [
+    'src/lib/matter-query.ts',
+    'readMatter',
+    'b9776d2913baf75dcd0feddfff4c393cf841faf1315d11ceed9f1581eb202e9e',
+  ],
+  [
+    'src/lib/matter-query.ts',
+    'readMatter',
+    '6b107414c6b245bb1a904f57d0e0c4278b78fee3b1df2fb66e9897da759f0371',
+  ],
+  // END MATTER READ CALLS
   [
     'src/lib/client-logo-management.ts',
     'readLogoManagement',
@@ -1705,6 +1745,15 @@ export function auditRuntimeSourceFailures(
     const isDatabaseModule = absolute === databaseAbsolute;
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
     const isClientReadService = source.path === CLIENT_READ_SERVICE;
+    const isMatterReadService = source.path === MATTER_READ_SERVICE;
+    if (
+      isMatterReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        MATTER_READ_SERVICE_SHA256
+    )
+      failures.add(
+        `${MATTER_READ_SERVICE}: read-only query closure differs from reviewed inventory`,
+      );
     if (
       source.path === CLIENT_MUTATION_INPUT &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -2009,7 +2058,13 @@ export function auditRuntimeSourceFailures(
             prismaSymbol !== undefined &&
             resolvedSymbol(checker, argument.tag.expression) === prismaSymbol;
           if (
-            !(isGateway || isReviewedAuthService || isStaffReadService || isClientReadService) ||
+            !(
+              isGateway ||
+              isReviewedAuthService ||
+              isStaffReadService ||
+              isClientReadService ||
+              isMatterReadService
+            ) ||
             !reviewedSql
           ) {
             add(node, `${method} is outside the exact reviewed static Prisma.sql call sites`);

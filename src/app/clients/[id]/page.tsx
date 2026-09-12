@@ -18,6 +18,12 @@ import local from '../clients.module.css';
 import { Field, classificationLabel, statusLabel } from '../client-fields';
 import { ClientLogo } from '../client-logo';
 import { ClientAlert } from '../client-alert';
+import {
+  matterListHref,
+  parseMatterFilters,
+  matterReturnHref,
+  MatterFilterError,
+} from '@/lib/matter-query';
 export const metadata: Metadata = { title: t.clients.details };
 export default async function ClientPage({
   params,
@@ -30,14 +36,15 @@ export default async function ClientPage({
   const { id } = await params;
   const client = await getClient(session, id);
   if (!client) notFound();
-  let filters, contacts;
+  let filters, contacts, matterReturn;
   try {
     const input = await searchParams;
+    matterReturn = matterReturnHref(input.matterReturn);
     filters = parseClientFilters(input);
     if (Array.isArray(input.contactsPage)) throw new ClientFilterError('repeated contacts page');
     contacts = await getClientContacts(session, id, input.contactsPage ?? '1');
   } catch (error) {
-    if (!(error instanceof ClientFilterError)) throw error;
+    if (!(error instanceof ClientFilterError) && !(error instanceof MatterFilterError)) throw error;
     return (
       <main className={styles.page}>
         <h1>{t.clients.details}</h1>
@@ -63,6 +70,11 @@ export default async function ClientPage({
           <Link className={styles.link} href={clientListHref(filters)}>
             {t.clients.back}
           </Link>
+          {matterReturn ? (
+            <Link className={styles.link} href={matterReturn}>
+              {t.matters.back}
+            </Link>
+          ) : null}
         </div>
         <ClientLogo key={client.id} id={client.id} name={client.nameAr} version={randomUUID()} />
       </header>
@@ -70,6 +82,17 @@ export default async function ClientPage({
         <p className={`${styles.panel} ${styles.state}`}>{t.clients.archivedNotice}</p>
       ) : null}
       <div className={styles.actions}>
+        <Link
+          className={styles.link}
+          href={matterListHref(
+            parseMatterFilters({
+              client: String(client.id),
+              fromClient: `/clients/${client.id}${returnQuery}`,
+            }),
+          )}
+        >
+          {t.matters.clientMatters}
+        </Link>
         <Link className={styles.link} href={`/clients/${client.id}/logo/manage${returnQuery}`}>
           {t.logos.title}
         </Link>

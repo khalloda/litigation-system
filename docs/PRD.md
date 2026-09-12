@@ -90,9 +90,12 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of the migration-63 development-acceptance
-documentation commit**, followed by its separate publication checkpoint and
-a separate Task 4.2 mandate.
+point is **independent review of the separately authorized Task 4.2 Phase 1
+implementation** after local verification. Migration-63 documentation
+publication is closed at `d84aa4b916e41e15abf543fc7dd2d4155bea7acf`; see the
+[publication review](reviews/2026-09-12-migration63-documentation-publication-independent-review.md),
+[Phase 1 report](task-reports/2026-09-12-task-4-2-phase-1-read-only-matters.md)
+and [final matrix](testing/task-4-2-phase1-acceptance-matrix.md).
 Task 4.1 publication
 review is closed. Task 4.1 Phase 3 is accepted and published at `9f61ba481fbebdb2b0d54e470e43cd8d26014265`.
 The D52–D57 database foundation was accepted at migration 62, with
@@ -426,11 +429,16 @@ accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
 status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
 remain required. This acceptance authorizes no application-code removal.
 
-The current stop is independent review of the new, unpublished migration-63
-development-acceptance documentation commit; Task 4.1 publication review is closed.
+The current work is Task 4.2 Phase 1 read-only matters, stopping for independent
+review after local verification and one local commit. Migration-63
+documentation publication and Task 4.1 publication review are closed.
 Task 4.1 overall and Task 4.1a remain accepted and checked. Task 4.1a source is
 published and its local migration/activation milestone is accepted; production
 deployment remains separate. Existing database/query proof
-does not claim future matter/report UI or exports have been tested; their later
-implementation under Tasks 4.2 and 6.2 must retain D52's archive-independent
-visibility and complete its own screen/export integration checks.
+remains dated. Task 4.2 Phase 1 supplies fresh new-query and browser proof for
+archive-independent matter list/detail access. Its list has database-backed
+filters, alias search and stable 25-row paging; its detail preserves full case
+numbers, independent classifications, ordered parties/capacities and recorded
+lawyer assignments. Two-way client links preserve navigation context. Matter
+mutations are later work and overall Task 4.2 is incomplete. Stage 6 report/export
+screens still require their own D52 integration proof.

@@ -6,7 +6,16 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 11 September 2026:** Stages 2 and 3 are complete. The
+**Current checkpoint — 12 September 2026:** Task 4.2 Phase 1 read-only matters
+is locally verified; its one local implementation commit stops for
+independent review. Overall Task 4.2 remains incomplete. See the
+[phase report](docs/task-reports/2026-09-12-task-4-2-phase-1-read-only-matters.md) and
+[final matrix](docs/testing/task-4-2-phase1-acceptance-matrix.md). The previous
+migration-63 documentation publication is closed at
+`d84aa4b916e41e15abf543fc7dd2d4155bea7acf`, supported by the preserved
+[publication review](docs/reviews/2026-09-12-migration63-documentation-publication-independent-review.md).
+
+**Accepted checkpoints:** Stages 2 and 3 are complete. The
 independent Task 3.5B evidence review is accepted; migration 60 and the approved
 real application each executed exactly once, all 382 decisions reconciled, and
 the permanent invariant set passed 93/93 at that checkpoint. Task 3.5 is
@@ -62,10 +71,9 @@ Khaled Helmy accepted Phase 4 and Task 4.1 overall on 10 September 2026 at
 [independent review](docs/reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
 [report acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md#owner-acceptance-addendum--10-september-2026)
 and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
-The current stop is independent review of this migration-63 development-acceptance
-documentation commit, which remains unpublished. Task 4.2 is next only after the
-documentation/publication checkpoint and a separate mandate. Task 4.1 publication
-review is closed. Older reports/reviews retain their historical
+The owner separately authorized Task 4.2 Phase 1 through one local commit and
+independent review. Migration-63 documentation publication and Task 4.1 publication
+review are closed. Older reports/reviews retain their historical
 checkpoints. Final Access
 delta reconciliation remains separate under D43 and D51. See the
 [Phase 4 completion report](docs/task-reports/2026-09-08-task-4-0a-phase-4-staff-roster-completion.md).
@@ -2099,8 +2107,8 @@ than assuming one rule for every workflow. Test with real volumes.
       later task work and final Access cutover remain separate.
 - [ ] **4.2 Matters** — the biggest screen. Classification, parties, lawyers.
       Integrate D52's archive-independent access to existing matters. Task 4.1
-      Phase 4 proves current client reads and report queries; this future screen
-      still needs its own archived-client visibility acceptance.
+      Phase 4 proves current client reads and report queries. Phase 1 below adds
+      the new matter-screen integration proof; overall owner acceptance is pending.
       **Case number field must display multiple lines (D9).**
       `docs/VISUAL-DIRECTION.md` makes the stacked case number the hero of this
       screen, in descending weight — D9 made visible.
@@ -2111,6 +2119,12 @@ than assuming one rule for every workflow. Test with real volumes.
       `يشمل البحث:` for the alias disclosure, which is the alias table doing
       visible work. The earlier 834 of 1,730 figure was the pre-migration
       planning snapshot.
+  - [x] **Phase 1 — read-only matter list/detail:** locally verified for independent
+        review, without overall Task 4.2 acceptance. Scope and evidence are in the phase
+        report/matrix above. Stop for independent review after one local commit.
+  - [ ] **Later matter mutations:** separate mandate after Phase 1 review;
+        Administrator/Litigation Assistant writing, validation and audit remain
+        future work. No mutation control or endpoint is included in Phase 1.
 - [ ] **4.3 Hearings** — 13,382 current target rows need paging and fast
       filters. The 327 original high-impact quarantine/source rows remain as
       immutable evidence of the reviewed release; they are not additional

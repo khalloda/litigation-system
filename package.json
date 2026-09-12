@@ -63,6 +63,8 @@
     "test:staff-mutations": "tsx scripts/test-staff-mutations.ts",
     "test:staff-browser": "node --import tsx scripts/test-staff-browser.mjs",
     "test:client-read-only": "tsx scripts/test-client-read-only.ts",
+    "test:matter-read-only": "tsx scripts/test-matter-read-only.ts",
+    "test:matter-browser": "tsx scripts/test-matter-read-only.ts --browser",
     "test:client-browser": "node --import tsx scripts/test-client-browser.mjs",
     "test:client-mutations": "tsx scripts/test-client-mutations.ts",
     "test:client-mutation-browser": "node --import tsx scripts/test-client-browser.mjs --phase3",

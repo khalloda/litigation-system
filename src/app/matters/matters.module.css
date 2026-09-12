@@ -1,0 +1,59 @@
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-block: var(--space-4);
+}
+.more summary {
+  cursor: pointer;
+  padding-block: var(--space-3);
+  min-block-size: 44px;
+}
+.more summary:focus-visible {
+  outline: 3px solid var(--colour-primary-dark);
+  outline-offset: 3px;
+}
+.multiline {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
+}
+.hero {
+  color: var(--colour-primary-dark);
+  margin-block: var(--space-3);
+  font-size: 1.875rem;
+  line-height: 1.5;
+}
+.caseLine {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.secondaryLine {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--colour-primary-mid);
+}
+.unassigned {
+  border-inline-start: 3px solid var(--colour-accent-warm);
+  padding-inline-start: var(--space-2);
+  color: var(--colour-text);
+}
+.matches {
+  background: var(--panel-inset);
+  padding: var(--space-2);
+  margin-block: var(--space-2);
+  overflow-wrap: anywhere;
+}
+.parties {
+  padding-inline-start: var(--space-6);
+}
+.parties li {
+  margin-block: var(--space-3);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 42rem) {
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

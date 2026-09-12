@@ -202,6 +202,11 @@ created. Any other unresolved English name quarantines — never guess.
 
 ### `LawyerAs` and `matter_lawyers.role` are the same idea, named twice
 
+**Matter-screen labels approved by Khaled Helmy, 12 September 2026:**
+`lead` → `المحامي الرئيسي`; `co_lead` → `محامٍ رئيسي مشارك`;
+`support` → `محامٍ مساعد`. These describe existing matter assignments only;
+they do not approve D28's separate billing-code labels or change allocations.
+
 **CONFIRMED BY THE FIRM IN WRITING, 23 August 2026.** This was previously
 recorded as "believed correct, not confirmed", which mattered: it decides who
 appears as responsible on **171 matters**. It is now settled and the open
