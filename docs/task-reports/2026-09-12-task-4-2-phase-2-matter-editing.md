@@ -238,3 +238,11 @@ ZIP membership/hash verification and clean main two-ahead/zero-behind state.
 Independent Phase 2 review is next. Owner acceptance, real migration, activation,
 publication/deployment, matter archive/restore and subsequent tasks remain outside
 this delivery.
+
+## R1–R3 correction pointer — 12 September 2026
+
+The independent review found three correctness issues in this historical delivery.
+The original report, matrix and external evidence remain preserved. See the
+[correction report](2026-09-12-task-4-2-phase-2-corrections.md) for reproduction, corrections and fresh verification.
+Phase 1 acceptance remains valid; Phase 2 awaits independent correction review
+and owner acceptance. The real database remains at migration 63.

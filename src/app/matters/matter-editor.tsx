@@ -50,6 +50,9 @@ function move<T>(rows: T[], index: number, delta: number): T[] {
   next.splice(index + delta, 0, item);
   return next;
 }
+function groupParties(rows: MatterPartyInput[]): MatterPartyInput[] {
+  return ['client', 'opponent'].flatMap((side) => rows.filter((p) => p.side === side));
+}
 export function MatterEditor(props: {
   snapshot: MatterMutationSnapshot;
   submission: string;
@@ -82,6 +85,25 @@ export function MatterEditor(props: {
     setParties((old) => old.map((p, i) => (i === index ? { ...p, ...change } : p)));
   const updateLawyer = (index: number, change: Partial<MatterLawyerInput>) =>
     setLawyers((old) => old.map((p, i) => (i === index ? { ...p, ...change } : p)));
+  const originalCapacity = (party: MatterPartyInput, roleId: number) =>
+    snapshot.parties.find((p) => p.id === party.id)?.roles.find((r) => r.role_id === roleId);
+  const originalLawyer = (personId: number) =>
+    snapshot.lawyers.find((l) => l.person_id === personId);
+  const changePartySide = (index: number, side: MatterPartyInput['side']) =>
+    setParties((old) => {
+      const party = old.at(index)!;
+      if (party.side === side) return old;
+      const remaining = old.filter((_, i) => i !== index);
+      return groupParties([
+        ...remaining,
+        {
+          ...party,
+          side,
+          ordinal:
+            Math.max(0, ...remaining.filter((p) => p.side === side).map((p) => p.ordinal ?? 0)) + 1,
+        },
+      ]);
+    });
   const focusList = () =>
     requestAnimationFrame(() =>
       form.current?.querySelector<HTMLElement>('[data-relationships]')?.focus(),
@@ -139,9 +161,13 @@ export function MatterEditor(props: {
     const id = prefix + key;
     const value = new Map(Object.entries(values)).get(key) ?? '';
     const error = result?.kind === 'error' && result.field === key;
+    const protectedCourt = key === 'court_id' && snapshot.record?.courtProtected;
     const accessibility = {
       'aria-invalid': error || undefined,
-      'aria-describedby': error ? prefix + 'feedback' : undefined,
+      'aria-describedby':
+        [error ? prefix + 'feedback' : '', protectedCourt ? prefix + 'court-protected' : '']
+          .filter(Boolean)
+          .join(' ') || undefined,
     };
     const choices = new Map(Object.entries(snapshot.choices)).get(key);
     return (
@@ -152,6 +178,7 @@ export function MatterEditor(props: {
             {...accessibility}
             id={id}
             value={value}
+            disabled={protectedCourt}
             onChange={(e) =>
               changeValue(key, e.target.value === '' ? null : Number(e.target.value))
             }
@@ -207,6 +234,7 @@ export function MatterEditor(props: {
             onChange={(e) => changeValue(key, e.target.value)}
           />
         )}
+        {protectedCourt && <p id={prefix + 'court-protected'}>{t.matters.manage.protectedCourt}</p>}
       </div>
     );
   }
@@ -313,6 +341,7 @@ export function MatterEditor(props: {
           <h2 tabIndex={-1} data-relationships>
             {t.matters.parties}
           </h2>
+          <p>{t.matters.manage.partyOrderHint}</p>
           {parties.map((p, index) => (
             <fieldset key={index} className={local.relationship}>
               <legend>{t.matters.manage.row(index + 1)}</legend>
@@ -331,7 +360,7 @@ export function MatterEditor(props: {
                     id={`${prefix}side-${index}`}
                     value={p.side}
                     onChange={(e) =>
-                      updateParty(index, { side: e.target.value as 'client' | 'opponent' })
+                      changePartySide(index, e.target.value as 'client' | 'opponent')
                     }
                   >
                     <option value="client">{t.fields.client}</option>
@@ -369,16 +398,26 @@ export function MatterEditor(props: {
                     onChange={(e) =>
                       updateParty(index, {
                         roles: p.roles.map((x, i) =>
-                          i === ri ? { ...x, id: null, role_id: Number(e.target.value) } : x,
+                          i === ri
+                            ? {
+                                ...x,
+                                id: originalCapacity(p, Number(e.target.value))?.id ?? null,
+                                role_id: Number(e.target.value),
+                              }
+                            : x,
                         ),
                       })
                     }
                   >
                     <option value="">{t.common.notRecorded}</option>
                     {snapshot.roles
-                      .filter((o) => o.active || o.id === r.role_id)
+                      .filter((o) => o.active || o.id === r.role_id || originalCapacity(p, o.id))
                       .map((o) => (
-                        <option key={o.id} value={o.id} disabled={!o.active && o.id !== r.role_id}>
+                        <option
+                          key={o.id}
+                          value={o.id}
+                          disabled={!o.active && o.id !== r.role_id && !originalCapacity(p, o.id)}
+                        >
                           {p.gender === 'f' ? (o.female ?? o.male) : o.male}
                         </option>
                       ))}
@@ -412,10 +451,16 @@ export function MatterEditor(props: {
                 {t.matters.manage.addCapacity}
               </button>
               {orderButtons(
-                index,
-                parties.length,
+                parties.filter((x) => x.side === p.side).indexOf(p),
+                parties.filter((x) => x.side === p.side).length,
                 (delta) =>
-                  setParties(move(parties, index, delta).map((x, i) => ({ ...x, ordinal: i + 1 }))),
+                  setParties((old) => {
+                    const sameSide = old.filter((x) => x.side === p.side);
+                    const ordered = move(sameSide, sameSide.indexOf(old.at(index)!), delta).map(
+                      (x, i) => ({ ...x, ordinal: i + 1 }),
+                    );
+                    return groupParties([...old.filter((x) => x.side !== p.side), ...ordered]);
+                  }),
                 () => setParties(parties.filter((_, i) => i !== index)),
               )}
             </fieldset>
@@ -423,17 +468,23 @@ export function MatterEditor(props: {
           <button
             type="button"
             onClick={() =>
-              setParties([
-                ...parties,
-                {
-                  id: null,
-                  side: 'client',
-                  party_name: '',
-                  gender: null,
-                  ordinal: Math.max(0, ...parties.map((p) => p.ordinal ?? 0)) + 1,
-                  roles: [],
-                },
-              ])
+              setParties(
+                groupParties([
+                  ...parties,
+                  {
+                    id: null,
+                    side: 'client',
+                    party_name: '',
+                    gender: null,
+                    ordinal:
+                      Math.max(
+                        0,
+                        ...parties.filter((p) => p.side === 'client').map((p) => p.ordinal ?? 0),
+                      ) + 1,
+                    roles: [],
+                  },
+                ]),
+              )
             }
           >
             {t.matters.manage.addParty}
@@ -452,17 +503,20 @@ export function MatterEditor(props: {
                     id={`${prefix}lawyer-${index}`}
                     value={l.person_id || ''}
                     onChange={(e) =>
-                      updateLawyer(index, { id: null, person_id: Number(e.target.value) })
+                      updateLawyer(index, {
+                        id: originalLawyer(Number(e.target.value))?.id ?? null,
+                        person_id: Number(e.target.value),
+                      })
                     }
                   >
                     <option value="">{t.common.notRecorded}</option>
                     {snapshot.people
-                      .filter((p) => p.active || p.id === l.person_id)
+                      .filter((p) => p.active || p.id === l.person_id || originalLawyer(p.id))
                       .map((p) => (
                         <option
                           key={p.id}
                           value={p.id}
-                          disabled={!p.active && p.id !== l.person_id}
+                          disabled={!p.active && p.id !== l.person_id && !originalLawyer(p.id)}
                         >
                           {t.matters.option(p.name, String(p.id))}
                           {!p.active ? ` (${t.matters.former})` : ''}

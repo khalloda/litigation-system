@@ -19,6 +19,7 @@ import { proveMatterMutations } from './lib/matter-mutation-proof';
 import { proveMatterReads } from './test-matter-read-only';
 import { proveMatterCanonical } from './lib/matter-canonical-proof';
 import { proveMatterSupplemental } from './lib/matter-supplemental-proof';
+import { proveMatterCorrections } from './lib/matter-correction-proof';
 import { matterMigrationCatalog, assertMatterMigrationDelta } from './lib/matter-migration-delta';
 
 async function main() {
@@ -179,10 +180,74 @@ async function main() {
     if (
       !process.argv.includes('--editor-browser-only') &&
       !process.argv.includes('--supplemental') &&
+      !process.argv.includes('--selection-controls') &&
       !process.argv.includes('--measure')
     )
       check('invariants-before', 'scripts/check-db.ts');
     await initialiseActors(fixture.migrationUrl, fixture.runtimeUrl);
+    if (process.argv.includes('--selection-controls')) {
+      await proveMatterCorrections(
+        fixture,
+        output,
+        createDatabaseClient(fixture.runtimeUrl),
+        false,
+        true,
+      );
+      return;
+    }
+    if (process.argv.includes('--corrections')) {
+      const original = process.argv.includes('--reproduce');
+      await proveMatterCorrections(
+        fixture,
+        output,
+        createDatabaseClient(fixture.runtimeUrl),
+        original,
+      );
+      if (!original) {
+        const setup = spawnSync(
+          'docker',
+          [
+            'exec',
+            '-i',
+            '-e',
+            'PGOPTIONS=-c default_transaction_read_only=on',
+            fixture.container,
+            'psql',
+            '-X',
+            '-v',
+            'ON_ERROR_STOP=1',
+            '-U',
+            'litigation',
+            '-d',
+            'litigation',
+          ],
+          {
+            input: readFileSync('docker/postgres/verify.sql'),
+            windowsHide: true,
+            encoding: 'utf8',
+          },
+        );
+        writeFileSync(join(output, 'database-setup.log'), setup.stdout + setup.stderr);
+        assert.equal(setup.status, 0, 'Database setup proof');
+        check('permissions', 'scripts/test-permissions.ts', ['--restored-fixture']);
+      }
+      if (process.argv.includes('--browser')) {
+        const { proveMatterBrowser } = await import('./test-matter-browser.mjs');
+        const { proveMatterCorrectionBrowser } =
+          await import('./lib/matter-correction-browser.mjs');
+        await proveMatterBrowser(
+          fixture,
+          output,
+          null,
+          (context: Parameters<typeof proveMatterCorrectionBrowser>[0]) =>
+            proveMatterCorrectionBrowser(context, original),
+        );
+      }
+      if (!original)
+        await proveMatterSupplemental(fixture, output, createDatabaseClient(fixture.runtimeUrl));
+      check('invariants-after-corrections', 'scripts/check-db.ts');
+      return;
+    }
     if (process.argv.includes('--supplemental')) {
       await proveMatterSupplemental(fixture, output, createDatabaseClient(fixture.runtimeUrl));
       check('invariants-after-supplemental', 'scripts/check-db.ts');

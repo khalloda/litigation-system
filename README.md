@@ -7,7 +7,10 @@ litigation practice since 2010.
 at `2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the preserved
 [independent PASS review](docs/reviews/2026-09-12-task-4-2-phase-1-independent-review.md).
 The authorized Phase 2 adds matter creation/editing, parties, capacities and lawyers.
-Its next stop is independent Phase 2 review; the real database remains at migration 63.
+The independent review identified R1–R3; the authorized corrections stop for
+independent correction review. The real database remains at migration 63.
+See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)
+and [correction matrix](docs/testing/task-4-2-phase2-correction-matrix.md).
 See the [Phase 2 report](docs/task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
 and [matrix](docs/testing/task-4-2-phase2-acceptance-matrix.md). Migration-63
 documentation publication is closed at `d84aa4b916e41e15abf543fc7dd2d4155bea7acf`;

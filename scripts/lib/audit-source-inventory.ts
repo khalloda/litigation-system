@@ -23,7 +23,7 @@ const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
 const MATTER_READ_SERVICE = 'src/lib/matter-query.ts';
 const MATTER_MUTATION_SERVICE = 'src/lib/matter-mutations.ts';
 const MATTER_MUTATION_SERVICE_SHA256 =
-  'ee17632cdb9062869f30625a95f73b2f3ae798f01895718c4bbe379127cf2820';
+  'f9059ab80ccf9cdb0c00b1b6a7b2e8afa7653bf2a338ebc9da1b8785da8c1e8a';
 const MATTER_MUTATION_INPUT_SHA256 =
   'a1b643db45c1beb65ad8c8c94e09a10abb9bf00cb4aea72758bbf16997d99388';
 const MATTER_READ_SERVICE_SHA256 =

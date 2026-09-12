@@ -2131,7 +2131,10 @@ than assuming one rule for every workflow. Test with real volumes.
         with disposable database/production browser proof and one local commit.
         This is not owner acceptance. See the [report](docs/task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
         and [matrix](docs/testing/task-4-2-phase2-acceptance-matrix.md).
-        Stop for independent Phase 2 review; migration 64 remains pending on the real database.
+        The [independent review](docs/reviews/2026-09-12-task-4-2-phase-2-independent-review.md)
+        identified R1–R3. See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)
+        and [correction matrix](docs/testing/task-4-2-phase2-correction-matrix.md).
+        Stop for independent correction review; migration 64 remains pending on the real database.
   - [ ] **Later matter archive/restore:** outside Phase 2; requires its own mandate.
 - [ ] **4.3 Hearings** — 13,382 current target rows need paging and fast
       filters. The 327 original high-impact quarantine/source rows remain as

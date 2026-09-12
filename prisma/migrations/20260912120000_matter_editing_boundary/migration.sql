@@ -158,6 +158,11 @@ BEGIN
     WHEN 'matter_lawyers' THEN ARRAY['role','position','is_retired'] END;
   IF TG_OP='UPDATE' THEN
     previous:=to_jsonb(OLD);
+    -- D41 binds these immutable Access identities; PostgreSQL IDs are unrelated.
+    IF TG_TABLE_NAME='matters' AND (previous->>'legacy_id')::integer IN (467,468,515)
+      AND incoming->'court_id' IS DISTINCT FROM previous->'court_id' THEN
+      RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='D41 court is protected';
+    END IF;
     IF incoming-allowed-ARRAY['updated_at','updated_by'] IS DISTINCT FROM previous-allowed-ARRAY['updated_at','updated_by'] THEN RAISE EXCEPTION 'Matter identity, ownership and source evidence are immutable'; END IF;
     IF TG_TABLE_NAME='matters' AND (incoming->>'row_version')::bigint<>(previous->>'row_version')::bigint+1 THEN RAISE EXCEPTION 'Matter aggregate version must advance once'; END IF;
   ELSE
@@ -198,6 +203,9 @@ BEGIN
     END IF;
     IF NOT p_create AND (item.value IS NOT DISTINCT FROM p_original->item.key OR
       (item.key IN ('asked_amount','judged_amount') AND item.value<>'null'::jsonb AND (item.value#>>'{}')::numeric IS NOT DISTINCT FROM (p_original->>item.key)::numeric)) THEN result:=result-item.key; CONTINUE; END IF;
+    IF item.key='court_id' AND NOT p_create AND (p_original->>'legacy_id')::integer IN (467,468,515) THEN
+      RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='D41 court is protected';
+    END IF;
     IF item.key='client_id' AND item.value<>'null'::jsonb THEN
       PERFORM 1 FROM public.clients WHERE id=(item.value#>>'{}')::integer AND NOT is_archived FOR SHARE;
       IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Eligible client required'; END IF;
@@ -225,7 +233,7 @@ DECLARE result jsonb; choices jsonb:='{}'; item record; rows jsonb; record jsonb
 BEGIN
   PERFORM _migration.matter_edit_require_account(p_account,p_session,p_role,p_expires,false);
   IF p_id IS NOT NULL THEN
-    SELECT jsonb_build_object('id',id,'version',row_version::text,'values',jsonb_build_object(
+    SELECT jsonb_build_object('id',id,'version',row_version::text,'courtProtected',coalesce(legacy_id IN (467,468,515),false),'values',jsonb_build_object(
       'case_number_ar',case_number_ar,'subject',subject,'status',status,'current_status',current_status,
       'circuit',circuit,'circuit_secretary',circuit_secretary,'court_floor',court_floor,'court_hall',court_hall,'court_shelf',court_shelf,'court_secretary_room',court_secretary_room,
       'notes_1',notes_1,'notes_2',notes_2,'evaluation',evaluation,'legal_opinion',legal_opinion,
@@ -260,7 +268,7 @@ CREATE FUNCTION public.matter_edit_save(p_account integer,p_session integer,p_ro
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,public SET TimeZone='UTC' AS $$
 DECLARE actor integer; identity integer; expected bigint; submission uuid; original jsonb; before_state jsonb; after_state jsonb; patch jsonb;
  receipt _migration.matter_edit_submission%ROWTYPE; snapshot jsonb; parties jsonb; lawyers jsonb; p jsonb; r jsonb; l jsonb;
- target_party integer; child_id integer; old_child jsonb; assignments text; columns text; selections text; changed boolean; version bigint;
+ target_party integer; child_id integer; old_child jsonb; assignments text; columns text; selections text; changed boolean; version bigint; resolved_parties jsonb:='[]'; resolved_roles jsonb; resolved_lawyers jsonb:='[]';
 BEGIN
   actor:=_migration.matter_edit_require_account(p_account,p_session,p_role,p_expires,true);
   IF actor IS DISTINCT FROM public.audit_current_actor_id() THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Matter actor does not match trusted audit context'; END IF;
@@ -299,24 +307,12 @@ BEGIN
     IF jsonb_typeof(l)<>'object' OR NOT _migration.matter_edit_positive(l->'id',true) OR NOT _migration.matter_edit_positive(l->'position',true) OR NOT _migration.matter_edit_positive(l->'person_id',false) OR jsonb_typeof(l->'role')<>'string' THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Invalid lawyer value types'; END IF;
   END LOOP;
   IF identity IS NULL AND NOT EXISTS(SELECT 1 FROM jsonb_each(p_request->'values') v WHERE v.key<>'matter_type_id' AND coalesce(btrim(v.value#>>'{}'),'')<>'') AND parties='[]' AND lawyers='[]' THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Blank matter creation refused'; END IF;
-  changed:=identity IS NULL OR patch<>'{}' OR parties IS DISTINCT FROM snapshot->'parties' OR lawyers IS DISTINCT FROM snapshot->'lawyers';
-  IF NOT changed THEN RETURN jsonb_build_object('id',identity,'version',expected::text,'changed',false); END IF;
-  -- Lock selected staff by numeric ID in deterministic order before child writes.
-  PERFORM 1 FROM people WHERE id IN (SELECT (v->>'person_id')::integer FROM jsonb_array_elements(lawyers) v) ORDER BY id FOR SHARE;
-  IF identity IS NULL THEN
-    SELECT string_agg(format('%I',key),',' ORDER BY key),string_agg(format('v.%I',key),',' ORDER BY key) INTO columns,selections FROM jsonb_object_keys(patch) key;
-    EXECUTE format('INSERT INTO public.matters(%s,updated_at) SELECT %s,statement_timestamp() FROM jsonb_populate_record(NULL::public.matters,$1) v RETURNING id',columns,selections) INTO identity USING patch;
-    version:=1;
-  ELSE
-    SELECT string_agg(format('%I=v.%I',key,key),',' ORDER BY key) INTO assignments FROM jsonb_object_keys(patch) key;
-    EXECUTE format('UPDATE public.matters m SET row_version=m.row_version+1%s FROM jsonb_populate_record(NULL::public.matters,$1) v WHERE m.id=$2 RETURNING m.row_version',CASE WHEN assignments IS NULL THEN '' ELSE ','||assignments END) INTO version USING original||patch,identity;
-  END IF;
+  -- Resolve effective identities only after validating every supplied identity.
+  -- The original p_request is untouched: committed retries still require exact payload equality.
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(lawyers) v GROUP BY v->>'person_id' HAVING count(*)>1)
     OR (SELECT count(*) FROM jsonb_array_elements(lawyers) v WHERE v->>'role'='lead')>1
     OR EXISTS(SELECT 1 FROM jsonb_array_elements(parties) v WHERE v->>'id' IS NOT NULL GROUP BY v->>'id' HAVING count(*)>1) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Duplicate matter relationship'; END IF;
-  UPDATE matter_lawyers SET is_retired=true WHERE matter_id=identity AND NOT is_retired AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(lawyers) v WHERE (v->>'person_id')::integer=person_id);
-  -- Release lead designation before assigning another lead in the same save.
-  UPDATE matter_lawyers SET role=v->>'role' FROM jsonb_array_elements(lawyers) v WHERE matter_id=identity AND person_id=(v->>'person_id')::integer AND role='lead' AND v->>'role'<>'lead';
+  PERFORM 1 FROM people WHERE id IN (SELECT (v->>'person_id')::integer FROM jsonb_array_elements(lawyers) v) ORDER BY id FOR SHARE;
   FOR l IN SELECT value FROM jsonb_array_elements(lawyers) LOOP
     IF jsonb_typeof(l)<>'object' OR NOT l ?& ARRAY['id','person_id','role','position'] OR EXISTS(SELECT 1 FROM jsonb_object_keys(l) k WHERE k NOT IN ('id','person_id','role','position')) OR l->>'role' NOT IN ('lead','co_lead','support') THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Invalid lawyer fields'; END IF;
     SELECT to_jsonb(x) INTO old_child FROM matter_lawyers x WHERE matter_id=identity AND person_id=(l->>'person_id')::integer;
@@ -325,11 +321,8 @@ BEGIN
       PERFORM 1 FROM people WHERE id=(l->>'person_id')::integer AND is_staff AND is_active;
       IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Active internal lawyer required'; END IF;
     END IF;
-    IF old_child IS NULL THEN INSERT INTO matter_lawyers(matter_id,person_id,role,position,updated_at) VALUES(identity,(l->>'person_id')::integer,l->>'role',(l->>'position')::integer,statement_timestamp());
-    ELSE UPDATE matter_lawyers SET role=l->>'role',position=(l->>'position')::integer,is_retired=false WHERE id=(old_child->>'id')::integer AND ROW(role,position,is_retired) IS DISTINCT FROM ROW(l->>'role',(l->>'position')::integer,false); END IF;
+    resolved_lawyers:=resolved_lawyers||jsonb_build_array(CASE WHEN old_child IS NULL THEN l ELSE l||jsonb_build_object('id',old_child->'id') END);
   END LOOP;
-  UPDATE matter_party_roles r SET is_retired=true,ordinal=NULL FROM matter_parties p WHERE p.id=r.party_id AND p.matter_id=identity AND NOT r.is_retired AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(parties) v WHERE (v->>'id')::integer=p.id);
-  UPDATE matter_parties SET is_retired=true WHERE matter_id=identity AND NOT is_retired AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(parties) v WHERE (v->>'id')::integer=id);
   FOR p IN SELECT value FROM jsonb_array_elements(parties) LOOP
     IF jsonb_typeof(p)<>'object' OR NOT p ?& ARRAY['id','side','party_name','gender','ordinal','roles'] OR EXISTS(SELECT 1 FROM jsonb_object_keys(p) k WHERE k NOT IN ('id','side','party_name','gender','ordinal','roles')) OR p->>'side' NOT IN ('client','opponent') OR (p->>'gender' IS NOT NULL AND p->>'gender' NOT IN ('m','f')) OR jsonb_typeof(p->'roles')<>'array' OR jsonb_array_length(p->'roles')>500 THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Invalid party fields'; END IF;
     target_party:=(p->>'id')::integer;
@@ -338,10 +331,8 @@ BEGIN
       IF old_child IS NULL THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Foreign party identity'; END IF;
     END IF;
     IF (old_child IS NULL OR p->'party_name' IS DISTINCT FROM old_child->'party_name') AND coalesce(btrim(p->>'party_name'),'')='' THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Party name required'; END IF;
-    IF old_child IS NULL THEN INSERT INTO matter_parties(matter_id,side,party_name,gender,ordinal,updated_at) VALUES(identity,p->>'side',p->>'party_name',p->>'gender',(p->>'ordinal')::integer,statement_timestamp()) RETURNING id INTO target_party;
-    ELSE UPDATE matter_parties SET side=p->>'side',party_name=p->>'party_name',gender=p->>'gender',ordinal=(p->>'ordinal')::integer,is_retired=false WHERE id=target_party AND ROW(side,party_name,gender,ordinal,is_retired) IS DISTINCT FROM ROW(p->>'side',p->>'party_name',p->>'gender',(p->>'ordinal')::integer,false); END IF;
     IF EXISTS(SELECT 1 FROM jsonb_array_elements(p->'roles') v GROUP BY v->>'role_id' HAVING count(*)>1) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Duplicate capacity'; END IF;
-    UPDATE matter_party_roles SET is_retired=true,ordinal=NULL WHERE matter_party_roles.party_id=target_party AND NOT is_retired AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(p->'roles') v WHERE (v->>'role_id')::integer=role_id);
+    resolved_roles:='[]';
     FOR r IN SELECT value FROM jsonb_array_elements(p->'roles') LOOP
       IF jsonb_typeof(r)<>'object' OR NOT r ?& ARRAY['id','role_id','ordinal'] OR EXISTS(SELECT 1 FROM jsonb_object_keys(r) k WHERE k NOT IN ('id','role_id','ordinal')) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Invalid capacity fields'; END IF;
       SELECT to_jsonb(x) INTO old_child FROM matter_party_roles x WHERE x.party_id=target_party AND x.role_id=(r->>'role_id')::integer;
@@ -350,6 +341,44 @@ BEGIN
         PERFORM 1 FROM lookup_party_role WHERE id=(r->>'role_id')::integer AND is_active FOR SHARE;
         IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Active capacity required'; END IF;
       END IF;
+      resolved_roles:=resolved_roles||jsonb_build_array(CASE WHEN old_child IS NULL THEN r ELSE r||jsonb_build_object('id',old_child->'id') END);
+    END LOOP;
+    SELECT coalesce(jsonb_agg(v ORDER BY (v->>'ordinal')::integer NULLS LAST,(v->>'id')::integer),'[]') INTO resolved_roles FROM jsonb_array_elements(resolved_roles) v;
+    resolved_parties:=resolved_parties||jsonb_build_array(p||jsonb_build_object('roles',resolved_roles));
+  END LOOP;
+  SELECT coalesce(jsonb_agg(v ORDER BY v->>'side',(v->>'ordinal')::integer NULLS LAST,(v->>'id')::integer),'[]') INTO parties FROM jsonb_array_elements(resolved_parties) v;
+  SELECT coalesce(jsonb_agg(v ORDER BY (v->>'position')::integer NULLS LAST,(v->>'id')::integer),'[]') INTO lawyers FROM jsonb_array_elements(resolved_lawyers) v;
+  changed:=identity IS NULL OR patch<>'{}' OR parties IS DISTINCT FROM snapshot->'parties' OR lawyers IS DISTINCT FROM snapshot->'lawyers';
+  IF NOT changed THEN RETURN jsonb_build_object('id',identity,'version',expected::text,'changed',false); END IF;
+  IF identity IS NULL THEN
+    SELECT string_agg(format('%I',key),',' ORDER BY key),string_agg(format('v.%I',key),',' ORDER BY key) INTO columns,selections FROM jsonb_object_keys(patch) key;
+    EXECUTE format('INSERT INTO public.matters(%s,updated_at) SELECT %s,statement_timestamp() FROM jsonb_populate_record(NULL::public.matters,$1) v RETURNING id',columns,selections) INTO identity USING patch;
+    version:=1;
+  ELSE
+    SELECT string_agg(format('%I=v.%I',key,key),',' ORDER BY key) INTO assignments FROM jsonb_object_keys(patch) key;
+    EXECUTE format('UPDATE public.matters m SET row_version=m.row_version+1%s FROM jsonb_populate_record(NULL::public.matters,$1) v WHERE m.id=$2 RETURNING m.row_version',CASE WHEN assignments IS NULL THEN '' ELSE ','||assignments END) INTO version USING original||patch,identity;
+  END IF;
+  UPDATE matter_lawyers SET is_retired=true WHERE matter_id=identity AND NOT is_retired AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(lawyers) v WHERE (v->>'person_id')::integer=person_id);
+  -- Release lead designation before assigning another lead in the same save.
+  UPDATE matter_lawyers SET role=v->>'role' FROM jsonb_array_elements(lawyers) v WHERE matter_id=identity AND person_id=(v->>'person_id')::integer AND role='lead' AND v->>'role'<>'lead';
+  FOR l IN SELECT value FROM jsonb_array_elements(lawyers) LOOP
+    SELECT to_jsonb(x) INTO old_child FROM matter_lawyers x WHERE matter_id=identity AND person_id=(l->>'person_id')::integer;
+    IF old_child IS NULL THEN INSERT INTO matter_lawyers(matter_id,person_id,role,position,updated_at) VALUES(identity,(l->>'person_id')::integer,l->>'role',(l->>'position')::integer,statement_timestamp());
+    ELSE UPDATE matter_lawyers SET role=l->>'role',position=(l->>'position')::integer,is_retired=false WHERE id=(old_child->>'id')::integer AND ROW(role,position,is_retired) IS DISTINCT FROM ROW(l->>'role',(l->>'position')::integer,false); END IF;
+  END LOOP;
+  UPDATE matter_party_roles r SET is_retired=true,ordinal=NULL FROM matter_parties p WHERE p.id=r.party_id AND p.matter_id=identity AND NOT r.is_retired AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(parties) v WHERE (v->>'id')::integer=p.id);
+  UPDATE matter_parties SET is_retired=true WHERE matter_id=identity AND NOT is_retired AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(parties) v WHERE (v->>'id')::integer=id);
+  FOR p IN SELECT value FROM jsonb_array_elements(parties) LOOP
+    target_party:=(p->>'id')::integer;
+    old_child:=NULL;
+    IF target_party IS NOT NULL THEN SELECT to_jsonb(x) INTO old_child FROM matter_parties x WHERE id=target_party AND matter_id=identity;
+      IF old_child IS NULL THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Foreign party identity'; END IF;
+    END IF;
+    IF old_child IS NULL THEN INSERT INTO matter_parties(matter_id,side,party_name,gender,ordinal,updated_at) VALUES(identity,p->>'side',p->>'party_name',p->>'gender',(p->>'ordinal')::integer,statement_timestamp()) RETURNING id INTO target_party;
+    ELSE UPDATE matter_parties SET side=p->>'side',party_name=p->>'party_name',gender=p->>'gender',ordinal=(p->>'ordinal')::integer,is_retired=false WHERE id=target_party AND ROW(side,party_name,gender,ordinal,is_retired) IS DISTINCT FROM ROW(p->>'side',p->>'party_name',p->>'gender',(p->>'ordinal')::integer,false); END IF;
+    UPDATE matter_party_roles SET is_retired=true,ordinal=NULL WHERE matter_party_roles.party_id=target_party AND NOT is_retired AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(p->'roles') v WHERE (v->>'role_id')::integer=role_id);
+    FOR r IN SELECT value FROM jsonb_array_elements(p->'roles') LOOP
+      SELECT to_jsonb(x) INTO old_child FROM matter_party_roles x WHERE x.party_id=target_party AND x.role_id=(r->>'role_id')::integer;
       IF old_child IS NULL THEN INSERT INTO matter_party_roles(party_id,role_id,ordinal,updated_at) VALUES(target_party,(r->>'role_id')::integer,(r->>'ordinal')::integer,statement_timestamp());
       ELSE UPDATE matter_party_roles SET ordinal=(r->>'ordinal')::integer,is_retired=false WHERE id=(old_child->>'id')::integer AND ROW(ordinal,is_retired) IS DISTINCT FROM ROW((r->>'ordinal')::integer,false); END IF;
     END LOOP;

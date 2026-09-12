@@ -52,3 +52,11 @@ in all four complete receipts: 109 tables, 48 full sequences, 54 logos, 3,428
 protected entries and 40,571 runtime entries, with no value normalization.
 JSON object serialization order can differ; all decoded keys and values are
 compared. The explicitly excluded active owner log remains excluded on both sides.
+
+## R1–R3 correction pointer — 12 September 2026
+
+The independent review found three correctness issues in this historical delivery.
+The original report, matrix and external evidence remain preserved. See the
+[correction report](../task-reports/2026-09-12-task-4-2-phase-2-corrections.md) for reproduction, corrections and fresh verification.
+Phase 1 acceptance remains valid; Phase 2 awaits independent correction review
+and owner acceptance. The real database remains at migration 63.

@@ -19,7 +19,7 @@ import {
 
 type Choice = { id: number; name: string; active: boolean; context?: string | null };
 export type MatterMutationSnapshot = {
-  record: { id: number; version: string; values: MatterValues } | null;
+  record: { id: number; version: string; courtProtected: boolean; values: MatterValues } | null;
   choices: Record<string, Choice[]>;
   clients: Choice[];
   people: Choice[];

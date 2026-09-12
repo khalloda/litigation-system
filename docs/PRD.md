@@ -90,8 +90,8 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of the separately authorized Task 4.2 Phase 2
-implementation** after local verification. Khaled Helmy accepted Phase 1 at
+point is **independent review of the authorized Task 4.2 Phase 2 R1–R3
+corrections** after local verification. Khaled Helmy accepted Phase 1 at
 `2f8820a3053ab65a60ee183882cbd6a2462559bc` on 12 September 2026; its
 [independent PASS review](reviews/2026-09-12-task-4-2-phase-1-independent-review.md)
 is preserved byte-identically. Migration-63 documentation
@@ -432,8 +432,8 @@ accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
 status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
 remain required. This acceptance authorizes no application-code removal.
 
-The current work is Task 4.2 Phase 2 matter creation/editing, stopping for independent
-review after local verification and one local commit. Migration-63
+The current work is the authorized Task 4.2 Phase 2 R1–R3 correction, stopping for independent
+correction review after local verification and one local correction commit. Migration-63
 documentation publication and Task 4.1 publication review are closed.
 Task 4.1 overall and Task 4.1a remain accepted and checked. Task 4.1a source is
 published and its local migration/activation milestone is accepted; production
@@ -446,6 +446,8 @@ lawyer assignments. Two-way client links preserve navigation context. Matter
 creation/editing is authorized in Phase 2, including ordered parties/capacities and
 lawyers for Administrator/Litigation Assistant. The candidate migration is pending
 on the real database. See the [Phase 2 report](task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
-and [matrix](testing/task-4-2-phase2-acceptance-matrix.md). Matter archive/restore and
+and [matrix](testing/task-4-2-phase2-acceptance-matrix.md), with the
+[correction report](task-reports/2026-09-12-task-4-2-phase-2-corrections.md) and
+[correction matrix](testing/task-4-2-phase2-correction-matrix.md). Matter archive/restore and
 overall Task 4.2 remain incomplete. Stage 6 report/export
 screens still require their own D52 integration proof.
