@@ -1,5 +1,6 @@
 import type { ClientBase } from 'pg';
 import { clientLogoBoundaryApplied, CLIENT_LOGO_FIELD_RULES } from './client-logo-checkpoint';
+import { matterEditApplied, MATTER_EDIT_FIELDS } from './matter-edit-checkpoint';
 import {
   clientContactBoundaryApplied,
   CLIENT_CONTACT_FIELD_RULES,
@@ -150,10 +151,12 @@ export async function auditEventStructureFailures(
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
+  const matterBoundary = await matterEditApplied(db);
   const currentFieldRules = [
     ...(staffBoundary ? STAFF_FIELD_RULES : []),
     ...(clientBoundary ? CLIENT_CONTACT_FIELD_RULES : []),
     ...(logoBoundary ? CLIENT_LOGO_FIELD_RULES : []),
+    ...(matterBoundary ? MATTER_EDIT_FIELDS : []),
   ];
   // Exact new identities only: classifying an old field with a new-looking
   // reason must never remove it from the frozen historical digest.

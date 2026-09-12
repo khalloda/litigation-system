@@ -1268,6 +1268,7 @@ model Contact {
 /// built (D1), and the classification is split into four independent lists
 /// (D8) instead of the two overloaded ones Access had.
 model Matter {
+  rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
   /// Access matterID.
   legacyId Int? @unique @map("legacy_id")
@@ -1955,6 +1956,7 @@ model FeeLetter {
 /// D14 refuses to restrict billing to "the lawyer's own matters" — such a
 /// rule would hide half the firm from everybody.
 model MatterLawyer {
+  isRetired Boolean @default(false) @map("is_retired")
   id       Int    @id @default(autoincrement())
   matterId Int    @map("matter_id")
   matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
@@ -2008,6 +2010,7 @@ model MatterLawyer {
 /// Replaces `client&Cap` and `opponent&Cap`, which held the party name AND
 /// their legal capacity in one field — 92% and 83% of them multi-line.
 model MatterParty {
+  isRetired Boolean @default(false) @map("is_retired")
   id       Int    @id @default(autoincrement())
   matterId Int    @map("matter_id")
   matter   Matter @relation(fields: [matterId], references: [id], onDelete: Cascade)
@@ -2053,6 +2056,7 @@ model MatterParty {
 /// A party can hold more than one role. D7: `مستأنف ضده، مستأنف` becomes TWO
 /// ROWS, not one combined value.
 model MatterPartyRole {
+  isRetired Boolean @default(false) @map("is_retired")
   id      Int         @id @default(autoincrement())
   partyId Int         @map("party_id")
   party   MatterParty @relation(fields: [partyId], references: [id], onDelete: Cascade)

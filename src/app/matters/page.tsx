@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requirePagePermission } from '@/lib/auth/authorization';
+import { hasPermission } from '@/lib/auth/permissions';
 import { listMatters } from '@/lib/matters';
 import {
   MATTER_SEARCH_LIMIT,
@@ -79,6 +80,14 @@ export default async function MattersPage({
         {t.matters.skip}
       </a>
       <header className={styles.header}>
+        {hasPermission(session.user.role, 'matters', 'create') ? (
+          <Link
+            className={styles.button}
+            href={`/matters/new${matterListHref(filters).slice('/matters'.length)}`}
+          >
+            {t.matters.manage.create}
+          </Link>
+        ) : null}
         <div>
           <p className={styles.eyebrow}>{t.app.system}</p>
           <h1>{t.matters.title}</h1>

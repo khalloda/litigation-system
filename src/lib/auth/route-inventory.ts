@@ -459,6 +459,30 @@ export const ROUTE_INVENTORY = [
       enforcement: { pattern: 'first-awaited-assignment', module: '@/auth', imported: 'auth' },
     },
   },
+  {
+    kind: 'page',
+    source: 'src/app/matters/new/page.tsx',
+    route: '/matters/new',
+    classification: { access: 'permission', area: 'matters', action: 'create' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/matters/[id]/edit/page.tsx',
+    route: '/matters/[id]/edit',
+    classification: { access: 'permission', area: 'matters', action: 'update' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/matters/actions.ts',
+    exportName: 'createMatterAction',
+    classification: { access: 'permission', area: 'matters', action: 'create' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/matters/actions.ts',
+    exportName: 'updateMatterAction',
+    classification: { access: 'permission', area: 'matters', action: 'update' },
+  },
 ] as const satisfies readonly RouteInventoryEntry[];
 
 export const PROXY_INFRASTRUCTURE_EXEMPTIONS = [

@@ -44,7 +44,7 @@ import {
   staffFocusProof,
 } from './lib/staff-accessibility-browser.mjs';
 
-export async function proveMatterBrowser(fixture, output, cases) {
+export async function proveMatterBrowser(fixture, output, cases, editorProof) {
   const source = process.cwd();
   const inspect = (work) =>
     withApprovedMigrationClient(work, { databaseUrl: fixture.migrationUrl });
@@ -86,6 +86,7 @@ export async function proveMatterBrowser(fixture, output, cases) {
     AUTH_SECRET: randomBytes(48).toString('base64url'),
     CLIENT_LOGO_ROOT: join(mirror, 'client-logos'),
     NEXT_TELEMETRY_DISABLED: '1',
+    JITI_FS_CACHE: 'false',
   };
   const boundedRuntime = new URL(environment.DATABASE_URL);
   boundedRuntime.searchParams.set('options', '-c statement_timeout=8000');
@@ -160,6 +161,15 @@ export async function proveMatterBrowser(fixture, output, cases) {
     cpSync(join(source, 'src/generated'), join(mirror, 'src/generated'), { recursive: true });
     symlinkSync(join(source, 'node_modules'), dependencyLink, 'junction');
     cpSync(process.env.CLIENT_LOGO_ROOT, environment.CLIENT_LOGO_ROOT, { recursive: true });
+    if (editorProof) {
+      const generate = launch(['node_modules/prisma/build/index.js', 'generate'], {
+        ...environment,
+        MIGRATION_DATABASE_URL: fixture.migrationUrl,
+      });
+      const exit = await generate.done;
+      writeFileSync(join(output, 'isolated-prisma-generate.log'), generate.log());
+      assert.equal(exit, 0);
+    }
     const build = launch(['node_modules/next/dist/bin/next', 'build', '--webpack']);
     const exit = await build.done;
     writeFileSync(join(output, 'production-build.log'), build.log());
@@ -354,6 +364,27 @@ export async function proveMatterBrowser(fixture, output, cases) {
       }
       return expected;
     };
+    if (process.argv.includes('--editor-browser-only')) {
+      assert.ok(editorProof, 'Focused run requires the new matter editor proof');
+      await editorProof({
+        page,
+        context,
+        base,
+        accounts,
+        login,
+        goto,
+        audit,
+        screenshot,
+        evidence,
+        inspect,
+      });
+      assert.deepEqual(remoteRequests, []);
+      writeFileSync(join(output, 'browser-results.json'), JSON.stringify(evidence, null, 2));
+      console.log(
+        'PASS focused matter editor browser proof; complete read/archive checks retained from full runs',
+      );
+      return;
+    }
     await goto('/matters');
     assert.ok(page.url().includes('/login'));
     await goto(`/matters/${cases.multilineId}`);
@@ -584,12 +615,46 @@ export async function proveMatterBrowser(fixture, output, cases) {
     evidence.push({ name: 'Expired session cookie cannot access direct matter detail' });
     assert.deepEqual(remoteRequests, []);
     writeFileSync(join(output, 'browser-results.json'), JSON.stringify(evidence, null, 2));
+    if (editorProof)
+      await editorProof({
+        page,
+        context,
+        base,
+        accounts,
+        login,
+        goto,
+        audit,
+        screenshot,
+        evidence,
+        inspect,
+      });
+    writeFileSync(join(output, 'browser-results.json'), JSON.stringify(evidence, null, 2));
     console.log(
       process.argv.includes('--browser-accessibility-only')
         ? 'PASS remaining matter accessibility, states and capture proof; role/archive integration retained from the full browser run'
         : 'PASS matter browser interactions and archive integration',
     );
   } catch (error) {
+    writeFileSync(join(output, 'browser-results.json'), JSON.stringify(evidence, null, 2));
+    writeFileSync(
+      join(output, 'browser-failure.json'),
+      JSON.stringify(
+        {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          current: await inspect(
+            async (db) =>
+              (
+                await db.query(
+                  'SELECT (SELECT count(*)::integer FROM matters) matters,(SELECT count(*)::integer FROM _migration.matter_edit_change) changes,(SELECT count(*)::integer FROM _migration.matter_edit_submission) submissions',
+                )
+              ).rows[0],
+          ).catch(() => null),
+        },
+        null,
+        2,
+      ),
+    );
     if (page && !page.isClosed()) {
       await page.screenshot({ path: join(output, 'failure.png'), fullPage: true }).catch(() => {});
       writeFileSync(
@@ -622,11 +687,7 @@ export async function proveMatterBrowser(fixture, output, cases) {
       await new Promise((res) => probe.close(res));
     }
     await runtime.$disconnect();
-    assert.deepEqual(
-      dependencyState(),
-      dependenciesBefore,
-      'Shared installed dependencies changed',
-    );
+    const dependenciesAfter = dependencyState();
     if (existsSync(dependencyLink)) {
       assert.equal(realpathSync(dependencyLink), realpathSync(join(source, 'node_modules')));
       unlinkSync(dependencyLink);
@@ -634,6 +695,11 @@ export async function proveMatterBrowser(fixture, output, cases) {
     assert.ok(realpathSync(mirror).startsWith(realpathSync(parent) + sep));
     assert.match(mirror.slice(parent.length + 1), /^task42-[A-Za-z0-9]+$/u);
     rmSync(mirror, { recursive: true });
+    assert.deepEqual(
+      dependenciesAfter,
+      dependenciesBefore,
+      'Shared installed dependencies changed',
+    );
     writeFileSync(
       join(output, 'browser-cleanup.json'),
       JSON.stringify(

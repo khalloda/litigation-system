@@ -5,19 +5,21 @@ import { assertStaffBoundary } from './staff-roster-structure';
 import { assertClientContactBoundary } from './client-contact-checkpoint';
 import { assertIsolatedTestCluster } from './isolated-postgres-fixture';
 import { withApprovedMigrationClient } from './migration-principal';
+import { assertMatterEditBoundary } from './matter-edit-checkpoint';
 
 const PROFILE = 'historical-full-state-upgrade';
 
 /** Current full-state source, independent of how a fixture is owned/copied.
  * Canonical replay remains a separate mandatory acceptance profile. */
-export async function assertCurrentClientSource(db: ClientBase): Promise<61 | 62 | 63> {
+export async function assertCurrentClientSource(db: ClientBase): Promise<61 | 62 | 63 | 64> {
   const checkpoint = await assertStaffCheckpoint(db, PROFILE);
   assert.ok(
-    checkpoint === 61 || checkpoint === 62 || checkpoint === 63,
+    checkpoint === 61 || checkpoint === 62 || checkpoint === 63 || checkpoint === 64,
     'Current regressions require complete 61, 62 or 63',
   );
   await assertStaffBoundary(db, PROFILE);
   if (checkpoint >= 62) await assertClientContactBoundary(db, PROFILE);
+  if (checkpoint === 64) await assertMatterEditBoundary(db, PROFILE);
   return checkpoint;
 }
 
@@ -27,7 +29,7 @@ export async function prepareCurrentClientSource(
   migrationUrl: string,
   environment: NodeJS.ProcessEnv,
   migrate: () => Promise<void> | void,
-): Promise<61 | 62 | 63> {
+): Promise<61 | 62 | 63 | 64> {
   const inspect = () =>
     withApprovedMigrationClient(
       async (db) => {

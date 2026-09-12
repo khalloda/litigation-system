@@ -6,11 +6,13 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 12 September 2026:** Task 4.2 Phase 1 read-only matters
-is locally verified; its one local implementation commit stops for
-independent review. Overall Task 4.2 remains incomplete. See the
-[phase report](docs/task-reports/2026-09-12-task-4-2-phase-1-read-only-matters.md) and
-[final matrix](docs/testing/task-4-2-phase1-acceptance-matrix.md). The previous
+**Current checkpoint — 12 September 2026:** Khaled accepted Task 4.2 Phase 1
+at `2f8820a3053ab65a60ee183882cbd6a2462559bc`. Phase 2 implements matter
+creation/editing with parties, capacities and lawyers and stops for independent
+review. Overall Task 4.2 remains incomplete; migration 64 is pending on the real
+development database. See the
+[phase report](docs/task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md) and
+[final matrix](docs/testing/task-4-2-phase2-acceptance-matrix.md). The previous
 migration-63 documentation publication is closed at
 `d84aa4b916e41e15abf543fc7dd2d4155bea7acf`, supported by the preserved
 [publication review](docs/reviews/2026-09-12-migration63-documentation-publication-independent-review.md).
@@ -71,8 +73,9 @@ Khaled Helmy accepted Phase 4 and Task 4.1 overall on 10 September 2026 at
 [independent review](docs/reviews/2026-09-10-task-4-1-phase-4-independent-review.md),
 [report acceptance addendum](docs/task-reports/2026-09-10-task-4-1-phase-4-final-acceptance.md#owner-acceptance-addendum--10-september-2026)
 and [matrix acceptance addendum](docs/testing/task-4-1-phase4-acceptance-matrix.md#owner-acceptance-addendum--10-september-2026).
-The owner separately authorized Task 4.2 Phase 1 through one local commit and
-independent review. Migration-63 documentation publication and Task 4.1 publication
+The owner accepted Task 4.2 Phase 1 at `2f8820a3053ab65a60ee183882cbd6a2462559bc`
+on 12 September 2026 and authorized Phase 2 through one local implementation commit,
+including the Phase 1 acceptance. Migration-63 documentation publication and Task 4.1 publication
 review are closed. Older reports/reviews retain their historical
 checkpoints. Final Access
 delta reconciliation remains separate under D43 and D51. See the
@@ -2119,12 +2122,17 @@ than assuming one rule for every workflow. Test with real volumes.
       `يشمل البحث:` for the alias disclosure, which is the alias table doing
       visible work. The earlier 834 of 1,730 figure was the pre-migration
       planning snapshot.
-  - [x] **Phase 1 — read-only matter list/detail:** locally verified for independent
-        review, without overall Task 4.2 acceptance. Scope and evidence are in the phase
-        report/matrix above. Stop for independent review after one local commit.
-  - [ ] **Later matter mutations:** separate mandate after Phase 1 review;
-        Administrator/Litigation Assistant writing, validation and audit remain
-        future work. No mutation control or endpoint is included in Phase 1.
+  - [x] **Phase 1 — read-only matter list/detail:** accepted by Khaled Helmy on
+        12 September 2026 at `2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the
+        [independent PASS review](docs/reviews/2026-09-12-task-4-2-phase-1-independent-review.md).
+        Overall Task 4.2 remains incomplete.
+  - [x] **Phase 2 — matter creation/editing, parties, capacities and lawyers:**
+        implemented and locally verified for Administrator/Litigation Assistant,
+        with disposable database/production browser proof and one local commit.
+        This is not owner acceptance. See the [report](docs/task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
+        and [matrix](docs/testing/task-4-2-phase2-acceptance-matrix.md).
+        Stop for independent Phase 2 review; migration 64 remains pending on the real database.
+  - [ ] **Later matter archive/restore:** outside Phase 2; requires its own mandate.
 - [ ] **4.3 Hearings** — 13,382 current target rows need paging and fast
       filters. The 327 original high-impact quarantine/source rows remain as
       immutable evidence of the reviewed release; they are not additional

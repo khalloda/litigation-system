@@ -12,6 +12,11 @@
 import 'dotenv/config';
 import { assertClientLogoBoundary } from './lib/client-logo-checkpoint';
 import {
+  assertMatterEditBoundary,
+  historicalMatterClient,
+  historicalMatterSql,
+} from './lib/matter-edit-checkpoint';
+import {
   assertClientContactBoundary,
   clientContactHistoricalCounts,
 } from './lib/client-contact-checkpoint';
@@ -144,6 +149,7 @@ async function main() {
     clientBoundary,
     clientChecks,
     logoChecks,
+    matterChecks,
     staffBoundary,
     rosterBaseline,
     staffChecks,
@@ -154,14 +160,15 @@ async function main() {
       checkpoint,
       clientBoundary: checkpoint >= 62,
       clientChecks: checkpoint >= 62 ? await assertClientContactBoundary(current, profile) : [],
-      logoChecks: checkpoint === 63 ? await assertClientLogoBoundary(current) : [],
+      logoChecks: checkpoint >= 63 ? await assertClientLogoBoundary(current) : [],
+      matterChecks: checkpoint === 64 ? await assertMatterEditBoundary(current, profile) : [],
       staffBoundary: checkpoint !== 60,
       rosterBaseline: await readRosterBaseline(current, checkpoint !== 60),
       staffChecks,
     };
   });
   console.log(
-    `Verification profile: ${profile}; migration ${checkpoint}${checkpoint === 63 ? '' : checkpoint === 62 ? ' (candidate migration 63 pending)' : checkpoint === 61 ? ' (migrations 62/63 pending)' : ' (migrations 61/62/63 pending)'}`,
+    `Verification profile: ${profile}; migration ${checkpoint}${checkpoint >= 63 ? '' : checkpoint === 62 ? ' (candidate migration 63 pending)' : checkpoint === 61 ? ' (migrations 62/63 pending)' : ' (migrations 61/62/63 pending)'}`,
   );
   const db = await migrationDbReady;
   const highImpactState = await withApprovedMigrationClient(async (current) => {
@@ -1084,6 +1091,7 @@ async function main() {
   const twoLeads = await db.$queryRaw<{ count: bigint }[]>`
     SELECT count(*) AS count FROM (
       SELECT matter_id FROM matter_lawyers WHERE role = 'lead'
+       AND (${checkpoint !== 64} OR NOT coalesce((to_jsonb(matter_lawyers)->>'is_retired')::boolean,false))
        GROUP BY matter_id HAVING count(*) > 1) d`;
   const twoLeadsCount = Number(one(twoLeads, 'matters with two leads').count);
   if (twoLeadsCount > 0) guards.push(`${twoLeadsCount} matters have two lead lawyers`);
@@ -2107,7 +2115,10 @@ async function main() {
   if (historical) {
     const permanentMatterResult = one(
       await db.$queryRawUnsafe<MatterReconciliationRow[]>(
-        historicalHighImpactSql(MATTER_RECONCILIATION_SQL, highImpactState),
+        historicalMatterSql(
+          historicalHighImpactSql(MATTER_RECONCILIATION_SQL, highImpactState),
+          checkpoint === 64,
+        ),
       ),
       'permanent matter target and quarantine reconciliation',
     );
@@ -2143,7 +2154,10 @@ async function main() {
     // transform's TypeScript planner/parser.
   }
   await withApprovedMigrationClient(async (currentRelationshipDb) => {
-    const relationshipDb = historicalHighImpactClient(currentRelationshipDb, highImpactState);
+    const relationshipDb = historicalHighImpactClient(
+      historicalMatterClient(currentRelationshipDb, checkpoint === 64),
+      highImpactState,
+    );
     const historicalRosterDb = historicalStaffClient(relationshipDb, staffBoundary);
     if (historical) {
       const relationshipResult = await reconcileMatterRelationships(historicalRosterDb);
@@ -2595,7 +2609,7 @@ async function main() {
       .sort(),
     'Permanent invariant coverage differs from the explicit profile inventory',
   );
-  for (const invariant of [...staffChecks, ...clientChecks, ...logoChecks])
+  for (const invariant of [...staffChecks, ...clientChecks, ...logoChecks, ...matterChecks])
     checks.push({
       id: invariant.id,
       name: invariant.description,

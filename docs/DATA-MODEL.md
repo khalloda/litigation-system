@@ -603,6 +603,39 @@ drafts cited D18 here and were wrong.
 **Court detail columns stay on the matter — D21.** They were previously marked
 "optional, discuss before doing it"; that is settled.
 
+#### Task 4.2 Phase 2 editable boundary (migration 64, pending on development)
+
+Migration `20260912120000_matter_editing_boundary` adds `matters.row_version`
+and `is_retired` on parties, capacities and lawyer relationships. Removing an
+association retires its row; the database never physically deletes it. Current
+reads exclude retired rows. Restoring an existing association retains its numeric
+identity and repeats selection validation. The single-person rule includes retained
+lawyer rows; the one-lead index applies to current assignments. Capacity ordering
+is deferred until transaction completion so two existing capacities can exchange
+positions; a retired capacity has a null current ordinal and keeps its previous
+ordinal in the immutable change history.
+
+Before enabling writes, `_migration.matter_edit_import` captures the complete
+original values of all four tables (7,674 rows at the accepted source). Four
+`matter_edit_initial_*` views expose their original shapes for historical
+reconciliation. `_migration.matter_edit_boundary` records the original inventory
+and historical/canonical profile. These records are immutable after initialization.
+`matter_edit_change` and `matter_edit_submission` retain append-only aggregate
+before/after versions and exact actor-scoped request/reply identities. Native rows
+have no fabricated legacy or reviewed provenance.
+
+Only the two explicit database gateways expose form state and aggregate saves.
+The runtime has SELECT, not direct mutation privileges, on the four business
+tables. A save locks the parent, checks its version and actual account/session,
+validates selections, updates its changed children and records correlated audit
+and history in one transaction. Completion triggers require a continuous audited
+history matching the complete current aggregate. Client association is fixed on
+an existing matter in this phase; an existing null or archived-client association
+remains editable. Matter archive/restore is not implemented.
+
+See the [Phase 2 report](task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
+for implemented fields and the independent-review boundary.
+
 ### `matter_lawyers`
 Replaces `lawyerA` / `lawyerB` and the combination strings.
 `matter_id`, `person_id`, `role` (`lead` / `co_lead` / `support`), `position`,

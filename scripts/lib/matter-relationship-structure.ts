@@ -232,6 +232,8 @@ function sameStrings(actual: string[], expected: readonly string[]): boolean {
 }
 
 export async function matterRelationshipStructureFailures(db: ClientBase): Promise<string[]> {
+  const { matterEditApplied } = await import('./matter-edit-checkpoint');
+  const editing = await matterEditApplied(db);
   const constraintNames = [
     ...EXPECTED_CHECKS.map((row) => row.name),
     ...EXPECTED_FOREIGN_KEYS.map((row) => row.name),
@@ -413,7 +415,7 @@ export async function matterRelationshipStructureFailures(db: ClientBase): Promi
       !actual.valid ||
       !actual.ready ||
       !actual.live ||
-      !actual.immediate ||
+      actual.immediate !== !(editing && expected.name === 'matter_party_roles_party_ordinal_key') ||
       actual.nulls_not_distinct ||
       actual.clustered ||
       actual.exclusion ||

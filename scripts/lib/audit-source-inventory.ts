@@ -21,8 +21,13 @@ export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
 const MATTER_READ_SERVICE = 'src/lib/matter-query.ts';
+const MATTER_MUTATION_SERVICE = 'src/lib/matter-mutations.ts';
+const MATTER_MUTATION_SERVICE_SHA256 =
+  'ee17632cdb9062869f30625a95f73b2f3ae798f01895718c4bbe379127cf2820';
+const MATTER_MUTATION_INPUT_SHA256 =
+  'a1b643db45c1beb65ad8c8c94e09a10abb9bf00cb4aea72758bbf16997d99388';
 const MATTER_READ_SERVICE_SHA256 =
-  '1071c274e2d727daa1b466e82a4abae01371b1a769f21a291c2dc8d88ed5981e';
+  '2aada49ed32821530e705004a6854b88b5bbe28f082002b17ec2e597f6de2545';
 const CLIENT_MUTATION_SERVICE = 'src/lib/client-mutations.ts';
 const LOGO_MUTATION_SERVICE = 'src/lib/client-logo-management.ts';
 const LOGO_MUTATION_SERVICE_SHA256 =
@@ -101,6 +106,23 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  // BEGIN MATTER MUTATION CALLS
+  [
+    'src/lib/matter-mutations.ts',
+    'readMatterMutation',
+    '8b5eaaa87acd107836f4eb0368d4277757ebcf9fa90b243ed10519df88ec7b1c',
+  ],
+  [
+    'src/lib/matter-mutations.ts',
+    'readMatterMutation',
+    '204c8fe8919561167ec46a6b36222d71578ed57def973569d2b302c52aa70f74',
+  ],
+  [
+    'src/lib/matter-mutations.ts',
+    'mutateMatter',
+    '61eed3855ff4498ae550bf85f2a0d6d2bcfef74482b8718e28aa9492ecb30666',
+  ],
+  // END MATTER MUTATION CALLS
   // BEGIN MATTER READ CALLS
   [
     'src/lib/matter-query.ts',
@@ -130,12 +152,12 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/matter-query.ts',
     'readMatter',
-    'b9776d2913baf75dcd0feddfff4c393cf841faf1315d11ceed9f1581eb202e9e',
+    '8e7b25274be272e12792040e7e57ec2ebd21c74ae35b866a5c25f72889dad428',
   ],
   [
     'src/lib/matter-query.ts',
     'readMatter',
-    '6b107414c6b245bb1a904f57d0e0c4278b78fee3b1df2fb66e9897da759f0371',
+    'f9927661d7ade85805a13e35aeb897c057fabde9b5307646e578821567ae5e29',
   ],
   // END MATTER READ CALLS
   [
@@ -1730,6 +1752,19 @@ export function auditRuntimeSourceFailures(
     const isStaffMutationService = source.path === STAFF_MUTATION_SERVICE;
     const isClientMutationService = source.path === CLIENT_MUTATION_SERVICE;
     const isLogoMutationService = source.path === LOGO_MUTATION_SERVICE;
+    const isMatterMutationService = source.path === MATTER_MUTATION_SERVICE;
+    if (
+      isMatterMutationService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        MATTER_MUTATION_SERVICE_SHA256
+    )
+      failures.add('Matter mutation closure differs from reviewed inventory');
+    if (
+      source.path === 'src/lib/matter-mutation-input.ts' &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        MATTER_MUTATION_INPUT_SHA256
+    )
+      failures.add('Matter mutation input differs from reviewed inventory');
     if (
       isLogoMutationService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -1741,7 +1776,8 @@ export function auditRuntimeSourceFailures(
       isUserManagementService ||
       isStaffMutationService ||
       isClientMutationService ||
-      isLogoMutationService;
+      isLogoMutationService ||
+      isMatterMutationService;
     const isDatabaseModule = absolute === databaseAbsolute;
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
     const isClientReadService = source.path === CLIENT_READ_SERVICE;
@@ -1852,7 +1888,10 @@ export function auditRuntimeSourceFailures(
             const imported = element.propertyName?.text ?? element.name.text;
             const approvedHelpers = isAuthService
               ? AUTH_SERVICE_HELPERS
-              : isStaffMutationService || isClientMutationService || isLogoMutationService
+              : isStaffMutationService ||
+                  isClientMutationService ||
+                  isLogoMutationService ||
+                  isMatterMutationService
                 ? new Set(['setHumanAuditContext'])
                 : USER_MANAGEMENT_SERVICE_HELPERS;
             if (element.propertyName || !approvedHelpers.has(imported)) {
@@ -2176,6 +2215,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'mutateMatter',
+        'transaction,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'mutateLogo',

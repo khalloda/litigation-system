@@ -90,8 +90,11 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of the separately authorized Task 4.2 Phase 1
-implementation** after local verification. Migration-63 documentation
+point is **independent review of the separately authorized Task 4.2 Phase 2
+implementation** after local verification. Khaled Helmy accepted Phase 1 at
+`2f8820a3053ab65a60ee183882cbd6a2462559bc` on 12 September 2026; its
+[independent PASS review](reviews/2026-09-12-task-4-2-phase-1-independent-review.md)
+is preserved byte-identically. Migration-63 documentation
 publication is closed at `d84aa4b916e41e15abf543fc7dd2d4155bea7acf`; see the
 [publication review](reviews/2026-09-12-migration63-documentation-publication-independent-review.md),
 [Phase 1 report](task-reports/2026-09-12-task-4-2-phase-1-read-only-matters.md)
@@ -429,7 +432,7 @@ accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
 status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
 remain required. This acceptance authorizes no application-code removal.
 
-The current work is Task 4.2 Phase 1 read-only matters, stopping for independent
+The current work is Task 4.2 Phase 2 matter creation/editing, stopping for independent
 review after local verification and one local commit. Migration-63
 documentation publication and Task 4.1 publication review are closed.
 Task 4.1 overall and Task 4.1a remain accepted and checked. Task 4.1a source is
@@ -440,5 +443,9 @@ archive-independent matter list/detail access. Its list has database-backed
 filters, alias search and stable 25-row paging; its detail preserves full case
 numbers, independent classifications, ordered parties/capacities and recorded
 lawyer assignments. Two-way client links preserve navigation context. Matter
-mutations are later work and overall Task 4.2 is incomplete. Stage 6 report/export
+creation/editing is authorized in Phase 2, including ordered parties/capacities and
+lawyers for Administrator/Litigation Assistant. The candidate migration is pending
+on the real database. See the [Phase 2 report](task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
+and [matrix](testing/task-4-2-phase2-acceptance-matrix.md). Matter archive/restore and
+overall Task 4.2 remain incomplete. Stage 6 report/export
 screens still require their own D52 integration proof.

@@ -3,11 +3,13 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Current status — 12 September 2026:** Task 4.2 Phase 1 read-only matters is
-locally verified under the owner's separate mandate. The next stop
-is independent review of its one local implementation commit; no push or later
-phase. See the [phase report](docs/task-reports/2026-09-12-task-4-2-phase-1-read-only-matters.md) and
-[final matrix](docs/testing/task-4-2-phase1-acceptance-matrix.md). Migration-63
+**Current status — 12 September 2026:** Khaled Helmy accepted Task 4.2 Phase 1
+at `2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the preserved
+[independent PASS review](docs/reviews/2026-09-12-task-4-2-phase-1-independent-review.md).
+The authorized Phase 2 adds matter creation/editing, parties, capacities and lawyers.
+Its next stop is independent Phase 2 review; the real database remains at migration 63.
+See the [Phase 2 report](docs/task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
+and [matrix](docs/testing/task-4-2-phase2-acceptance-matrix.md). Migration-63
 documentation publication is closed at `d84aa4b916e41e15abf543fc7dd2d4155bea7acf`;
 its [publication review](docs/reviews/2026-09-12-migration63-documentation-publication-independent-review.md)
 is preserved byte-identically.
@@ -83,7 +85,7 @@ Task 4.1 publication review is closed; its supplied
 [publication review](docs/reviews/2026-09-10-task-4-1-publication-independent-review.md)
 is preserved byte-identically. Task 4.1a's R1/R2 correction review passed and
 Khaled Helmy accepted the corrected implementation on 11 September 2026. The
-current work is Task 4.2 Phase 1, followed by independent implementation review.
+current work is Task 4.2 Phase 2, followed by independent implementation review.
 Older report/review wording records earlier checkpoints.
 See the [migration-62 deployment acceptance report](docs/task-reports/2026-09-09-task-4-1-phase-1-migration-62-deployment.md), its
 [implementation report](docs/task-reports/2026-09-09-task-4-1-phase-1-database-foundation.md)
@@ -108,7 +110,7 @@ The preceding Task 4.1 acceptance record added one documentation-only commit;
 its runtime evidence was historical. Task 4.1a's reviewed implementation and
 correction are published; the reviewed local migration and activation now have
 owner acceptance. Its documentation publication is now closed. The owner has
-separately authorized Task 4.2 Phase 1 through one local review commit;
+accepted Task 4.2 Phase 1 and separately authorized Phase 2 through one local review commit;
 production deployment and final Access cutover remain separate.
 See the [deployment acceptance report](docs/task-reports/2026-09-07-task-4-0a-phase-1-migration-61-deployment.md),
 [Phase 1 implementation report](docs/task-reports/2026-09-06-task-4-0a-phase-1-database-boundary.md)

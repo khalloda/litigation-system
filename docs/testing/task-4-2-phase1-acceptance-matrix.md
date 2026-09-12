@@ -25,3 +25,16 @@ All paths below are relative to the external Task 4.2 evidence root.
 
 The overall Task 4.2 checkbox remains unchecked. Local verification is not
 independent review, owner acceptance, live activation or production deployment.
+
+## Owner acceptance addendum — 12 September 2026
+
+Khaled Helmy accepted Task 4.2 Phase 1 at
+`2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the supplied
+[independent PASS review](../reviews/2026-09-12-task-4-2-phase-1-independent-review.md).
+The preserved review is 11,024 bytes, SHA-256
+`fc5f3d15e956f78dc84023127dfd4f48097750588bdcc03f073e53b8ca04a60a`.
+This addendum records his explicit conversation authorization and is included
+in the same Phase 2 implementation commit. Original Phase 1 evidence above and
+its external patch/package remain unchanged. Phase 1 acceptance does not accept
+Phase 2 or Task 4.2 overall, apply a live migration, activate an application or
+authorize publication. Phase 2 stops for independent review.

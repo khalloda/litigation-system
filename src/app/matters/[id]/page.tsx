@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePagePermission } from '@/lib/auth/authorization';
+import { hasPermission } from '@/lib/auth/permissions';
 import { getMatter } from '@/lib/matters';
 import {
   parseMatterFilters,
@@ -69,6 +70,14 @@ export default async function MatterPage({
   return (
     <main className={styles.page} data-matter-id={matter.id}>
       <header className={styles.header}>
+        {hasPermission(session.user.role, 'matters', 'update') ? (
+          <Link
+            className={styles.button}
+            href={`/matters/${matter.id}/edit${matterListHref(filters).slice('/matters'.length)}`}
+          >
+            {t.matters.manage.edit}
+          </Link>
+        ) : null}
         <div>
           <p className={styles.eyebrow}>{t.matters.details}</p>
           <h1 className={local.hero}>
@@ -81,7 +90,9 @@ export default async function MatterPage({
               </bdi>
             ))}
           </h1>
-          <p>{t.matters.readOnly}</p>
+          {!hasPermission(session.user.role, 'matters', 'update') ? (
+            <p>{t.matters.readOnly}</p>
+          ) : null}
         </div>
         <Link className={styles.link} href={matterListHref(filters)}>
           {t.matters.back}

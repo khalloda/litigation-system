@@ -7,6 +7,26 @@ You need Docker installed and running; nothing else.
 
 ## Everyday commands
 
+**Task 4.2 Phase 2 checkpoint — 12 September 2026:** the real development
+database remains at 63 applied migrations, one historical rollback and zero
+unfinished. Migration `20260912120000_matter_editing_boundary` (64) is pending
+and has been executed only on identified disposable database copies. This
+implementation does not authorize applying it to development or production or
+replacing the running migration-63 app. Independent Phase 2 review is next.
+The new editor requires migration 64; the existing owner runtime continues using
+its separate migration-63 artifact.
+
+At 64, `db:check` dispatches the exact historical/canonical boundary: 125
+historical invariants or 107 canonical invariants. Original matter reconciliation
+uses immutable initial projections; separate checks validate current aggregates,
+continuous change/audit history, exact gateways, grants and completion triggers.
+The Task 4.2 fixture commands use full-state owned copies and remove only their
+positively identified resources. `test:matter-mutations`,
+`test:matter-mutation-browser` and `test:matter-canonical` require an external
+`MATTER_MUTATION_EVIDENCE_DIR`; browser verification also requires the installed
+full Chromium/Playwright paths recorded in the Phase 2 report. They must not be
+redirected at a real database.
+
 Run these from the project folder.
 
 | What you want | Command |

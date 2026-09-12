@@ -5,6 +5,33 @@ Move the authoritative Access data to PostgreSQL with **provable** zero loss.
 **Core rule: never delete, clean or fix anything during extraction or load.**
 Data that cannot be mapped is *quarantined*, not dropped.
 
+## Task 4.2 Phase 2 forward boundary — pending migration 64
+
+The 12 September implementation adds
+`20260912120000_matter_editing_boundary` after the accepted 63. It is pending
+on the real database and was exercised only on task-owned disposable copies.
+None of migrations 1–63 or their checksums change.
+
+Before application writes are enabled, the new boundary stores the complete
+original matter, party, capacity and lawyer rows in immutable private evidence.
+Historical checks still reconcile the original source partitions and released
+high-impact rows through four original-shaped projections. They do not exempt
+edited or native matters from checking: separate permanent invariants require
+the entire current aggregate to match its continuous actor/request-correlated
+before/after history, anchored at its original row set or its native creation.
+The migration alone leaves every original business field and all existing
+sequence states unchanged. Relationship removals retain rows and their history.
+All other migration evidence, source/raw columns, branch approvals, staging and
+quarantine remain unchanged.
+
+Checkpoint validation distinguishes an exact 63 source from the complete new
+64 surface; partial installations and unrecorded boundary objects are rejected.
+The historical full-state upgrade and empty canonical profile use their existing
+separate expectations. The canonical test's explicit checkpoint-63 fixture
+configuration stops before 64, which is then deployed using the approved runner.
+The [Phase 2 report](task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
+records rollback, catalog delta, current/historical checks and remaining review.
+
 ## Which row count is the target?
 
 The 19 August planning figures moved before extraction. Gate 4 measured the

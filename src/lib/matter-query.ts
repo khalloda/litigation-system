@@ -200,7 +200,7 @@ const joins = Prisma.sql`FROM public.matters m
 const projection = Prisma.sql`m.id,m.legacy_id AS "legacyId",m.case_number_ar AS "caseNumber",m.subject,
   m.client_id AS "clientId",c.name_ar AS "clientName",c.is_archived AS "clientArchived",m.status,
   mt.label_ar AS type,mc.label_ar AS category,d.label_ar AS degree,v.label_ar AS venue,b.label_ar AS branch,
-  (SELECT count(*)::int FROM public.matter_lawyers ml WHERE ml.matter_id=m.id) AS "lawyerCount"`;
+  (SELECT count(*)::int FROM public.matter_lawyers ml WHERE NOT ml.is_retired AND ml.matter_id=m.id) AS "lawyerCount"`;
 const pattern = (q: string) =>
   Prisma.sql`('%' || public.ar_normalise(${q.replace(/[\\%_]/gu, '\\$&')}) || '%')`;
 function where(f: MatterFilters) {
@@ -221,16 +221,16 @@ function where(f: MatterFilters) {
   else if (f.status !== 'all') predicates.push(Prisma.sql`m.status=${f.status}`);
   if (f.lawyer === 'missing')
     predicates.push(
-      Prisma.sql`NOT EXISTS (SELECT 1 FROM public.matter_lawyers ml WHERE ml.matter_id=m.id)`,
+      Prisma.sql`NOT EXISTS (SELECT 1 FROM public.matter_lawyers ml WHERE NOT ml.is_retired AND ml.matter_id=m.id)`,
     );
   else if (f.lawyer !== 'all')
     predicates.push(
-      Prisma.sql`EXISTS (SELECT 1 FROM public.matter_lawyers ml WHERE ml.matter_id=m.id AND ml.person_id=${Number(f.lawyer)})`,
+      Prisma.sql`EXISTS (SELECT 1 FROM public.matter_lawyers ml WHERE NOT ml.is_retired AND ml.matter_id=m.id AND ml.person_id=${Number(f.lawyer)})`,
     );
   if (f.q)
     predicates.push(Prisma.sql`(m.case_number_ar_normalised LIKE ${pattern(f.q)} OR m.subject_normalised LIKE ${pattern(f.q)}
     OR EXISTS (SELECT 1 FROM public.clients c WHERE c.id=m.client_id AND (c.name_ar_normalised LIKE ${pattern(f.q)} OR c.full_name_normalised LIKE ${pattern(f.q)} OR public.ar_normalise(c.name_en) LIKE ${pattern(f.q)}))
-    OR EXISTS (SELECT 1 FROM public.matter_lawyers ml JOIN public.person_name_alias a ON a.person_id=ml.person_id WHERE ml.matter_id=m.id AND NOT a.is_retired AND a.alias_ar_normalised LIKE ${pattern(f.q)}))`);
+    OR EXISTS (SELECT 1 FROM public.matter_lawyers ml JOIN public.person_name_alias a ON a.person_id=ml.person_id WHERE NOT ml.is_retired AND ml.matter_id=m.id AND NOT a.is_retired AND a.alias_ar_normalised LIKE ${pattern(f.q)}))`);
   return Prisma.join(predicates, ' AND ');
 }
 // EXISTS keeps parent identities distinct even when several aliases match.
@@ -241,7 +241,7 @@ export function matterRowsQuery(f: MatterFilters, page: number) {
   const matches = f.q
     ? Prisma.sql`ARRAY(SELECT DISTINCT text FROM (
     SELECT a.alias_ar AS text FROM public.matter_lawyers ml JOIN public.person_name_alias a ON a.person_id=ml.person_id
-      WHERE ml.matter_id=m.id AND NOT a.is_retired AND a.alias_ar_normalised LIKE ${pattern(f.q)}
+      WHERE NOT ml.is_retired AND ml.matter_id=m.id AND NOT a.is_retired AND a.alias_ar_normalised LIKE ${pattern(f.q)}
     UNION ALL SELECT x FROM (VALUES (m.case_number_ar),(m.subject),(c.name_ar),(c.full_name),(c.name_en)) s(x)
       WHERE public.ar_normalise(x) LIKE ${pattern(f.q)} AND position(${f.q} in x)=0
     ) matches ORDER BY text LIMIT 20)`
@@ -268,7 +268,7 @@ export function matterOptionsQuery() {
     UNION ALL SELECT 'venue',id::text,label_ar,false,NOT is_active FROM public.lookup_venue
     UNION ALL SELECT 'branch',id::text,label_ar,false,NOT is_active FROM public.lookup_client_branch
     UNION ALL SELECT 'lawyer',p.id::text,p.name_ar,false,NOT p.is_active FROM public.people p
-      WHERE EXISTS (SELECT 1 FROM public.matter_lawyers ml WHERE ml.person_id=p.id)
+      WHERE EXISTS (SELECT 1 FROM public.matter_lawyers ml WHERE NOT ml.is_retired AND ml.person_id=p.id)
     ) options ORDER BY kind,label COLLATE "arabic",value LIMIT 2001`;
 }
 async function snapshot<T>(
@@ -334,13 +334,13 @@ export async function readMatter(
     if (rows.length > 1) throw new Error('Matter identity cardinality differs');
     if (!rows[0]) return null;
     const lawyers = await tx.$queryRaw<MatterLawyer[]>(
-      Prisma.sql`SELECT ml.id,ml.person_id AS "personId",p.name_ar AS name,ml.role,ml.position,p.is_active AS active FROM public.matter_lawyers ml JOIN public.people p ON p.id=ml.person_id WHERE ml.matter_id=${id} ORDER BY CASE ml.role WHEN 'lead' THEN 0 WHEN 'co_lead' THEN 1 ELSE 2 END,ml.position NULLS LAST,ml.id LIMIT 1001`,
+      Prisma.sql`SELECT ml.id,ml.person_id AS "personId",p.name_ar AS name,ml.role,ml.position,p.is_active AS active FROM public.matter_lawyers ml JOIN public.people p ON p.id=ml.person_id WHERE NOT ml.is_retired AND ml.matter_id=${id} ORDER BY CASE ml.role WHEN 'lead' THEN 0 WHEN 'co_lead' THEN 1 ELSE 2 END,ml.position NULLS LAST,ml.id LIMIT 1001`,
     );
     const parties = await tx.$queryRaw<
       MatterParty[]
     >(Prisma.sql`SELECT p.id,p.side,p.party_name AS name,p.gender,p.ordinal,
-      coalesce((SELECT jsonb_agg(jsonb_build_object('id',r.id,'roleId',r.role_id,'name',CASE WHEN p.gender='f' THEN l.label_ar_f ELSE l.label_ar_m END,'ordinal',r.ordinal) ORDER BY r.ordinal NULLS LAST,r.id) FROM public.matter_party_roles r JOIN public.lookup_party_role l ON l.id=r.role_id WHERE r.party_id=p.id),'[]'::jsonb) roles
-      FROM public.matter_parties p WHERE p.matter_id=${id} ORDER BY p.side,p.ordinal NULLS LAST,p.id LIMIT 1001`);
+      coalesce((SELECT jsonb_agg(jsonb_build_object('id',r.id,'roleId',r.role_id,'name',CASE WHEN p.gender='f' THEN l.label_ar_f ELSE l.label_ar_m END,'ordinal',r.ordinal) ORDER BY r.ordinal NULLS LAST,r.id) FROM public.matter_party_roles r JOIN public.lookup_party_role l ON l.id=r.role_id WHERE NOT r.is_retired AND r.party_id=p.id),'[]'::jsonb) roles
+      FROM public.matter_parties p WHERE NOT p.is_retired AND p.matter_id=${id} ORDER BY p.side,p.ordinal NULLS LAST,p.id LIMIT 1001`);
     if (lawyers.length > 1000 || parties.length > 1000)
       throw new Error('Matter relationship bound exceeded');
     if (lawyers.length !== rows[0].lawyerCount)

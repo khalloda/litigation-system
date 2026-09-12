@@ -1,3 +1,4 @@
+import { MATTER_EDIT_MIGRATION, matterEditApplied } from './matter-edit-checkpoint';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -184,7 +185,7 @@ export async function staffBoundaryApplied(db: ClientBase): Promise<boolean> {
 export async function assertStaffCheckpoint(
   db: ClientBase,
   profile: StaffProfile,
-): Promise<60 | 61 | 62 | 63> {
+): Promise<60 | 61 | 62 | 63 | 64> {
   assert.ok(
     ['historical-full-state-upgrade', 'canonical-clean-replay'].includes(profile),
     'explicit accepted profile required',
@@ -202,15 +203,25 @@ export async function assertStaffCheckpoint(
   const repository = await readGate4RepositoryMigrationInventory();
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62, 63].includes(repository.migrations.length),
+    [61, 62, 63, 64].includes(repository.migrations.length),
     'Exact reviewed repository checkpoint required',
   );
   assert.equal(repository.migrations[60]?.name, STAFF_MIGRATION);
   if (repository.migrations.length >= 62)
     assert.equal(repository.migrations[61]?.name, CLIENT_CONTACT_MIGRATION);
-  if (repository.migrations.length === 63)
+  if (repository.migrations.length >= 63)
     assert.equal(repository.migrations[62]?.name, CLIENT_LOGO_MIGRATION);
-  const checkpoint = logosApplied ? 63 : clientsApplied ? 62 : applied ? 61 : 60;
+  if (repository.migrations.length === 64)
+    assert.equal(repository.migrations[63]?.name, MATTER_EDIT_MIGRATION);
+  const checkpoint = (await matterEditApplied(db))
+    ? 64
+    : logosApplied
+      ? 63
+      : clientsApplied
+        ? 62
+        : applied
+          ? 61
+          : 60;
   const checkpointFiles = repository.migrations.slice(0, checkpoint);
   const evidence = reconcileGate4Migrations(history, {
     ...repository,
