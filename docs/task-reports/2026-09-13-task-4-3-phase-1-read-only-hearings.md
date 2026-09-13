@@ -221,3 +221,8 @@ preservation/cleanup summaries. Its separate receipt records patch and ZIP hashe
 reverse-applicability without applying, exact inventory verification and final
 clean branch state. Stop for independent Phase 1 review. No push, live migration,
 deployment, owner-app activation, hearing editing or later task is authorized here.
+
+
+## Owner acceptance addendum — 13 September 2026
+
+The owner accepted the independent Phase 1 PASS at `9b09f0d849aac5ed6afbcbc40879cfbb6da89ea1` and explicitly authorized Task 4.3 Phase 2 under its attached prompt. Phase 1 is accepted. The original report above is retained as historical evidence. Phase 2 remains pending independent review; its code and migration are not authorized for activation. Separate authority permits protected backup/rehearsal and activation of only accepted migrations 64/65 and the exact accepted Phase 1 app. D59 values remain unchanged.

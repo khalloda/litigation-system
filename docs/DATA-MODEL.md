@@ -1292,3 +1292,18 @@ checks bind its initial value to that frozen sequence and its current value to
 the greatest committed event ID/initial value. Runtime has no direct counter
 table or allocator execution privilege; existing audit writers retain their
 actor, context, bounded-field and append-only checks.
+
+
+## Task 4.3 Phase 2 — D60 hearing current state (migration 66, pending review)
+
+`hearings.row_version` advances once per changed aggregate. `hearing_attendees.is_retired`
+retains removed relationships; nullable `current_order` is separate from immutable imported
+`ordinal`. Reads use current order, falling back to imported ordinal and ID. Existing imported
+duplicate memberships retain separate IDs. Kept members preserve their displayed order;
+new/restored members append. Reselection reuses the lowest eligible retired ID.
+
+The four private `hearing_edit_*` tables retain the immutable import snapshot, boundary
+inventory, continuous aggregate changes and owner-bound exact submission receipts. Typed
+initial-state views keep all original reconciliation readers intact. Native records leave
+legacy/source lineage and the six deferred business fields NULL. The existing hearing
+parent is fixed; D41 court/circuit/notes remain immutable on the exact twelve reviewed rows.

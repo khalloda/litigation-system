@@ -145,7 +145,7 @@ export async function proveHearingBrowser(fixture, output, editorProof) {
       ),
     );
     const buildFiles = files.filter((file) =>
-      /^(?:src\/|assets\/|prisma\/schema\.prisma$|(?:next-env\.d\.ts|next\.config\.ts|tsconfig\.json|package(?:-lock)?\.json|prisma\.config\.ts)$)/u.test(
+      /^(?:src\/|assets\/|public\/|prisma\/schema\.prisma$|(?:next-env\.d\.ts|next\.config\.ts|tsconfig\.json|package(?:-lock)?\.json|prisma\.config\.ts)$)/u.test(
         file,
       ),
     );

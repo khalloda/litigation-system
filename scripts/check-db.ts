@@ -1,3 +1,4 @@
+import { assertHearingEditBoundary, historicalHearingClient } from './lib/hearing-edit-checkpoint';
 /*
  * Proves the application can actually reach the database and that the
  * database is in the state the application expects.
@@ -150,6 +151,7 @@ async function main() {
     clientChecks,
     logoChecks,
     matterChecks,
+    hearingChecks,
     staffBoundary,
     rosterBaseline,
     staffChecks,
@@ -161,6 +163,7 @@ async function main() {
       clientBoundary: checkpoint >= 62,
       clientChecks: checkpoint >= 62 ? await assertClientContactBoundary(current, profile) : [],
       logoChecks: checkpoint >= 63 ? await assertClientLogoBoundary(current) : [],
+      hearingChecks: checkpoint >= 66 ? await assertHearingEditBoundary(current, profile) : [],
       matterChecks: checkpoint >= 64 ? await assertMatterEditBoundary(current, profile) : [],
       staffBoundary: checkpoint !== 60,
       rosterBaseline: await readRosterBaseline(current, checkpoint !== 60),
@@ -2155,7 +2158,10 @@ async function main() {
   }
   await withApprovedMigrationClient(async (currentRelationshipDb) => {
     const relationshipDb = historicalHighImpactClient(
-      historicalMatterClient(currentRelationshipDb, checkpoint >= 64),
+      historicalMatterClient(
+        historicalHearingClient(currentRelationshipDb, checkpoint >= 66),
+        checkpoint >= 64,
+      ),
       highImpactState,
     );
     const historicalRosterDb = historicalStaffClient(relationshipDb, staffBoundary);
@@ -2228,7 +2234,10 @@ async function main() {
 
     if (historical) {
       const attendeeAudit = await reconcileAttendeeAudit(
-        historicalStaffClient(currentRelationshipDb, staffBoundary),
+        historicalStaffClient(
+          historicalHearingClient(currentRelationshipDb, checkpoint >= 66),
+          staffBoundary,
+        ),
       );
       record(
         'Attendee source cells and spans reconcile',
@@ -2609,7 +2618,13 @@ async function main() {
       .sort(),
     'Permanent invariant coverage differs from the explicit profile inventory',
   );
-  for (const invariant of [...staffChecks, ...clientChecks, ...logoChecks, ...matterChecks])
+  for (const invariant of [
+    ...staffChecks,
+    ...clientChecks,
+    ...logoChecks,
+    ...matterChecks,
+    ...hearingChecks,
+  ])
     checks.push({
       id: invariant.id,
       name: invariant.description,

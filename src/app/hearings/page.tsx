@@ -1,3 +1,4 @@
+import { hasPermission } from '@/lib/auth/permissions';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requirePagePermission } from '@/lib/auth/authorization';
@@ -57,6 +58,11 @@ export default async function HearingsPage({
         <div>
           <p className={styles.eyebrow}>{t.app.system}</p>
           <h1>{t.hearings.title}</h1>
+          {hasPermission(session.user.role, 'hearings', 'create') ? (
+            <Link className={styles.link} href="/hearings/new">
+              {t.hearings.manage.create}
+            </Link>
+          ) : null}
           <p>{t.hearings.subtitle}</p>
         </div>
         <Link className={styles.link} href="/">

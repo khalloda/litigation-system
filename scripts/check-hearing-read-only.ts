@@ -11,7 +11,14 @@ function failures(sources: AuditRuntimeSource[]) {
   const errors: string[] = [];
   for (const { path, text } of sources.filter(
     (s) =>
-      s.path.startsWith('src/app/hearings/') ||
+      (s.path.startsWith('src/app/hearings/') &&
+        ![
+          'src/app/hearings/actions.ts',
+          'src/app/hearings/hearing-editor.tsx',
+          'src/app/hearings/hearing-management-page.tsx',
+          'src/app/hearings/new/page.tsx',
+          'src/app/hearings/[id]/edit/page.tsx',
+        ].includes(s.path)) ||
       ['src/lib/hearing-query.ts', 'src/lib/hearings.ts'].includes(s.path),
   )) {
     const query = path === 'src/lib/hearing-query.ts';
@@ -35,6 +42,7 @@ function failures(sources: AuditRuntimeSource[]) {
           : node.argumentExpression?.getText(tree).replace(/['"]/gu, '');
         if (
           member &&
+          node.getText(tree) !== 't.hearings.manage.create' &&
           /^(?:create|createMany|update|updateMany|upsert|delete|deleteMany|\$executeRaw|\$executeRawUnsafe|\$queryRawUnsafe)$/u.test(
             member,
           )
@@ -78,15 +86,32 @@ function failures(sources: AuditRuntimeSource[]) {
 assert.deepEqual(failures(discoverAuditRuntimeSources(process.cwd())), []);
 assert.deepEqual(routeInventoryFailures(discoverAuthorizationEntrypoints(process.cwd())), []);
 const entries = ROUTE_INVENTORY.filter((e) => e.source.startsWith('src/app/hearings/'));
-assert.equal(entries.length, 2);
+assert.equal(entries.length, 6);
 assert.ok(
-  entries.every(
-    (e) =>
-      e.kind === 'page' &&
-      e.classification.access === 'permission' &&
-      e.classification.area === 'hearings' &&
-      e.classification.action === 'view',
-  ),
+  entries
+    .filter((e) => e.classification.access === 'permission' && e.classification.action === 'view')
+    .every(
+      (e) =>
+        e.kind === 'page' &&
+        e.classification.access === 'permission' &&
+        e.classification.area === 'hearings' &&
+        e.classification.action === 'view',
+    ),
+);
+assert.deepEqual(
+  entries
+    .flatMap((e) =>
+      e.classification.access === 'permission' && e.classification.action !== 'view'
+        ? [[e.kind, e.classification.action]]
+        : [],
+    )
+    .sort(),
+  [
+    ['page', 'create'],
+    ['page', 'update'],
+    ['server-action', 'create'],
+    ['server-action', 'update'],
+  ].sort(),
 );
 for (const text of [
   "'use server';",
@@ -101,5 +126,5 @@ for (const text of [
 ])
   assert.ok(failures([{ path: 'src/app/hearings/fixture.tsx', text }]).length, text);
 console.log(
-  'PASS hearing read-only source boundary, two independent page classifications, nine rejecting fixtures',
+  'PASS hearing read-only closure, four exact separately guarded mutation entrypoints, nine rejecting fixtures',
 );

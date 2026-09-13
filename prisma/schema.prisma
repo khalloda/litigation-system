@@ -1427,6 +1427,7 @@ model Matter {
 /// and reports actually use: by matter, by date, and the "today's hearings"
 /// panel on the dashboard, which reads the next date.
 model Hearing {
+  rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
   /// Access ID_hearings.
   legacyId Int? @unique @map("legacy_id")
@@ -2097,6 +2098,8 @@ model MatterPartyRole {
 /// `لا يوجد حضور` and `متابعة`. A person
 /// called `**` would then appear in dropdowns and reports for ever.
 model HearingAttendee {
+  isRetired Boolean @default(false) @map("is_retired")
+  currentOrder Int? @map("current_order")
   id        Int     @id @default(autoincrement())
   hearingId Int     @map("hearing_id")
   hearing   Hearing @relation(fields: [hearingId], references: [id], onDelete: Cascade)

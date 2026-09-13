@@ -186,10 +186,10 @@ async function main() {
     assert.deepEqual(await inspect(staffReadOnlyState), before);
     assert.deepEqual(await inspect(matterMigrationCatalog), catalogBefore);
     console.log('PASS complete lifecycle migration late failure exact rollback');
-    check('deploy65', 'scripts/run-prisma-migration.ts', ['deploy']);
+    await migrateFixtureThroughCheckpoint(ownerUrl, 65, environment);
     // A repeated deployment is the safe recovery for a lost migration response.
     const deployed = await inspect(staffReadOnlyState);
-    check('deploy65-retry', 'scripts/run-prisma-migration.ts', ['deploy']);
+    await migrateFixtureThroughCheckpoint(ownerUrl, 65, environment);
     assert.deepEqual(await inspect(staffReadOnlyState), deployed);
     const catalogAfter = await inspect(matterMigrationCatalog);
     const delta: Record<string, unknown> = {};

@@ -20,9 +20,12 @@ export const AUDIT_USER_MANAGEMENT_SERVICE = 'src/lib/auth/user-management.ts';
 export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
+const HEARING_MUTATION_SERVICE = 'src/lib/hearing-mutations.ts';
+const HEARING_MUTATION_SHA256 = '131744a61b8cb223c4c74618870e8291fbfa164bf5e4fac23384021256e3d2d8';
+const HEARING_INPUT_SHA256 = '3b933671939cbf5dc1629ab2d521f9cd412218f7284410f78a3c6237310f9ef8';
 const HEARING_READ_SERVICE = 'src/lib/hearing-query.ts';
 const HEARING_READ_SERVICE_SHA256 =
-  'de03566a9de68a0c4d7f31386831c4dff6c59fcf102eb4f82183c39ae57fae5c';
+  '359534431e33a039471d027ec19b30d9a32d02cbbfdba0a46a2af64ce734298f';
 const MATTER_READ_SERVICE = 'src/lib/matter-query.ts';
 const MATTER_LIFECYCLE_SERVICE = 'src/lib/matter-lifecycle.ts';
 const MATTER_LIFECYCLE_SHA256 = '86b767287c5cca470ac16b0d69927625f6ff483204d21e1fc19351843ccba5cf';
@@ -111,7 +114,6 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
-  // Exact Phase 1 hearing read-only closure and seven call sites.
   [
     'src/lib/hearing-query.ts',
     'snapshot',
@@ -145,8 +147,25 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/hearing-query.ts',
     'readHearing',
-    '7343b6cc29aeb4f203217dc42f86adbb966e489768ed03fcb6d9d22b3840e608',
+    '836cb9780ae701b96a44f003cc7a925f6afb8ca3cea067b73827019696cb4fa3',
   ],
+  [
+    'src/lib/hearing-mutations.ts',
+    'readHearingMutation',
+    '8b5eaaa87acd107836f4eb0368d4277757ebcf9fa90b243ed10519df88ec7b1c',
+  ],
+  [
+    'src/lib/hearing-mutations.ts',
+    'readHearingMutation',
+    '0347398e4449292829de64f20728508ea50b086cd8c1b4c9b8c0cd69d15e3fba',
+  ],
+  [
+    'src/lib/hearing-mutations.ts',
+    'mutateHearing',
+    'd5a05ebc1104ec07dd6be949b5ba583ab3e248ad87d07205ceb4c244fd59a7ec',
+  ],
+
+  // Exact Phase 1 hearing read-only closure and seven call sites.
   [
     'src/lib/matter-lifecycle.ts',
     'readMatterLifecycle',
@@ -1815,6 +1834,19 @@ export function auditRuntimeSourceFailures(
         MATTER_LIFECYCLE_SHA256
     )
       failures.add('Matter lifecycle closure differs from reviewed inventory');
+    const isHearingMutationService = source.path === HEARING_MUTATION_SERVICE;
+    if (
+      isHearingMutationService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        HEARING_MUTATION_SHA256
+    )
+      failures.add('Hearing mutation closure differs from reviewed inventory');
+    if (
+      source.path === 'src/lib/hearing-mutation-input.ts' &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        HEARING_INPUT_SHA256
+    )
+      failures.add('Hearing mutation input differs from reviewed inventory');
     const isMatterMutationService = source.path === MATTER_MUTATION_SERVICE;
     if (
       isMatterMutationService &&
@@ -1841,6 +1873,7 @@ export function auditRuntimeSourceFailures(
       isClientMutationService ||
       isLogoMutationService ||
       isMatterMutationService ||
+      isHearingMutationService ||
       isMatterLifecycleService;
     const isDatabaseModule = absolute === databaseAbsolute;
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
@@ -1963,6 +1996,7 @@ export function auditRuntimeSourceFailures(
                   isClientMutationService ||
                   isLogoMutationService ||
                   isMatterMutationService ||
+                  isHearingMutationService ||
                   isMatterLifecycleService
                 ? new Set(['setHumanAuditContext'])
                 : USER_MANAGEMENT_SERVICE_HELPERS;
@@ -2288,6 +2322,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'mutateHearing',
+        'transaction,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'mutateMatterLifecycle',

@@ -3519,3 +3519,20 @@ Source mappings, child identities/order/retirement and billing remain intact.
 Strict live sequence log_cnt/is_called preservation is separate from portable
 restore reservations in owned disposable copies. Live64/65 application and
 final cutover remain separately gated.
+
+
+## Task 4.3 Phase 2 retained hearing evidence — D60
+
+The migration 66 candidate snapshots all 13,382 imported/released hearings and 9,113
+attendee relationships without changing original rows. Source identities, raw cells/spans,
+ordinals, all 327 released targets and D39/D40/D41 evidence remain permanent. Current
+editable values are checked against an immutable initial aggregate and a continuous audited
+change chain. Historical reconciliation reads the typed original projections; the separate
+current-state validator verifies every operational aggregate. Removal is retirement, never
+deletion. No name reparse or source transformation is included.
+
+Full-volume upgrade proof compares the exact named schema/ACL delta and every original
+table projection and sequence. Late failure must roll back the entire boundary. Canonical
+replay retains the empty imported profile. Migration 66 remains isolated pending review;
+only previously accepted 64/65 may be applied during the separately authorized local
+activation procedure, after fresh protected backup and exact-backup restore rehearsal.

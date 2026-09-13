@@ -2147,7 +2147,8 @@ than assuming one rule for every workflow. Test with real volumes.
         closed R1/R2. The final PASS review closed the nullable-party-order R3
         [follow-up](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
         [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
-        Phase 2 accepted at `6771218164c992781902374efb62f0b2f54b2a20`; migration 64 remains pending.
+        Phase 2 accepted at `6771218164c992781902374efb62f0b2f54b2a20`; accepted migrations
+        64/65 were activated locally on 13 September 2026 under Task 4.3 authorization.
   - [x] **Phase 3 — matter archive/restore:** D58 authorized Administrator-only
         non-cascading archive/restore, archived read-only access, independent client
         state and preserved report inclusion. Implemented and locally verified;
@@ -2160,10 +2161,16 @@ than assuming one rule for every workflow. Test with real volumes.
       immutable evidence of the reviewed release; they are not additional
       pending hearings.
       Phase 1: read-only list/detail, filters, historical attendees and linked
-      navigation implemented and locally verified; independent review pending.
+      navigation accepted by Khaled Helmy on 13 September 2026 at
+      `9b09f0d849aac5ed6afbcbc40879cfbb6da89ea1`, following its independent PASS review.
       See the [Phase 1 report](docs/task-reports/2026-09-13-task-4-3-phase-1-read-only-hearings.md)
       and [matrix](docs/testing/task-4-3-phase1-acceptance-matrix.md).
-      Later phase: attendees as a multi-select of active staff.
+      Phase 2: bounded hearing editing and retained attendee selection under D60;
+      implementation and migration 66 await independent review and owner acceptance.
+      See the [Phase 2 report](docs/task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md)
+      for isolated proof and the separate accepted Phase 1 app activation outcome:
+      app `9b09f0d` runs on loopback with actual database migration 65; Phase 2 is inactive.
+      Overall Task 4.3 remains unchecked.
 - [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field

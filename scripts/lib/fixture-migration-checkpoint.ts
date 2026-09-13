@@ -28,7 +28,12 @@ function checkpointFor(
   clientBoundary = false,
   matterPrestate = false,
   matterBoundary = false,
-): 56 | 60 | 61 | 62 | 63 | 64 {
+  hearingPrestate = false,
+): 56 | 60 | 61 | 62 | 63 | 64 | 65 {
+  if (hearingPrestate) {
+    assert.ok(['litigation', 'litigation_task43_canonical_prestate'].includes(database));
+    return 65;
+  }
   if (matterBoundary) {
     assert.ok(['litigation', 'litigation_task42_canonical_prestate'].includes(database));
     return 64;
@@ -53,7 +58,7 @@ function reviewedRepository(
   repository: Awaited<ReturnType<typeof readGate4RepositoryMigrationInventory>>,
 ) {
   assert.deepEqual(repository.defects, []);
-  assert.ok([61, 62, 63, 64, 65].includes(repository.migrations.length));
+  assert.ok([61, 62, 63, 64, 65, 66].includes(repository.migrations.length));
   assert.equal(repository.migrations[60]?.name, '20260906180000_staff_roster_database_boundary');
   if (repository.migrations.length >= 62)
     assert.equal(repository.migrations[61]?.name, CLIENT_CONTACT_MIGRATION);
@@ -61,8 +66,10 @@ function reviewedRepository(
     assert.equal(repository.migrations[62]?.name, CLIENT_LOGO_MIGRATION);
   if (repository.migrations.length >= 64)
     assert.equal(repository.migrations[63]?.name, MATTER_EDIT_MIGRATION);
-  if (repository.migrations.length === 65)
+  if (repository.migrations.length >= 65)
     assert.equal(repository.migrations[64]?.name, MATTER_LIFECYCLE_MIGRATION);
+  if (repository.migrations.length === 66)
+    assert.equal(repository.migrations[65]?.name, '20260913120000_hearing_editing_boundary');
 }
 
 function configText(): string {
@@ -84,6 +91,7 @@ export async function validateFixtureMigrationConfig(config: string): Promise<st
       'prisma.client62.config.ts',
       'prisma.matter63.config.ts',
       'prisma.matter64.config.ts',
+      'prisma.hearing65.config.ts',
     ].includes(configName),
   );
   const checkpoint = checkpointFor(
@@ -91,6 +99,7 @@ export async function validateFixtureMigrationConfig(config: string): Promise<st
     configName === 'prisma.client62.config.ts',
     configName === 'prisma.matter63.config.ts',
     configName === 'prisma.matter64.config.ts',
+    configName === 'prisma.hearing65.config.ts',
   );
   await withApprovedMigrationClient((db) =>
     assertIsolatedTestCluster(
@@ -139,7 +148,7 @@ export async function validateFixtureMigrationConfig(config: string): Promise<st
  * candidates exist; it is limited to the two reviewed client fixture targets. */
 export async function migrateFixtureThroughCheckpoint(
   databaseUrl: string,
-  checkpoint: 56 | 60 | 61 | 62 | 63 | 64,
+  checkpoint: 56 | 60 | 61 | 62 | 63 | 64 | 65,
   environment = process.env,
 ): Promise<void> {
   const target = new URL(databaseUrl);
@@ -149,6 +158,7 @@ export async function migrateFixtureThroughCheckpoint(
       checkpoint === 62,
       checkpoint === 63,
       checkpoint === 64,
+      checkpoint === 65,
     ),
     checkpoint,
   );
@@ -159,13 +169,15 @@ export async function migrateFixtureThroughCheckpoint(
   reviewedRepository(repository);
   const temporary = await mkdtemp(join(tmpdir(), 'litigation-task40a-checkpoint-'));
   const configName =
-    checkpoint === 64
-      ? 'prisma.matter64.config.ts'
-      : checkpoint === 63
-        ? 'prisma.matter63.config.ts'
-        : checkpoint === 62
-          ? 'prisma.client62.config.ts'
-          : 'prisma.config.ts';
+    checkpoint === 65
+      ? 'prisma.hearing65.config.ts'
+      : checkpoint === 64
+        ? 'prisma.matter64.config.ts'
+        : checkpoint === 63
+          ? 'prisma.matter63.config.ts'
+          : checkpoint === 62
+            ? 'prisma.client62.config.ts'
+            : 'prisma.config.ts';
   const owned = new Set([configName, 'migrations', 'migrations/migration_lock.toml']);
   try {
     await mkdir(join(temporary, 'migrations'));

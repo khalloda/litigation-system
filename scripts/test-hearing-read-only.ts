@@ -577,7 +577,7 @@ async function main() {
       assert.equal(result.status, 0, name + ' failed; see retained log');
       console.log('PASS ' + name);
     };
-    check('deploy65', 'scripts/run-prisma-migration.ts', ['deploy']);
+    await migrateFixtureThroughCheckpoint(fixture.migrationUrl, 65, fixture.environment);
     await initialiseActors(fixture.migrationUrl, fixture.runtimeUrl);
     let cases;
     if (process.argv.includes('--browser-only')) {

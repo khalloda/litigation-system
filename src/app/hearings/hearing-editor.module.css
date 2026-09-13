@@ -1,0 +1,27 @@
+.fields {
+  display: grid;
+  gap: 1rem;
+  margin-block: 1.25rem;
+  padding: 1rem;
+  min-inline-size: 0;
+  border: 1px solid var(--colour-border);
+}
+.fields input,
+.fields textarea,
+.fields select {
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+}
+.members {
+  padding-inline-start: 1.5rem;
+  overflow-wrap: anywhere;
+}
+.members li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 0.75rem;
+}

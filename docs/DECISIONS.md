@@ -1622,3 +1622,58 @@ The same direct instruction accepts Task 4.2 Phase 3 and Task 4.2 overall at
 publication, applying migrations 64/65, activating the new app, Ubuntu deployment
 and later integration work. This documentation-only checkpoint stops after one
 local commit and review package for independent documentation review.
+
+
+## D60 — Bounded hearing editing and retained attendee membership
+
+**Owner approved 13 September 2026**, directly in conversation through the Task
+4.3 Phase 2 hearing-editing and separate local-activation prompt. Phase 1 at
+`9b09f0d849aac5ed6afbcbc40879cfbb6da89ea1` is accepted. D59 remains unchanged.
+
+Administrator and Litigation Assistant may create and update hearings; Lawyer
+and Paralegal retain viewing only. Editable fields are hearing date, next hearing
+date, action, decision, outcome, court, circuit, notes and current attendees.
+Dates remain nullable date-only values without inferred ordering or defaults.
+Unchanged text preserves its exact original bytes and line endings. Text fields
+are bounded to 10,000 characters (source maxima: decision 961, outcome 4,
+circuit 64, notes 170). This is a technical bound, not a new legal workflow.
+
+Creation requires an existing unarchived matter or explicit unassigned NULL.
+An archived client does not prevent selecting its unarchived matter. Existing
+matter association, including NULL, is fixed. An archived matter must be restored
+before editing its hearing. No parent is changed by a hearing save.
+
+The exact twelve D41 hearings keep their court, circuit, note, source and matter
+binding immutable at the UI, service and database boundaries. Other editable
+fields on those hearings remain editable. The existing exact-set D41 verifier
+continues unchanged. Report, previous decision, next attendance raw text,
+destination, short decision and client notification stay unchanged on existing
+records and NULL on native records. No inferred status, notification or previous
+decision is introduced. Legacy/source fields are never synthesized or edited.
+
+Attendee eligibility is current internal active staff, independently of login
+eligibility. Existing inactive attendees and imported duplicates remain visible
+and unchanged on an unrelated save. Removal retires an explicitly selected
+membership; nothing is physically deleted. Eligible restoration reuses a stable
+membership ID. Imported ordinals and all raw/cell/span provenance remain intact.
+Current order is separate; retained members keep their order and additions or
+restorations append deterministically. A remove/reselect round trip within one
+form preserves the original ID and order. Cross-hearing identities, unknown IDs,
+duplicate new memberships and unbounded arrays are rejected.
+
+Writes pass through narrowly granted database gateways, with current account,
+session, role, parent and lookup/staff checks at commit. Direct runtime business
+writes remain denied. Aggregate version, retained history, submission receipt and
+audit commit atomically. Stale edits are refused; unchanged saves advance no
+business/audit/history/submission/sequence state. Exact owned retries return the
+committed result; changed payloads and another actor's token are refused. Failed
+saves roll back rows; sequence reservations consumed before a failed insert are
+reported honestly and never rewound. Original import reconciliation remains
+separate from continuously verified native/current history.
+
+No hearing deletion, archive/restore, bulk edit, export, audit-history interface,
+notification automation or later task is included. New migration/code activation
+requires independent review and subsequent owner approval. The separate accepted
+app activation is restricted to migrations 64/65 and exact commit 9b09f0d, with
+protected recovery backup and isolated rehearsal first. No push or Ubuntu
+deployment is authorized.

@@ -1,3 +1,8 @@
+import {
+  hearingEditApplied,
+  HEARING_EDIT_GATEWAYS,
+  HEARING_EDIT_TABLES,
+} from './hearing-edit-checkpoint';
 import { matterLifecycleApplied, MATTER_LIFECYCLE_GATEWAYS } from './matter-lifecycle-checkpoint';
 import { createHash } from 'node:crypto';
 import type { ClientBase } from 'pg';
@@ -350,19 +355,22 @@ export async function runtimeRoleBoundaryFailures(
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
+  const hearingBoundary = await hearingEditApplied(db);
   const matterBoundary = await matterEditApplied(db);
   const lifecycle = await matterLifecycleApplied(db);
   const rosterLocked = (table: string) =>
     (staffBoundary && STAFF_ROSTER_TABLES.includes(table)) ||
     (clientBoundary && ['clients', 'contacts'].includes(table)) ||
     (logoBoundary && table === 'client_logos') ||
-    (matterBoundary && MATTER_EDIT_TABLES.includes(table as never));
+    (matterBoundary && MATTER_EDIT_TABLES.includes(table as never)) ||
+    (hearingBoundary && HEARING_EDIT_TABLES.includes(table as never));
   const approvedDefiners: readonly string[] = [
     ...APPROVED_RUNTIME_SECURITY_DEFINERS,
     ...(staffBoundary ? STAFF_RUNTIME_GATEWAYS : []),
     ...(clientBoundary ? CLIENT_CONTACT_GATEWAYS : []),
     ...(logoBoundary ? CLIENT_LOGO_GATEWAYS : []),
     ...(matterBoundary ? MATTER_EDIT_GATEWAYS : []),
+    ...(hearingBoundary ? HEARING_EDIT_GATEWAYS : []),
     ...(lifecycle ? MATTER_LIFECYCLE_GATEWAYS : []),
   ];
   if (!/^[a-z][a-z0-9_]*$/u.test(roleName)) return ['runtime role name is invalid'];

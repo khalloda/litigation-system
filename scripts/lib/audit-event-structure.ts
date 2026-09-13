@@ -1,3 +1,4 @@
+import { hearingEditApplied, HEARING_EDIT_FIELDS } from './hearing-edit-checkpoint';
 import { matterLifecycleApplied, MATTER_LIFECYCLE_FIELDS } from './matter-lifecycle-checkpoint';
 import type { ClientBase } from 'pg';
 import { clientLogoBoundaryApplied, CLIENT_LOGO_FIELD_RULES } from './client-logo-checkpoint';
@@ -152,6 +153,7 @@ export async function auditEventStructureFailures(
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
+  const hearingBoundary = await hearingEditApplied(db);
   const matterBoundary = await matterEditApplied(db);
   const lifecycle = await matterLifecycleApplied(db);
   const currentFieldRules = [
@@ -159,6 +161,7 @@ export async function auditEventStructureFailures(
     ...(clientBoundary ? CLIENT_CONTACT_FIELD_RULES : []),
     ...(logoBoundary ? CLIENT_LOGO_FIELD_RULES : []),
     ...(matterBoundary ? MATTER_EDIT_FIELDS : []),
+    ...(hearingBoundary ? HEARING_EDIT_FIELDS : []),
     ...(lifecycle ? MATTER_LIFECYCLE_FIELDS : []),
   ];
   // Exact new identities only: classifying an old field with a new-looking

@@ -7,6 +7,16 @@ You need Docker installed and running; nothing else.
 
 ## Everyday commands
 
+**Current local activation — 13 September 2026:** the actual database is at 65
+applied migrations, one historical rollback and zero unfinished. Accepted app
+`9b09f0d` runs on `http://127.0.0.1:3000` from its frozen external artifact.
+The fresh protected backup and isolated 63-to-65 restore/upgrade rehearsal passed;
+actual validation passed 125 invariants and 15 setup checks. Migration 66 and
+Phase 2 app code are unactivated pending review. Use the task-specific frozen
+start/stop helpers recorded in the Phase 2 report, not an edited-checkout build
+or deploy command, for this accepted running app. The dated checkpoints below
+remain historical.
+
 **Task 4.2 Phase 2 checkpoint — 12 September 2026:** the real development
 database remains at 63 applied migrations, one historical rollback and zero
 unfinished. Migration `20260912120000_matter_editing_boundary` (64) is pending
@@ -986,9 +996,28 @@ separate documentation/publication checkpoint and Task 4.2 mandate.
 
 ### Task 4.2 Phase 3 candidate checkpoint
 
-The real database stays at63. Frozen candidate64 precedes D58 candidate65.
+At this historical checkpoint the real database stayed at63. Frozen candidate64
+preceded D58 candidate65; the later authorized activation above applied both.
 Owned fixture dispatch supports exact historical63, accepted64 and candidate65
 with separate canonical/historical profiles. Old fixture paths stop at their
 requested checkpoint. Current checks enforce the archive default/index, exact
 functions/settings/privileges/triggers and complete audited matter history.
 Application to the real database remains separately authorized.
+
+
+## Task 4.3 Phase 2 hearing boundary — pending independent review
+
+Migration `20260913120000_hearing_editing_boundary` is migration 66. Existing migrations
+1–65 are unchanged. Only owned isolated clusters may receive 66 before acceptance.
+`public.hearing_edit_state` and `public.hearing_edit_save` are the sole runtime hearing
+mutation gateways; direct hearing/attendee writes and identity allocation are revoked.
+The saving gateway locks the staff mutex, current account, parent, hearing and selected
+people, validates eligibility again, then commits business changes, aggregate version,
+audit, history and submission receipt together. No-op and exact retry allocate nothing.
+The historical 65 profile retains 125 invariants; 66 adds four hearing boundary checks.
+Historical fixtures explicitly select their requested checkpoint, including 65.
+
+Actual development activation completed using only the accepted 9b09f0d artifact and
+its migrations 64/65. The app remains running on loopback and the actual database
+passed the full 65 profile. See the dated Phase 2 report and separate activation
+receipt; migration 66 and hearing editing remain unactivated.

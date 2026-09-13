@@ -38,3 +38,8 @@ The separate empty-4/empty-5 fixture attempts exposed missing existing mutex/aud
 allocator support records; both were added to the sparse fixture data without
 altering guards. Failed resources were removed. The final empty-state result is
 recorded above, separately from the full-volume candidate invariant proof.
+
+
+## Owner acceptance addendum — 13 September 2026
+
+The owner accepted the independent Phase 1 PASS at `9b09f0d849aac5ed6afbcbc40879cfbb6da89ea1` and explicitly authorized Task 4.3 Phase 2 under its attached prompt. Phase 1 is accepted. The original report above is retained as historical evidence. Phase 2 remains pending independent review; its code and migration are not authorized for activation. Separate authority permits protected backup/rehearsal and activation of only accepted migrations 64/65 and the exact accepted Phase 1 app. D59 values remain unchanged.

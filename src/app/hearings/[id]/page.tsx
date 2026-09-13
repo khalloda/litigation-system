@@ -1,3 +1,4 @@
+import { hasPermission } from '@/lib/auth/permissions';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -55,7 +56,13 @@ export default async function HearingPage({
         <div>
           <p className={styles.eyebrow}>{t.hearings.details}</p>
           <h1>{t.hearings.identity(hearing.id)}</h1>
-          <p>{t.hearings.readOnly}</p>
+          {hasPermission(session.user.role, 'hearings', 'update') && !hearing.matterArchived ? (
+            <Link className={styles.link} href={'/hearings/' + hearing.id + '/edit'}>
+              {t.hearings.manage.edit}
+            </Link>
+          ) : (
+            <p>{t.hearings.readOnly}</p>
+          )}
         </div>
         <Link className={styles.link} href={hearingListHref(filters)}>
           {t.hearings.back}

@@ -152,7 +152,7 @@ const joins = Prisma.sql`FROM public.hearings h LEFT JOIN public.matters m ON m.
 const projection = Prisma.sql`h.id,h.legacy_id AS "legacyId",h.matter_id AS "matterId",m.case_number_ar AS "caseNumber",m.subject,
   m.is_archived AS "matterArchived",m.client_id AS "clientId",c.name_ar AS "clientName",c.is_archived AS "clientArchived",
   h.hearing_date::text AS "hearingDate",h.next_hearing_date::text AS "nextHearingDate",ct.label_ar AS court,a.label_ar AS action,h.decision,
-  (SELECT count(*)::int FROM public.hearing_attendees ha WHERE ha.hearing_id=h.id) AS "attendeeCount"`;
+  (SELECT count(*)::int FROM public.hearing_attendees ha WHERE NOT coalesce((to_jsonb(ha)->>'is_retired')::boolean,false) AND ha.hearing_id=h.id) AS "attendeeCount"`;
 const pattern = (q: string) =>
   Prisma.sql`('%' || public.ar_normalise(${q.replace(/[\\%_]/gu, '\\$&')}) || '%')`;
 function where(f: HearingFilters) {
@@ -167,11 +167,11 @@ function where(f: HearingFilters) {
   }
   if (f.attendee === 'missing')
     conditions.push(
-      Prisma.sql`NOT EXISTS (SELECT 1 FROM public.hearing_attendees ha WHERE ha.hearing_id=h.id)`,
+      Prisma.sql`NOT EXISTS (SELECT 1 FROM public.hearing_attendees ha WHERE NOT coalesce((to_jsonb(ha)->>'is_retired')::boolean,false) AND ha.hearing_id=h.id)`,
     );
   else if (f.attendee !== 'all')
     conditions.push(
-      Prisma.sql`EXISTS (SELECT 1 FROM public.hearing_attendees ha WHERE ha.hearing_id=h.id AND ha.person_id=${Number(f.attendee)})`,
+      Prisma.sql`EXISTS (SELECT 1 FROM public.hearing_attendees ha WHERE NOT coalesce((to_jsonb(ha)->>'is_retired')::boolean,false) AND ha.hearing_id=h.id AND ha.person_id=${Number(f.attendee)})`,
     );
   const column =
     f.dateField === 'next' ? Prisma.sql`h.next_hearing_date` : Prisma.sql`h.hearing_date`;
@@ -201,7 +201,7 @@ export function hearingOptionsQuery() {
     UNION ALL SELECT 'client',c.id::text,c.name_ar,c.is_archived,false FROM public.clients c
     UNION ALL SELECT 'court',ct.id::text,ct.label_ar,false,NOT ct.is_active FROM public.lookup_court ct
     UNION ALL SELECT 'attendee',p.id::text,p.name_ar,false,NOT p.is_active FROM public.people p
-      WHERE EXISTS (SELECT 1 FROM public.hearing_attendees ha WHERE ha.person_id=p.id)
+      WHERE EXISTS (SELECT 1 FROM public.hearing_attendees ha WHERE NOT coalesce((to_jsonb(ha)->>'is_retired')::boolean,false) AND ha.person_id=p.id)
   ) options ORDER BY kind,label COLLATE "arabic" NULLS LAST,value LIMIT 4001`;
 }
 function authorize(session: Session | null) {
@@ -281,7 +281,7 @@ export async function readHearing(
     const attendees = await tx.$queryRaw<
       HearingAttendee[]
     >(Prisma.sql`SELECT ha.id,ha.person_id AS "personId",ha.ordinal,p.name_ar AS name,p.is_active AS active
-      FROM public.hearing_attendees ha LEFT JOIN public.people p ON p.id=ha.person_id WHERE ha.hearing_id=${id} ORDER BY ha.ordinal NULLS LAST,ha.id LIMIT 1001`);
+      FROM public.hearing_attendees ha LEFT JOIN public.people p ON p.id=ha.person_id WHERE NOT coalesce((to_jsonb(ha)->>'is_retired')::boolean,false) AND ha.hearing_id=${id} ORDER BY coalesce((to_jsonb(ha)->>'current_order')::integer,ha.ordinal) NULLS LAST,ha.id LIMIT 1001`);
     if (attendees.length > 1000 || attendees.length !== rows[0].attendeeCount)
       throw new Error('Hearing attendee cardinality differs');
     return { ...rows[0], attendees };

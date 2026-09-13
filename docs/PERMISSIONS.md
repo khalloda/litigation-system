@@ -309,3 +309,19 @@ session version and expiry. All four roles retain archived read access;
 Administrator/Litigation Assistant editing requires an unarchived matter.
 The existing permission matrix is unchanged; restoration is required first.
 Related records retain their own permissions; client archive state is independent.
+
+
+## Task 4.3 Phase 2 hearing mutation enforcement — D60
+
+Administrator and Litigation Assistant may open `/hearings/new` and `/hearings/[id]/edit`
+and invoke the corresponding server actions. Lawyer and Paralegal retain viewing only.
+The page, action, service and committing database function each enforce authority. A
+currently enabled account, active internal person, correct role/session version and valid
+session expiry are required at save time. Selecting an attendee requires active internal
+staff, independently of account/login eligibility; unchanged former attendees may remain.
+
+An archived matter blocks hearing creation/editing until the accepted matter restoration
+workflow restores it. Client archive alone does not block an unarchived matter. Existing
+parent associations are fixed, including NULL. D41 protected fields are denied at service
+and database boundaries as well as disabled in the UI. No hearing lifecycle, bulk edit,
+export, hard delete or audit-history UI is introduced.
