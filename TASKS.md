@@ -8,10 +8,16 @@ be bigger than expected, split it and tell the owner.
 
 **Current checkpoint — 13 September 2026:** Phase 1 remains accepted. Khaled
 accepted Phase 2 on 12 September at `6771218164c992781902374efb62f0b2f54b2a20`
-after the final R3 PASS review. D58 Phase 3 matter archive/restore is the
-locally verified implementation, stopping for independent review. Overall
-Task 4.2 remains incomplete; migrations 64/65 remain pending on the real
-database at 63. See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
+after the final R3 PASS review. Khaled Helmy accepted Phase 3 and Task 4.2 overall
+on 13 September 2026 at `b2ac2187b762e7db82b190e6f5d522506e676292`, following the
+[independent PASS review](docs/reviews/2026-09-13-task-4-2-phase-3-independent-review.md).
+C1 is **Owner-accepted risk — unchanged; not technically remediated** under
+[D59](docs/DECISIONS.md#d59--existing-development-repository-credential-exception), with no credential/configuration change.
+The current return point is independent review of this documentation-only
+acceptance commit. The last delivered database observation was migration 63,
+with 64/65 pending; no database/runtime check ran for this acceptance record.
+Publication, new-app activation, migrations, Ubuntu deployment and later work
+require separate authorization. Task 4.3 remains unstarted here. See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
 and [matrix](docs/testing/task-4-2-phase3-acceptance-matrix.md). The previous
 migration-63 documentation publication is closed at
 `d84aa4b916e41e15abf543fc7dd2d4155bea7acf`, supported by the preserved
@@ -2108,10 +2114,12 @@ than assuming one rule for every workflow. Test with real volumes.
       review and were accepted for Windows development on 11 September 2026.
       See the development acceptance record above. Ubuntu VM/Docker production,
       later task work and final Access cutover remain separate.
-- [ ] **4.2 Matters** — the biggest screen. Classification, parties, lawyers.
+- [x] **4.2 Matters** — the biggest screen. Classification, parties, lawyers.
       Integrate D52's archive-independent access to existing matters. Task 4.1
       Phase 4 proves current client reads and report queries. Phase 1 below adds
-      the new matter-screen integration proof; overall owner acceptance is pending.
+      the new matter-screen integration proof; overall owner acceptance was given
+      by Khaled Helmy on 13 September 2026 at
+      `b2ac2187b762e7db82b190e6f5d522506e676292`.
       **Case number field must display multiple lines (D9).**
       `docs/VISUAL-DIRECTION.md` makes the stacked case number the hero of this
       screen, in descending weight — D9 made visible.
@@ -2125,7 +2133,7 @@ than assuming one rule for every workflow. Test with real volumes.
   - [x] **Phase 1 — read-only matter list/detail:** accepted by Khaled Helmy on
         12 September 2026 at `2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the
         [independent PASS review](docs/reviews/2026-09-12-task-4-2-phase-1-independent-review.md).
-        Overall Task 4.2 remains incomplete.
+        Overall Task 4.2 was subsequently accepted on 13 September 2026.
   - [x] **Phase 2 — matter creation/editing, parties, capacities and lawyers:**
         implemented and locally verified for Administrator/Litigation Assistant,
         with disposable database/production browser proof and one local commit.
@@ -2142,7 +2150,10 @@ than assuming one rule for every workflow. Test with real volumes.
   - [x] **Phase 3 — matter archive/restore:** D58 authorized Administrator-only
         non-cascading archive/restore, archived read-only access, independent client
         state and preserved report inclusion. Implemented and locally verified;
-        owner acceptance remains pending independent review.
+        independent review passed and Khaled Helmy accepted Phase 3 and Task 4.2
+        overall on 13 September 2026 at
+        `b2ac2187b762e7db82b190e6f5d522506e676292`. See the acceptance addenda
+        in the Phase 3 report and matrix above. C1 retains the D59 disposition.
 - [ ] **4.3 Hearings** — 13,382 current target rows need paging and fast
       filters. The 327 original high-impact quarantine/source rows remain as
       immutable evidence of the reviewed release; they are not additional

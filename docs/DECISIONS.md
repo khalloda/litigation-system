@@ -1585,3 +1585,40 @@ back with the event. No existing audit actor/append/permission guard changes.
 Audited writes serialize on this small counter; ordinary read-only pages do
 not. This is included in the candidate's isolated shared-audit and race proof,
 not authority to apply the candidate to the actual database.
+
+## D59 — Existing development repository credential exception
+
+**Approved explicitly by Khaled Helmy on 13 September 2026.** He accepts the
+existing development PostgreSQL password/fallback remaining in this project
+repository and instructs that credentials, passwords, usernames, configuration,
+local settings and services must remain unchanged.
+
+C1 is **Owner-accepted risk — unchanged; not technically remediated**. The known
+value remains present. Its previously reported active match has not been
+disproved or freshly retested. This is risk acceptance, not a claim that the
+password was fixed, removed, rotated, made secure or technically closed. The
+[independent review](reviews/2026-09-13-task-4-2-phase-3-independent-review.md)
+remains byte-for-byte historical evidence. This later owner decision supersedes
+its MUST FIX recommendation: C1 is not a required remediation task or an
+acceptance, development or publication gate for this existing development
+credential. Do not reopen the same rotation request without a new material fact
+or later owner instruction; applicable platform controls still apply.
+
+The earlier rotation/remediation handoff was not sent to Codex and is superseded;
+any operational authority in that unused proposal is revoked, not evidence of
+an executed or partially completed rotation. No recovery need is inferred.
+
+This narrow operational/security exception covers only the existing development
+credential in this repository. Other secrets remain protected. It authorizes
+neither new credentials in Git nor disclosure of this value in documentation,
+chat or review packages. It authorizes no configuration/service operation,
+fetch, push, migration, deployment or Ubuntu production credential policy.
+Existing governance and automated checkers are unchanged. D58 and all other
+business rules are unchanged; broader credential protections, including D33/D35,
+continue outside this explicit exception.
+
+The same direct instruction accepts Task 4.2 Phase 3 and Task 4.2 overall at
+`b2ac2187b762e7db82b190e6f5d522506e676292`. Acceptance is distinct from
+publication, applying migrations 64/65, activating the new app, Ubuntu deployment
+and later integration work. This documentation-only checkpoint stops after one
+local commit and review package for independent documentation review.

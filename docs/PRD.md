@@ -90,8 +90,9 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of the authorized Task 4.2 Phase 2 nullable-party-order
-R3 follow-up** after local verification. R1/R2 are closed by the correction review.
+point is **independent review of the Task 4.2 documentation-only acceptance
+commit**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
+overall is owner-accepted. See the 13 September acceptance record below.
 Khaled Helmy accepted Phase 1 at
 `2f8820a3053ab65a60ee183882cbd6a2462559bc` on 12 September 2026; its
 [independent PASS review](reviews/2026-09-12-task-4-2-phase-1-independent-review.md)
@@ -433,8 +434,16 @@ accessibility conformance is claimed. Keyboard use, labels, focus, programmatic
 status/error announcements, Arabic/RTL, zoom, reflow and existing implementation
 remain required. This acceptance authorizes no application-code removal.
 
-The current work is authorized Task 4.2 Phase 3 matter archive/restore under D58,
-stopping for independent review after local verification and one local commit.
+Khaled Helmy accepted Task 4.2 Phase 3 and Task 4.2 overall on 13 September 2026
+at `b2ac2187b762e7db82b190e6f5d522506e676292`, following the preserved
+[independent PASS review](reviews/2026-09-13-task-4-2-phase-3-independent-review.md).
+The current return point is independent review of the documentation-only
+acceptance commit. C1 is **Owner-accepted risk — unchanged; not technically
+remediated**, under the [D59 development credential exception](DECISIONS.md#d59--existing-development-repository-credential-exception).
+No credential/configuration or runtime work was performed for this acceptance.
+The earlier rotation handoff was not sent and is superseded. Publication,
+new-app activation, migrations and Ubuntu deployment need separate authorization;
+Task 4.3 and later tasks remain unstarted here.
 See the [follow-up report](task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
 [matrix](testing/task-4-2-phase2-r3-ordering-matrix.md). R1–R3 are closed; Khaled accepted Phase 2 on 12 September 2026 at
 `6771218164c992781902374efb62f0b2f54b2a20`. Migration-63
@@ -448,13 +457,14 @@ filters, alias search and stable 25-row paging; its detail preserves full case
 numbers, independent classifications, ordered parties/capacities and recorded
 lawyer assignments. Two-way client links preserve navigation context. Matter
 creation/editing is authorized in Phase 2, including ordered parties/capacities and
-lawyers for Administrator/Litigation Assistant. Candidates 64 and 65 remain pending
-on the real database at 63. See the [Phase 2 report](task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
+lawyers for Administrator/Litigation Assistant. The last delivered database
+observation was migration 63, with 64/65 pending; this documentation task did
+not refresh it. See the [Phase 2 report](task-reports/2026-09-12-task-4-2-phase-2-matter-editing.md)
 and [matrix](testing/task-4-2-phase2-acceptance-matrix.md), with the
 [correction report](task-reports/2026-09-12-task-4-2-phase-2-corrections.md) and
-[correction matrix](testing/task-4-2-phase2-correction-matrix.md). D58 Phase 3 implements matter archive/restore; Phase 3 and overall Task 4.2
-owner acceptance remain pending independent review. Stage 6 report/export
-screens still require their own D52 integration proof.
+[correction matrix](testing/task-4-2-phase2-correction-matrix.md). D58 Phase 3 implements matter archive/restore; Phase 3 and Task 4.2 overall
+are owner-accepted at the commit recorded above. Stage 6 report/export screens
+still require their own D52/D58 integration proof.
 
 
 ### Task 4.2 Phase 3 — D58 lifecycle

@@ -64,3 +64,41 @@ Future child selectors must omit archived new choices while retaining existing
 references. Future report/export screens owe D58 inclusion proof; no Stage6 UI
 or new child-mutation policy was built. No push, real migration, deployment,
 owner-app operation, speech action, subagents or later task work.
+
+## Owner acceptance and direction — 13 September 2026
+
+Khaled Helmy explicitly accepted Task 4.2 Phase 3 and Task 4.2 overall at
+`b2ac2187b762e7db82b190e6f5d522506e676292`, following the
+[independent PASS review](../reviews/2026-09-13-task-4-2-phase-3-independent-review.md).
+Phases 1 and 2 retain their earlier acceptances. The complete preceding document
+is preserved as an exact byte prefix: its pending-acceptance wording and test
+results describe the earlier execution checkpoint. Historical PASS evidence is
+reused unchanged; no application, database or browser tests ran in this
+documentation-only acceptance task.
+
+C1 is **Owner-accepted risk — unchanged; not technically remediated**, under
+[D59](../DECISIONS.md#d59--existing-development-repository-credential-exception).
+The owner accepts the existing development password remaining in the repository
+and directs no credential/configuration/service changes. The unused rotation
+handoff was not sent and is superseded. The known value remains present; its
+reported active match was not disproved or freshly retested. C1 is not a pending
+fix or an acceptance/development/publication gate for this existing development
+credential. The review's earlier MUST FIX recommendation remains historical;
+the later owner decision supplies the current disposition, without changing the
+review's bytes or claiming a technical fix.
+
+This task changed documentation only. No database connection, runtime inspection,
+password/configuration/service change, fetch, push, migration or deployment
+occurred. Preservation of runtime/data here follows from no operational activity,
+not a fresh database/runtime comparison. The last delivered observation was
+migration 63, with 109 tables, 48 complete sequences and 54 logos; migrations
+64/65 remained pending and the owner app was the migration-63 development
+artifact. Those observations are historical, not newly measured.
+
+Feature acceptance does not authorize publication, applying 64/65, activating
+the new app, Ubuntu deployment or final Access cutover. Future child selectors
+and report/export screens retain D58 integration obligations; shared audit-write
+serialization remains a documented production-sizing consideration. Task 4.3
+and later work remain unstarted here. Speech actions remain excluded.
+The current stop is independent documentation review after one local acceptance
+commit and its verified review package.
