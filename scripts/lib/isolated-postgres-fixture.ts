@@ -73,7 +73,7 @@ export type IsolatedPostgres = Readonly<{
   /** Generated secrets are passed only in child-process environments. */
   environment: NodeJS.ProcessEnv;
   createDatabase: (name: string, template?: string) => Promise<string>;
-  restoreProject: () => Promise<void>;
+  restoreProject: (snapshot?: string) => Promise<void>;
 }>;
 
 /** Defense in depth for test commands launched by this fixture. This is not a
@@ -417,7 +417,8 @@ export async function withIsolatedPostgres<T>(
       target.pathname = '/' + database;
       return target.toString();
     };
-    const restoreProject = async () => {
+    const restoreProject = async (snapshot?: string) => {
+      if (snapshot !== undefined) assert.match(snapshot, /^[0-9A-F]+-[0-9A-F]+-[0-9]+$/u);
       assert.deepEqual(projectIdentity(inspect(PROJECT)), originalProject);
       assert.deepEqual(projectIdentity(inspect(sourceName)), originalSource);
       let dump = docker([
@@ -431,6 +432,7 @@ export async function withIsolatedPostgres<T>(
         '-d',
         'litigation',
         '--format=custom',
+        ...(snapshot ? ['--snapshot=' + snapshot] : []),
       ]);
       try {
         // Memory-to-stdin only: no dump, real role password or credential file.

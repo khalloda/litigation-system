@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes, createHash, randomUUID } from 'node:crypto';
+import { encode } from 'next-auth/jwt';
+import { createSessionClaims } from '../src/lib/auth/session.ts';
 import { spawn, execFileSync } from 'node:child_process';
 import {
   cpSync,
@@ -34,7 +36,7 @@ import {
   staffComputedTargets,
 } from './lib/staff-accessibility-browser.mjs';
 
-export async function proveHearingBrowser(fixture, output, editorProof) {
+export async function proveHearingBrowser(fixture, output, editorProof, options = {}) {
   const source = process.cwd();
   const inspect = (work) =>
     withApprovedMigrationClient(work, { databaseUrl: fixture.migrationUrl });
@@ -186,6 +188,42 @@ export async function proveHearingBrowser(fixture, output, editorProof) {
     commands.push({ name: 'production-build', exit });
     assert.equal(exit, 0, 'Production build failed; see retained log');
     console.log('PASS isolated production build');
+    const outputIdentity = (directory) => {
+      const files = [];
+      const walk = (dir) => {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+          if (entry.name === 'cache') continue;
+          const file = join(dir, entry.name);
+          if (entry.isDirectory()) walk(file);
+          else {
+            const bytes = readFileSync(file);
+            files.push({
+              path: file.slice(mirror.length + 1).replaceAll('\\', '/'),
+              bytes: bytes.length,
+              sha256: createHash('sha256').update(bytes).digest('hex'),
+            });
+          }
+        }
+      };
+      walk(directory);
+      return files.sort((a, b) => a.path.localeCompare(b.path));
+    };
+    writeFileSync(
+      join(output, 'production-build-identity.json'),
+      JSON.stringify(
+        {
+          buildId: readFileSync(join(mirror, '.next/BUILD_ID'), 'utf8').trim(),
+          node: process.version,
+          sourceManifestSha256: createHash('sha256')
+            .update(readFileSync(join(output, 'build-source.json')))
+            .digest('hex'),
+          generated: outputIdentity(join(mirror, 'src/generated')),
+          outputs: outputIdentity(join(mirror, '.next')),
+        },
+        null,
+        2,
+      ),
+    );
     const accounts = [];
     const owner = await createApprovedMigrationPrismaClient(fixture.migrationUrl);
     try {
@@ -195,6 +233,15 @@ export async function proveHearingBrowser(fixture, output, editorProof) {
       });
       assert.equal(rows.length, 4);
       for (const row of rows) {
+        if (options.preserveAccounts) {
+          const a = await owner.userAccount.findUniqueOrThrow({
+            where: { id: row.id },
+            select: { personId: true, sessionVersion: true, mustChangePassword: true },
+          });
+          assert.equal(a.mustChangePassword, false, 'Fixture account must already be usable');
+          accounts.push({ ...row, ...a });
+          continue;
+        }
         const temporary = randomBytes(32).toString('base64url'),
           password = randomBytes(32).toString('base64url');
         await setApprovedAccountPassword(row.username, temporary, {
@@ -331,6 +378,41 @@ export async function proveHearingBrowser(fixture, output, editorProof) {
     };
     const login = async (account) => {
       await context.clearCookies();
+      if (options.preserveAccounts) {
+        const claims = createSessionClaims({
+          id: String(account.id),
+          personId: account.personId,
+          username: account.username,
+          name: 'TEST ONLY',
+          role: account.roleCode,
+          sessionVersion: account.sessionVersion,
+          mustChangePassword: false,
+          authenticatedAt: Date.now(),
+          rememberSession: false,
+          auditSessionId: randomUUID(),
+        });
+        const name = '__Secure-authjs.session-token';
+        const value = await encode({
+          token: { sub: String(account.id), ...claims },
+          secret: environment.AUTH_SECRET,
+          salt: name,
+          maxAge: 3600,
+        });
+        await context.addCookies([
+          {
+            name,
+            value,
+            domain: 'localhost',
+            path: '/',
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Lax',
+          },
+        ]);
+        await goto('/');
+        assert.equal(new URL(page.url()).pathname, '/');
+        return;
+      }
       await goto('/login');
       await page.getByLabel(t.auth.username, { exact: true }).fill(account.username);
       await page.getByLabel(t.auth.password, { exact: true }).fill(account.password);

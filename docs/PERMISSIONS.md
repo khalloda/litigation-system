@@ -325,3 +325,17 @@ workflow restores it. Client archive alone does not block an unarchived matter. 
 parent associations are fixed, including NULL. D41 protected fields are denied at service
 and database boundaries as well as disabled in the UI. No hearing lifecycle, bulk edit,
 export, hard delete or audit-history UI is introduced.
+
+
+## Task 4.3 Phase 3 hearing lifecycle — D61
+
+Administrator alone may open `/hearings/[id]/archive` or `/hearings/[id]/restore`
+and invoke the matching actions/services/database gateways. Every layer checks
+current account/session/role/actor; fresh authorization precedes receipt reuse.
+All roles retain read access regardless of hearing, matter or client archive.
+An archived hearing and its attendance are read-only until Administrator restores
+it. An associated archived matter must first be restored for any new hearing
+edit/archive/restore. NULL matter has no prerequisite; client archive alone does
+not block a hearing beneath an unarchived matter. No direct runtime table writes,
+physical deletion, bulk operation, new report/export or audit-history UI is granted.
+The preceding Phase 2 exclusion remains historical to that phase.

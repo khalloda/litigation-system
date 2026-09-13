@@ -13,6 +13,11 @@ function failures(sources: AuditRuntimeSource[]) {
     (s) =>
       (s.path.startsWith('src/app/hearings/') &&
         ![
+          'src/app/hearings/lifecycle-actions.ts',
+          'src/app/hearings/hearing-lifecycle.tsx',
+          'src/app/hearings/hearing-lifecycle-page.tsx',
+          'src/app/hearings/[id]/archive/page.tsx',
+          'src/app/hearings/[id]/restore/page.tsx',
           'src/app/hearings/actions.ts',
           'src/app/hearings/hearing-editor.tsx',
           'src/app/hearings/hearing-management-page.tsx',
@@ -86,7 +91,7 @@ function failures(sources: AuditRuntimeSource[]) {
 assert.deepEqual(failures(discoverAuditRuntimeSources(process.cwd())), []);
 assert.deepEqual(routeInventoryFailures(discoverAuthorizationEntrypoints(process.cwd())), []);
 const entries = ROUTE_INVENTORY.filter((e) => e.source.startsWith('src/app/hearings/'));
-assert.equal(entries.length, 6);
+assert.equal(entries.length, 10);
 assert.ok(
   entries
     .filter((e) => e.classification.access === 'permission' && e.classification.action === 'view')
@@ -107,6 +112,10 @@ assert.deepEqual(
     )
     .sort(),
   [
+    ['page', 'archive'],
+    ['page', 'restore'],
+    ['server-action', 'archive'],
+    ['server-action', 'restore'],
     ['page', 'create'],
     ['page', 'update'],
     ['server-action', 'create'],
@@ -126,5 +135,5 @@ for (const text of [
 ])
   assert.ok(failures([{ path: 'src/app/hearings/fixture.tsx', text }]).length, text);
 console.log(
-  'PASS hearing read-only closure, four exact separately guarded mutation entrypoints, nine rejecting fixtures',
+  'PASS hearing read-only closure, eight exact separately guarded mutation entrypoints, nine rejecting fixtures',
 );

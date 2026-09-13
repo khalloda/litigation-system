@@ -31,8 +31,15 @@ and 15 setup checks. Current passwords, valid-session state and credentials were
 preserved. See the [activation report](docs/task-reports/2026-09-13-task-4-3-phase-2-development-activation.md),
 [implementation report](docs/task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md)
 and [matrix](docs/testing/task-4-3-phase2-acceptance-matrix.md).
-Overall Task 4.3 remains open. The return point is independent activation and
-documentation review; publication, Ubuntu deployment and later phases remain separate.
+Khaled Helmy accepted Phase 2 activation/documentation at
+`5f0552f9dd98a55f4050c988c154a6b8cd18b30c` following its
+[independent PASS review](docs/reviews/2026-09-13-task-4-3-phase-2-activation-independent-review.md).
+Phase 3 implements Administrator hearing archive/restore under D61, with candidate
+migration67 tested only in isolated copies. Actual66 and the accepted Phase 2 app
+remain active. See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
+and [matrix](docs/testing/task-4-3-phase3-acceptance-matrix.md).
+Overall Task 4.3 remains open, awaiting independent Phase 3 review. Candidate67
+activation, publication, Ubuntu deployment and Task4.4 remain separate.
 See the [R3 follow-up report](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md)
 and [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
 See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)

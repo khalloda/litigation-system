@@ -1427,6 +1427,7 @@ model Matter {
 /// and reports actually use: by matter, by date, and the "today's hearings"
 /// panel on the dashboard, which reads the next date.
 model Hearing {
+  isArchived Boolean @default(false) @map("is_archived")
   rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
   /// Access ID_hearings.

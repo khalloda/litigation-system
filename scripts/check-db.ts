@@ -1,3 +1,4 @@
+import { assertHearingLifecycleBoundary } from './lib/hearing-lifecycle-checkpoint';
 import { assertHearingEditBoundary, historicalHearingClient } from './lib/hearing-edit-checkpoint';
 /*
  * Proves the application can actually reach the database and that the
@@ -152,6 +153,7 @@ async function main() {
     logoChecks,
     matterChecks,
     hearingChecks,
+    hearingLifecycleChecks,
     staffBoundary,
     rosterBaseline,
     staffChecks,
@@ -164,6 +166,7 @@ async function main() {
       clientChecks: checkpoint >= 62 ? await assertClientContactBoundary(current, profile) : [],
       logoChecks: checkpoint >= 63 ? await assertClientLogoBoundary(current) : [],
       hearingChecks: checkpoint >= 66 ? await assertHearingEditBoundary(current, profile) : [],
+      hearingLifecycleChecks: checkpoint >= 67 ? await assertHearingLifecycleBoundary(current) : [],
       matterChecks: checkpoint >= 64 ? await assertMatterEditBoundary(current, profile) : [],
       staffBoundary: checkpoint !== 60,
       rosterBaseline: await readRosterBaseline(current, checkpoint !== 60),
@@ -2624,6 +2627,7 @@ async function main() {
     ...logoChecks,
     ...matterChecks,
     ...hearingChecks,
+    ...hearingLifecycleChecks,
   ])
     checks.push({
       id: invariant.id,

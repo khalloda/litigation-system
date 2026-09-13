@@ -158,11 +158,12 @@ export default async function MatterPage({
           href={hearingListHref(
             parseHearingFilters({
               matter: String(matter.id),
+              archive: 'all',
               fromMatter: matterDetailHref(matter.id, filters),
             }),
           )}
         >
-          {t.hearings.matterHearings}
+          {t.hearings.lifecycle.allRecords}
         </Link>
       </section>
       <section className={styles.panel} aria-label={t.matters.classifications}>

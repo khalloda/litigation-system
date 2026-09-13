@@ -90,7 +90,7 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of Task 4.3 Phase 2 local activation and documentation**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
+point is **independent review of Task 4.3 Phase 3 hearing archive/restore**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
 overall is owner-accepted. See the 13 September acceptance record below.
 Khaled Helmy accepted Phase 1 at
 `2f8820a3053ab65a60ee183882cbd6a2462559bc` on 12 September 2026; its
@@ -456,8 +456,11 @@ Overall Task 4.3 remains open. See the [activation report](task-reports/2026-09-
 and [Phase 2 report](task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md).
 C1 is **Owner-accepted risk — unchanged; not technically remediated** under
 [D59](DECISIONS.md#d59--existing-development-repository-credential-exception).
-The earlier rotation handoff was not sent and is superseded. Later hearing phases,
-publication and Ubuntu deployment need separate authorization.
+The earlier rotation handoff was not sent and is superseded. Phase 2 activation
+and documentation are owner-accepted at `5f0552f9dd98a55f4050c988c154a6b8cd18b30c`.
+Phase 3 hearing archive/restore under D61 is implemented and awaits independent
+review. Candidate67 is unactivated; actual66 and the accepted app remain active.
+Publication, activation, Ubuntu deployment and Task4.4 need separate authorization.
 See the [follow-up report](task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
 [matrix](testing/task-4-2-phase2-r3-ordering-matrix.md). R1–R3 are closed; Khaled accepted Phase 2 on 12 September 2026 at
 `6771218164c992781902374efb62f0b2f54b2a20`. Migration-63
@@ -492,3 +495,17 @@ unchanged. Confirmation names the matter and gives current related counts.
 There is no requirement for a closed case, settled bill or empty relationship.
 Future matter pickers exclude archived new choices and retain existing references.
 See D58 and the [Phase 3 report](task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md).
+
+
+### Task 4.3 Phase 3 — D61 hearing lifecycle
+
+Only Administrator archives/restores. All roles read archived details; ordinary
+editing requires both hearing and associated matter unarchived. NULL matter is
+valid and client archive is independent. Default operational lists show current
+hearings, with archived/all filters preserving other filters and return context.
+Archive never changes legal outcome or physically deletes data. Confirmation
+rechecks identity, version, date/matter context and current/retired attendance.
+Retained attendance, old source evidence, D41 and reports remain intact. Existing
+report sources and historical counts include archived hearings; future Task6
+report integration must preserve that inclusion explicitly. No report screen or
+export is introduced here. See D61 and the Phase 3 report/matrix.

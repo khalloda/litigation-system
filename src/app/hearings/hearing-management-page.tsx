@@ -1,3 +1,5 @@
+import { parseHearingFilters, hearingDetailHref } from '@/lib/hearing-query';
+import type { ClientSearchParams } from '@/lib/client-query';
 import { randomUUID } from 'node:crypto';
 import type { Session } from 'next-auth';
 import { notFound } from 'next/navigation';
@@ -9,9 +11,11 @@ import styles from '../staff/staff.module.css';
 export async function HearingManagementPage({
   session,
   id,
+  params = {},
 }: {
   session: Session;
   id: number | null;
+  params?: ClientSearchParams;
 }) {
   let snapshot;
   try {
@@ -20,12 +24,17 @@ export async function HearingManagementPage({
     if (e instanceof HearingMutationError && e.code === 'not-found') notFound();
     throw e;
   }
-  const cancel = id === null ? '/hearings' : '/hearings/' + id;
-  if (snapshot.record?.archived)
+  const filters = parseHearingFilters(params);
+  const cancel = id === null ? '/hearings' : hearingDetailHref(id, filters);
+  if (snapshot.record?.hearingArchived || snapshot.record?.matterArchived)
     return (
       <main className={styles.page}>
         <h1>{t.hearings.manage.edit}</h1>
-        <p>{t.hearings.manage.parentArchived}</p>
+        <p>
+          {snapshot.record?.matterArchived
+            ? t.hearings.manage.parentArchived
+            : t.hearings.lifecycle.archivedNotice}
+        </p>
         <a className={styles.link} href={cancel}>
           {t.hearings.back}
         </a>
@@ -36,7 +45,11 @@ export async function HearingManagementPage({
       snapshot={snapshot}
       submission={randomUUID()}
       cancel={cancel}
-      reload={id === null ? '/hearings/new' : '/hearings/' + id + '/edit'}
+      reload={
+        id === null
+          ? '/hearings/new'
+          : '/hearings/' + id + '/edit' + cancel.slice(('/hearings/' + id).length)
+      }
     />
   );
 }

@@ -20,8 +20,11 @@ accepted Phase 2 at `34a9fd89176ae89a097136f48f2c733273243ba1` on 13 September.
 The accepted Phase 2 app is now running on 127.0.0.1:3000 with actual migration 66,
 after a fresh post-reset backup, isolated rehearsal, 129 invariants and 15 setup
 checks. N1 is corrected here and in the detailed hearing status below. Overall
-Task 4.3 remains open; the return point is independent activation/documentation
-review. Publication, Ubuntu deployment and later phases remain separately gated.
+Task 4.3 remains open. Khaled accepted Phase 2 activation/documentation at
+`5f0552f9dd98a55f4050c988c154a6b8cd18b30c`. Phase 3 hearing archive/restore
+is implemented under D61 and awaits independent review; candidate67 is tested
+only in isolated copies. Actual66 and the running accepted app remain unchanged.
+Publication, activation, Ubuntu deployment and Task4.4 remain separately gated.
 See the [activation report](docs/task-reports/2026-09-13-task-4-3-phase-2-development-activation.md).
 See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
 and [matrix](docs/testing/task-4-2-phase3-acceptance-matrix.md). The previous
@@ -2178,7 +2181,15 @@ than assuming one rule for every workflow. Test with real volumes.
       The recovered KHelmy state and credentials remain preserved under D59.
       See the [activation report](docs/task-reports/2026-09-13-task-4-3-phase-2-development-activation.md)
       and [Phase 2 report](docs/task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md).
-      Independent activation/documentation review is the next return point.
+      Khaled accepted activation/documentation at `5f0552f9dd98a55f4050c988c154a6b8cd18b30c`
+      after the preserved independent PASS review. N2 punctuation is corrected in
+      the historical activation report, with acceptance appended. Phase 3 adds
+      Administrator hearing archive/restore under D61, preserving attendance and
+      historical reporting; restore an archived matter before a hearing mutation.
+      Candidate67 is isolated-only; actual66 and the accepted app remain active.
+      See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
+      and [matrix](docs/testing/task-4-3-phase3-acceptance-matrix.md).
+      Independent Phase 3 review is the next return point.
       Overall Task 4.3 remains unchecked.
 - [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
 - [ ] **4.5 Powers of attorney**

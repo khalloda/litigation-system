@@ -22,7 +22,8 @@ export type HearingMutationSnapshot = {
     id: number;
     version: string;
     protected: boolean;
-    archived: boolean;
+    hearingArchived: boolean;
+    matterArchived: boolean;
     values: HearingValues;
   } | null;
   matters: (Choice & { clientArchived: boolean })[];
@@ -42,6 +43,8 @@ function translate(error: unknown): never {
   const message = error instanceof Error ? error.message : '';
   if (message.includes('Restore archived matter before editing hearing'))
     throw new HearingMutationError('archived');
+  if (message.includes('Restore archived hearing before editing'))
+    throw new HearingMutationError('hearing-archived');
   if (message.includes('Hearing version is stale')) throw new HearingMutationError('stale');
   if (message.includes('Hearing submission payload differs'))
     throw new HearingMutationError('submission');

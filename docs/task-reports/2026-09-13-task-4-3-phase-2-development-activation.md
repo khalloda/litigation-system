@@ -1,4 +1,4 @@
-# Task 4.3 Phase 2 â€” development activation, 13 September 2026
+# Task 4.3 Phase 2 — development activation, 13 September 2026
 
 ## Outcome and authority
 
@@ -13,7 +13,7 @@ Actual migration 66 is verified, and the accepted Phase 2 app is running at
 `http://127.0.0.1:3000`. Overall Task 4.3 remains open. This is a local Windows
 development activation, awaiting independent activation/documentation review.
 No fetch, push, Ubuntu deployment, hearing archive/restore or later feature work occurred.
-D59/C1 remains **Owner-accepted risk â€” unchanged; not technically remediated**.
+D59/C1 remains **Owner-accepted risk — unchanged; not technically remediated**.
 D60 and all other business/governance decisions are unchanged.
 
 Work stayed in the same local task without subagents or new installations/services.
@@ -28,7 +28,7 @@ and local artifact/backup disk space; no precise usage or duration estimate is a
 | Accepted code | `34a9fd89176ae89a097136f48f2c733273243ba1` |
 | Code parent | `9b09f0d849aac5ed6afbcbc40879cfbb6da89ea1` |
 | Code tree | `4c8bbff904700900fc3029e23e95ea1ddbd06125` |
-| Code subject/scope | `feat: add hearing editing and attendee management`; 47 files, +3,429/âˆ’73 |
+| Code subject/scope | `feat: add hearing editing and attendee management`; 47 files, +3,429/−73 |
 | Artifact | `D:\Projects\LitigationData\accepted-task43-phase2-34a9fd8-20260913T133055Z` |
 | Production build | `Xn1dOi5xfU18918vhx403` |
 | Initial verified process | PID 73380; native executable, command, creation and sole loopback listener matched |
@@ -95,14 +95,14 @@ Restored65 passed 125 historical invariants and 15 setup checks.
 
 ## Rehearsal and actual migration
 
-Only `20260913120000_hearing_editing_boundary` was pending in the frozen 1â€“66 artifact.
+Only `20260913120000_hearing_editing_boundary` was pending in the frozen 1–66 artifact.
 Its accepted LF SQL is 30,067 bytes, SHA-256
 `c8c161b78855d95338ede877fb7521721b1a5d4f65872e0e206cc017036a1db8`.
 Both rehearsal and actual used `node --import tsx scripts/run-prisma-migration.ts deploy`
-with the existing migration principal privately supplied. All migrations1â€“65 were
+with the existing migration principal privately supplied. All migrations1–65 were
 preserved, including the previously accepted migration33 terminal-LF ledger exception.
 
-The accepted hearing checkpoint and migration-delta helpers proved the exact 65â†’66
+The accepted hearing checkpoint and migration-delta helpers proved the exact 65→66
 delta: four hearing-edit metadata tables and accepted objects/privilege changes,
 three initial field additions and three audit classifications, one complete ledger
 record, empty new change/submission histories and correct imported registers.
@@ -202,3 +202,15 @@ They contain recovery verification receipts, not raw dumps/private source snapsh
 password material or cookies. The receipt is outside the ZIP to avoid circular hashes.
 The next action belongs to independent activation-and-documentation review; this
 task stops here while the accepted app stays running.
+
+
+## Owner acceptance and N2 correction — 13 September 2026
+
+Khaled Helmy accepted the Phase 2 local activation/documentation checkpoint at
+`5f0552f9dd98a55f4050c988c154a6b8cd18b30c`, following the
+[independent PASS review](../reviews/2026-09-13-task-4-3-phase-2-activation-independent-review.md).
+N2 is corrected in exactly six historical punctuation sequences (prior lines
+1, 16, 31, 98, 102 and 105); all other original report bytes are unchanged.
+The original report remains in its prior evidence package. This acceptance
+authorizes the separate D61 Phase 3 implementation; actual migration66 and the
+accepted Phase 2 app remain active, and candidate67 is not activated.

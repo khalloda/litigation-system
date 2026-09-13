@@ -56,8 +56,33 @@ export default async function HearingPage({
         <div>
           <p className={styles.eyebrow}>{t.hearings.details}</p>
           <h1>{t.hearings.identity(hearing.id)}</h1>
-          {hasPermission(session.user.role, 'hearings', 'update') && !hearing.matterArchived ? (
-            <Link className={styles.link} href={'/hearings/' + hearing.id + '/edit'}>
+          {hearing.hearingArchived ? <p>{t.hearings.lifecycle.archivedNotice}</p> : null}
+          {hasPermission(
+            session.user.role,
+            'hearings',
+            hearing.hearingArchived ? 'restore' : 'archive',
+          ) && !hearing.matterArchived ? (
+            <Link
+              className={styles.link}
+              href={`/hearings/${hearing.id}/${hearing.hearingArchived ? 'restore' : 'archive'}${hearingDetailHref(hearing.id, filters).slice(`/hearings/${hearing.id}`.length)}`}
+            >
+              {hearing.hearingArchived
+                ? t.hearings.lifecycle.restore
+                : t.hearings.lifecycle.archive}
+            </Link>
+          ) : null}
+          {hasPermission(session.user.role, 'hearings', 'update') &&
+          !hearing.matterArchived &&
+          !hearing.hearingArchived ? (
+            <Link
+              className={styles.link}
+              href={
+                '/hearings/' +
+                hearing.id +
+                '/edit' +
+                hearingDetailHref(hearing.id, filters).slice(`/hearings/${hearing.id}`.length)
+              }
+            >
               {t.hearings.manage.edit}
             </Link>
           ) : (
@@ -143,6 +168,19 @@ export default async function HearingPage({
           <p>{t.hearings.noAttendees}</p>
         )}
       </section>
+      {hearing.retiredAttendees.length ? (
+        <section className={styles.panel} aria-label={t.hearings.lifecycle.retiredAttendees}>
+          <h2>{t.hearings.lifecycle.retiredAttendees}</h2>
+          <ol className={local.attendees}>
+            {hearing.retiredAttendees.map((a) => (
+              <li key={a.id} data-retired-attendee-id={a.id}>
+                <bdi>{a.name?.trim() ? a.name : t.common.notRecorded}</bdi>
+                {a.active === false ? <span> {t.matters.former}</span> : null}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
     </main>
   );
 }

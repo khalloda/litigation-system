@@ -543,6 +543,30 @@ export const ROUTE_INVENTORY = [
     exportName: 'updateHearingAction',
     classification: { access: 'permission', area: 'hearings', action: 'update' },
   },
+  {
+    kind: 'page',
+    source: 'src/app/hearings/[id]/archive/page.tsx',
+    route: '/hearings/[id]/archive',
+    classification: { access: 'permission', area: 'hearings', action: 'archive' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/hearings/lifecycle-actions.ts',
+    exportName: 'archiveHearingAction',
+    classification: { access: 'permission', area: 'hearings', action: 'archive' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/hearings/[id]/restore/page.tsx',
+    route: '/hearings/[id]/restore',
+    classification: { access: 'permission', area: 'hearings', action: 'restore' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/hearings/lifecycle-actions.ts',
+    exportName: 'restoreHearingAction',
+    classification: { access: 'permission', area: 'hearings', action: 'restore' },
+  },
 ] as const satisfies readonly RouteInventoryEntry[];
 
 export const PROXY_INFRASTRUCTURE_EXEMPTIONS = [

@@ -1307,3 +1307,20 @@ inventory, continuous aggregate changes and owner-bound exact submission receipt
 initial-state views keep all original reconciliation readers intact. Native records leave
 legacy/source lineage and the six deferred business fields NULL. The existing hearing
 parent is fixed; D41 court/circuit/notes remain immutable on the exact twelve reviewed rows.
+
+
+## Task 4.3 Phase 3 hearing archive boundary — candidate67
+
+`hearings.is_archived` is non-null with default false, independent of matter/client
+flags. Migration67 initializes every existing hearing unarchived without changing
+prior row versions, business/raw/source fields, or attendance. A composite index
+on archive flag, descending hearing date and ID supports filtered lists.
+`_migration.hearing_lifecycle_boundary` freezes prior aggregate versions and the
+pre67 history identity; old snapshots retain their original shape and are read
+with their original unarchived meaning. New changes use the existing immutable
+hearing change/submission tables. One changed transition advances one version,
+adds its receipt and lifecycle audit fact atomically. All attendance—including
+retired, duplicate, inactive/missing references and imported order/provenance—
+remains unchanged. The detail includes current and retired memberships separately.
+Historical relationship counts and report sources include all archive states.
+Actual development remains at66; this schema is not activated by Phase3.

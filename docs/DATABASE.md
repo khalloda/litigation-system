@@ -1051,3 +1051,17 @@ See the [activation report](task-reports/2026-09-13-task-4-3-phase-2-development
 pointers, fresh/reused evidence, attempts and limits. Overall Task 4.3 remains open.
 Stop for independent activation/documentation review; no fetch, push, Ubuntu
 deployment, hearing archive/restore or next phase was performed.
+
+
+## Task 4.3 Phase 3 candidate67 — 13 September 2026
+
+Phase 2 activation/documentation at `5f0552f9dd98a55f4050c988c154a6b8cd18b30c`
+is owner-accepted. Phase3 adds `20260913160000_hearing_archive_restore` after
+the unchanged1–66 chain. It is tested only on positively identified disposable
+clusters with full-volume snapshot restoration, canonical replay, rollback and
+permanent checks. No migration or write from this task targets actual
+`localhost:5433/litigation`: actual66 and the accepted Phase 2 loopback app remain
+active. No app restart or credential/session change is included. Candidate67
+activation requires separate authorization after independent review. See the
+[Phase 3 report](task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
+and [matrix](testing/task-4-3-phase3-acceptance-matrix.md) for exact fresh proof.

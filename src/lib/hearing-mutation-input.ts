@@ -13,7 +13,14 @@ export type HearingValues = Partial<
 >;
 export type HearingAttendeeInput = { id: number | null; person_id: number | null };
 export type HearingMutationCode =
-  'invalid' | 'archived' | 'stale' | 'submission' | 'session' | 'not-found' | 'generic';
+  | 'invalid'
+  | 'hearing-archived'
+  | 'archived'
+  | 'stale'
+  | 'submission'
+  | 'session'
+  | 'not-found'
+  | 'generic';
 export class HearingMutationError extends Error {
   constructor(
     public code: HearingMutationCode,

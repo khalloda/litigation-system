@@ -589,6 +589,21 @@ export async function setAuthenticationAuditContext(tx: any) {}
 export async function setAdministrationAuditContext(tx: any) {}
 export async function setMigrationAuditContext(tx: any) {}`,
   };
+  for (const [label, from, to] of [
+    ['lifecycle actor', 'Number(actor.user.id)', '1'],
+    ['lifecycle authorization', 'authorize(session, action)', 'session!'],
+    ['lifecycle gateway', 'public.hearing_lifecycle_save', 'public.hearing_edit_save'],
+  ]) {
+    const altered = legitimateRuntime.map((s) =>
+      s.path === 'src/lib/hearing-lifecycle.ts' ? { ...s, text: s.text.replaceAll(from!, to!) } : s,
+    );
+    assert.ok(
+      auditRuntimeSourceFailures(altered).some((f) =>
+        f.includes('Hearing lifecycle closure differs'),
+      ),
+      label + ' alteration must fail the exact closure',
+    );
+  }
   const service: AuditRuntimeSource = {
     path: 'src/lib/auth/service.ts',
     text: `import { setAdministrationAuditContext, setAuthenticationAuditContext, setHumanAuditContext } from '@/lib/audit';

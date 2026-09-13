@@ -48,7 +48,11 @@ export default async function HearingsPage({
     ['attendee', t.hearings.filters.attendee, filters.attendee],
   ] as const;
   const filtered =
-    filters.q || filters.from || filters.to || choices.some(([, , value]) => value !== 'all');
+    filters.archive !== 'current' ||
+    filters.q ||
+    filters.from ||
+    filters.to ||
+    choices.some(([, , value]) => value !== 'all');
   return (
     <main className={styles.page}>
       <a className={styles.skip} href="#hearing-results">
@@ -94,6 +98,14 @@ export default async function HearingsPage({
             </p>
           </div>
           <div className={local.filters}>
+            <div className={styles.field}>
+              <label htmlFor="hearing-archive">{t.hearings.lifecycle.archiveFilter}</label>
+              <select id="hearing-archive" name="archive" defaultValue={filters.archive}>
+                <option value="current">{t.clients.current}</option>
+                <option value="archived">{t.clients.archived}</option>
+                <option value="all">{t.matters.all}</option>
+              </select>
+            </div>
             <div className={styles.field}>
               <label htmlFor="hearing-date-field">{t.hearings.dateField}</label>
               <select id="hearing-date-field" name="dateField" defaultValue={filters.dateField}>
@@ -166,6 +178,7 @@ export default async function HearingsPage({
             {rows.map((row) => (
               <li key={row.id} data-hearing-id={row.id} className={local.row}>
                 <div>
+                  {row.hearingArchived ? <p>{t.hearings.lifecycle.archived}</p> : null}
                   <h3>
                     <Link className={styles.nameLink} href={hearingDetailHref(row.id, filters)}>
                       <bdi>{row.hearingDate ?? t.common.notRecorded}</bdi>

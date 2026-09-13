@@ -63,3 +63,13 @@ See the [activation report](../task-reports/2026-09-13-task-4-3-phase-2-developm
 pointers, fresh/reused evidence, attempts and limits. Overall Task 4.3 remains open.
 Stop for independent activation/documentation review; no fetch, push, Ubuntu
 deployment, hearing archive/restore or next phase was performed.
+
+
+## Owner activation acceptance - 13 September 2026
+
+Khaled Helmy accepted Phase 2 local activation/documentation at
+`5f0552f9dd98a55f4050c988c154a6b8cd18b30c`, following the preserved
+[independent PASS review](../reviews/2026-09-13-task-4-3-phase-2-activation-independent-review.md).
+The historical matrix prefix is unchanged. N2 punctuation was corrected only
+in the activation report. Phase 3 is separately authorized under D61, remains
+unaccepted pending independent review, and does not activate candidate67.

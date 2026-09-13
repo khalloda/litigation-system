@@ -3566,3 +3566,21 @@ See the [activation report](task-reports/2026-09-13-task-4-3-phase-2-development
 pointers, fresh/reused evidence, attempts and limits. Overall Task 4.3 remains open.
 Stop for independent activation/documentation review; no fetch, push, Ubuntu
 deployment, hearing archive/restore or next phase was performed.
+
+
+## Task 4.3 Phase 3 lifecycle candidate67 — 13 September 2026
+
+The forward hearing archive migration extends D60 only under the adopted D61
+contract. It preserves every prior projection, ID, aggregate version, raw value,
+attendee retirement/order and provenance at upgrade. Existing snapshots/history
+are not rewritten; a frozen pre67 boundary distinguishes their implicit false
+archive state from explicit new lifecycle history. Permanent checks verify
+current-state continuity plus exact functions, columns, constraints, grants and
+guards. Lifecycle changes use the existing transactional audit allocator; no
+sequence rewind is permitted to conceal a failed or repeated operation.
+Full historical66→67 and canonical replay are isolated-only. Actual66, current
+KHelmy credentials/sessions, all DB/Docker credentials, prior logos/backups and
+the running accepted app are preserved. No actual deployment is included.
+See the [report](task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
+and [matrix](testing/task-4-3-phase3-acceptance-matrix.md); independent Phase3
+review and later owner acceptance/activation remain separate.

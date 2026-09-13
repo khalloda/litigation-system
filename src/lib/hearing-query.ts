@@ -16,6 +16,7 @@ export type HearingFilters = Record<HearingFilterKey, string> & {
   q: string;
   page: number;
   dateField: 'hearing' | 'next';
+  archive: 'current' | 'archived' | 'all';
   from: string;
   to: string;
   fromMatter: string;
@@ -32,7 +33,16 @@ function date(value: string) {
   return value;
 }
 export function parseHearingFilters(params: ClientSearchParams): HearingFilters {
-  const allowed = [...HEARING_FILTER_KEYS, 'q', 'page', 'dateField', 'from', 'to', 'fromMatter'];
+  const allowed = [
+    ...HEARING_FILTER_KEYS,
+    'q',
+    'page',
+    'dateField',
+    'from',
+    'to',
+    'fromMatter',
+    'archive',
+  ];
   for (const key of Object.keys(params))
     if (!allowed.includes(key)) throw new HearingFilterError('unknown filter');
   const inputs = new Map(Object.entries(params));
@@ -48,6 +58,9 @@ export function parseHearingFilters(params: ClientSearchParams): HearingFilters 
   const dateField = one('dateField', 'hearing');
   if (dateField !== 'hearing' && dateField !== 'next')
     throw new HearingFilterError('invalid date field');
+  const archive = one('archive', 'current');
+  if (!['current', 'archived', 'all'].includes(archive))
+    throw new HearingFilterError('invalid archive filter');
   const from = date(one('from', '')),
     to = date(one('to', ''));
   if (from && to && from > to) throw new HearingFilterError('reversed date range');
@@ -68,6 +81,7 @@ export function parseHearingFilters(params: ClientSearchParams): HearingFilters 
     q,
     page,
     dateField,
+    archive,
     from,
     to,
     fromMatter,
@@ -80,6 +94,7 @@ export function hearingListHref(f: HearingFilters, page = f.page): string {
       p.set(key, String(value));
     if (['q', 'from', 'to', 'fromMatter'].includes(key) && value) p.set(key, String(value));
   }
+  if (f.archive !== 'current') p.set('archive', f.archive);
   if (f.dateField !== 'hearing') p.set('dateField', f.dateField);
   if (page !== 1) p.set('page', String(page));
   return '/hearings' + (p.size ? '?' + p.toString() : '');
@@ -115,6 +130,7 @@ export type HearingRow = {
   caseNumber: string | null;
   subject: string | null;
   matterArchived: boolean | null;
+  hearingArchived: boolean;
   clientId: number | null;
   clientName: string | null;
   clientArchived: boolean | null;
@@ -131,6 +147,7 @@ export type HearingAttendee = {
   ordinal: number | null;
   name: string | null;
   active: boolean | null;
+  retired: boolean;
 };
 export type HearingDetail = HearingRow & {
   destination: string | null;
@@ -138,6 +155,7 @@ export type HearingDetail = HearingRow & {
   notes: string | null;
   outcome: string | null;
   attendees: HearingAttendee[];
+  retiredAttendees: HearingAttendee[];
 };
 export type HearingOption = {
   kind: HearingFilterKey;
@@ -149,7 +167,7 @@ export type HearingOption = {
 const joins = Prisma.sql`FROM public.hearings h LEFT JOIN public.matters m ON m.id=h.matter_id
   LEFT JOIN public.clients c ON c.id=m.client_id LEFT JOIN public.lookup_court ct ON ct.id=h.court_id
   LEFT JOIN public.lookup_hearing_action a ON a.id=h.action_id`;
-const projection = Prisma.sql`h.id,h.legacy_id AS "legacyId",h.matter_id AS "matterId",m.case_number_ar AS "caseNumber",m.subject,
+const projection = Prisma.sql`h.is_archived AS "hearingArchived",h.id,h.legacy_id AS "legacyId",h.matter_id AS "matterId",m.case_number_ar AS "caseNumber",m.subject,
   m.is_archived AS "matterArchived",m.client_id AS "clientId",c.name_ar AS "clientName",c.is_archived AS "clientArchived",
   h.hearing_date::text AS "hearingDate",h.next_hearing_date::text AS "nextHearingDate",ct.label_ar AS court,a.label_ar AS action,h.decision,
   (SELECT count(*)::int FROM public.hearing_attendees ha WHERE NOT coalesce((to_jsonb(ha)->>'is_retired')::boolean,false) AND ha.hearing_id=h.id) AS "attendeeCount"`;
@@ -157,6 +175,7 @@ const pattern = (q: string) =>
   Prisma.sql`('%' || public.ar_normalise(${q.replace(/[\\%_]/gu, '\\$&')}) || '%')`;
 function where(f: HearingFilters) {
   const conditions = [Prisma.sql`true`];
+  if (f.archive !== 'all') conditions.push(Prisma.sql`h.is_archived=${f.archive === 'archived'}`);
   for (const [column, value] of [
     [Prisma.sql`h.matter_id`, f.matter],
     [Prisma.sql`m.client_id`, f.client],
@@ -187,6 +206,10 @@ function where(f: HearingFilters) {
 }
 export function hearingCountQuery(f: HearingFilters) {
   return Prisma.sql`SELECT count(*)::int total ${joins} WHERE ${where(f)}`;
+}
+/** Historical/report inclusion deliberately ignores the operational archive default. */
+export function hearingHistoricalCountQuery(f: HearingFilters) {
+  return hearingCountQuery({ ...f, archive: 'all' });
 }
 export function hearingRowsQuery(f: HearingFilters, page: number) {
   return Prisma.sql`SELECT ${projection} ${joins} WHERE ${where(f)} ORDER BY h.hearing_date DESC NULLS LAST,h.id DESC LIMIT ${HEARING_PAGE_SIZE} OFFSET ${(page - 1) * HEARING_PAGE_SIZE}`;
@@ -273,17 +296,24 @@ export async function readHearing(
   const id = clientId(rawId);
   if (id === null) return null;
   return snapshot(db, session!, async (tx) => {
-    const rows = await tx.$queryRaw<Omit<HearingDetail, 'attendees'>[]>(
+    const rows = await tx.$queryRaw<Omit<HearingDetail, 'attendees' | 'retiredAttendees'>[]>(
       Prisma.sql`${hearingDetailQuery(id)}`,
     );
     if (rows.length > 1) throw new Error('Hearing identity cardinality differs');
     if (!rows[0]) return null;
     const attendees = await tx.$queryRaw<
       HearingAttendee[]
-    >(Prisma.sql`SELECT ha.id,ha.person_id AS "personId",ha.ordinal,p.name_ar AS name,p.is_active AS active
-      FROM public.hearing_attendees ha LEFT JOIN public.people p ON p.id=ha.person_id WHERE NOT coalesce((to_jsonb(ha)->>'is_retired')::boolean,false) AND ha.hearing_id=${id} ORDER BY coalesce((to_jsonb(ha)->>'current_order')::integer,ha.ordinal) NULLS LAST,ha.id LIMIT 1001`);
-    if (attendees.length > 1000 || attendees.length !== rows[0].attendeeCount)
+    >(Prisma.sql`SELECT ha.id,ha.person_id AS "personId",ha.ordinal,coalesce(p.name_ar,ha.legacy_name_raw) AS name,p.is_active AS active,ha.is_retired AS retired
+      FROM public.hearing_attendees ha LEFT JOIN public.people p ON p.id=ha.person_id WHERE ha.hearing_id=${id} ORDER BY coalesce((to_jsonb(ha)->>'current_order')::integer,ha.ordinal) NULLS LAST,ha.id LIMIT 1001`);
+    if (
+      attendees.length > 1000 ||
+      attendees.filter((a) => !a.retired).length !== rows[0].attendeeCount
+    )
       throw new Error('Hearing attendee cardinality differs');
-    return { ...rows[0], attendees };
+    return {
+      ...rows[0],
+      attendees: attendees.filter((a) => !a.retired),
+      retiredAttendees: attendees.filter((a) => a.retired),
+    };
   });
 }

@@ -1157,7 +1157,9 @@ export async function updateClient() {
   assert.match(tasks, /- \[x\] \*\*3\.3B Append-only event foundation\*\*/u);
   assert.match(tasks, /- \[x\] \*\*3\.4 User management\*\*/u);
 
-  await proveDatabaseSessionAuthorization();
+  const staticOnly = process.argv.includes('--static-only');
+  if (staticOnly) assert.deepEqual(process.argv.slice(2), ['--static-only']);
+  else await proveDatabaseSessionAuthorization();
 
   console.log('PASS exhaustive permission matrix: 4 roles × 14 areas × 8 actions = 448 decisions');
   console.log('PASS recoverable archive/restore is Administrator-only on the 9 approved areas');
@@ -1165,8 +1167,12 @@ export async function updateClient() {
   console.log('PASS fail-closed unknowns, billing/report rules, and independent mutation proofs');
   console.log('PASS direct route/action 401 and 403 denials ignore client-supplied roles');
   console.log('PASS permission wrappers authorize before any protected route/action work');
-  console.log('PASS database role refresh, forced-password, disabled and inactive denials');
-  console.log('PASS permission application operations use litigation_runtime');
+  console.log(
+    staticOnly
+      ? 'NOT RUN database account-mutation fixtures: static-only mode; reuse separately identified accepted proof'
+      : 'PASS database role refresh, forced-password, disabled and inactive denials',
+  );
+  if (!staticOnly) console.log('PASS permission application operations use litigation_runtime');
   console.log(
     'PASS canonical App Router entries and project-owned JS/TS server actions are inventoried',
   );

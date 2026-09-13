@@ -44,8 +44,10 @@ export function HearingEditor(props: {
   const uncertain = result?.code === 'generic',
     disabled = pending || uncertain || result?.kind === 'success';
   useEffect(() => {
-    if (result) feedback.current?.focus();
-  }, [result]);
+    if (result?.kind === 'success' && result.id)
+      window.location.assign(creating ? '/hearings/' + result.id : original.cancel);
+    else if (result) feedback.current?.focus();
+  }, [result, creating, original.cancel]);
   function change(key: string, value: string | number | null) {
     setValues((old) => ({ ...old, [key]: value }));
   }
