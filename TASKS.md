@@ -15,10 +15,15 @@ C1 is **Owner-accepted risk — unchanged; not technically remediated** under
 [D59](docs/DECISIONS.md#d59--existing-development-repository-credential-exception), with no credential/configuration change.
 Task 4.2 is published at `93fd304f80c96a01a4de8bdbad42129ff4704a40`; the owner
 accepted the [publication PASS review](docs/reviews/2026-09-13-task-4-2-publication-independent-review.md).
-Task 4.3 Phase 1 is implemented and locally verified, pending independent review;
-overall Task 4.3 remains open. The actual database remains at 63, with 64/65
-pending there. Publication, activation, live migrations, deployment and later
-phases require separate authorization. See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
+Task 4.3 Phase 1 and its completed local activation are owner-accepted. Khaled
+accepted Phase 2 at `34a9fd89176ae89a097136f48f2c733273243ba1` on 13 September.
+The accepted Phase 2 app is now running on 127.0.0.1:3000 with actual migration 66,
+after a fresh post-reset backup, isolated rehearsal, 129 invariants and 15 setup
+checks. N1 is corrected here and in the detailed hearing status below. Overall
+Task 4.3 remains open; the return point is independent activation/documentation
+review. Publication, Ubuntu deployment and later phases remain separately gated.
+See the [activation report](docs/task-reports/2026-09-13-task-4-3-phase-2-development-activation.md).
+See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
 and [matrix](docs/testing/task-4-2-phase3-acceptance-matrix.md). The previous
 migration-63 documentation publication is closed at
 `d84aa4b916e41e15abf543fc7dd2d4155bea7acf`, supported by the preserved
@@ -2165,11 +2170,15 @@ than assuming one rule for every workflow. Test with real volumes.
       `9b09f0d849aac5ed6afbcbc40879cfbb6da89ea1`, following its independent PASS review.
       See the [Phase 1 report](docs/task-reports/2026-09-13-task-4-3-phase-1-read-only-hearings.md)
       and [matrix](docs/testing/task-4-3-phase1-acceptance-matrix.md).
-      Phase 2: bounded hearing editing and retained attendee selection under D60;
-      implementation and migration 66 await independent review and owner acceptance.
-      See the [Phase 2 report](docs/task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md)
-      for isolated proof and the separate accepted Phase 1 app activation outcome:
-      app `9b09f0d` runs on loopback with actual database migration 65; Phase 2 is inactive.
+      Phase 2: bounded hearing editing and retained attendee selection under D60,
+      accepted by Khaled Helmy on 13 September 2026 at
+      `34a9fd89176ae89a097136f48f2c733273243ba1` after independent PASS review.
+      The accepted Phase 2 app runs at `http://127.0.0.1:3000` with actual migration
+      66, following fresh backup/rehearsal and 129 invariant/15 setup checks.
+      The recovered KHelmy state and credentials remain preserved under D59.
+      See the [activation report](docs/task-reports/2026-09-13-task-4-3-phase-2-development-activation.md)
+      and [Phase 2 report](docs/task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md).
+      Independent activation/documentation review is the next return point.
       Overall Task 4.3 remains unchecked.
 - [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
 - [ ] **4.5 Powers of attorney**

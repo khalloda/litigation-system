@@ -1021,3 +1021,33 @@ Actual development activation completed using only the accepted 9b09f0d artifact
 its migrations 64/65. The app remains running on loopback and the actual database
 passed the full 65 profile. See the dated Phase 2 report and separate activation
 receipt; migration 66 and hearing editing remain unactivated.
+
+
+## Owner acceptance and local migration-66 activation — 13 September 2026
+
+This dated addendum supersedes earlier current-state pointers; the entire earlier
+report remains historical evidence. Khaled Helmy accepted Phase 2 at
+`34a9fd89176ae89a097136f48f2c733273243ba1` after independent PASS and accepted the
+completed Phase 1 local activation. N1 is corrected in both TASKS.md status locations.
+
+The actual `localhost:5433/litigation` database advanced from 65 to 66 in one
+successful accepted-wrapper attempt. A fresh protected local backup includes the
+recovered KHelmy account and 54 matching logos. Exact restoration, isolated 65→66
+rehearsal, actual data/catalog/ACL delta and complete sequence preservation passed;
+129 historical-profile invariants and 15 setup checks passed on rehearsal and actual66.
+The accepted Phase 2 app is running on `http://127.0.0.1:3000` with build
+`Xn1dOi5xfU18918vhx403`. Current account/password/session state, DB/Docker credentials,
+existing configuration and D59 are preserved. D60 is unchanged.
+
+Fresh proof covers recovery, migration, accepted build/process, anonymous HTTP
+guards/assets and Arabic authentication-screen rendering. Existing browser-session
+redirects prevented observing authenticated list/detail/new/edit views; no password
+or session was altered. Exact-source prior 111 canonical checks, 448 permission
+decisions, service/race proof and 17 accessibility scans are reused, not rerun here.
+No actual business mutation was used as a test. All task-owned rehearsal resources
+are removed; old artifacts/evidence and the fresh local-only recovery package remain.
+
+See the [activation report](task-reports/2026-09-13-task-4-3-phase-2-development-activation.md) for source identities, backup and recovery
+pointers, fresh/reused evidence, attempts and limits. Overall Task 4.3 remains open.
+Stop for independent activation/documentation review; no fetch, push, Ubuntu
+deployment, hearing archive/restore or next phase was performed.

@@ -20,16 +20,19 @@ accepted its [publication PASS review](docs/reviews/2026-09-13-task-4-2-publicat
 Khaled Helmy accepted Task 4.3 Phase 1 at
 `9b09f0d849aac5ed6afbcbc40879cfbb6da89ea1` on 13 September 2026, following its
 [preserved independent PASS review](docs/reviews/2026-09-13-task-4-3-phase-1-independent-review.md).
-Phase 2 implements bounded hearing creation/editing and retained attendee selection
-under D60; it remains pending independent review and owner acceptance. See the
-[Phase 2 report](docs/task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md)
+Khaled Helmy accepted Task 4.3 Phase 2 on 13 September 2026 at
+`34a9fd89176ae89a097136f48f2c733273243ba1`, following its
+[independent PASS review](docs/reviews/2026-09-13-task-4-3-phase-2-independent-review.md).
+Bounded hearing creation/editing and retained attendee selection under D60 are
+active locally: the accepted Phase 2 app runs at `http://127.0.0.1:3000` against
+actual migration 66. A fresh backup including the recovered KHelmy account was
+restored and rehearsed in isolation; actual verification passed 129 invariants
+and 15 setup checks. Current passwords, valid-session state and credentials were
+preserved. See the [activation report](docs/task-reports/2026-09-13-task-4-3-phase-2-development-activation.md),
+[implementation report](docs/task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md)
 and [matrix](docs/testing/task-4-3-phase2-acceptance-matrix.md).
-The accepted Phase 1 app at `9b09f0d` is running on `http://127.0.0.1:3000`.
-The actual development database is at migration 65 after a protected backup and
-isolated restore/upgrade rehearsal; 125 invariants and 15 setup checks passed.
-The separate activation outcome and limits are recorded in that report.
-Migration 66 and Phase 2 application code remain unactivated; publication and
-Ubuntu deployment are outside this task.
+Overall Task 4.3 remains open. The return point is independent activation and
+documentation review; publication, Ubuntu deployment and later phases remain separate.
 See the [R3 follow-up report](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md)
 and [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
 See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)
