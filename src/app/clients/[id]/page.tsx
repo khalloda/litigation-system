@@ -1,3 +1,4 @@
+import { hearingReturnHref, HearingFilterError } from '@/lib/hearing-query';
 import type { Metadata } from 'next';
 import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
@@ -36,15 +37,21 @@ export default async function ClientPage({
   const { id } = await params;
   const client = await getClient(session, id);
   if (!client) notFound();
-  let filters, contacts, matterReturn;
+  let filters, contacts, matterReturn, hearingReturn;
   try {
     const input = await searchParams;
     matterReturn = matterReturnHref(input.matterReturn);
+    hearingReturn = hearingReturnHref(input.hearingReturn);
     filters = parseClientFilters(input);
     if (Array.isArray(input.contactsPage)) throw new ClientFilterError('repeated contacts page');
     contacts = await getClientContacts(session, id, input.contactsPage ?? '1');
   } catch (error) {
-    if (!(error instanceof ClientFilterError) && !(error instanceof MatterFilterError)) throw error;
+    if (
+      !(error instanceof ClientFilterError) &&
+      !(error instanceof MatterFilterError) &&
+      !(error instanceof HearingFilterError)
+    )
+      throw error;
     return (
       <main className={styles.page}>
         <h1>{t.clients.details}</h1>
@@ -70,6 +77,11 @@ export default async function ClientPage({
           <Link className={styles.link} href={clientListHref(filters)}>
             {t.clients.back}
           </Link>
+          {hearingReturn ? (
+            <Link className={styles.link} href={hearingReturn}>
+              {t.hearings.back}
+            </Link>
+          ) : null}
           {matterReturn ? (
             <Link className={styles.link} href={matterReturn}>
               {t.matters.back}

@@ -15,11 +15,14 @@ See the [Phase 3 acceptance addendum](docs/task-reports/2026-09-13-task-4-2-phas
 and [matrix addendum](docs/testing/task-4-2-phase3-acceptance-matrix.md#owner-acceptance-and-direction--13-september-2026).
 C1 is **Owner-accepted risk — unchanged; not technically remediated**, under
 the narrow [D59 development credential exception](docs/DECISIONS.md#d59--existing-development-repository-credential-exception).
-The next return point is independent review of this documentation-only acceptance
-commit. The last delivered database observation was migration 63, with 64/65
-pending; this task did not refresh database or runtime evidence. Publication,
-new-app activation, migrations and Ubuntu deployment remain separately authorized
-work. Task 4.3 and later tasks have not started here.
+Task 4.2 is published at `93fd304f80c96a01a4de8bdbad42129ff4704a40`; Khaled
+accepted its [publication PASS review](docs/reviews/2026-09-13-task-4-2-publication-independent-review.md).
+Task 4.3 Phase 1 supplies read-only hearing list/detail screens, locally verified
+and pending independent review. See the [Phase 1 report](docs/task-reports/2026-09-13-task-4-3-phase-1-read-only-hearings.md)
+and [acceptance matrix](docs/testing/task-4-3-phase1-acceptance-matrix.md).
+The actual database remains at 63; unchanged migrations 64/65 were tested only
+on disposable copies. Later hearing phases, publication, activation, live
+migrations and deployment remain pending separate authorization.
 See the [R3 follow-up report](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md)
 and [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
 See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)

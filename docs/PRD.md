@@ -90,8 +90,7 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of the Task 4.2 documentation-only acceptance
-commit**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
+point is **independent review of Task 4.3 Phase 1 read-only hearings**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
 overall is owner-accepted. See the 13 September acceptance record below.
 Khaled Helmy accepted Phase 1 at
 `2f8820a3053ab65a60ee183882cbd6a2462559bc` on 12 September 2026; its
@@ -437,13 +436,20 @@ remain required. This acceptance authorizes no application-code removal.
 Khaled Helmy accepted Task 4.2 Phase 3 and Task 4.2 overall on 13 September 2026
 at `b2ac2187b762e7db82b190e6f5d522506e676292`, following the preserved
 [independent PASS review](reviews/2026-09-13-task-4-2-phase-3-independent-review.md).
-The current return point is independent review of the documentation-only
-acceptance commit. C1 is **Owner-accepted risk — unchanged; not technically
-remediated**, under the [D59 development credential exception](DECISIONS.md#d59--existing-development-repository-credential-exception).
-No credential/configuration or runtime work was performed for this acceptance.
-The earlier rotation handoff was not sent and is superseded. Publication,
-new-app activation, migrations and Ubuntu deployment need separate authorization;
-Task 4.3 and later tasks remain unstarted here.
+Task 4.2 is published at `93fd304f80c96a01a4de8bdbad42129ff4704a40`; the owner
+accepted the [publication PASS review](reviews/2026-09-13-task-4-2-publication-independent-review.md).
+Task 4.3 Phase 1 is implemented and locally verified, pending independent review:
+server-paged hearings, date/matter/client/court/attendee filters, normalized search,
+readable detail with historical attendees, and safe matter/client return navigation.
+Archived parents retain hearing visibility. All four roles view; hearing mutations
+remain outside this phase. See the [report](task-reports/2026-09-13-task-4-3-phase-1-read-only-hearings.md)
+and [matrix](testing/task-4-3-phase1-acceptance-matrix.md).
+The actual database remains at 63; accepted 64/65 were applied only to disposable
+copies. C1 is **Owner-accepted risk — unchanged; not technically remediated** under
+[D59](DECISIONS.md#d59--existing-development-repository-credential-exception).
+The earlier rotation handoff was not sent and is superseded. Later hearing phases,
+publication, new-app activation, live migrations and Ubuntu deployment need separate
+authorization.
 See the [follow-up report](task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
 [matrix](testing/task-4-2-phase2-r3-ordering-matrix.md). R1–R3 are closed; Khaled accepted Phase 2 on 12 September 2026 at
 `6771218164c992781902374efb62f0b2f54b2a20`. Migration-63

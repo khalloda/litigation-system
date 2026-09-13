@@ -20,6 +20,9 @@ export const AUDIT_USER_MANAGEMENT_SERVICE = 'src/lib/auth/user-management.ts';
 export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
+const HEARING_READ_SERVICE = 'src/lib/hearing-query.ts';
+const HEARING_READ_SERVICE_SHA256 =
+  'de03566a9de68a0c4d7f31386831c4dff6c59fcf102eb4f82183c39ae57fae5c';
 const MATTER_READ_SERVICE = 'src/lib/matter-query.ts';
 const MATTER_LIFECYCLE_SERVICE = 'src/lib/matter-lifecycle.ts';
 const MATTER_LIFECYCLE_SHA256 = '86b767287c5cca470ac16b0d69927625f6ff483204d21e1fc19351843ccba5cf';
@@ -108,6 +111,42 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  // Exact Phase 1 hearing read-only closure and seven call sites.
+  [
+    'src/lib/hearing-query.ts',
+    'snapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/hearing-query.ts',
+    'snapshot',
+    'd59682e16e07364da4369b91f06c9f20ba783ed09f32722456248539f6a30e5d',
+  ],
+  [
+    'src/lib/hearing-query.ts',
+    'readHearings',
+    '1cb8fd509ff85b754cfa7b2e9547d51afa7970aaa265c020ca5eb2ec96e0d257',
+  ],
+  [
+    'src/lib/hearing-query.ts',
+    'readHearings',
+    'a9cc7b6926a1266736d0fee26379b1b0fe521402fb5979d9e6873fbc196b489f',
+  ],
+  [
+    'src/lib/hearing-query.ts',
+    'readHearings',
+    '86bbd980c290e72c1899aea3b7eb688dffc65ae813f36e9a3a118fd047a1958d',
+  ],
+  [
+    'src/lib/hearing-query.ts',
+    'readHearing',
+    'b27f965fffa3c02e933963cff20d1f51ddd9b50c33a29240813bc3649e8a54e9',
+  ],
+  [
+    'src/lib/hearing-query.ts',
+    'readHearing',
+    '7343b6cc29aeb4f203217dc42f86adbb966e489768ed03fcb6d9d22b3840e608',
+  ],
   [
     'src/lib/matter-lifecycle.ts',
     'readMatterLifecycle',
@@ -1807,6 +1846,13 @@ export function auditRuntimeSourceFailures(
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
     const isClientReadService = source.path === CLIENT_READ_SERVICE;
     const isMatterReadService = source.path === MATTER_READ_SERVICE;
+    const isHearingReadService = source.path === HEARING_READ_SERVICE;
+    if (
+      isHearingReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        HEARING_READ_SERVICE_SHA256
+    )
+      failures.add('Hearing read-only query closure differs from reviewed inventory');
     if (
       isMatterReadService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -2128,7 +2174,8 @@ export function auditRuntimeSourceFailures(
               isReviewedAuthService ||
               isStaffReadService ||
               isClientReadService ||
-              isMatterReadService
+              isMatterReadService ||
+              isHearingReadService
             ) ||
             !reviewedSql
           ) {

@@ -1,3 +1,9 @@
+import {
+  hearingReturnHref,
+  HearingFilterError,
+  hearingListHref,
+  parseHearingFilters,
+} from '@/lib/hearing-query';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -27,11 +33,14 @@ export default async function MatterPage({
 }) {
   const session = await requirePagePermission({ area: 'matters', action: 'view' });
   const { id } = await params;
-  let filters;
+  let filters, hearingReturn;
   try {
-    filters = parseMatterFilters(await searchParams);
+    const input = await searchParams;
+    hearingReturn = hearingReturnHref(input.hearingReturn);
+    filters = parseMatterFilters(input);
   } catch (error) {
-    if (!(error instanceof MatterFilterError)) throw error;
+    if (!(error instanceof MatterFilterError) && !(error instanceof HearingFilterError))
+      throw error;
     return (
       <main className={styles.page}>
         <h1>{t.matters.details}</h1>
@@ -70,6 +79,11 @@ export default async function MatterPage({
   return (
     <main className={styles.page} data-matter-id={matter.id}>
       <header className={styles.header}>
+        {hearingReturn ? (
+          <Link className={styles.link} href={hearingReturn}>
+            {t.hearings.back}
+          </Link>
+        ) : null}
         {!matter.archived && hasPermission(session.user.role, 'matters', 'update') ? (
           <Link
             className={styles.button}
@@ -135,6 +149,21 @@ export default async function MatterPage({
           <Field label={t.clients.systemId} value={matter.id} />
           <Field label={t.clients.accessId} value={matter.legacyId ?? t.clients.native} />
         </dl>
+      </section>
+      <section className={styles.panel} aria-label={t.hearings.title}>
+        <h2>{t.hearings.title}</h2>
+        <p>{t.hearings.matterHint}</p>
+        <Link
+          className={styles.link}
+          href={hearingListHref(
+            parseHearingFilters({
+              matter: String(matter.id),
+              fromMatter: matterDetailHref(matter.id, filters),
+            }),
+          )}
+        >
+          {t.hearings.matterHearings}
+        </Link>
       </section>
       <section className={styles.panel} aria-label={t.matters.classifications}>
         <h2>{t.matters.classifications}</h2>

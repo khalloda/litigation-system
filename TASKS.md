@@ -13,11 +13,12 @@ on 13 September 2026 at `b2ac2187b762e7db82b190e6f5d522506e676292`, following th
 [independent PASS review](docs/reviews/2026-09-13-task-4-2-phase-3-independent-review.md).
 C1 is **Owner-accepted risk — unchanged; not technically remediated** under
 [D59](docs/DECISIONS.md#d59--existing-development-repository-credential-exception), with no credential/configuration change.
-The current return point is independent review of this documentation-only
-acceptance commit. The last delivered database observation was migration 63,
-with 64/65 pending; no database/runtime check ran for this acceptance record.
-Publication, new-app activation, migrations, Ubuntu deployment and later work
-require separate authorization. Task 4.3 remains unstarted here. See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
+Task 4.2 is published at `93fd304f80c96a01a4de8bdbad42129ff4704a40`; the owner
+accepted the [publication PASS review](docs/reviews/2026-09-13-task-4-2-publication-independent-review.md).
+Task 4.3 Phase 1 is implemented and locally verified, pending independent review;
+overall Task 4.3 remains open. The actual database remains at 63, with 64/65
+pending there. Publication, activation, live migrations, deployment and later
+phases require separate authorization. See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
 and [matrix](docs/testing/task-4-2-phase3-acceptance-matrix.md). The previous
 migration-63 documentation publication is closed at
 `d84aa4b916e41e15abf543fc7dd2d4155bea7acf`, supported by the preserved
@@ -2158,7 +2159,11 @@ than assuming one rule for every workflow. Test with real volumes.
       filters. The 327 original high-impact quarantine/source rows remain as
       immutable evidence of the reviewed release; they are not additional
       pending hearings.
-      Attendees as a multi-select of active staff.
+      Phase 1: read-only list/detail, filters, historical attendees and linked
+      navigation implemented and locally verified; independent review pending.
+      See the [Phase 1 report](docs/task-reports/2026-09-13-task-4-3-phase-1-read-only-hearings.md)
+      and [matrix](docs/testing/task-4-3-phase1-acceptance-matrix.md).
+      Later phase: attendees as a multi-select of active staff.
 - [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
