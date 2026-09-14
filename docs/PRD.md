@@ -469,20 +469,26 @@ See the [activation report](task-reports/2026-09-14-task-4-3-phase-3-development
 Khaled subsequently accepted the [Task 4.3 publication PASS review](reviews/2026-09-14-task-4-3-publication-independent-review.md)
 at published `98ba737300f1c0cefce361cb3da4e250b11b71d2` and authorized Task 4.4 Phase 1.
 Read-only administrative-work list/search/filter/detail and linked-step views
-are implemented locally, pending independent review. Fresh target counts are
+were accepted by Khaled Helmy on 14 September 2026 at corrected
+`1df53838063b1d9466bd2da0582c7ffc9b7bbf85`. The supplied Windows evidence covered
 3,694 administrative works and 3,483 steps; the older extraction volumes above
 remain historical. Overall Task 4.4 stays unchecked. See its
 [report](task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
 and [matrix](testing/task-4-4-phase1-acceptance-matrix.md).
-The accepted67 owner app remains unchanged; no candidate activation or push.
-Independent Phase 1 review is next; editing and later phases remain separate.
+This acceptance does not activate or replace the accepted67 owner app. The owner
+authorized acceptance documentation and ordinary publication together; the dated
+outcome belongs in the external publication receipt. Phase 2 creation/editing is
+next after publication review and its bounded handoff; it does not begin here.
 
-**R1 correction — 14 September 2026:** the owner approved the
+**R1 closed — 14 September 2026:** the owner approved the
 [independent review](reviews/2026-09-14-task-4-4-phase-1-independent-review.md)
 and its correction mandate. Record-ID search now uses the canonical normalizer
 for both PostgreSQL and legacy IDs, retaining exact matches and stored values.
-R1 is corrected, pending independent correction review. This is not Phase 1
-acceptance or activation; Task 4.4 remains unchecked. See the
+The owner accepted the correction and Phase 1 after the
+[independent R1 PASS review](reviews/2026-09-14-task-4-4-phase-1-r1-independent-review.md).
+Task 4.4 remains unchecked. Earlier pending-review/no-push statements in preserved
+evidence are historical. See the
+[acceptance record](task-reports/2026-09-14-task-4-4-phase-1-acceptance.md),
 [correction report](task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
 and [matrix](testing/task-4-4-phase1-r1-correction-matrix.md).
 See the [follow-up report](task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and

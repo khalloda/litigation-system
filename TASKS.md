@@ -27,10 +27,16 @@ invariant/15 setup checks. The recovered account, valid sessions and credentials
 were preserved. All three phases and overall Task 4.3 are complete locally.
 Khaled subsequently accepted the [Task 4.3 publication PASS review](docs/reviews/2026-09-14-task-4-3-publication-independent-review.md)
 at published `98ba737300f1c0cefce361cb3da4e250b11b71d2` and authorized Task 4.4 Phase 1.
-The read-only administrative-work area is implemented locally, pending independent
-review; overall Task 4.4 stays unchecked. The owner app remains on accepted67,
-with no candidate push or activation. Phase 1 independent review is the exact
-next gate. See its [report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
+Khaled accepted the read-only administrative-work area on 14 September 2026 at
+`1df53838063b1d9466bd2da0582c7ffc9b7bbf85`, after the
+[independent R1 PASS review](docs/reviews/2026-09-14-task-4-4-phase-1-r1-independent-review.md).
+R1 is closed; overall Task 4.4 stays unchecked. The owner authorized acceptance
+documentation and ordinary publication together; the actual publication outcome
+belongs in the external receipt. This does not activate the candidate in the
+accepted67 owner app. Phase 2 creation/editing follows publication review and
+its bounded handoff; it does not begin here. See the
+[acceptance record](docs/task-reports/2026-09-14-task-4-4-phase-1-acceptance.md)
+and original [report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
 and [matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md), and the prior [activation report](docs/task-reports/2026-09-14-task-4-3-phase-3-development-activation.md).
 See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
 and [matrix](docs/testing/task-4-2-phase3-acceptance-matrix.md). The previous
@@ -2206,18 +2212,25 @@ than assuming one rule for every workflow. Test with real volumes.
       accepted at `98ba737300f1c0cefce361cb3da4e250b11b71d2`; its exact PASS
       review is preserved above. Ubuntu deployment remains Stage 7.
 - [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
-      Phase 1 read-only list/search/filters/detail/step history implemented;
-      pending independent review. All four usable authenticated roles view.
+      Phase 1 read-only list/search/filters/detail/step history owner-accepted
+      on 14 September 2026 at `1df53838063b1d9466bd2da0582c7ffc9b7bbf85`.
+      All four usable authenticated roles view.
       Overall task stays unchecked; future editing permissions remain unchanged.
-      No actual migration, candidate activation or push. See the
+      Acceptance documentation and ordinary publication are authorized together;
+      the external receipt records the outcome. No actual migration or candidate
+      activation is included. See the
       [Phase 1 report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
       and [acceptance matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md).
-      **R1 correction — 14 September 2026:** the owner approved the
+      **R1 closed — 14 September 2026:** the owner approved the
       [independent Phase 1 review](docs/reviews/2026-09-14-task-4-4-phase-1-independent-review.md)
       and its bounded correction. PostgreSQL/legacy-ID search normalization is
-      corrected, pending independent correction review; Phase 1 is not accepted
-      or activated. See the [correction report](docs/task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
+      accepted after the [independent R1 PASS review](docs/reviews/2026-09-14-task-4-4-phase-1-r1-independent-review.md).
+      Earlier pending-review/no-push evidence remains historical. See the
+      [acceptance record](docs/task-reports/2026-09-14-task-4-4-phase-1-acceptance.md),
+      [correction report](docs/task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
       and [correction matrix](docs/testing/task-4-4-phase1-r1-correction-matrix.md).
+      Phase 2 creation/editing is next after publication review and its bounded
+      handoff; no Phase 2 implementation or new business contract is included.
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
 - [ ] **4.7 Fee letters** — with linked matters

@@ -41,3 +41,30 @@ this same task. See the [R1 matrix](task-4-4-phase1-r1-correction-matrix.md) and
 for new failing/passing proof, exact affected-source binding and unchanged proof
 reuse. R1 is corrected, pending independent correction review; overall Task 4.4
 remains unchecked. No Phase 1 acceptance, activation, push or Phase 2 work.
+
+## Owner acceptance — 14 September 2026
+
+Khaled Helmy accepted corrected Phase 1 at
+`1df53838063b1d9466bd2da0582c7ffc9b7bbf85`, following implementation
+`886c37e3a66de654bc41bf4a00d5fbff4608e151` and the exact
+[independent R1 PASS review](../reviews/2026-09-14-task-4-4-phase-1-r1-independent-review.md).
+R1 (P2) is closed. Read-only list/search/filter/detail/step history and corrected
+Western/Arabic-Indic exact PostgreSQL/legacy-ID search are owner-accepted.
+Earlier pending-review/no-acceptance/no-push statements above are historical.
+
+The [acceptance record](../task-reports/2026-09-14-task-4-4-phase-1-acceptance.md)
+distinguishes independent artifact/source review from supplied Windows execution:
+48 failures before correction, followed by green four-role proof, 131 permanent
+checks, 448 permission decisions, production build/browser and static gates.
+The unchanged 3,694-detail/3,483-step and four-role/layout evidence is reused by
+exact source identity; these tests were not rerun during documentation acceptance.
+Dated preservation windows, digest-only sequence evidence, private/dependency
+availability, Gzip warnings, option/quarantine boundaries and speech-testing
+exclusion remain as stated in that report and the preserved PASS review.
+
+The owner authorized one six-document acceptance child and ordinary publication
+together. The external publication receipt records the actual dated outcome and
+final SHA after verification; this entry does not assert push success in advance.
+No activation or owner-app/database/account operation is included. Overall Task
+4.4 remains unchecked. Phase 2 creation/editing follows publication review and
+its bounded handoff; it does not begin here or acquire a new business contract.

@@ -46,20 +46,26 @@ See the [activation report](docs/task-reports/2026-09-14-task-4-3-phase-3-develo
 and [matrix](docs/testing/task-4-3-phase3-acceptance-matrix.md).
 Khaled subsequently accepted the [Task 4.3 publication PASS review](docs/reviews/2026-09-14-task-4-3-publication-independent-review.md)
 at published `98ba737300f1c0cefce361cb3da4e250b11b71d2` and authorized Task 4.4 Phase 1.
-Its read-only administrative-work list, search, filters, details and linked steps
-are implemented locally, **pending independent review**. Overall Task 4.4 stays
+Khaled Helmy accepted its read-only administrative-work list, search, filters,
+details and linked steps on 14 September 2026 at corrected
+`1df53838063b1d9466bd2da0582c7ffc9b7bbf85`. Overall Task 4.4 stays
 unchecked. See the [Phase 1 report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
 and [matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md).
-The accepted migration-67 owner app remains running unchanged; this candidate
-has not been pushed or activated. Phase 1 independent review is the next gate.
+This acceptance does not activate or replace the accepted migration-67 owner app.
+The owner authorized acceptance documentation and ordinary publication together;
+the dated publication outcome belongs in the external publication receipt.
 
-**R1 correction — 14 September 2026:** the owner approved the
+**R1 closed — 14 September 2026:** the owner approved the
 [independent Phase 1 review](docs/reviews/2026-09-14-task-4-4-phase-1-independent-review.md)
-and its bounded ID-search correction. R1 is corrected, **pending independent
-correction review**; this does not accept Phase 1. See the
+and accepted its bounded ID-search correction after the
+[independent R1 PASS review](docs/reviews/2026-09-14-task-4-4-phase-1-r1-independent-review.md).
+Western and Arabic-Indic exact PostgreSQL/legacy-ID searches are accepted. See the
 [correction report](docs/task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
 and [matrix](docs/testing/task-4-4-phase1-r1-correction-matrix.md).
-No push or activation; the accepted67 owner app remains unchanged.
+See the [acceptance record](docs/task-reports/2026-09-14-task-4-4-phase-1-acceptance.md).
+Earlier pending-review/no-push statements in preserved evidence describe those
+earlier checkpoints. Phase 2 creation/editing is next after publication review
+and its bounded handoff; implementation does not begin in this task.
 
 See the [R3 follow-up report](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md)
 and [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
