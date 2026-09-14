@@ -1,3 +1,4 @@
+import { hasPermission } from '@/lib/auth/permissions';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requirePagePermission } from '@/lib/auth/authorization';
@@ -56,7 +57,16 @@ export default async function AdminWorksPage({
           <p className={styles.eyebrow}>{t.app.system}</p>
           <h1>{t.adminWorks.title}</h1>
           <p>{t.adminWorks.subtitle}</p>
-          <p>{t.adminWorks.readOnly}</p>
+          {!hasPermission(session.user.role, 'administrativeWorks', 'create') ? (
+            <p>{t.adminWorks.readOnly}</p>
+          ) : (
+            <Link
+              className={styles.link}
+              href={'/admin-works/new' + adminListHref(filters).slice('/admin-works'.length)}
+            >
+              {t.adminWorks.manage.create}
+            </Link>
+          )}
         </div>
         <Link className={styles.link} href="/">
           {t.nav.dashboard}

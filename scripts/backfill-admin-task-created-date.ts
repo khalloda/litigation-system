@@ -125,6 +125,13 @@ export async function runAdminTaskCreatedDateBackfill(options: RunOptions = {}):
       }
       if (options.apply !== true) return { summary: previewSummary, changedRows: null };
 
+      assert.equal(
+        (await db.query("SELECT to_regclass('_migration.admin_edit_boundary') IS NOT NULL applied"))
+          .rows[0].applied,
+        false,
+        'Administrative editing is established; historical creation dates cannot be reapplied',
+      );
+
       const priorBefore = await task29ProtectedState(db);
       const adminBefore = await adminStateIgnoringTaskCreatedDate(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');

@@ -579,6 +579,54 @@ export const ROUTE_INVENTORY = [
     exportName: 'restoreHearingAction',
     classification: { access: 'permission', area: 'hearings', action: 'restore' },
   },
+  {
+    kind: 'page',
+    source: 'src/app/admin-works/new/page.tsx',
+    route: '/admin-works/new',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'create' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/admin-works/[id]/edit/page.tsx',
+    route: '/admin-works/[id]/edit',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'update' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/admin-works/[id]/steps/new/page.tsx',
+    route: '/admin-works/[id]/steps/new',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'create' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/admin-works/[id]/steps/[stepId]/edit/page.tsx',
+    route: '/admin-works/[id]/steps/[stepId]/edit',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'update' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/admin-works/actions.ts',
+    exportName: 'createAdminTaskAction',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'create' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/admin-works/actions.ts',
+    exportName: 'updateAdminTaskAction',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'update' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/admin-works/actions.ts',
+    exportName: 'createAdminStepAction',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'create' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/admin-works/actions.ts',
+    exportName: 'updateAdminStepAction',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'update' },
+  },
 ] as const satisfies readonly RouteInventoryEntry[];
 
 export const PROXY_INFRASTRUCTURE_EXEMPTIONS = [

@@ -1,3 +1,4 @@
+import { assertAdminEditBoundary, historicalAdminClient } from './lib/admin-edit-checkpoint';
 import { assertHearingLifecycleBoundary } from './lib/hearing-lifecycle-checkpoint';
 import { assertHearingEditBoundary, historicalHearingClient } from './lib/hearing-edit-checkpoint';
 /*
@@ -154,6 +155,7 @@ async function main() {
     matterChecks,
     hearingChecks,
     hearingLifecycleChecks,
+    adminChecks,
     staffBoundary,
     rosterBaseline,
     staffChecks,
@@ -165,6 +167,7 @@ async function main() {
       clientBoundary: checkpoint >= 62,
       clientChecks: checkpoint >= 62 ? await assertClientContactBoundary(current, profile) : [],
       logoChecks: checkpoint >= 63 ? await assertClientLogoBoundary(current) : [],
+      adminChecks: checkpoint >= 68 ? await assertAdminEditBoundary(current, profile) : [],
       hearingChecks: checkpoint >= 66 ? await assertHearingEditBoundary(current, profile) : [],
       hearingLifecycleChecks: checkpoint >= 67 ? await assertHearingLifecycleBoundary(current) : [],
       matterChecks: checkpoint >= 64 ? await assertMatterEditBoundary(current, profile) : [],
@@ -2295,9 +2298,12 @@ async function main() {
     );
 
     if (historical) {
-      const adminResult = await reconcileAdminWorks(historicalRosterDb, {
-        creationDateBaseline: ADMIN_TASK_CREATION_DATE_BASELINE,
-      });
+      const adminResult = await reconcileAdminWorks(
+        historicalAdminClient(historicalRosterDb, checkpoint >= 68),
+        {
+          creationDateBaseline: ADMIN_TASK_CREATION_DATE_BASELINE,
+        },
+      );
       record(
         'Administrative works and task steps reconcile',
         'every staged task and step is exactly transformed or quarantined',
@@ -2333,7 +2339,10 @@ async function main() {
     );
     if (historical) {
       const adminCourt26 = (
-        await relationshipDb.query<{ rows: string; exact: string }>(`
+        await historicalAdminClient(relationshipDb, checkpoint >= 68).query<{
+          rows: string;
+          exact: string;
+        }>(`
         SELECT count(*)::text rows,
                count(*) FILTER (WHERE circuit='26' AND court_id IS NULL)::text exact
           FROM admin_tasks WHERE legacy_source_record_key IS NOT NULL
@@ -2627,6 +2636,7 @@ async function main() {
     ...logoChecks,
     ...matterChecks,
     ...hearingChecks,
+    ...adminChecks,
     ...hearingLifecycleChecks,
   ])
     checks.push({

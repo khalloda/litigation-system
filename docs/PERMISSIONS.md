@@ -339,3 +339,9 @@ edit/archive/restore. NULL matter has no prerequisite; client archive alone does
 not block a hearing beneath an unarchived matter. No direct runtime table writes,
 physical deletion, bulk operation, new report/export or audit-history UI is granted.
 The preceding Phase 2 exclusion remains historical to that phase.
+
+## Task 4.4 Phase 2 editing enforcement — D62
+
+Administrator, Litigation Assistant and Paralegal retain administrativeWorks create/update; Lawyer views only. Four new guarded pages are `/admin-works/new`, `/admin-works/[id]/edit`, `/admin-works/[id]/steps/new` and `/admin-works/[id]/steps/[stepId]/edit`. Four corresponding server actions enforce create/update before the mutation service. Service and committing gateway independently require current server-derived authority. Eight entries bring the route/action inventory to 88; no permission matrix meaning changes.
+
+The database checks enabled/password/reset/account role/session version/expiry and active internal login identity, tied to the trusted audit actor. New assignments use active internal staff independently of login access; lookup selections must be active. Associated archived matters block writes for all three roles, including Administrator; all four roles retain reads beneath archived parents. Exact committed retries still revalidate authority before receipt reuse. Direct runtime writes/sequence reservations and broad/internal gateway access remain denied. Implemented, pending independent review; actual migration/activation and publication remain unauthorized.

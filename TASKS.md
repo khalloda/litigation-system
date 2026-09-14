@@ -2229,8 +2229,12 @@ than assuming one rule for every workflow. Test with real volumes.
       [acceptance record](docs/task-reports/2026-09-14-task-4-4-phase-1-acceptance.md),
       [correction report](docs/task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
       and [correction matrix](docs/testing/task-4-4-phase1-r1-correction-matrix.md).
-      Phase 2 creation/editing is next after publication review and its bounded
-      handoff; no Phase 2 implementation or new business contract is included.
+      The owner accepted publication PASS at `fbf47d7` and adopted D62.
+      Phase 2 task/step creation and editing is implemented, pending independent
+      review; not activated/pushed. Migration 68 was tested only on disposable
+      copies. See the [Phase 2 report](docs/task-reports/2026-09-14-task-4-4-phase-2-editing.md)
+      and [matrix](docs/testing/task-4-4-phase2-acceptance-matrix.md).
+      Archive/restore and overall Task 4.4 remain incomplete.
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
 - [ ] **4.7 Fee letters** — with linked matters

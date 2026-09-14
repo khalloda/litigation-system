@@ -63,7 +63,7 @@ function reviewedRepository(
   repository: Awaited<ReturnType<typeof readGate4RepositoryMigrationInventory>>,
 ) {
   assert.deepEqual(repository.defects, []);
-  assert.ok([61, 62, 63, 64, 65, 66, 67].includes(repository.migrations.length));
+  assert.ok([61, 62, 63, 64, 65, 66, 67, 68].includes(repository.migrations.length));
   assert.equal(repository.migrations[60]?.name, '20260906180000_staff_roster_database_boundary');
   if (repository.migrations.length >= 62)
     assert.equal(repository.migrations[61]?.name, CLIENT_CONTACT_MIGRATION);
@@ -75,8 +75,10 @@ function reviewedRepository(
     assert.equal(repository.migrations[64]?.name, MATTER_LIFECYCLE_MIGRATION);
   if (repository.migrations.length >= 66)
     assert.equal(repository.migrations[65]?.name, '20260913120000_hearing_editing_boundary');
-  if (repository.migrations.length === 67)
+  if (repository.migrations.length >= 67)
     assert.equal(repository.migrations[66]?.name, '20260913160000_hearing_archive_restore');
+  if (repository.migrations.length >= 68)
+    assert.equal(repository.migrations[67]?.name, '20260914160000_admin_work_editing_boundary');
 }
 
 function configText(): string {

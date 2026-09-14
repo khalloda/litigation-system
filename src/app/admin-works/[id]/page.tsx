@@ -1,3 +1,4 @@
+import { hasPermission } from '@/lib/auth/permissions';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -51,7 +52,24 @@ export default async function AdminWorkPage({
         <div>
           <p className={styles.eyebrow}>{t.adminWorks.details}</p>
           <h1>{t.adminWorks.identity(record.id)}</h1>
-          <p>{t.adminWorks.readOnly}</p>
+          {!record.matterArchived &&
+          hasPermission(session.user.role, 'administrativeWorks', 'update') ? (
+            <Link
+              className={styles.link}
+              href={
+                '/admin-works/' +
+                record.id +
+                '/edit' +
+                adminDetailHref(record.id, filters, state.stepPage).slice(
+                  ('/admin-works/' + record.id).length,
+                )
+              }
+            >
+              {t.adminWorks.manage.edit}
+            </Link>
+          ) : (
+            <p>{t.adminWorks.readOnly}</p>
+          )}
         </div>
         <Link className={styles.link} href={adminListHref(filters)}>
           {t.adminWorks.back}
@@ -116,6 +134,22 @@ export default async function AdminWorkPage({
       </section>
       <section className={styles.panel} aria-label={t.adminWorks.steps}>
         <h2>{t.adminWorks.steps}</h2>
+        {!record.matterArchived &&
+        hasPermission(session.user.role, 'administrativeWorks', 'create') ? (
+          <Link
+            className={styles.link}
+            href={
+              '/admin-works/' +
+              record.id +
+              '/steps/new' +
+              adminDetailHref(record.id, filters, state.stepPage).slice(
+                ('/admin-works/' + record.id).length,
+              )
+            }
+          >
+            {t.adminWorks.manage.createStep}
+          </Link>
+        ) : null}
         <p>{t.adminWorks.stepOrder}</p>
         <p role="status" aria-live="polite" aria-atomic="true">
           {t.adminWorks.stepCount(record.stepCount)}
@@ -125,6 +159,24 @@ export default async function AdminWorkPage({
             {record.steps.map((step) => (
               <li className={local.multiline} key={step.id} data-step-id={step.id}>
                 <h3>{t.adminWorks.stepIdentity(step.id)}</h3>
+                {!record.matterArchived &&
+                hasPermission(session.user.role, 'administrativeWorks', 'update') ? (
+                  <Link
+                    className={styles.link}
+                    href={
+                      '/admin-works/' +
+                      record.id +
+                      '/steps/' +
+                      step.id +
+                      '/edit' +
+                      adminDetailHref(record.id, filters, state.stepPage).slice(
+                        ('/admin-works/' + record.id).length,
+                      )
+                    }
+                  >
+                    {t.adminWorks.manage.editStep}
+                  </Link>
+                ) : null}
                 <dl className={styles.facts}>
                   <Field label={t.adminWorks.stepDate} value={step.actionDate} />
                   <Field label={t.adminWorks.person} value={step.personName ?? step.performerRaw} />

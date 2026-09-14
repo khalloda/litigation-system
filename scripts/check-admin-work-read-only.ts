@@ -11,7 +11,11 @@ function failures(sources: AuditRuntimeSource[]) {
   const errors: string[] = [];
   for (const { path, text } of sources.filter(
     (s) =>
-      s.path.startsWith('src/app/admin-works/') ||
+      [
+        'src/app/admin-works/page.tsx',
+        'src/app/admin-works/[id]/page.tsx',
+        'src/app/admin-works/fixture.tsx',
+      ].includes(s.path) ||
       ['src/lib/admin-work-query.ts', 'src/lib/admin-works.ts'].includes(s.path),
   )) {
     const query = path === 'src/lib/admin-work-query.ts';
@@ -35,6 +39,7 @@ function failures(sources: AuditRuntimeSource[]) {
           : node.argumentExpression?.getText(tree).replace(/['"]/gu, '');
         if (
           member &&
+          node.getText(tree) !== 't.adminWorks.manage.create' &&
           /^(?:create|createMany|update|updateMany|upsert|delete|deleteMany|\$executeRaw|\$executeRawUnsafe|\$queryRawUnsafe)$/u.test(
             member,
           )
@@ -77,7 +82,9 @@ function failures(sources: AuditRuntimeSource[]) {
 }
 assert.deepEqual(failures(discoverAuditRuntimeSources(process.cwd())), []);
 assert.deepEqual(routeInventoryFailures(discoverAuthorizationEntrypoints(process.cwd())), []);
-const entries = ROUTE_INVENTORY.filter((e) => e.source.startsWith('src/app/admin-works/'));
+const entries = ROUTE_INVENTORY.filter((e) =>
+  ['src/app/admin-works/page.tsx', 'src/app/admin-works/[id]/page.tsx'].includes(e.source),
+);
 assert.equal(entries.length, 2);
 assert.ok(
   entries.every(

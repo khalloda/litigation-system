@@ -22,12 +22,15 @@ const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
 const HEARING_LIFECYCLE_SERVICE = 'src/lib/hearing-lifecycle.ts';
 const HEARING_LIFECYCLE_SHA256 = '42be3170ff4425089e19a5524e907f1b6fcbd11bd729715ed60620f38bd36f36';
+const ADMIN_MUTATION_SERVICE = 'src/lib/admin-work-mutations.ts';
+const ADMIN_MUTATION_SHA256 = 'e814f46d42fa14a84e01a49383dd71e50d2af7512495ce66fabcce0967ef1771';
+const ADMIN_INPUT_SHA256 = '50c2deb2a790ef33429e41411ef967f1f9331beb10db88c711cd772f40961480';
 const HEARING_MUTATION_SERVICE = 'src/lib/hearing-mutations.ts';
 const HEARING_MUTATION_SHA256 = '49f1c5bbd9459173effebcebf633fae714a1b906a45df072329b5dc1b3c4fa7f';
 const HEARING_INPUT_SHA256 = 'a7a3c2ba5615d2806d71595fb83ee9b09f1addaf07c625df39e1f40d98c03b05';
 const ADMIN_READ_SERVICE = 'src/lib/admin-work-query.ts';
 const ADMIN_READ_SERVICE_SHA256 =
-  '9986177ad7a68fe7be5739ceff393ba244d9a8934bae9b4f35eaf470cc2a9ca8';
+  'd79b30434df55744172baa3088dfb3224ade0eff6e532f03f29514fd4fe529fd';
 const HEARING_READ_SERVICE = 'src/lib/hearing-query.ts';
 const HEARING_READ_SERVICE_SHA256 =
   'd17177a7d3d2e28de2d45d0b97f83afe8f1ed4397dc94d68888a2dc8bdf2a7a8';
@@ -119,6 +122,21 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/admin-work-mutations.ts',
+    'readAdminMutation',
+    '8b5eaaa87acd107836f4eb0368d4277757ebcf9fa90b243ed10519df88ec7b1c',
+  ],
+  [
+    'src/lib/admin-work-mutations.ts',
+    'readAdminMutation',
+    '8b7e994355cffbba5d27fc95dac1f4f0254303b371b06714b7e35e61990ec6c9',
+  ],
+  [
+    'src/lib/admin-work-mutations.ts',
+    'mutateAdminWork',
+    '61ff92dd8dc106f1a32e05c8bee2062672e41997064dc7bfc844d216e7d8cfbe',
+  ],
   [
     'src/lib/admin-work-query.ts',
     'snapshot',
@@ -1896,6 +1914,19 @@ export function auditRuntimeSourceFailures(
         HEARING_LIFECYCLE_SHA256
     )
       failures.add('Hearing lifecycle closure differs from reviewed inventory');
+    const isAdminMutationService = source.path === ADMIN_MUTATION_SERVICE;
+    if (
+      isAdminMutationService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        ADMIN_MUTATION_SHA256
+    )
+      failures.add('Administrative mutation closure differs from reviewed inventory');
+    if (
+      source.path === 'src/lib/admin-work-mutation-input.ts' &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        ADMIN_INPUT_SHA256
+    )
+      failures.add('Administrative mutation input differs from reviewed inventory');
     const isHearingMutationService = source.path === HEARING_MUTATION_SERVICE;
     if (
       isHearingMutationService &&
@@ -1936,6 +1967,7 @@ export function auditRuntimeSourceFailures(
       isLogoMutationService ||
       isMatterMutationService ||
       isHearingMutationService ||
+      isAdminMutationService ||
       isMatterLifecycleService ||
       isHearingLifecycleService;
     const isDatabaseModule = absolute === databaseAbsolute;
@@ -2067,6 +2099,7 @@ export function auditRuntimeSourceFailures(
                   isLogoMutationService ||
                   isMatterMutationService ||
                   isHearingMutationService ||
+                  isAdminMutationService ||
                   isMatterLifecycleService ||
                   isHearingLifecycleService
                 ? new Set(['setHumanAuditContext'])
@@ -2394,6 +2427,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'mutateAdminWork',
+        'transaction,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'mutateHearingLifecycle',

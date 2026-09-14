@@ -1,3 +1,4 @@
+import { adminEditApplied, ADMIN_EDIT_GATEWAYS, ADMIN_EDIT_TABLES } from './admin-edit-checkpoint';
 import {
   hearingLifecycleApplied,
   HEARING_LIFECYCLE_GATEWAYS,
@@ -359,6 +360,7 @@ export async function runtimeRoleBoundaryFailures(
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
+  const adminBoundary = await adminEditApplied(db);
   const hearingBoundary = await hearingEditApplied(db);
   const hearingLifecycle = await hearingLifecycleApplied(db);
   const matterBoundary = await matterEditApplied(db);
@@ -368,7 +370,8 @@ export async function runtimeRoleBoundaryFailures(
     (clientBoundary && ['clients', 'contacts'].includes(table)) ||
     (logoBoundary && table === 'client_logos') ||
     (matterBoundary && MATTER_EDIT_TABLES.includes(table as never)) ||
-    (hearingBoundary && HEARING_EDIT_TABLES.includes(table as never));
+    (hearingBoundary && HEARING_EDIT_TABLES.includes(table as never)) ||
+    (adminBoundary && ADMIN_EDIT_TABLES.includes(table as never));
   const approvedDefiners: readonly string[] = [
     ...APPROVED_RUNTIME_SECURITY_DEFINERS,
     ...(staffBoundary ? STAFF_RUNTIME_GATEWAYS : []),
@@ -376,6 +379,7 @@ export async function runtimeRoleBoundaryFailures(
     ...(logoBoundary ? CLIENT_LOGO_GATEWAYS : []),
     ...(matterBoundary ? MATTER_EDIT_GATEWAYS : []),
     ...(hearingBoundary ? HEARING_EDIT_GATEWAYS : []),
+    ...(adminBoundary ? ADMIN_EDIT_GATEWAYS : []),
     ...(hearingLifecycle ? HEARING_LIFECYCLE_GATEWAYS : []),
     ...(lifecycle ? MATTER_LIFECYCLE_GATEWAYS : []),
   ];

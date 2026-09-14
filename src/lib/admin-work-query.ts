@@ -174,7 +174,7 @@ export function adminStepsQuery(id: number, page: number) {
   return Prisma.sql`SELECT s.id,s.legacy_id AS "legacyId",s.source_ordinal AS "sourceOrdinal",s.action_date::text AS "actionDate",
     s.performed_by_person_id AS "personId",p.name_ar AS "personName",p.is_active AS "personActive",s.legacy_performed_by_raw AS "performerRaw",s.result,s.report
     FROM public.task_actions s LEFT JOIN public.people p ON p.id=s.performed_by_person_id WHERE s.task_id=${id}
-    ORDER BY s.source_ordinal ASC NULLS LAST,s.id ASC LIMIT ${ADMIN_PAGE_SIZE} OFFSET ${(page - 1) * ADMIN_PAGE_SIZE}`;
+    ORDER BY (s.current_order IS NOT NULL),s.source_ordinal ASC NULLS LAST,s.current_order ASC,s.id ASC LIMIT ${ADMIN_PAGE_SIZE} OFFSET ${(page - 1) * ADMIN_PAGE_SIZE}`;
 }
 export function adminOptionsQuery() {
   return Prisma.sql`SELECT * FROM (

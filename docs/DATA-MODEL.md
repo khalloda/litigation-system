@@ -1324,3 +1324,11 @@ retired, duplicate, inactive/missing references and imported order/provenance—
 remains unchanged. The detail includes current and retired memberships separately.
 Historical relationship counts and report sources include all archive states.
 Actual development remains at66; this schema is not activated by Phase3.
+
+## Task 4.4 Phase 2 administrative editing boundary — candidate 68
+
+`admin_tasks.row_version` is a positive bigint shared by the task and all its steps. `task_actions.current_order` is a nullable positive integer, unique per task when present. Imported steps retain NULL current order and their sourceOrdinal; native steps append with a separate immutable current order and NULL Access provenance/nextAppointment. The existing nullable task relation preserves historical shape, while the gateway and row guard require a task for every native step.
+
+Migration 68 freezes every original task/step row in `_migration.admin_edit_import` with typed historical views. This evidence reconciles to the immutable pre-release inventory and reviewed release mappings; it is distinct from editable current values. `admin_edit_boundary` records the baseline. Immutable `admin_edit_change` retains complete aggregate before/after values, version, actor and request ID; `admin_edit_submission` binds a unique submission token and task/version to the authorized payload/result. Deferred constraints require a continuous audited history and receipt. Protected identities, parent links, provenance and ordering cannot be edited or deleted. Permanent checks retain original reconciliation and separately verify current/native records, exact function definitions, triggers, grants and histories.
+
+Two narrow public gateways read editor state and commit saves. Runtime direct table/sequence writes and internal helper access remain denied. Shared staff/account locks, parent/selection locks and the task version resolve concurrent eligibility, archive and edit operations. Old transforms/date backfill refuse apply after the boundary. Candidate 68 is implemented, pending independent review; the actual owner database remains at 67. D62 defines payload, completeness, limits and date semantics.

@@ -143,6 +143,13 @@ export async function runAdminWorkTransform(options: RunOptions = {}) {
       const preview = await buildAdminTransformPlan(db);
       if (options.apply !== true) return { plan: preview, digest: null };
 
+      assert.equal(
+        (await db.query("SELECT to_regclass('_migration.admin_edit_boundary') IS NOT NULL present"))
+          .rows[0].present,
+        false,
+        'D62 operational boundary: historical administrative transform cannot be reapplied',
+      );
+
       const protectedBefore = await task29ProtectedState(db);
       await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
       try {

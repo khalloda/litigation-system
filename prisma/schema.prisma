@@ -1511,6 +1511,7 @@ model Hearing {
 ///
 /// **The only area Paralegals can edit** (docs/PERMISSIONS.md).
 model AdminTask {
+  rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
   /// Access ID_Task.
   legacyId Int? @unique @map("legacy_id")
@@ -1587,10 +1588,12 @@ model AdminTask {
 ///
 /// Complete: all 7 Access columns are accounted for.
 ///
-/// task_id is nullable for application-native rows. In the Task 2.9 migration,
+/// The SQL D62 gateway requires a task for every new step. Historical storage remains nullable. In the Task 2.9 migration,
 /// 36 source rows name no task and 39 name none; they remain in immutable
 /// quarantine rather than becoming detached target steps.
 model TaskAction {
+  /// Native append order; imported source ordinal remains unchanged.
+  currentOrder Int? @map("current_order")
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
 
@@ -1642,6 +1645,7 @@ model TaskAction {
   @@index([performedByPersonId])
   @@index([createdBy], map: "task_actions_created_by_idx")
   @@index([updatedBy], map: "task_actions_updated_by_idx")
+  @@unique([taskId, currentOrder], map: "task_actions_current_order_idx")
   @@map("task_actions")
 }
 

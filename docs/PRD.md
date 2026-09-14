@@ -539,3 +539,9 @@ Retained attendance, old source evidence, D41 and reports remain intact. Existin
 report sources and historical counts include archived hearings; future Task6
 report integration must preserve that inclusion explicitly. No report screen or
 export is introduced here. See D61 and the Phase 3 report/matrix.
+
+## Task 4.4 Phase 2 — D62 candidate, 14 September 2026
+
+The owner accepted Phase 1 publication PASS at `fbf47d7` and adopted bounded task/step creation and editing. Administrator, Litigation Assistant and Paralegal can create/edit; Lawyer retains reads. New work deliberately selects a matter or no matter and a business creation date or not recorded. New descriptions/progress must be meaningful, while unrelated edits preserve incomplete historical facts. Parents remain fixed; an associated archived matter requires restoration first. Current active staff/lookups are selected by ID; old inactive references are retained. Exact text, optional dates, original provenance and imported order are preserved. Concurrent changes produce a recoverable conflict rather than silent overwrite.
+
+Implemented, pending independent review; not activated/pushed. Migration 68 and the candidate were exercised only on owned disposable copies. The actual database stays at 67 and the owner app retains its observed stopped state. No task/step archive/restore, exports, notifications, later task or deployment is included. Overall Task 4.4 remains unchecked. See [D62](DECISIONS.md#d62--bounded-administrative-work-and-task-step-editing), the [report](task-reports/2026-09-14-task-4-4-phase-2-editing.md) and [matrix](testing/task-4-4-phase2-acceptance-matrix.md).
