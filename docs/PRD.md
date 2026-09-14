@@ -476,6 +476,15 @@ remain historical. Overall Task 4.4 stays unchecked. See its
 and [matrix](testing/task-4-4-phase1-acceptance-matrix.md).
 The accepted67 owner app remains unchanged; no candidate activation or push.
 Independent Phase 1 review is next; editing and later phases remain separate.
+
+**R1 correction — 14 September 2026:** the owner approved the
+[independent review](reviews/2026-09-14-task-4-4-phase-1-independent-review.md)
+and its correction mandate. Record-ID search now uses the canonical normalizer
+for both PostgreSQL and legacy IDs, retaining exact matches and stored values.
+R1 is corrected, pending independent correction review. This is not Phase 1
+acceptance or activation; Task 4.4 remains unchecked. See the
+[correction report](task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
+and [matrix](testing/task-4-4-phase1-r1-correction-matrix.md).
 See the [follow-up report](task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
 [matrix](testing/task-4-2-phase2-r3-ordering-matrix.md). R1–R3 are closed; Khaled accepted Phase 2 on 12 September 2026 at
 `6771218164c992781902374efb62f0b2f54b2a20`. Migration-63

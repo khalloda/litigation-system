@@ -156,7 +156,7 @@ function where(f: AdminFilters) {
     OR m.case_number_ar_normalised LIKE ${pattern(f.q)} OR m.subject_normalised LIKE ${pattern(f.q)}
     OR c.name_ar_normalised LIKE ${pattern(f.q)} OR c.full_name_normalised LIKE ${pattern(f.q)} OR public.ar_normalise(c.name_en) LIKE ${pattern(f.q)}
     OR EXISTS (SELECT 1 FROM public.person_name_alias n WHERE n.person_id=a.assigned_to_person_id AND NOT n.is_retired AND public.ar_normalise(n.alias_ar) LIKE ${pattern(f.q)})
-    OR a.id::text=${f.q} OR a.legacy_id::text=${f.q})`);
+    OR a.id::text=public.ar_normalise(${f.q}) OR a.legacy_id::text=public.ar_normalise(${f.q}))`);
   return Prisma.join(conditions, ' AND ');
 }
 export function adminCountQuery(f: AdminFilters) {

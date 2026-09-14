@@ -52,6 +52,15 @@ unchecked. See the [Phase 1 report](docs/task-reports/2026-09-14-task-4-4-phase-
 and [matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md).
 The accepted migration-67 owner app remains running unchanged; this candidate
 has not been pushed or activated. Phase 1 independent review is the next gate.
+
+**R1 correction — 14 September 2026:** the owner approved the
+[independent Phase 1 review](docs/reviews/2026-09-14-task-4-4-phase-1-independent-review.md)
+and its bounded ID-search correction. R1 is corrected, **pending independent
+correction review**; this does not accept Phase 1. See the
+[correction report](docs/task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
+and [matrix](docs/testing/task-4-4-phase1-r1-correction-matrix.md).
+No push or activation; the accepted67 owner app remains unchanged.
+
 See the [R3 follow-up report](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md)
 and [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
 See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)

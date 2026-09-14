@@ -29,3 +29,15 @@ checkpoint path before synthetic setup. No invariant was changed. See the
 [report](../task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
 for commands, protected state and limitations. Evidence root:
 `D:\Projects\LitigationData\review-evidence\task44-phase1-20260914`.
+
+## R1 correction entry — 14 September 2026
+
+The [independent Phase 1 review](../reviews/2026-09-14-task-4-4-phase-1-independent-review.md)
+identified raw-ID equality in both the production search and its expected-result
+calculation. The earlier blanket digit-search PASS above is historical and does
+not establish ID digit equivalence. Khaled authorized the bounded correction in
+this same task. See the [R1 matrix](task-4-4-phase1-r1-correction-matrix.md) and
+[correction report](../task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
+for new failing/passing proof, exact affected-source binding and unchanged proof
+reuse. R1 is corrected, pending independent correction review; overall Task 4.4
+remains unchecked. No Phase 1 acceptance, activation, push or Phase 2 work.

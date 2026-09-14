@@ -2212,6 +2212,12 @@ than assuming one rule for every workflow. Test with real volumes.
       No actual migration, candidate activation or push. See the
       [Phase 1 report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
       and [acceptance matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md).
+      **R1 correction — 14 September 2026:** the owner approved the
+      [independent Phase 1 review](docs/reviews/2026-09-14-task-4-4-phase-1-independent-review.md)
+      and its bounded correction. PostgreSQL/legacy-ID search normalization is
+      corrected, pending independent correction review; Phase 1 is not accepted
+      or activated. See the [correction report](docs/task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
+      and [correction matrix](docs/testing/task-4-4-phase1-r1-correction-matrix.md).
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
 - [ ] **4.7 Fee letters** — with linked matters

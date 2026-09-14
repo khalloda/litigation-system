@@ -251,8 +251,8 @@ async function prove(fixture: IsolatedPostgres, output: string) {
           baseline.aliases.some(
             (n) => n.person_id === a.assigned_to_person_id && n.n?.includes(normalized),
           ) ||
-          String(a.id) === q ||
-          String(a.legacy_id) === q,
+          String(a.id) === normalized ||
+          (a.legacy_id !== null && String(a.legacy_id) === normalized),
       );
       assert.deepEqual(
         (await collect({ q })).map((r) => r.id),
