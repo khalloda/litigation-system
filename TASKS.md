@@ -2235,6 +2235,10 @@ than assuming one rule for every workflow. Test with real volumes.
       copies. See the [Phase 2 report](docs/task-reports/2026-09-14-task-4-4-phase-2-editing.md)
       and [matrix](docs/testing/task-4-4-phase2-acceptance-matrix.md).
       Archive/restore and overall Task 4.4 remain incomplete.
+      P2-R1 current/source presentation correction is implemented, pending
+      independent correction review; no acceptance, activation or push.
+      See the [correction report and P2-N1 erratum](docs/task-reports/2026-09-14-task-4-4-phase-2-p2-r1-correction.md)
+      and [focused matrix](docs/testing/task-4-4-phase2-p2-r1-correction-matrix.md).
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
 - [ ] **4.7 Fee letters** — with linked matters

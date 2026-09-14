@@ -66,6 +66,12 @@ See the [acceptance record](docs/task-reports/2026-09-14-task-4-4-phase-1-accept
 Earlier pending-review/no-push statements in preserved evidence describe those
 earlier checkpoints. The owner accepted the [publication PASS review](docs/reviews/2026-09-14-task-4-4-phase-1-publication-independent-review.md) at `fbf47d7` and adopted D62. Bounded Task 4.4 Phase 2 task/step creation and editing is implemented, pending independent review; not activated or pushed. See the [Phase 2 report](docs/task-reports/2026-09-14-task-4-4-phase-2-editing.md) and [matrix](docs/testing/task-4-4-phase2-acceptance-matrix.md). Actual development remains migration 67. The owner app was observed stopped at Phase 2 entry and was preserved stopped; the accepted build and 54 logos remain intact. Overall Task 4.4 remains unchecked.
 
+The Phase 2 [independent review](docs/reviews/2026-09-14-task-4-4-phase-2-independent-review.md)
+raised P2-R1: cleared current references were masked by imported text. The bounded
+presentation correction is implemented, pending independent correction review;
+not accepted, activated or pushed. The [correction report](docs/task-reports/2026-09-14-task-4-4-phase-2-p2-r1-correction.md)
+also records the P2-N1 population erratum without changing the original report.
+
 See the [R3 follow-up report](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md)
 and [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
 See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)

@@ -79,8 +79,13 @@ export default async function AdminWorkPage({
         <h2>{t.adminWorks.details}</h2>
         <dl className={styles.facts}>
           <Field label={t.adminWorks.requiredWork} value={record.requiredWork} />
-          <Field label={t.adminWorks.person} value={record.personName ?? record.assigneeRaw} />
-          <Field label={t.adminWorks.sourceText} value={record.assigneeRaw} />
+          <Field label={t.adminWorks.person} value={record.personName} />
+          {record.assigneeRaw !== null ? (
+            <Field
+              label={t.adminWorks.person + ' — ' + t.adminWorks.sourceText}
+              value={<span className={local.multiline}>{record.assigneeRaw}</span>}
+            />
+          ) : null}
           <Field label={t.adminWorks.createdDate} value={record.taskCreatedDate} />
           <Field label={t.adminWorks.executionDate} value={record.executionDate} />
           <Field label={t.adminWorks.result} value={record.result} />
@@ -89,7 +94,13 @@ export default async function AdminWorkPage({
           <Field label={t.adminWorks.deadline} value={record.deadline} />
           <Field label={t.fields.court} value={record.court} />
           <Field label={t.fields.circuit} value={record.circuit} />
-          <Field label={t.fields.destination} value={record.destination ?? record.destinationRaw} />
+          <Field label={t.fields.destination} value={record.destination} />
+          {record.destinationRaw !== null ? (
+            <Field
+              label={t.fields.destination + ' — ' + t.adminWorks.sourceText}
+              value={<span className={local.multiline}>{record.destinationRaw}</span>}
+            />
+          ) : null}
           <Field label={t.adminWorks.status} value={record.status} />
           <Field label={t.adminWorks.alert} value={record.alert} />
           <Field label={t.clients.systemId} value={record.id} />
@@ -179,8 +190,13 @@ export default async function AdminWorkPage({
                 ) : null}
                 <dl className={styles.facts}>
                   <Field label={t.adminWorks.stepDate} value={step.actionDate} />
-                  <Field label={t.adminWorks.person} value={step.personName ?? step.performerRaw} />
-                  <Field label={t.adminWorks.sourceText} value={step.performerRaw} />
+                  <Field label={t.adminWorks.person} value={step.personName} />
+                  {step.performerRaw !== null ? (
+                    <Field
+                      label={t.adminWorks.person + ' — ' + t.adminWorks.sourceText}
+                      value={<span className={local.multiline}>{step.performerRaw}</span>}
+                    />
+                  ) : null}
                   <Field label={t.adminWorks.result} value={step.result} />
                   <Field label={t.adminWorks.report} value={step.report} />
                 </dl>

@@ -165,7 +165,13 @@ export default async function AdminWorksPage({
                   <dl>
                     <Field label={t.adminWorks.createdDate} value={row.taskCreatedDate} />
                     <Field label={t.adminWorks.status} value={row.status} />
-                    <Field label={t.adminWorks.person} value={row.personName ?? row.assigneeRaw} />
+                    <Field label={t.adminWorks.person} value={row.personName} />
+                    {row.assigneeRaw !== null ? (
+                      <Field
+                        label={t.adminWorks.person + ' — ' + t.adminWorks.sourceText}
+                        value={<span className={local.multiline}>{row.assigneeRaw}</span>}
+                      />
+                    ) : null}
                   </dl>
                   {row.personActive === false ? <p>{t.matters.former}</p> : null}
                 </div>
