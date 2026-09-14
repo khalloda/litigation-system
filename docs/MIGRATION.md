@@ -3584,3 +3584,39 @@ the running accepted app are preserved. No actual deployment is included.
 See the [report](task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
 and [matrix](testing/task-4-3-phase3-acceptance-matrix.md); independent Phase3
 review and later owner acceptance/activation remain separate.
+
+
+## Accepted67 local recovery and activation — 14 September 2026
+
+The owner explicitly accepted e582605 and authorized this actual66→67 transition.
+A fresh protected recovery point was created at `D:\Projects\LitigationData\DB-Backup\migration63\pre-migration67-2026-09-14T06-39-57-751Z-f56b063c-8411-433d-a2ca-ff32389bf772`.
+It contains the 20,643,299-byte custom database dump, 54 matching logos, protected
+role restoration SQL and source/ownership inventories: 58 payload members plus
+the manifest. Dump SHA-256 `5f99d5f89cc1d2dcc08c960ff9b7a57a6eb5739de34514c3eeeb6351920e1317`;
+manifest SHA-256 `364eb55453751cb81cf78569526bfe675bf459044108d33e1225830a7fbd373e`. Every member was verified; the exact dump
+was restored to a distinct task-owned PostgreSQL 17.11 cluster before upgrade.
+This is local-only recovery, without disk/laptop-loss protection.
+
+Restored66 matched all 118 source tables, original projections, account contents,
+ledger, named ownership/effective grants and role attributes. All 48 logical
+sequence values/called states matched; 45 physical log_cnt resets to zero and
+explicit-owner-to-implicit-default ACLs on staging/quarantine were recorded
+individually. Actual state was never normalized. Fresh 129+15 checks passed at
+restored66; accepted67 rehearsal and actual validation each passed 131+15.
+Only accepted migration67, SHA-256
+`020e803915164cf5e7e5839d34a5bab803e80520e858bda7b601e65cb7223946`,
+was deployed by the approved wrapper: one rehearsal and one actual attempt.
+No actual failure, ledger repair, reset or downgrade occurred.
+
+The old app was stopped once after transaction drain and exact identity checks.
+A transient listener observation and external inspector timestamp parsing were
+resolved before backup/DDL; attempt evidence was retained. Bounded SHARE locks
+protected the coherent backup/rehearsal, then released immediately before actual
+DDL after zero competing sessions. Full sequences, original data/history and
+private credentials/session state remained exact across the quiesced migration.
+The distinct rehearsal cluster/volume/network/credentials were removed by their
+guarded owner wrapper. Accepted app and new/old recovery artifacts remain.
+See the [activation report](task-reports/2026-09-14-task-4-3-phase-3-development-activation.md).
+Overall Task 4.3 is locally complete under the owner's successful-activation
+mandate; independent activation/documentation review is next. No publication,
+Ubuntu deployment, Task 4.4, password or D59–D61 change occurred.

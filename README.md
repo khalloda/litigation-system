@@ -3,7 +3,7 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Current status — 13 September 2026:** Khaled Helmy accepted Task 4.2 Phase 1
+**Current status — 14 September 2026:** Khaled Helmy accepted Task 4.2 Phase 1
 at `2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the preserved
 [independent PASS review](docs/reviews/2026-09-12-task-4-2-phase-1-independent-review.md).
 Khaled accepted Phase 2 at `6771218164c992781902374efb62f0b2f54b2a20` on
@@ -24,9 +24,9 @@ Khaled Helmy accepted Task 4.3 Phase 2 on 13 September 2026 at
 `34a9fd89176ae89a097136f48f2c733273243ba1`, following its
 [independent PASS review](docs/reviews/2026-09-13-task-4-3-phase-2-independent-review.md).
 Bounded hearing creation/editing and retained attendee selection under D60 are
-active locally: the accepted Phase 2 app runs at `http://127.0.0.1:3000` against
-actual migration 66. A fresh backup including the recovered KHelmy account was
-restored and rehearsed in isolation; actual verification passed 129 invariants
+accepted and were activated locally on 13 September: the Phase 2 app then ran
+at `http://127.0.0.1:3000` against actual migration 66. A fresh backup including
+the recovered KHelmy account was restored and rehearsed in isolation; actual verification passed 129 invariants
 and 15 setup checks. Current passwords, valid-session state and credentials were
 preserved. See the [activation report](docs/task-reports/2026-09-13-task-4-3-phase-2-development-activation.md),
 [implementation report](docs/task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md)
@@ -34,12 +34,18 @@ and [matrix](docs/testing/task-4-3-phase2-acceptance-matrix.md).
 Khaled Helmy accepted Phase 2 activation/documentation at
 `5f0552f9dd98a55f4050c988c154a6b8cd18b30c` following its
 [independent PASS review](docs/reviews/2026-09-13-task-4-3-phase-2-activation-independent-review.md).
-Phase 3 implements Administrator hearing archive/restore under D61, with candidate
-migration67 tested only in isolated copies. Actual66 and the accepted Phase 2 app
-remain active. See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
+Khaled Helmy accepted Phase 3 at `e5826056f30a5c5e2907c44b29641993e36092c0`
+on 14 September after the [independent PASS review](docs/reviews/2026-09-14-task-4-3-phase-3-independent-review.md).
+All three hearing phases and local Task 4.3 are complete under D60/D61 after
+successful authorized activation. The accepted Phase 3 app runs at
+`http://127.0.0.1:3000` against actual migration 67; fresh backup/restore,
+131 historical invariants and 15 setup checks passed. Current KHelmy password,
+valid-session state, credentials, data and 54 logos were preserved.
+See the [activation report](docs/task-reports/2026-09-14-task-4-3-phase-3-development-activation.md),
+[Phase 3 report](docs/task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
 and [matrix](docs/testing/task-4-3-phase3-acceptance-matrix.md).
-Overall Task 4.3 remains open, awaiting independent Phase 3 review. Candidate67
-activation, publication, Ubuntu deployment and Task4.4 remain separate.
+The next gate is independent activation/documentation review. Publication,
+Ubuntu deployment and Task 4.4 require separate authorization.
 See the [R3 follow-up report](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md)
 and [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
 See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)

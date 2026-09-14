@@ -6,7 +6,7 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 13 September 2026:** Phase 1 remains accepted. Khaled
+**Current checkpoint — 14 September 2026:** Phase 1 remains accepted. Khaled
 accepted Phase 2 on 12 September at `6771218164c992781902374efb62f0b2f54b2a20`
 after the final R3 PASS review. Khaled Helmy accepted Phase 3 and Task 4.2 overall
 on 13 September 2026 at `b2ac2187b762e7db82b190e6f5d522506e676292`, following the
@@ -17,15 +17,16 @@ Task 4.2 is published at `93fd304f80c96a01a4de8bdbad42129ff4704a40`; the owner
 accepted the [publication PASS review](docs/reviews/2026-09-13-task-4-2-publication-independent-review.md).
 Task 4.3 Phase 1 and its completed local activation are owner-accepted. Khaled
 accepted Phase 2 at `34a9fd89176ae89a097136f48f2c733273243ba1` on 13 September.
-The accepted Phase 2 app is now running on 127.0.0.1:3000 with actual migration 66,
-after a fresh post-reset backup, isolated rehearsal, 129 invariants and 15 setup
-checks. N1 is corrected here and in the detailed hearing status below. Overall
-Task 4.3 remains open. Khaled accepted Phase 2 activation/documentation at
-`5f0552f9dd98a55f4050c988c154a6b8cd18b30c`. Phase 3 hearing archive/restore
-is implemented under D61 and awaits independent review; candidate67 is tested
-only in isolated copies. Actual66 and the running accepted app remain unchanged.
-Publication, activation, Ubuntu deployment and Task4.4 remain separately gated.
-See the [activation report](docs/task-reports/2026-09-13-task-4-3-phase-2-development-activation.md).
+Phase 2 activation/documentation was accepted at
+`5f0552f9dd98a55f4050c988c154a6b8cd18b30c`; N1/N2 remain resolved.
+Khaled accepted Phase 3 on 14 September 2026 at `e5826056f30a5c5e2907c44b29641993e36092c0`
+after its [independent PASS review](docs/reviews/2026-09-14-task-4-3-phase-3-independent-review.md).
+The accepted Phase 3 app now runs on 127.0.0.1:3000 with actual migration 67,
+after fresh protected backup/restore, isolated rehearsal and actual 131
+invariant/15 setup checks. The recovered account, valid sessions and credentials
+were preserved. All three phases and overall Task 4.3 are complete locally.
+Independent activation/documentation review is the exact next gate; publication,
+Ubuntu deployment and Task 4.4 remain separate. See the [activation report](docs/task-reports/2026-09-14-task-4-3-phase-3-development-activation.md).
 See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
 and [matrix](docs/testing/task-4-2-phase3-acceptance-matrix.md). The previous
 migration-63 documentation publication is closed at
@@ -2164,7 +2165,7 @@ than assuming one rule for every workflow. Test with real volumes.
         overall on 13 September 2026 at
         `b2ac2187b762e7db82b190e6f5d522506e676292`. See the acceptance addenda
         in the Phase 3 report and matrix above. C1 retains the D59 disposition.
-- [ ] **4.3 Hearings** — 13,382 current target rows need paging and fast
+- [x] **4.3 Hearings** — 13,382 current target rows need paging and fast
       filters. The 327 original high-impact quarantine/source rows remain as
       immutable evidence of the reviewed release; they are not additional
       pending hearings.
@@ -2176,8 +2177,8 @@ than assuming one rule for every workflow. Test with real volumes.
       Phase 2: bounded hearing editing and retained attendee selection under D60,
       accepted by Khaled Helmy on 13 September 2026 at
       `34a9fd89176ae89a097136f48f2c733273243ba1` after independent PASS review.
-      The accepted Phase 2 app runs at `http://127.0.0.1:3000` with actual migration
-      66, following fresh backup/rehearsal and 129 invariant/15 setup checks.
+      Phase 2 was activated on 13 September with actual migration 66, following
+      fresh backup/rehearsal and 129 invariant/15 setup checks.
       The recovered KHelmy state and credentials remain preserved under D59.
       See the [activation report](docs/task-reports/2026-09-13-task-4-3-phase-2-development-activation.md)
       and [Phase 2 report](docs/task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md).
@@ -2186,11 +2187,19 @@ than assuming one rule for every workflow. Test with real volumes.
       the historical activation report, with acceptance appended. Phase 3 adds
       Administrator hearing archive/restore under D61, preserving attendance and
       historical reporting; restore an archived matter before a hearing mutation.
-      Candidate67 is isolated-only; actual66 and the accepted app remain active.
-      See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
+      Khaled accepted Phase 3 at `e5826056f30a5c5e2907c44b29641993e36092c0`
+      on 14 September following the [independent PASS review](docs/reviews/2026-09-14-task-4-3-phase-3-independent-review.md).
+      Accepted67 was applied once after fresh protected backup and isolated
+      restore/rehearsal. Actual 131 invariants and 15 setup checks passed; the
+      accepted Phase 3 app runs at `http://127.0.0.1:3000` with recovered login,
+      valid-session state, credentials, data and logos preserved.
+      See the [activation report](docs/task-reports/2026-09-14-task-4-3-phase-3-development-activation.md),
+      [Phase 3 report](docs/task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
       and [matrix](docs/testing/task-4-3-phase3-acceptance-matrix.md).
-      Independent Phase 3 review is the next return point.
-      Overall Task 4.3 remains unchecked.
+      All three phases and overall Task 4.3 are complete and owner-accepted
+      under the successful-activation mandate. The next return point is
+      independent activation/documentation review; publication and Task 4.4
+      require separate handoffs. Ubuntu deployment remains Stage 7.
 - [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field

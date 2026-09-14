@@ -90,7 +90,7 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of Task 4.3 Phase 3 hearing archive/restore**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
+point is **independent review of Task 4.3 Phase 3 local activation/documentation**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
 overall is owner-accepted. See the 13 September acceptance record below.
 Khaled Helmy accepted Phase 1 at
 `2f8820a3053ab65a60ee183882cbd6a2462559bc` on 12 September 2026; its
@@ -448,19 +448,26 @@ Phase 2 adds the D60 bounded fields and retained attendee selection through a
 versioned, audited database gateway. Khaled Helmy accepted it on 13 September 2026
 at `34a9fd89176ae89a097136f48f2c733273243ba1`, following the
 [independent PASS review](reviews/2026-09-13-task-4-3-phase-2-independent-review.md), and accepted the completed Phase 1
-local activation. The accepted Phase 2 app now runs at `http://127.0.0.1:3000`
-with actual migration 66. A fresh recovery package includes the recovered KHelmy
-state; isolated restoration/rehearsal and actual 129 invariant/15 setup checks
+local activation. On 13 September the accepted Phase 2 app was activated at
+`http://127.0.0.1:3000` with actual migration 66. A fresh recovery package included
+the recovered KHelmy state; isolated restoration/rehearsal and actual 129 invariant/15 setup checks
 passed, preserving the current password, valid-session state and credentials.
-Overall Task 4.3 remains open. See the [activation report](task-reports/2026-09-13-task-4-3-phase-2-development-activation.md)
+That Phase 2 checkpoint is preserved in the [activation report](task-reports/2026-09-13-task-4-3-phase-2-development-activation.md)
 and [Phase 2 report](task-reports/2026-09-13-task-4-3-phase-2-hearing-editing.md).
 C1 is **Owner-accepted risk — unchanged; not technically remediated** under
 [D59](DECISIONS.md#d59--existing-development-repository-credential-exception).
 The earlier rotation handoff was not sent and is superseded. Phase 2 activation
 and documentation are owner-accepted at `5f0552f9dd98a55f4050c988c154a6b8cd18b30c`.
-Phase 3 hearing archive/restore under D61 is implemented and awaits independent
-review. Candidate67 is unactivated; actual66 and the accepted app remain active.
-Publication, activation, Ubuntu deployment and Task4.4 need separate authorization.
+Khaled Helmy accepted Phase 3 at `e5826056f30a5c5e2907c44b29641993e36092c0`
+on 14 September 2026 after its [independent PASS review](reviews/2026-09-14-task-4-3-phase-3-independent-review.md).
+Fresh protected backup, exact isolated restoration/rehearsal and one accepted67
+actual application passed. The accepted Phase 3 app is active on loopback with
+131 historical invariants and 15 setup checks; current account/session state,
+credentials and data were preserved. D60 editing and D61 Administrator lifecycle
+behavior below are accepted; all phases and overall Task 4.3 are complete locally.
+See the [activation report](task-reports/2026-09-14-task-4-3-phase-3-development-activation.md).
+The next gate is independent activation/documentation review. Publication,
+Ubuntu deployment and Task 4.4 need separate authorization.
 See the [follow-up report](task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
 [matrix](testing/task-4-2-phase2-r3-ordering-matrix.md). R1–R3 are closed; Khaled accepted Phase 2 on 12 September 2026 at
 `6771218164c992781902374efb62f0b2f54b2a20`. Migration-63

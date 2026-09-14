@@ -1065,3 +1065,23 @@ active. No app restart or credential/session change is included. Candidate67
 activation requires separate authorization after independent review. See the
 [Phase 3 report](task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
 and [matrix](testing/task-4-3-phase3-acceptance-matrix.md) for exact fresh proof.
+
+
+## Actual migration 67 activation — 14 September 2026
+
+Khaled Helmy accepted Phase 3 source `e5826056f30a5c5e2907c44b29641993e36092c0` and
+authorized actual66→67, then final local Task 4.3 closure after successful checks.
+Only accepted67 was applied, in one actual attempt, to localhost:5433/litigation,
+cluster `7676117521894273062`. The database moved from 118 to 119 tables;
+48 complete sequence states remained exact. It has 67 completed migrations,
+one retained historical rollback, zero unfinished and zero pending in the artifact.
+All original data projections, previous hearing boundaries/history, attendance,
+recovered account/password/session state, actual role credentials and 54 logos
+were preserved. The fresh source-derived lifecycle boundary, new archive flag,
+classification and complete object/grant delta match reviewed SQL and rehearsal.
+Actual forced-read-only validation passed 131 historical invariants and 15 setup
+checks before reopening. Build `6STn5JeaidE5AnbLqEJc8` from accepted e582605 is active on
+127.0.0.1:3000. This is local development, with D59–D61 unchanged.
+See the [operational report](task-reports/2026-09-14-task-4-3-phase-3-development-activation.md)
+for the protected recovery point and bounded smoke limitations. Earlier prefixes
+remain dated evidence; no earlier isolated-only statement is rewritten.

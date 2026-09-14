@@ -57,3 +57,32 @@ The [implementation report](../task-reports/2026-09-13-task-4-3-phase-3-hearing-
 explains behavior, evidence limits and practical consequences. D59 is unchanged
 accepted risk. OverallTask4.3 remains unchecked pending independent review and the
 owner's acceptance; no approval is inferred from this matrix.
+
+
+## Owner acceptance and activation gates — 14 September 2026
+
+Khaled Helmy accepted e582605 after independent PASS and authorized final overall
+Task 4.3 closure after successful local activation. Initial operational gates were
+saved before execution in the external activation evidence; this is their outcome.
+
+| Gate | Fresh result or explicit reuse |
+| --- | --- |
+| Accepted source/runtime | Exact e582605; 496 source inputs, all 67 migrations; build `6STn5JeaidE5AnbLqEJc8` |
+| Actual66 preflight | Forced-read-only 129 invariants; exact target and recovered account verified |
+| Recovery package | 58 payload members + manifest; 54 logos; exact new dump restored; restricted ACLs |
+| Restored66 | All 118 tables/current accounts/history, effective grants/roles, 48 logical sequence states exact; 129+15 checks |
+| Restore differences | 45 log_cnt resets individually recorded; two owner-only ACL representations differ with identical effective grants |
+| Rehearsed67 | One accepted67 deployment; exact full catalog/projection delta and fresh boundary; 131+15 checks |
+| Actual67 | One deployment; 119 tables/48 full sequence states; original data, history, private credentials/session state and logos preserved; 131+15 checks |
+| App/smoke | Accepted e582605 build running on loopback; Arabic/RTL login, fonts/assets, streamed auth redirects and logo denial pass |
+| Browser observation | The initial browser had no authenticated session. After maintenance ended, the owner logged in and explicitly offered the session. Fresh actual observations passed: current/all lists 13,382, archived list zero; hearing11752 detail, eligible edit/archive controls, identity/date/context and attendee counts in archive confirmation, archive cancel, edit screen and edit cancel. No mutation was submitted; an actual restore confirmation was not observed because the archived list was empty. Prior isolated mutation/restore/accessibility evidence remains separate. |
+| Functional reuse | Exact reviewed product/migrations/dependencies: 113 canonical+15, rollback/race/retention/role proof, browser4 and six axe scans |
+| Limits retained | No positive missing-person attendee case; six report datasets compared with at least one nonempty, not all six proved nonempty; no speech test |
+| Cleanup | Only identified rehearsal container/volume/network and temporary credentials removed; accepted app, old app artifact and prior evidence/backups retained |
+| Documentation | Nine Markdown files, four original prefixes preserved, supplied review exact, only overall4.3 checkbox changed among86 |
+
+Functional cases were not rerun wholesale for activation. Fresh operational proof
+is distinct from prior isolated authenticated proof and from owner activity after
+availability resumed. All phases and overall Task 4.3 are complete locally; the
+next gate is independent activation/documentation review. See the
+[activation report](../task-reports/2026-09-14-task-4-3-phase-3-development-activation.md).

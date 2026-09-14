@@ -186,3 +186,20 @@ The patch, verified manifest-covered ZIP and separate receipt accompany this rep
 Candidate67 is unactivated. No fetch, push, Ubuntu deployment or Task4.4 occurred.
 Stop for independent Phase3 review; overall acceptance, publication and any later
 activation require separate owner decisions.
+
+
+## Owner acceptance and local activation — 14 September 2026
+
+Khaled Helmy accepted Phase 3 at `e5826056f30a5c5e2907c44b29641993e36092c0` following the
+[independent PASS review](../reviews/2026-09-14-task-4-3-phase-3-independent-review.md).
+His separate direct authorization adopted the development-activation prompt,
+including final Task 4.3 acceptance after successful activation and closure checks.
+Those operations succeeded: fresh protected database/logo backup and isolated
+restore/rehearsal, one actual accepted67 application, 131+15 actual checks and the
+accepted Phase 3 app running on 127.0.0.1:3000. Current recovered password/session
+state, credentials, earlier history and 54 logos were preserved; D59–D61 unchanged.
+All three phases and overall Task 4.3 are complete locally. The original prefix
+remains historical isolated-stage evidence, including its precise coverage limits.
+See the [activation report](2026-09-14-task-4-3-phase-3-development-activation.md).
+Stop for independent activation/documentation review; publication, Task 4.4 and
+Ubuntu production remain separate.
