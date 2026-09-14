@@ -49,6 +49,18 @@ export type RouteInventoryEntry = {
 export const ROUTE_INVENTORY = [
   {
     kind: 'page',
+    source: 'src/app/admin-works/page.tsx',
+    route: '/admin-works',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'view' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/admin-works/[id]/page.tsx',
+    route: '/admin-works/[id]',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'view' },
+  },
+  {
+    kind: 'page',
     source: 'src/app/matters/page.tsx',
     route: '/matters',
     classification: { access: 'permission', area: 'matters', action: 'view' },

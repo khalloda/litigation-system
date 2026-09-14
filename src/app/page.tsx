@@ -27,6 +27,14 @@ export default async function HomePage() {
         </p>
       </div>
       <div className={styles.accountActions}>
+        {hasPermission(session.user.role, 'administrativeWorks', 'view') ? (
+          <Link
+            className={`${styles.secondaryButton} ${styles.navigationLink}`}
+            href="/admin-works"
+          >
+            {t.nav.adminWorks}
+          </Link>
+        ) : null}
         {hasPermission(session.user.role, 'hearings', 'view') ? (
           <Link className={`${styles.secondaryButton} ${styles.navigationLink}`} href="/hearings">
             {t.nav.hearings}

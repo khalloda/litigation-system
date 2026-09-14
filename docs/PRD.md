@@ -466,8 +466,16 @@ actual application passed. The accepted Phase 3 app is active on loopback with
 credentials and data were preserved. D60 editing and D61 Administrator lifecycle
 behavior below are accepted; all phases and overall Task 4.3 are complete locally.
 See the [activation report](task-reports/2026-09-14-task-4-3-phase-3-development-activation.md).
-The next gate is independent activation/documentation review. Publication,
-Ubuntu deployment and Task 4.4 need separate authorization.
+Khaled subsequently accepted the [Task 4.3 publication PASS review](reviews/2026-09-14-task-4-3-publication-independent-review.md)
+at published `98ba737300f1c0cefce361cb3da4e250b11b71d2` and authorized Task 4.4 Phase 1.
+Read-only administrative-work list/search/filter/detail and linked-step views
+are implemented locally, pending independent review. Fresh target counts are
+3,694 administrative works and 3,483 steps; the older extraction volumes above
+remain historical. Overall Task 4.4 stays unchecked. See its
+[report](task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
+and [matrix](testing/task-4-4-phase1-acceptance-matrix.md).
+The accepted67 owner app remains unchanged; no candidate activation or push.
+Independent Phase 1 review is next; editing and later phases remain separate.
 See the [follow-up report](task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md) and
 [matrix](testing/task-4-2-phase2-r3-ordering-matrix.md). R1–R3 are closed; Khaled accepted Phase 2 on 12 September 2026 at
 `6771218164c992781902374efb62f0b2f54b2a20`. Migration-63

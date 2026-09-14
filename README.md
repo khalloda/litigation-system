@@ -44,8 +44,14 @@ valid-session state, credentials, data and 54 logos were preserved.
 See the [activation report](docs/task-reports/2026-09-14-task-4-3-phase-3-development-activation.md),
 [Phase 3 report](docs/task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
 and [matrix](docs/testing/task-4-3-phase3-acceptance-matrix.md).
-The next gate is independent activation/documentation review. Publication,
-Ubuntu deployment and Task 4.4 require separate authorization.
+Khaled subsequently accepted the [Task 4.3 publication PASS review](docs/reviews/2026-09-14-task-4-3-publication-independent-review.md)
+at published `98ba737300f1c0cefce361cb3da4e250b11b71d2` and authorized Task 4.4 Phase 1.
+Its read-only administrative-work list, search, filters, details and linked steps
+are implemented locally, **pending independent review**. Overall Task 4.4 stays
+unchecked. See the [Phase 1 report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
+and [matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md).
+The accepted migration-67 owner app remains running unchanged; this candidate
+has not been pushed or activated. Phase 1 independent review is the next gate.
 See the [R3 follow-up report](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md)
 and [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).
 See the [correction report](docs/task-reports/2026-09-12-task-4-2-phase-2-corrections.md)

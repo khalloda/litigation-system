@@ -106,6 +106,22 @@ export async function proveHearingBrowser(fixture, output, editorProof, options 
   // Shared installed packages are read inputs only. Build caches/generated
   // outputs reside in the task mirror; compare every dependency file's metadata.
   function dependencyState() {
+    if (options.boundedDependencyCheck) {
+      // Read-only phases reuse the accepted installed tree. Bind declared
+      // package metadata and the lockfile without rescanning every dependency.
+      const pkg = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'));
+      return [
+        'package-lock.json',
+        ...Object.keys({ ...pkg.dependencies, ...pkg.devDependencies }).map(
+          (name) => `node_modules/${name}/package.json`,
+        ),
+      ].map((file) => ({
+        path: file,
+        sha256: createHash('sha256')
+          .update(readFileSync(join(source, file)))
+          .digest('hex'),
+      }));
+    }
     const entries = [];
     function walk(path) {
       for (const e of readdirSync(path, { withFileTypes: true }).sort((a, b) =>
@@ -173,7 +189,7 @@ export async function proveHearingBrowser(fixture, output, editorProof, options 
     cpSync(join(source, 'src/generated'), join(mirror, 'src/generated'), { recursive: true });
     symlinkSync(join(source, 'node_modules'), dependencyLink, 'junction');
     cpSync(process.env.CLIENT_LOGO_ROOT, environment.CLIENT_LOGO_ROOT, { recursive: true });
-    if (editorProof) {
+    if (editorProof && !options.skipGenerate) {
       const generate = launch(['node_modules/prisma/build/index.js', 'generate'], {
         ...environment,
         MIGRATION_DATABASE_URL: fixture.migrationUrl,

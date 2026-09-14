@@ -150,6 +150,15 @@ export default async function MatterPage({
           <Field label={t.clients.accessId} value={matter.legacyId ?? t.clients.native} />
         </dl>
       </section>
+      <section className={styles.panel} aria-label={t.adminWorks.title}>
+        <h2>{t.adminWorks.title}</h2>
+        <Link
+          className={styles.link}
+          href={`/admin-works?matter=${matter.id}&fromMatter=${encodeURIComponent(matterDetailHref(matter.id, filters))}`}
+        >
+          {t.adminWorks.title}
+        </Link>
+      </section>
       <section className={styles.panel} aria-label={t.hearings.title}>
         <h2>{t.hearings.title}</h2>
         <p>{t.hearings.matterHint}</p>

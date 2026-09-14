@@ -25,6 +25,9 @@ const HEARING_LIFECYCLE_SHA256 = '42be3170ff4425089e19a5524e907f1b6fcbd11bd72971
 const HEARING_MUTATION_SERVICE = 'src/lib/hearing-mutations.ts';
 const HEARING_MUTATION_SHA256 = '49f1c5bbd9459173effebcebf633fae714a1b906a45df072329b5dc1b3c4fa7f';
 const HEARING_INPUT_SHA256 = 'a7a3c2ba5615d2806d71595fb83ee9b09f1addaf07c625df39e1f40d98c03b05';
+const ADMIN_READ_SERVICE = 'src/lib/admin-work-query.ts';
+const ADMIN_READ_SERVICE_SHA256 =
+  '5e7cf47e602bfb45bb09f31fa7fe59f058412aad403c0422445a3f1e6038ef82';
 const HEARING_READ_SERVICE = 'src/lib/hearing-query.ts';
 const HEARING_READ_SERVICE_SHA256 =
   'd17177a7d3d2e28de2d45d0b97f83afe8f1ed4397dc94d68888a2dc8bdf2a7a8';
@@ -116,6 +119,41 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/admin-work-query.ts',
+    'snapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/admin-work-query.ts',
+    'snapshot',
+    '8fef2816b9c1db439557147881f40a5627b41c3b7d966b9a7a8a5e27ab9b9655',
+  ],
+  [
+    'src/lib/admin-work-query.ts',
+    'readAdminWorks',
+    '9617c3e229c82f3a58e66489b4d45c78028b9be7faee596191ef4a805321cbd9',
+  ],
+  [
+    'src/lib/admin-work-query.ts',
+    'readAdminWorks',
+    '2ab6f28287e4631104cedf93c98af8da2c0511267c6d27cbf2dd7114f98e840a',
+  ],
+  [
+    'src/lib/admin-work-query.ts',
+    'readAdminWorks',
+    '13361119b6e3a95537465b3a782cb6dab0107a758d1430231352bca69620f3c4',
+  ],
+  [
+    'src/lib/admin-work-query.ts',
+    'readAdminWork',
+    'd70beaa7b258d6cad57a8a9d1ebb42457846ba37cca6f7f3942d9d15eaf8c5b3',
+  ],
+  [
+    'src/lib/admin-work-query.ts',
+    'readAdminWork',
+    'c701054ff06ccc83233f5db174cdc749072995d0a31bc5806e999e773d1d6dcd',
+  ],
   [
     'src/lib/hearing-query.ts',
     'snapshot',
@@ -1904,6 +1942,13 @@ export function auditRuntimeSourceFailures(
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
     const isClientReadService = source.path === CLIENT_READ_SERVICE;
     const isMatterReadService = source.path === MATTER_READ_SERVICE;
+    const isAdminReadService = source.path === ADMIN_READ_SERVICE;
+    if (
+      isAdminReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        ADMIN_READ_SERVICE_SHA256
+    )
+      failures.add('Administrative read-only query closure differs from reviewed inventory');
     const isHearingReadService = source.path === HEARING_READ_SERVICE;
     if (
       isHearingReadService &&
@@ -2235,7 +2280,8 @@ export function auditRuntimeSourceFailures(
               isStaffReadService ||
               isClientReadService ||
               isMatterReadService ||
-              isHearingReadService
+              isHearingReadService ||
+              isAdminReadService
             ) ||
             !reviewedSql
           ) {

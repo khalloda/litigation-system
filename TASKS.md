@@ -25,8 +25,13 @@ The accepted Phase 3 app now runs on 127.0.0.1:3000 with actual migration 67,
 after fresh protected backup/restore, isolated rehearsal and actual 131
 invariant/15 setup checks. The recovered account, valid sessions and credentials
 were preserved. All three phases and overall Task 4.3 are complete locally.
-Independent activation/documentation review is the exact next gate; publication,
-Ubuntu deployment and Task 4.4 remain separate. See the [activation report](docs/task-reports/2026-09-14-task-4-3-phase-3-development-activation.md).
+Khaled subsequently accepted the [Task 4.3 publication PASS review](docs/reviews/2026-09-14-task-4-3-publication-independent-review.md)
+at published `98ba737300f1c0cefce361cb3da4e250b11b71d2` and authorized Task 4.4 Phase 1.
+The read-only administrative-work area is implemented locally, pending independent
+review; overall Task 4.4 stays unchecked. The owner app remains on accepted67,
+with no candidate push or activation. Phase 1 independent review is the exact
+next gate. See its [report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
+and [matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md), and the prior [activation report](docs/task-reports/2026-09-14-task-4-3-phase-3-development-activation.md).
 See the [Phase 3 report](docs/task-reports/2026-09-13-task-4-2-phase-3-matter-archive-restore.md)
 and [matrix](docs/testing/task-4-2-phase3-acceptance-matrix.md). The previous
 migration-63 documentation publication is closed at
@@ -2197,10 +2202,16 @@ than assuming one rule for every workflow. Test with real volumes.
       [Phase 3 report](docs/task-reports/2026-09-13-task-4-3-phase-3-hearing-archive-restore.md)
       and [matrix](docs/testing/task-4-3-phase3-acceptance-matrix.md).
       All three phases and overall Task 4.3 are complete and owner-accepted
-      under the successful-activation mandate. The next return point is
-      independent activation/documentation review; publication and Task 4.4
-      require separate handoffs. Ubuntu deployment remains Stage 7.
+      under the successful-activation mandate. Publication was subsequently
+      accepted at `98ba737300f1c0cefce361cb3da4e250b11b71d2`; its exact PASS
+      review is preserved above. Ubuntu deployment remains Stage 7.
 - [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
+      Phase 1 read-only list/search/filters/detail/step history implemented;
+      pending independent review. All four usable authenticated roles view.
+      Overall task stays unchecked; future editing permissions remain unchanged.
+      No actual migration, candidate activation or push. See the
+      [Phase 1 report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
+      and [acceptance matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md).
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
 - [ ] **4.7 Fee letters** — with linked matters
