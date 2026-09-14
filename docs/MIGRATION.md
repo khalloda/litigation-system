@@ -5,7 +5,13 @@ Move the authoritative Access data to PostgreSQL with **provable** zero loss.
 **Core rule: never delete, clean or fix anything during extraction or load.**
 Data that cannot be mapped is *quarantined*, not dropped.
 
-## Task 4.2 Phase 2 forward boundary — pending migration 64
+**Current checkpoint — 14 September 2026:** reviewed migration 68 is complete
+on the actual local development database after protected recovery and isolated
+rehearsal. Its dated activation record is appended below and the
+[report](task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md) records the permitted delta. Earlier pending
+milestones remain historical; no additional migration is authorized here.
+
+## Historical Task 4.2 Phase 2 forward boundary — pending migration 64 at 12 September
 
 The 12 September implementation adds
 `20260912120000_matter_editing_boundary` after the accepted 63. It is pending
@@ -3620,3 +3626,42 @@ See the [activation report](task-reports/2026-09-14-task-4-3-phase-3-development
 Overall Task 4.3 is locally complete under the owner's successful-activation
 mandate; independent activation/documentation review is next. No publication,
 Ubuntu deployment, Task 4.4, password or D59–D61 change occurred.
+
+
+## Actual migration 68 and corrected Phase 2 activation — 14 September 2026
+
+Khaled accepted `90bfc66711bfbf5b219191c60ad3e662a14af015` and the independent
+correction PASS; P2-R1/P2-N1 are closed. Only reviewed
+`20260914160000_admin_work_editing_boundary` was deployed to
+localhost:5433/litigation, cluster `7676117521894273062`, after a fresh protected
+backup was restored and the same migration rehearsed on a separate PostgreSQL
+17.11 cluster. Actual completion: `2026-09-14T19:10:31.436Z`; 68 completed migrations,
+one retained historical rollback and zero unfinished/pending migrations.
+The old 119 tables become 123; all 48 complete sequence states remain exact.
+Old-column projections, original imported/released evidence, audit history,
+account/session state, credentials and 54 logos remain unchanged in the quiesced
+upgrade. Existing tasks gain row_version=1, steps gain current_order=NULL;
+the exact original rows are retained in admin_edit_import and its initial views.
+One source-derived boundary is installed; change/submission tables remain empty.
+The two classifications, ledger entry and complete named definition/grant delta
+match reviewed SQL and rehearsal. Actual validation passed 135 historical checks
+and 15 setup checks before the app reopened. No business save was fabricated.
+
+Build `schZeUhP0RGWF_DHI827w` from exact accepted source runs at
+`http://127.0.0.1:3000` using the existing restricted runtime principal.
+The earlier accepted build is retained. Fresh local-only recovery is retained at
+`D:\Projects\LitigationData\DB-Backup\migration63\pre-migration68-2026-09-14T19-00-05-653Z-a95f6df5-b8f4-44c5-99ad-69746e86af3e`. Dump: 20,693,286 bytes,
+SHA-256 `7a6c949a429637b9c182780d2c3836903294d91f314d9fc1b1d45bb89ee76366`; manifest SHA-256 `b7dbe5b9d4932355cc540e398e41e7dd019eebae14052fc5d345ead610ba1107`.
+All 58 payload members, including all 54 logos and protected role recovery
+material, were verified. All 119 restored table projections/ownership/effective
+rights and logical sequences matched; 45 log_cnt resets and equivalent
+implicit schema-owner ACLs are recorded as restore differences, not normalized on
+the actual database. The protected package inherits the existing restricted ACL;
+it remains local-only and does not protect against laptop/disk loss.
+
+See the [acceptance/activation report](task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md) for fresh counts,
+exact delta and runtime evidence, smoke limits and reuse of reviewed functional
+proof. Earlier checkpoints below/above remain dated history. D1–D62 and C1's
+owner-accepted development risk remain unchanged. Publication is authorized after
+the single documentation commit and recorded externally. Overall Task 4.4 remains
+unchecked; remaining lifecycle work and Ubuntu deployment are outside this stop.

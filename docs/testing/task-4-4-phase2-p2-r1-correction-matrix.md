@@ -34,3 +34,28 @@ token; exact executed bytes and the failed formatting log are retained, with the
 exception bound in `driver-format-proof.json`. No runtime result is relabelled.
 All 86 prior checkbox lines, D1–D62, migrations 1–68 and earlier reports/reviews/
 matrices remain unchanged. Overall Task 4.4 stays unchecked.
+
+
+## Owner acceptance and verified local activation — 14 September 2026
+
+Khaled accepted corrected Phase 2 at `90bfc66711bfbf5b219191c60ad3e662a14af015`
+after the [independent PASS review](../reviews/2026-09-14-task-4-4-phase-2-p2-r1-independent-review.md). P2-R1 and P2-N1 are
+closed. The entire preceding matrix is preserved as its exact original byte prefix.
+
+| Gate | Outcome and evidence distinction |
+| --- | --- |
+| Acceptance | Corrected D62 creation/editing accepted; Phase 1 and ID-search R1 remain closed |
+| Fresh backup and exact restore | Protected 58-member local package; 54 logos, full database and recovery role material; restored on distinct PostgreSQL 17.11 |
+| Restored migration 67 | 119 tables, all old projections/effective rights/logical sequences; 131 invariants and 15 setup checks |
+| Rehearsal and actual migration 68 | Each deploy once; expected new columns/evidence/classifications only; each 135 invariants and 15 setup checks |
+| Actual preservation | All old projections, credentials/account/session state, history, logos and 48 full sequences exact through quiesced DDL |
+| Runtime | Exact 90bfc66 artifact, build `schZeUhP0RGWF_DHI827w`, loopback port 3000; anonymous Arabic/RTL/assets/protected-route/logo checks |
+| Actual authenticated smoke | Unobserved: no usable owner session in available browser; no account or business test setup on actual |
+| Reused Windows proof | Exact-source original/correction backend/concurrency/ID/guard and 4-role browser proof, 48 corrected assertions, 135/448; not new activation executions |
+| Reviewer proof | Independent archive/Git/source verification and 24 synthetic offline controls; not browser/database execution |
+| Publication | Authorized ordinary main push after the sole documentation child; actual outcome in external receipt |
+| Stop | Independent combined review; overall Task 4.4 unchecked; archive/restore/later work unstarted |
+
+See the [acceptance/activation report](../task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md) for exact current
+counts, restoration differences, timestamps, recovery paths, attempts and limits.
+No screen-reader speech, full production readiness or off-machine backup is claimed.

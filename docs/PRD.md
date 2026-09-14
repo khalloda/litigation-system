@@ -90,7 +90,7 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent review of Task 4.3 Phase 3 local activation/documentation**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
+point is **independent combined review of Task 4.4 Phase 2 acceptance, local activation and publication evidence**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
 overall is owner-accepted. See the 13 September acceptance record below.
 Khaled Helmy accepted Phase 1 at
 `2f8820a3053ab65a60ee183882cbd6a2462559bc` on 12 September 2026; its
@@ -540,8 +540,21 @@ report sources and historical counts include archived hearings; future Task6
 report integration must preserve that inclusion explicitly. No report screen or
 export is introduced here. See D61 and the Phase 3 report/matrix.
 
-## Task 4.4 Phase 2 — D62 candidate, 14 September 2026
+## Task 4.4 Phase 2 — D62 accepted and locally active, 14 September 2026
 
 The owner accepted Phase 1 publication PASS at `fbf47d7` and adopted bounded task/step creation and editing. Administrator, Litigation Assistant and Paralegal can create/edit; Lawyer retains reads. New work deliberately selects a matter or no matter and a business creation date or not recorded. New descriptions/progress must be meaningful, while unrelated edits preserve incomplete historical facts. Parents remain fixed; an associated archived matter requires restoration first. Current active staff/lookups are selected by ID; old inactive references are retained. Exact text, optional dates, original provenance and imported order are preserved. Concurrent changes produce a recoverable conflict rather than silent overwrite.
 
-Implemented, pending independent review; not activated/pushed. Migration 68 and the candidate were exercised only on owned disposable copies. The actual database stays at 67 and the owner app retains its observed stopped state. No task/step archive/restore, exports, notifications, later task or deployment is included. Overall Task 4.4 remains unchecked. See [D62](DECISIONS.md#d62--bounded-administrative-work-and-task-step-editing), the [report](task-reports/2026-09-14-task-4-4-phase-2-editing.md) and [matrix](testing/task-4-4-phase2-acceptance-matrix.md).
+Khaled accepted corrected source `90bfc66711bfbf5b219191c60ad3e662a14af015`
+after the [independent PASS review](reviews/2026-09-14-task-4-4-phase-2-p2-r1-independent-review.md); P2-R1 and P2-N1 are closed.
+Current assignments/destination and imported source text display separately.
+Reviewed migration 68 is now verified on the actual development database, and
+build `schZeUhP0RGWF_DHI827w` runs locally on `http://127.0.0.1:3000` after fresh
+protected backup/restore, isolated rehearsal, 135 invariants and 15 setup checks.
+Earlier isolated-only reports describe their dated implementation checkpoints.
+See [D62](DECISIONS.md#d62--bounded-administrative-work-and-task-step-editing),
+the [original report](task-reports/2026-09-14-task-4-4-phase-2-editing.md),
+[matrix](testing/task-4-4-phase2-acceptance-matrix.md) and
+[acceptance/activation report](task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md).
+The external publication receipt records the authorized push after this
+documentation commit. Overall Task 4.4 remains unchecked. Archive/restore,
+exports, notifications, later tasks and Ubuntu deployment remain unstarted.

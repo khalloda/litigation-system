@@ -3,7 +3,22 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Current status — 14 September 2026:** Khaled Helmy accepted Task 4.2 Phase 1
+**Current checkpoint — 14 September 2026:** Khaled Helmy accepted corrected
+Task 4.4 Phase 2 at `90bfc66711bfbf5b219191c60ad3e662a14af015` after the
+[independent PASS review](docs/reviews/2026-09-14-task-4-4-phase-2-p2-r1-independent-review.md). P2-R1 and P2-N1 are closed.
+Reviewed migration 68 is verified on the actual local development database;
+build `schZeUhP0RGWF_DHI827w` from that exact source runs at `http://127.0.0.1:3000`.
+Fresh protected backup/restore, isolated rehearsal and actual 135 invariants plus
+15 setup checks passed. Current accounts, credentials, original business records,
+all 48 sequence states and 54 logos were preserved through the quiesced upgrade.
+The combined instruction also authorizes ordinary publication of the reviewed
+chain and this documentation child; its actual outcome is recorded in the external
+publication receipt. See the [acceptance/activation report](docs/task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md).
+Stop for independent combined review. Overall Task 4.4 remains unchecked;
+administrative-work/step archive/restore, later tasks and Ubuntu deployment have
+not started.
+
+**Earlier accepted checkpoints — 14 September 2026:** Khaled Helmy accepted Task 4.2 Phase 1
 at `2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the preserved
 [independent PASS review](docs/reviews/2026-09-12-task-4-2-phase-1-independent-review.md).
 Khaled accepted Phase 2 at `6771218164c992781902374efb62f0b2f54b2a20` on
@@ -37,7 +52,7 @@ Khaled Helmy accepted Phase 2 activation/documentation at
 Khaled Helmy accepted Phase 3 at `e5826056f30a5c5e2907c44b29641993e36092c0`
 on 14 September after the [independent PASS review](docs/reviews/2026-09-14-task-4-3-phase-3-independent-review.md).
 All three hearing phases and local Task 4.3 are complete under D60/D61 after
-successful authorized activation. The accepted Phase 3 app runs at
+successful authorized activation. The accepted Phase 3 app then ran at
 `http://127.0.0.1:3000` against actual migration 67; fresh backup/restore,
 131 historical invariants and 15 setup checks passed. Current KHelmy password,
 valid-session state, credentials, data and 54 logos were preserved.
@@ -51,7 +66,7 @@ details and linked steps on 14 September 2026 at corrected
 `1df53838063b1d9466bd2da0582c7ffc9b7bbf85`. Overall Task 4.4 stays
 unchecked. See the [Phase 1 report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
 and [matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md).
-This acceptance does not activate or replace the accepted migration-67 owner app.
+That Phase 1 acceptance did not activate or replace the migration-67 owner app.
 The owner authorized acceptance documentation and ordinary publication together;
 the dated publication outcome belongs in the external publication receipt.
 
@@ -64,13 +79,14 @@ Western and Arabic-Indic exact PostgreSQL/legacy-ID searches are accepted. See t
 and [matrix](docs/testing/task-4-4-phase1-r1-correction-matrix.md).
 See the [acceptance record](docs/task-reports/2026-09-14-task-4-4-phase-1-acceptance.md).
 Earlier pending-review/no-push statements in preserved evidence describe those
-earlier checkpoints. The owner accepted the [publication PASS review](docs/reviews/2026-09-14-task-4-4-phase-1-publication-independent-review.md) at `fbf47d7` and adopted D62. Bounded Task 4.4 Phase 2 task/step creation and editing is implemented, pending independent review; not activated or pushed. See the [Phase 2 report](docs/task-reports/2026-09-14-task-4-4-phase-2-editing.md) and [matrix](docs/testing/task-4-4-phase2-acceptance-matrix.md). Actual development remains migration 67. The owner app was observed stopped at Phase 2 entry and was preserved stopped; the accepted build and 54 logos remain intact. Overall Task 4.4 remains unchecked.
-
-The Phase 2 [independent review](docs/reviews/2026-09-14-task-4-4-phase-2-independent-review.md)
-raised P2-R1: cleared current references were masked by imported text. The bounded
-presentation correction is implemented, pending independent correction review;
-not accepted, activated or pushed. The [correction report](docs/task-reports/2026-09-14-task-4-4-phase-2-p2-r1-correction.md)
-also records the P2-N1 population erratum without changing the original report.
+earlier checkpoints. The owner accepted the [publication PASS review](docs/reviews/2026-09-14-task-4-4-phase-1-publication-independent-review.md) at `fbf47d7` and adopted D62.
+The [original Phase 2 report](docs/task-reports/2026-09-14-task-4-4-phase-2-editing.md)
+and [matrix](docs/testing/task-4-4-phase2-acceptance-matrix.md) preserve implementation evidence.
+The [original independent review](docs/reviews/2026-09-14-task-4-4-phase-2-independent-review.md)
+raised the cleared-current-reference display issue. The [correction report](docs/task-reports/2026-09-14-task-4-4-phase-2-p2-r1-correction.md)
+preserves its fix and the P2-N1 dated population erratum; both findings are now
+closed by the accepted [correction PASS review](docs/reviews/2026-09-14-task-4-4-phase-2-p2-r1-independent-review.md).
+Their earlier pending-review/no-activation/no-push statements remain historical.
 
 See the [R3 follow-up report](docs/task-reports/2026-09-12-task-4-2-phase-2-r3-ordering.md)
 and [matrix](docs/testing/task-4-2-phase2-r3-ordering-matrix.md).

@@ -6,7 +6,22 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 14 September 2026:** Phase 1 remains accepted. Khaled
+**Current checkpoint — 14 September 2026:** Khaled Helmy accepted corrected
+Task 4.4 Phase 2 at `90bfc66711bfbf5b219191c60ad3e662a14af015` after the
+[independent PASS review](docs/reviews/2026-09-14-task-4-4-phase-2-p2-r1-independent-review.md). P2-R1 and P2-N1 are closed.
+Reviewed migration 68 is verified on the actual local development database;
+build `schZeUhP0RGWF_DHI827w` from that exact source runs at `http://127.0.0.1:3000`.
+Fresh protected backup/restore, isolated rehearsal and actual 135 invariants plus
+15 setup checks passed. Current accounts, credentials, original business records,
+all 48 sequence states and 54 logos were preserved through the quiesced upgrade.
+The combined instruction also authorizes ordinary publication of the reviewed
+chain and this documentation child; its actual outcome is recorded in the external
+publication receipt. See the [acceptance/activation report](docs/task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md).
+Stop for independent combined review. Overall Task 4.4 remains unchecked;
+administrative-work/step archive/restore, later tasks and Ubuntu deployment have
+not started.
+
+**Earlier checkpoint — 14 September 2026:** Phase 1 remains accepted. Khaled
 accepted Phase 2 on 12 September at `6771218164c992781902374efb62f0b2f54b2a20`
 after the final R3 PASS review. Khaled Helmy accepted Phase 3 and Task 4.2 overall
 on 13 September 2026 at `b2ac2187b762e7db82b190e6f5d522506e676292`, following the
@@ -21,7 +36,7 @@ Phase 2 activation/documentation was accepted at
 `5f0552f9dd98a55f4050c988c154a6b8cd18b30c`; N1/N2 remain resolved.
 Khaled accepted Phase 3 on 14 September 2026 at `e5826056f30a5c5e2907c44b29641993e36092c0`
 after its [independent PASS review](docs/reviews/2026-09-14-task-4-3-phase-3-independent-review.md).
-The accepted Phase 3 app now runs on 127.0.0.1:3000 with actual migration 67,
+The accepted Phase 3 app then ran on 127.0.0.1:3000 with actual migration 67,
 after fresh protected backup/restore, isolated rehearsal and actual 131
 invariant/15 setup checks. The recovered account, valid sessions and credentials
 were preserved. All three phases and overall Task 4.3 are complete locally.
@@ -32,9 +47,9 @@ Khaled accepted the read-only administrative-work area on 14 September 2026 at
 [independent R1 PASS review](docs/reviews/2026-09-14-task-4-4-phase-1-r1-independent-review.md).
 R1 is closed; overall Task 4.4 stays unchecked. The owner authorized acceptance
 documentation and ordinary publication together; the actual publication outcome
-belongs in the external receipt. This does not activate the candidate in the
-accepted67 owner app. Phase 2 creation/editing follows publication review and
-its bounded handoff; it does not begin here. See the
+belongs in the external receipt. That Phase 1 mandate did not activate the candidate in the
+accepted67 owner app. Phase 2 subsequently followed its separately approved
+bounded handoff and is now accepted and activated as recorded above. See the
 [acceptance record](docs/task-reports/2026-09-14-task-4-4-phase-1-acceptance.md)
 and original [report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
 and [matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md), and the prior [activation report](docs/task-reports/2026-09-14-task-4-3-phase-3-development-activation.md).
@@ -2215,30 +2230,24 @@ than assuming one rule for every workflow. Test with real volumes.
       Phase 1 read-only list/search/filters/detail/step history owner-accepted
       on 14 September 2026 at `1df53838063b1d9466bd2da0582c7ffc9b7bbf85`.
       All four usable authenticated roles view.
-      Overall task stays unchecked; future editing permissions remain unchanged.
-      Acceptance documentation and ordinary publication are authorized together;
-      the external receipt records the outcome. No actual migration or candidate
-      activation is included. See the
-      [Phase 1 report](docs/task-reports/2026-09-14-task-4-4-phase-1-read-only-administrative-works.md)
-      and [acceptance matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md).
-      **R1 closed — 14 September 2026:** the owner approved the
-      [independent Phase 1 review](docs/reviews/2026-09-14-task-4-4-phase-1-independent-review.md)
-      and its bounded correction. PostgreSQL/legacy-ID search normalization is
-      accepted after the [independent R1 PASS review](docs/reviews/2026-09-14-task-4-4-phase-1-r1-independent-review.md).
-      Earlier pending-review/no-push evidence remains historical. See the
-      [acceptance record](docs/task-reports/2026-09-14-task-4-4-phase-1-acceptance.md),
-      [correction report](docs/task-reports/2026-09-14-task-4-4-phase-1-r1-id-search.md)
-      and [correction matrix](docs/testing/task-4-4-phase1-r1-correction-matrix.md).
-      The owner accepted publication PASS at `fbf47d7` and adopted D62.
-      Phase 2 task/step creation and editing is implemented, pending independent
-      review; not activated/pushed. Migration 68 was tested only on disposable
-      copies. See the [Phase 2 report](docs/task-reports/2026-09-14-task-4-4-phase-2-editing.md)
-      and [matrix](docs/testing/task-4-4-phase2-acceptance-matrix.md).
-      Archive/restore and overall Task 4.4 remain incomplete.
-      P2-R1 current/source presentation correction is implemented, pending
-      independent correction review; no acceptance, activation or push.
-      See the [correction report and P2-N1 erratum](docs/task-reports/2026-09-14-task-4-4-phase-2-p2-r1-correction.md)
-      and [focused matrix](docs/testing/task-4-4-phase2-p2-r1-correction-matrix.md).
+      Phase 1 and its separate ID-search R1 remain accepted, published and closed.
+      See the [Phase 1 acceptance record](docs/task-reports/2026-09-14-task-4-4-phase-1-acceptance.md)
+      and [matrix](docs/testing/task-4-4-phase1-acceptance-matrix.md).
+      Khaled accepted corrected Phase 2 on 14 September at
+      `90bfc66711bfbf5b219191c60ad3e662a14af015` after the
+      [independent PASS review](docs/reviews/2026-09-14-task-4-4-phase-2-p2-r1-independent-review.md); P2-R1 and P2-N1 are closed.
+      D62 task/step creation and editing is active locally for Administrator,
+      Litigation Assistant and Paralegal; Lawyer retains reads. Actual migration
+      68 and the exact corrected app passed the approved backup/restore, rehearsal,
+      invariant and bounded runtime gates. See the
+      [acceptance/activation report](docs/task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md),
+      [Phase 2 matrix](docs/testing/task-4-4-phase2-acceptance-matrix.md),
+      [preserved correction report and erratum](docs/task-reports/2026-09-14-task-4-4-phase-2-p2-r1-correction.md)
+      and [correction matrix](docs/testing/task-4-4-phase2-p2-r1-correction-matrix.md).
+      Publication of the reviewed chain and this single documentation child is
+      authorized; the external receipt records its actual outcome after the commit.
+      Stop for independent combined review. Archive/restore and overall Task 4.4
+      remain incomplete; no later task or Ubuntu deployment begins.
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
 - [ ] **4.7 Fee letters** — with linked matters
