@@ -6,20 +6,18 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 14 September 2026:** Khaled Helmy accepted corrected
-Task 4.4 Phase 2 at `90bfc66711bfbf5b219191c60ad3e662a14af015` after the
-[independent PASS review](docs/reviews/2026-09-14-task-4-4-phase-2-p2-r1-independent-review.md). P2-R1 and P2-N1 are closed.
-Reviewed migration 68 is verified on the actual local development database;
-build `schZeUhP0RGWF_DHI827w` from that exact source runs at `http://127.0.0.1:3000`.
-Fresh protected backup/restore, isolated rehearsal and actual 135 invariants plus
-15 setup checks passed. Current accounts, credentials, original business records,
-all 48 sequence states and 54 logos were preserved through the quiesced upgrade.
-The combined instruction also authorizes ordinary publication of the reviewed
-chain and this documentation child; its actual outcome is recorded in the external
-publication receipt. See the [acceptance/activation report](docs/task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md).
-Stop for independent combined review. Overall Task 4.4 remains unchecked;
-administrative-work/step archive/restore, later tasks and Ubuntu deployment have
-not started.
+**Current checkpoint — 15 September 2026:** Khaled Helmy accepted the
+[combined Phase 2 PASS review and authenticated supplement](docs/reviews/2026-09-15-task-4-4-phase-2-activation-publication-independent-review.md)
+at published `f05787471812c8fb2bd03d31bc44614dad81a8d2` and explicitly adopted D63.
+Task 4.4 Phase 3 implements Administrator-only archive/restore for works and
+individual steps as one local candidate, pending independent review. Migration
+69 and the candidate production build were tested only on separate disposable
+copies; the owner database remains at migration 68 and accepted Phase 2 build
+`schZeUhP0RGWF_DHI827w` remains on loopback port 3000.
+See the [Phase 3 report](docs/task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md) and
+[acceptance matrix](docs/testing/task-4-4-phase3-acceptance-matrix.md).
+Stop for independent Phase 3 review. Overall Task 4.4 remains unchecked.
+No owner migration 69, accepted-app activation, push or later task is authorized.
 
 **Earlier checkpoint — 14 September 2026:** Phase 1 remains accepted. Khaled
 accepted Phase 2 on 12 September at `6771218164c992781902374efb62f0b2f54b2a20`
@@ -2244,10 +2242,14 @@ than assuming one rule for every workflow. Test with real volumes.
       [Phase 2 matrix](docs/testing/task-4-4-phase2-acceptance-matrix.md),
       [preserved correction report and erratum](docs/task-reports/2026-09-14-task-4-4-phase-2-p2-r1-correction.md)
       and [correction matrix](docs/testing/task-4-4-phase2-p2-r1-correction-matrix.md).
-      Publication of the reviewed chain and this single documentation child is
-      authorized; the external receipt records its actual outcome after the commit.
-      Stop for independent combined review. Archive/restore and overall Task 4.4
-      remain incomplete; no later task or Ubuntu deployment begins.
+      The combined Phase 2 activation/publication PASS and authenticated supplement
+      were accepted on 15 September at `f05787471812c8fb2bd03d31bc44614dad81a8d2`.
+      D63 Phase 3 now supplies Administrator work/step archive and restore as a
+      local candidate; migration 69 and its production build run only on disposable
+      copies. See the [Phase 3 report](docs/task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md)
+      and [matrix](docs/testing/task-4-4-phase3-acceptance-matrix.md).
+      Stop for independent Phase 3 review. Overall Task 4.4 stays unchecked;
+      owner migration 69, activation, push and later tasks require a later mandate.
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
 - [ ] **4.7 Fee letters** — with linked matters

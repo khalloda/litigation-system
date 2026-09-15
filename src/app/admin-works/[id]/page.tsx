@@ -44,15 +44,35 @@ export default async function AdminWorkPage({
     );
   }
   const { filters } = state;
-  const record = await getAdminWork(session, id, String(state.stepPage));
+  const record = await getAdminWork(session, id, String(state.stepPage), state.stepArchive);
   if (!record) notFound();
+  const query = adminDetailHref(record.id, filters, record.stepPage, state.stepArchive).slice(
+    ('/admin-works/' + record.id).length,
+  );
+  const lifecycle = hasPermission(session.user.role, 'administrativeWorks', 'archive');
   return (
     <main className={styles.page} data-admin-id={record.id}>
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>{t.adminWorks.details}</p>
           <h1>{t.adminWorks.identity(record.id)}</h1>
-          {!record.matterArchived &&
+          {record.archived ? <p>{t.adminWorks.lifecycle.archived}</p> : null}
+          {lifecycle && !record.matterArchived ? (
+            <Link
+              className={styles.link}
+              href={
+                '/admin-works/' +
+                record.id +
+                '/' +
+                (record.archived ? 'restore' : 'archive') +
+                query
+              }
+            >
+              {record.archived ? t.adminWorks.lifecycle.restore : t.adminWorks.lifecycle.archive}
+            </Link>
+          ) : null}
+          {!record.archived &&
+          !record.matterArchived &&
           hasPermission(session.user.role, 'administrativeWorks', 'update') ? (
             <Link
               className={styles.link}
@@ -60,7 +80,7 @@ export default async function AdminWorkPage({
                 '/admin-works/' +
                 record.id +
                 '/edit' +
-                adminDetailHref(record.id, filters, state.stepPage).slice(
+                adminDetailHref(record.id, filters, state.stepPage, state.stepArchive).slice(
                   ('/admin-works/' + record.id).length,
                 )
               }
@@ -145,7 +165,31 @@ export default async function AdminWorkPage({
       </section>
       <section className={styles.panel} aria-label={t.adminWorks.steps}>
         <h2>{t.adminWorks.steps}</h2>
-        {!record.matterArchived &&
+        <nav className={styles.actions} aria-label={t.adminWorks.lifecycle.stepFilter}>
+          {(['current', 'archived', 'all'] as const).map((filter) => (
+            <Link
+              key={filter}
+              className={styles.link}
+              aria-current={state.stepArchive === filter ? 'page' : undefined}
+              href={adminDetailHref(record.id, filters, 1, filter)}
+            >
+              {filter === 'current'
+                ? t.adminWorks.lifecycle.current
+                : filter === 'archived'
+                  ? t.adminWorks.lifecycle.archivedChoice
+                  : t.adminWorks.lifecycle.fullHistory}
+            </Link>
+          ))}
+        </nav>
+        {record.archived ? <p>{t.adminWorks.lifecycle.parentArchived}</p> : null}
+        <p>
+          {t.adminWorks.lifecycle.currentSteps}: {record.currentStepCount} ·{' '}
+          {t.adminWorks.lifecycle.archivedSteps}: {record.archivedStepCount}
+        </p>
+        <p>{t.adminWorks.lifecycle.visibleSteps(record.visibleStepCount)}</p>
+        {record.stepPageClamped ? <p role="status">{t.adminWorks.lifecycle.pageClamped}</p> : null}
+        {!record.archived &&
+        !record.matterArchived &&
         hasPermission(session.user.role, 'administrativeWorks', 'create') ? (
           <Link
             className={styles.link}
@@ -153,7 +197,7 @@ export default async function AdminWorkPage({
               '/admin-works/' +
               record.id +
               '/steps/new' +
-              adminDetailHref(record.id, filters, state.stepPage).slice(
+              adminDetailHref(record.id, filters, state.stepPage, state.stepArchive).slice(
                 ('/admin-works/' + record.id).length,
               )
             }
@@ -170,7 +214,28 @@ export default async function AdminWorkPage({
             {record.steps.map((step) => (
               <li className={local.multiline} key={step.id} data-step-id={step.id}>
                 <h3>{t.adminWorks.stepIdentity(step.id)}</h3>
-                {!record.matterArchived &&
+                {step.archived ? <p>{t.adminWorks.lifecycle.stepArchived}</p> : null}
+                {lifecycle && !record.archived && !record.matterArchived ? (
+                  <Link
+                    className={styles.link}
+                    href={
+                      '/admin-works/' +
+                      record.id +
+                      '/steps/' +
+                      step.id +
+                      '/' +
+                      (step.archived ? 'restore' : 'archive') +
+                      query
+                    }
+                  >
+                    {step.archived
+                      ? t.adminWorks.lifecycle.restoreStep
+                      : t.adminWorks.lifecycle.archiveStep}
+                  </Link>
+                ) : null}
+                {!step.archived &&
+                !record.archived &&
+                !record.matterArchived &&
                 hasPermission(session.user.role, 'administrativeWorks', 'update') ? (
                   <Link
                     className={styles.link}
@@ -180,7 +245,7 @@ export default async function AdminWorkPage({
                       '/steps/' +
                       step.id +
                       '/edit' +
-                      adminDetailHref(record.id, filters, state.stepPage).slice(
+                      adminDetailHref(record.id, filters, state.stepPage, state.stepArchive).slice(
                         ('/admin-works/' + record.id).length,
                       )
                     }
@@ -211,7 +276,7 @@ export default async function AdminWorkPage({
           {record.stepPage > 1 ? (
             <Link
               className={styles.link}
-              href={adminDetailHref(record.id, filters, record.stepPage - 1)}
+              href={adminDetailHref(record.id, filters, record.stepPage - 1, state.stepArchive)}
             >
               {t.clients.previous}
             </Link>
@@ -220,7 +285,7 @@ export default async function AdminWorkPage({
           {record.stepPage < record.stepPages ? (
             <Link
               className={styles.link}
-              href={adminDetailHref(record.id, filters, record.stepPage + 1)}
+              href={adminDetailHref(record.id, filters, record.stepPage + 1, state.stepArchive)}
             >
               {t.clients.next}
             </Link>

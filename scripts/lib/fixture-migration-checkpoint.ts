@@ -30,7 +30,12 @@ function checkpointFor(
   matterBoundary = false,
   hearingPrestate = false,
   hearingLifecyclePrestate = false,
-): 56 | 60 | 61 | 62 | 63 | 64 | 65 | 66 {
+  adminLifecyclePrestate = false,
+): 56 | 60 | 61 | 62 | 63 | 64 | 65 | 66 | 68 {
+  if (adminLifecyclePrestate) {
+    assert.equal(database, 'litigation_task44_canonical_prestate');
+    return 68;
+  }
   if (hearingLifecyclePrestate) {
     assert.ok(['litigation', 'litigation_task43_canonical_prestate'].includes(database));
     return 66;
@@ -63,7 +68,7 @@ function reviewedRepository(
   repository: Awaited<ReturnType<typeof readGate4RepositoryMigrationInventory>>,
 ) {
   assert.deepEqual(repository.defects, []);
-  assert.ok([61, 62, 63, 64, 65, 66, 67, 68].includes(repository.migrations.length));
+  assert.ok([61, 62, 63, 64, 65, 66, 67, 68, 69].includes(repository.migrations.length));
   assert.equal(repository.migrations[60]?.name, '20260906180000_staff_roster_database_boundary');
   if (repository.migrations.length >= 62)
     assert.equal(repository.migrations[61]?.name, CLIENT_CONTACT_MIGRATION);
@@ -77,6 +82,8 @@ function reviewedRepository(
     assert.equal(repository.migrations[65]?.name, '20260913120000_hearing_editing_boundary');
   if (repository.migrations.length >= 67)
     assert.equal(repository.migrations[66]?.name, '20260913160000_hearing_archive_restore');
+  if (repository.migrations.length >= 69)
+    assert.equal(repository.migrations[68]?.name, '20260915120000_admin_work_archive_restore');
   if (repository.migrations.length >= 68)
     assert.equal(repository.migrations[67]?.name, '20260914160000_admin_work_editing_boundary');
 }
@@ -102,6 +109,7 @@ export async function validateFixtureMigrationConfig(config: string): Promise<st
       'prisma.matter64.config.ts',
       'prisma.hearing65.config.ts',
       'prisma.hearing66.config.ts',
+      'prisma.admin68.config.ts',
     ].includes(configName),
   );
   const checkpoint = checkpointFor(
@@ -111,6 +119,7 @@ export async function validateFixtureMigrationConfig(config: string): Promise<st
     configName === 'prisma.matter64.config.ts',
     configName === 'prisma.hearing65.config.ts',
     configName === 'prisma.hearing66.config.ts',
+    configName === 'prisma.admin68.config.ts',
   );
   await withApprovedMigrationClient((db) =>
     assertIsolatedTestCluster(
@@ -159,7 +168,7 @@ export async function validateFixtureMigrationConfig(config: string): Promise<st
  * candidates exist; it is limited to the two reviewed client fixture targets. */
 export async function migrateFixtureThroughCheckpoint(
   databaseUrl: string,
-  checkpoint: 56 | 60 | 61 | 62 | 63 | 64 | 65 | 66,
+  checkpoint: 56 | 60 | 61 | 62 | 63 | 64 | 65 | 66 | 68,
   environment = process.env,
 ): Promise<void> {
   const target = new URL(databaseUrl);
@@ -171,6 +180,7 @@ export async function migrateFixtureThroughCheckpoint(
       checkpoint === 64,
       checkpoint === 65,
       checkpoint === 66,
+      checkpoint === 68,
     ),
     checkpoint,
   );
@@ -181,17 +191,19 @@ export async function migrateFixtureThroughCheckpoint(
   reviewedRepository(repository);
   const temporary = await mkdtemp(join(tmpdir(), 'litigation-task40a-checkpoint-'));
   const configName =
-    checkpoint === 66
-      ? 'prisma.hearing66.config.ts'
-      : checkpoint === 65
-        ? 'prisma.hearing65.config.ts'
-        : checkpoint === 64
-          ? 'prisma.matter64.config.ts'
-          : checkpoint === 63
-            ? 'prisma.matter63.config.ts'
-            : checkpoint === 62
-              ? 'prisma.client62.config.ts'
-              : 'prisma.config.ts';
+    checkpoint === 68
+      ? 'prisma.admin68.config.ts'
+      : checkpoint === 66
+        ? 'prisma.hearing66.config.ts'
+        : checkpoint === 65
+          ? 'prisma.hearing65.config.ts'
+          : checkpoint === 64
+            ? 'prisma.matter64.config.ts'
+            : checkpoint === 63
+              ? 'prisma.matter63.config.ts'
+              : checkpoint === 62
+                ? 'prisma.client62.config.ts'
+                : 'prisma.config.ts';
   const owned = new Set([configName, 'migrations', 'migrations/migration_lock.toml']);
   try {
     await mkdir(join(temporary, 'migrations'));

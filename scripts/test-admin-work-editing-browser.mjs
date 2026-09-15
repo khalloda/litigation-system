@@ -7,7 +7,7 @@ import { lifecycleSessions } from './lib/matter-lifecycle-proof.ts';
 import { mutateAdminWork, readAdminMutation } from '../src/lib/admin-work-mutations.ts';
 import { createMaintenanceAuditMetadata } from '../src/lib/audit-metadata.ts';
 
-export async function proveAdminEditingBrowser(fixture, output, originalId) {
+export async function proveAdminEditingBrowser(fixture, output, originalId, afterProof) {
   return proveHearingBrowser(
     fixture,
     output,
@@ -228,6 +228,7 @@ export async function proveAdminEditingBrowser(fixture, output, originalId) {
       assert.notEqual(focus.width, '0px');
       evidence.push({ name: 'Keyboard traversal and visible focus', focus });
       await screenshot('task-keyboard-focus');
+      if (afterProof) await afterProof(api);
     },
     { preserveAccounts: true, boundedDependencyCheck: true },
   );

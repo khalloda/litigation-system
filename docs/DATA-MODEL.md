@@ -1332,3 +1332,17 @@ Actual development remains at66; this schema is not activated by Phase3.
 Migration 68 freezes every original task/step row in `_migration.admin_edit_import` with typed historical views. This evidence reconciles to the immutable pre-release inventory and reviewed release mappings; it is distinct from editable current values. `admin_edit_boundary` records the baseline. Immutable `admin_edit_change` retains complete aggregate before/after values, version, actor and request ID; `admin_edit_submission` binds a unique submission token and task/version to the authorized payload/result. Deferred constraints require a continuous audited history and receipt. Protected identities, parent links, provenance and ordering cannot be edited or deleted. Permanent checks retain original reconciliation and separately verify current/native records, exact function definitions, triggers, grants and histories.
 
 Two narrow public gateways read editor state and commit saves. Runtime direct table/sequence writes and internal helper access remain denied. Shared staff/account locks, parent/selection locks and the task version resolve concurrent eligibility, archive and edit operations. Old transforms/date backfill refuse apply after the boundary. Candidate 68 is implemented, pending independent review; the actual owner database remains at 67. D62 defines payload, completeness, limits and date semantics.
+
+## Task 4.4 Phase 3 candidate model — D63
+
+Migration `20260915120000_admin_work_archive_restore` adds independent non-null
+`is_archived` flags, default false, to `admin_tasks` and `task_actions`. No existing
+value determines initial archive state. Neither direction cascades; immutable
+parent IDs, imported source ordinals, native orders, business values and source
+evidence remain intact. Operational reads filter the flags explicitly; historical
+totals do not. Work and steps share the existing work `row_version`, immutable
+change chain and submission namespace. `_migration.admin_lifecycle_boundary`
+freezes per-work pre-69 versions plus exact old history/receipt digests. Only that
+historical partition receives missing-flag interpretation; new history retains
+and validates both flags. See the [candidate report](task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md).
+Actual owner schema remains 68 pending a later reviewed activation mandate.

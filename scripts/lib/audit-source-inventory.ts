@@ -22,15 +22,17 @@ const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
 const HEARING_LIFECYCLE_SERVICE = 'src/lib/hearing-lifecycle.ts';
 const HEARING_LIFECYCLE_SHA256 = '42be3170ff4425089e19a5524e907f1b6fcbd11bd729715ed60620f38bd36f36';
+const ADMIN_LIFECYCLE_SERVICE = 'src/lib/admin-lifecycle.ts';
+const ADMIN_LIFECYCLE_SHA256 = '6fb81283bae3223e4ca8670738c6a9564cb25c1412981b61e5a4bde1a213514d';
 const ADMIN_MUTATION_SERVICE = 'src/lib/admin-work-mutations.ts';
-const ADMIN_MUTATION_SHA256 = 'e814f46d42fa14a84e01a49383dd71e50d2af7512495ce66fabcce0967ef1771';
+const ADMIN_MUTATION_SHA256 = '48c196e2a3461da29cd6499d191500ea7cb155ee8716195146ade970241976e0';
 const ADMIN_INPUT_SHA256 = '50c2deb2a790ef33429e41411ef967f1f9331beb10db88c711cd772f40961480';
 const HEARING_MUTATION_SERVICE = 'src/lib/hearing-mutations.ts';
 const HEARING_MUTATION_SHA256 = '49f1c5bbd9459173effebcebf633fae714a1b906a45df072329b5dc1b3c4fa7f';
 const HEARING_INPUT_SHA256 = 'a7a3c2ba5615d2806d71595fb83ee9b09f1addaf07c625df39e1f40d98c03b05';
 const ADMIN_READ_SERVICE = 'src/lib/admin-work-query.ts';
 const ADMIN_READ_SERVICE_SHA256 =
-  'd79b30434df55744172baa3088dfb3224ade0eff6e532f03f29514fd4fe529fd';
+  '4353b5dd43f864c36718d3f57d9dad2b0859896cdc178a22a018a0d063e668d3';
 const HEARING_READ_SERVICE = 'src/lib/hearing-query.ts';
 const HEARING_READ_SERVICE_SHA256 =
   'd17177a7d3d2e28de2d45d0b97f83afe8f1ed4397dc94d68888a2dc8bdf2a7a8';
@@ -123,6 +125,21 @@ const LOW_LEVEL_PATTERN =
 
 const REVIEWED_RAW_SQL_CALLS = [
   [
+    'src/lib/admin-lifecycle.ts',
+    'readAdminLifecycle',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/admin-lifecycle.ts',
+    'readAdminLifecycle',
+    '1fa4aabc465918ae16f40382682943496a0f05ee8e176436a34b878a066fcbd5',
+  ],
+  [
+    'src/lib/admin-lifecycle.ts',
+    'mutateAdminLifecycle',
+    '3eed086781efec16e68316c1f32614a8ac85066880d9dcc207bab141e0239743',
+  ],
+  [
     'src/lib/admin-work-mutations.ts',
     'readAdminMutation',
     '8b5eaaa87acd107836f4eb0368d4277757ebcf9fa90b243ed10519df88ec7b1c',
@@ -170,7 +187,7 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/admin-work-query.ts',
     'readAdminWork',
-    'c701054ff06ccc83233f5db174cdc749072995d0a31bc5806e999e773d1d6dcd',
+    '5b81f789ee67164d0202ab35741da5ed348b36f5a1263728e4c278151ef1201e',
   ],
   [
     'src/lib/hearing-query.ts',
@@ -1914,6 +1931,13 @@ export function auditRuntimeSourceFailures(
         HEARING_LIFECYCLE_SHA256
     )
       failures.add('Hearing lifecycle closure differs from reviewed inventory');
+    const isAdminLifecycleService = source.path === ADMIN_LIFECYCLE_SERVICE;
+    if (
+      isAdminLifecycleService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        ADMIN_LIFECYCLE_SHA256
+    )
+      failures.add('Administrative lifecycle closure differs from reviewed inventory');
     const isAdminMutationService = source.path === ADMIN_MUTATION_SERVICE;
     if (
       isAdminMutationService &&
@@ -1969,7 +1993,8 @@ export function auditRuntimeSourceFailures(
       isHearingMutationService ||
       isAdminMutationService ||
       isMatterLifecycleService ||
-      isHearingLifecycleService;
+      isHearingLifecycleService ||
+      isAdminLifecycleService;
     const isDatabaseModule = absolute === databaseAbsolute;
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
     const isClientReadService = source.path === CLIENT_READ_SERVICE;
@@ -2101,7 +2126,8 @@ export function auditRuntimeSourceFailures(
                   isHearingMutationService ||
                   isAdminMutationService ||
                   isMatterLifecycleService ||
-                  isHearingLifecycleService
+                  isHearingLifecycleService ||
+                  isAdminLifecycleService
                 ? new Set(['setHumanAuditContext'])
                 : USER_MANAGEMENT_SERVICE_HELPERS;
             if (element.propertyName || !approvedHelpers.has(imported)) {
@@ -2427,6 +2453,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'mutateAdminLifecycle',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'mutateAdminWork',

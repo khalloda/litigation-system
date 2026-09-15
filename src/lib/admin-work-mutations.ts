@@ -19,8 +19,14 @@ import {
 } from './admin-work-mutation-input';
 type Choice = { id: number; name: string; active: boolean; context?: string | null };
 export type AdminMutationSnapshot = {
-  task: { id: number; version: string; matterArchived: boolean; values: AdminValues } | null;
-  step: { id: number; values: AdminValues } | null;
+  task: {
+    id: number;
+    version: string;
+    matterArchived: boolean;
+    archived: boolean;
+    values: AdminValues;
+  } | null;
+  step: { id: number; archived: boolean; values: AdminValues } | null;
   matters: Choice[];
   courts: Choice[];
   destinations: Choice[];
@@ -41,7 +47,7 @@ function authorize(session: Session | null, operation: AdminOperation) {
 function translate(error: unknown): never {
   if (error instanceof AdminMutationError || error instanceof AuthorizationError) throw error;
   const message = error instanceof Error ? error.message : '';
-  if (message.includes('Restore archived matter')) throw new AdminMutationError('archived');
+  if (message.includes('Restore archived')) throw new AdminMutationError('archived');
   if (message.includes('Administrative version is stale')) throw new AdminMutationError('stale');
   if (message.includes('Administrative submission payload differs'))
     throw new AdminMutationError('submission');

@@ -12,7 +12,14 @@ export const ADMIN_PAGE_SIZE = 25;
 export const ADMIN_SEARCH_LIMIT = 160;
 export const ADMIN_FILTER_KEYS = ['matter', 'client', 'person', 'status'] as const;
 export type AdminFilterKey = (typeof ADMIN_FILTER_KEYS)[number];
+export type AdminArchiveFilter = 'current' | 'archived' | 'all';
+export function adminArchiveFilter(value: unknown = 'current'): AdminArchiveFilter {
+  if (!['current', 'archived', 'all'].includes(value as string))
+    throw new AdminFilterError('invalid archive filter');
+  return value as AdminArchiveFilter;
+}
 export type AdminFilters = Record<AdminFilterKey, string> & {
+  archive: AdminArchiveFilter;
   q: string;
   page: number;
   fromMatter: string;
@@ -20,7 +27,7 @@ export type AdminFilters = Record<AdminFilterKey, string> & {
 export class AdminFilterError extends Error {}
 
 export function parseAdminFilters(params: ClientSearchParams): AdminFilters {
-  const allowed = [...ADMIN_FILTER_KEYS, 'q', 'page', 'fromMatter'];
+  const allowed = [...ADMIN_FILTER_KEYS, 'q', 'page', 'fromMatter', 'archive'];
   for (const key of Object.keys(params))
     if (!allowed.includes(key)) throw new AdminFilterError('unknown filter');
   const one = (key: string, fallback: string) => {
@@ -51,10 +58,17 @@ export function parseAdminFilters(params: ClientSearchParams): AdminFilters {
   } catch {
     throw new AdminFilterError('invalid return');
   }
-  return { ...Object.fromEntries(values), q, page, fromMatter } as AdminFilters;
+  return {
+    ...Object.fromEntries(values),
+    q,
+    page,
+    fromMatter,
+    archive: adminArchiveFilter(one('archive', 'current')),
+  } as AdminFilters;
 }
 export function adminListHref(f: AdminFilters, page = f.page) {
   const p = new URLSearchParams();
+  if (f.archive !== 'current') p.set('archive', f.archive);
   for (const [key, value] of Object.entries(f))
     if ((ADMIN_FILTER_KEYS as readonly string[]).includes(key) && value !== 'all')
       p.set(key, String(value));
@@ -63,17 +77,32 @@ export function adminListHref(f: AdminFilters, page = f.page) {
   if (page !== 1) p.set('page', String(page));
   return '/admin-works' + (p.size ? '?' + p.toString() : '');
 }
-export function adminDetailHref(id: number, f: AdminFilters, stepPage = 1) {
+export function adminDetailHref(
+  id: number,
+  f: AdminFilters,
+  stepPage = 1,
+  stepArchive: AdminArchiveFilter = 'current',
+) {
   const query = adminListHref(f).slice('/admin-works'.length);
-  return `/admin-works/${id}${query}${stepPage === 1 ? '' : `${query ? '&' : '?'}stepPage=${stepPage}`}`;
+  const p = new URLSearchParams(query);
+  if (stepPage !== 1) p.set('stepPage', String(stepPage));
+  if (stepArchive !== 'current') p.set('stepArchive', stepArchive);
+  return `/admin-works/${id}${p.size ? '?' + p.toString() : ''}`;
 }
 export function parseAdminDetailParams(params: ClientSearchParams) {
-  const { stepPage = '1', ...rest } = params;
+  const { stepPage = '1', stepArchive = 'current', ...rest } = params;
   const page = typeof stepPage === 'string' ? clientId(stepPage) : null;
   if (page === null) throw new AdminFilterError('invalid step page');
-  return { filters: parseAdminFilters(rest), stepPage: page };
+  return {
+    filters: parseAdminFilters(rest),
+    stepPage: page,
+    stepArchive: adminArchiveFilter(stepArchive),
+  };
 }
 export type AdminRow = {
+  archived: boolean;
+  currentStepCount: number;
+  archivedStepCount: number;
   id: number;
   legacyId: number | null;
   requiredWork: string | null;
@@ -94,6 +123,7 @@ export type AdminRow = {
   stepCount: number;
 };
 export type AdminStep = {
+  archived: boolean;
   id: number;
   legacyId: number | null;
   sourceOrdinal: number | null;
@@ -119,6 +149,8 @@ export type AdminDetail = AdminRow & {
   steps: AdminStep[];
   stepPage: number;
   stepPages: number;
+  visibleStepCount: number;
+  stepPageClamped: boolean;
 };
 export type AdminOption = {
   kind: AdminFilterKey;
@@ -129,16 +161,19 @@ export type AdminOption = {
 };
 const joins = Prisma.sql`FROM public.admin_tasks a LEFT JOIN public.matters m ON m.id=a.matter_id
   LEFT JOIN public.clients c ON c.id=m.client_id LEFT JOIN public.people p ON p.id=a.assigned_to_person_id`;
-const projection = Prisma.sql`a.id,a.legacy_id AS "legacyId",a.required_work AS "requiredWork",
+const projection = Prisma.sql`a.id,a.is_archived AS archived,a.legacy_id AS "legacyId",a.required_work AS "requiredWork",
   a.matter_id AS "matterId",m.case_number_ar AS "caseNumber",m.subject,m.is_archived AS "matterArchived",
   m.client_id AS "clientId",c.name_ar AS "clientName",c.is_archived AS "clientArchived",
   a.assigned_to_person_id AS "personId",p.name_ar AS "personName",p.is_active AS "personActive",a.legacy_assignee_raw AS "assigneeRaw",
   a.task_created_date::text AS "taskCreatedDate",a.execution_date::text AS "executionDate",a.status,
-  (SELECT count(*)::int FROM public.task_actions s WHERE s.task_id=a.id) AS "stepCount"`;
+  (SELECT count(*)::int FROM public.task_actions s WHERE s.task_id=a.id) AS "stepCount",
+  (SELECT count(*)::int FROM public.task_actions s WHERE s.task_id=a.id AND NOT s.is_archived) AS "currentStepCount",
+  (SELECT count(*)::int FROM public.task_actions s WHERE s.task_id=a.id AND s.is_archived) AS "archivedStepCount"`;
 const pattern = (q: string) =>
   Prisma.sql`('%' || public.ar_normalise(${q.replace(/[\\%_]/gu, '\\$&')}) || '%')`;
 function where(f: AdminFilters) {
   const conditions = [Prisma.sql`true`];
+  if (f.archive !== 'all') conditions.push(Prisma.sql`a.is_archived=${f.archive === 'archived'}`);
   for (const [column, value] of [
     [Prisma.sql`a.matter_id`, f.matter],
     [Prisma.sql`m.client_id`, f.client],
@@ -170,10 +205,10 @@ export function adminDetailQuery(id: number) {
     ct.label_ar AS court,a.legacy_court_raw AS "courtRaw",a.circuit,d.label_ar AS destination,a.legacy_destination_raw AS "destinationRaw",a.alert
     ${joins} LEFT JOIN public.lookup_court ct ON ct.id=a.court_id LEFT JOIN public.lookup_matter_destination d ON d.id=a.destination_id WHERE a.id=${id}`;
 }
-export function adminStepsQuery(id: number, page: number) {
-  return Prisma.sql`SELECT s.id,s.legacy_id AS "legacyId",s.source_ordinal AS "sourceOrdinal",s.action_date::text AS "actionDate",
+export function adminStepsQuery(id: number, page: number, archive: AdminArchiveFilter = 'current') {
+  return Prisma.sql`SELECT s.id,s.is_archived AS archived,s.legacy_id AS "legacyId",s.source_ordinal AS "sourceOrdinal",s.action_date::text AS "actionDate",
     s.performed_by_person_id AS "personId",p.name_ar AS "personName",p.is_active AS "personActive",s.legacy_performed_by_raw AS "performerRaw",s.result,s.report
-    FROM public.task_actions s LEFT JOIN public.people p ON p.id=s.performed_by_person_id WHERE s.task_id=${id}
+    FROM public.task_actions s LEFT JOIN public.people p ON p.id=s.performed_by_person_id WHERE s.task_id=${id} AND ${archive === 'all' ? Prisma.sql`true` : Prisma.sql`s.is_archived=${archive === 'archived'}`}
     ORDER BY (s.current_order IS NOT NULL),s.source_ordinal ASC NULLS LAST,s.current_order ASC,s.id ASC LIMIT ${ADMIN_PAGE_SIZE} OFFSET ${(page - 1) * ADMIN_PAGE_SIZE}`;
 }
 export function adminOptionsQuery() {
@@ -235,7 +270,14 @@ export async function readAdminWorks(
     const expected = Math.min(ADMIN_PAGE_SIZE, Math.max(0, total - (page - 1) * ADMIN_PAGE_SIZE));
     if (rows.length !== expected || new Set(rows.map((r) => r.id)).size !== expected)
       throw new Error('Administrative page cardinality differs');
-    return { rows, total, pages, options, filters: { ...filters, page } };
+    return {
+      rows,
+      total,
+      pages,
+      options,
+      pageClamped: page !== filters.page,
+      filters: { ...filters, page },
+    };
   });
 }
 export async function readAdminWork(
@@ -243,8 +285,10 @@ export async function readAdminWork(
   rawId: string,
   rawStepPage: string,
   db: PrismaClient,
+  archive: AdminArchiveFilter = 'current',
 ): Promise<AdminDetail | null> {
   authorize(session);
+  adminArchiveFilter(archive);
   const id = clientId(rawId),
     requested = clientId(rawStepPage);
   if (requested === null) throw new AdminFilterError('invalid step page');
@@ -255,15 +299,30 @@ export async function readAdminWork(
     );
     if (rows.length > 1) throw new Error('Administrative identity cardinality differs');
     if (!rows[0]) return null;
-    const stepPages = Math.max(1, Math.ceil(rows[0].stepCount / ADMIN_PAGE_SIZE)),
+    const visibleStepCount =
+      archive === 'all'
+        ? rows[0].stepCount
+        : archive === 'archived'
+          ? rows[0].archivedStepCount
+          : rows[0].currentStepCount;
+    const stepPages = Math.max(1, Math.ceil(visibleStepCount / ADMIN_PAGE_SIZE)),
       stepPage = Math.min(requested, stepPages);
-    const steps = await tx.$queryRaw<AdminStep[]>(Prisma.sql`${adminStepsQuery(id, stepPage)}`);
+    const steps = await tx.$queryRaw<AdminStep[]>(
+      Prisma.sql`${adminStepsQuery(id, stepPage, archive)}`,
+    );
     const expected = Math.min(
       ADMIN_PAGE_SIZE,
-      Math.max(0, rows[0].stepCount - (stepPage - 1) * ADMIN_PAGE_SIZE),
+      Math.max(0, visibleStepCount - (stepPage - 1) * ADMIN_PAGE_SIZE),
     );
     if (steps.length !== expected || new Set(steps.map((s) => s.id)).size !== expected)
       throw new Error('Step page cardinality differs');
-    return { ...rows[0], steps, stepPage, stepPages };
+    return {
+      ...rows[0],
+      steps,
+      stepPage,
+      stepPages,
+      visibleStepCount,
+      stepPageClamped: stepPage !== requested,
+    };
   });
 }

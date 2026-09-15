@@ -41,8 +41,8 @@ export async function AdminManagementPage({
     if (error instanceof AdminFilterError) notFound();
     throw error;
   }
-  const { filters, stepPage } = navigation,
-    detail = adminDetailHref(taskId ?? 1, filters, stepPage),
+  const { filters, stepPage, stepArchive } = navigation,
+    detail = adminDetailHref(taskId ?? 1, filters, stepPage, stepArchive),
     query = detail.slice(('/admin-works/' + (taskId ?? 1)).length),
     cancel = taskId === null ? adminListHref(filters) : detail;
   const path =
@@ -53,11 +53,17 @@ export async function AdminManagementPage({
         : operation === 'step-create'
           ? '/admin-works/' + taskId + '/steps/new'
           : '/admin-works/' + taskId + '/steps/' + stepId + '/edit';
-  if (snapshot.task?.matterArchived)
+  if (snapshot.task?.matterArchived || snapshot.task?.archived || snapshot.step?.archived)
     return (
       <main className={styles.page}>
         <h1>{t.adminWorks.manage.edit}</h1>
-        <p>{t.adminWorks.manage.parentArchived}</p>
+        <p>
+          {snapshot.task?.matterArchived
+            ? t.adminWorks.manage.parentArchived
+            : snapshot.task?.archived && operation.startsWith('step')
+              ? t.adminWorks.lifecycle.parentArchived
+              : t.adminWorks.lifecycle.selfArchived}
+        </p>
         <a className={styles.link} href={cancel}>
           {t.common.cancel}
         </a>

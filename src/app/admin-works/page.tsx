@@ -97,6 +97,14 @@ export default async function AdminWorksPage({
             </p>
           </div>
           <div className={local.filters}>
+            <div className={styles.field}>
+              <label htmlFor="admin-archive">{t.adminWorks.lifecycle.filter}</label>
+              <select id="admin-archive" name="archive" defaultValue={filters.archive}>
+                <option value="current">{t.adminWorks.lifecycle.current}</option>
+                <option value="archived">{t.adminWorks.lifecycle.archivedChoice}</option>
+                <option value="all">{t.adminWorks.lifecycle.all}</option>
+              </select>
+            </div>
             {choices.map(([key, label, value]) => (
               <div className={styles.field} key={key}>
                 <label htmlFor={`admin-${key}`}>{label}</label>
@@ -152,11 +160,13 @@ export default async function AdminWorksPage({
             {t.adminWorks.results(total)}
           </p>
         </div>
+        {snapshot.pageClamped ? <p role="status">{t.adminWorks.lifecycle.pageClamped}</p> : null}
         {rows.length ? (
           <ol className={local.timeline}>
             {rows.map((row) => (
               <li key={row.id} data-admin-id={row.id} className={local.row}>
                 <div>
+                  {row.archived ? <p>{t.adminWorks.lifecycle.archived}</p> : null}
                   <h3>
                     <Link className={styles.nameLink} href={adminDetailHref(row.id, filters)}>
                       {t.adminWorks.identity(row.id)}

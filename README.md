@@ -3,20 +3,18 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Current checkpoint — 14 September 2026:** Khaled Helmy accepted corrected
-Task 4.4 Phase 2 at `90bfc66711bfbf5b219191c60ad3e662a14af015` after the
-[independent PASS review](docs/reviews/2026-09-14-task-4-4-phase-2-p2-r1-independent-review.md). P2-R1 and P2-N1 are closed.
-Reviewed migration 68 is verified on the actual local development database;
-build `schZeUhP0RGWF_DHI827w` from that exact source runs at `http://127.0.0.1:3000`.
-Fresh protected backup/restore, isolated rehearsal and actual 135 invariants plus
-15 setup checks passed. Current accounts, credentials, original business records,
-all 48 sequence states and 54 logos were preserved through the quiesced upgrade.
-The combined instruction also authorizes ordinary publication of the reviewed
-chain and this documentation child; its actual outcome is recorded in the external
-publication receipt. See the [acceptance/activation report](docs/task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md).
-Stop for independent combined review. Overall Task 4.4 remains unchecked;
-administrative-work/step archive/restore, later tasks and Ubuntu deployment have
-not started.
+**Current checkpoint — 15 September 2026:** Khaled Helmy accepted the
+[combined Phase 2 PASS review and authenticated supplement](docs/reviews/2026-09-15-task-4-4-phase-2-activation-publication-independent-review.md)
+at published `f05787471812c8fb2bd03d31bc44614dad81a8d2` and explicitly adopted D63.
+Task 4.4 Phase 3 implements Administrator-only archive/restore for works and
+individual steps as one local candidate, pending independent review. Migration
+69 and the candidate production build were tested only on separate disposable
+copies; the owner database remains at migration 68 and accepted Phase 2 build
+`schZeUhP0RGWF_DHI827w` remains on loopback port 3000.
+See the [Phase 3 report](docs/task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md) and
+[acceptance matrix](docs/testing/task-4-4-phase3-acceptance-matrix.md).
+Stop for independent Phase 3 review. Overall Task 4.4 remains unchecked.
+No owner migration 69, accepted-app activation, push or later task is authorized.
 
 **Earlier accepted checkpoints — 14 September 2026:** Khaled Helmy accepted Task 4.2 Phase 1
 at `2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the preserved

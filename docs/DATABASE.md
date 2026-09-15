@@ -5,11 +5,13 @@ You need Docker installed and running; nothing else.
 
 ---
 
-**Current local checkpoint — 14 September 2026:** actual migration 68 and
+**Current local checkpoint — 15 September 2026:** actual migration 68 and
 accepted Task 4.4 Phase 2 build `schZeUhP0RGWF_DHI827w` are verified and running on
 loopback port 3000. Use the frozen artifact/start receipt in the
 [activation report](task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md); the dated commands and milestones
-below do not authorize a new deployment or reset.
+below do not authorize a new deployment or reset. The checkout now contains
+Task 4.4 Phase 3 candidate migration 69, tested only on disposable copies and
+pending independent review. Do not deploy it to the owner database.
 
 ## Everyday commands
 
@@ -1130,3 +1132,16 @@ proof. Earlier checkpoints below/above remain dated history. D1–D62 and C1's
 owner-accepted development risk remain unchanged. Publication is authorized after
 the single documentation commit and recorded externally. Overall Task 4.4 remains
 unchecked; remaining lifecycle work and Ubuntu deployment are outside this stop.
+
+## Task 4.4 Phase 3 candidate 69 — 15 September 2026
+
+The accepted combined Phase 2 review at `f05787471812c8fb2bd03d31bc44614dad81a8d2`
+includes its authenticated supplement. Actual development remains migration 68,
+123 tables/48 sequences, with accepted build `schZeUhP0RGWF_DHI827w`. Phase 3
+migration 69 is candidate-only and was tested on positively owned disposable
+clusters. It adds one private boundary table, two flags, five functions, replaces
+four administrative functions, and adds three indexes/three triggers/seven
+constraints; no pre-existing object is removed. Permanent checks recognize the
+exact new boundary while retaining historical 68 profiles and frozen migrations.
+Use the [Phase 3 report](task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md) and its exact command/evidence
+ledger. This status does not authorize applying 69 or rebuilding the owner app.

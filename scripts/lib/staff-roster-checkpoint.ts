@@ -1,3 +1,4 @@
+import { adminLifecycleApplied, ADMIN_LIFECYCLE_MIGRATION } from './admin-lifecycle-checkpoint';
 import { adminEditApplied, ADMIN_EDIT_MIGRATION } from './admin-edit-checkpoint';
 import {
   HEARING_LIFECYCLE_MIGRATION,
@@ -192,7 +193,7 @@ export async function staffBoundaryApplied(db: ClientBase): Promise<boolean> {
 export async function assertStaffCheckpoint(
   db: ClientBase,
   profile: StaffProfile,
-): Promise<60 | 61 | 62 | 63 | 64 | 65 | 66 | 67 | 68> {
+): Promise<60 | 61 | 62 | 63 | 64 | 65 | 66 | 67 | 68 | 69> {
   assert.ok(
     ['historical-full-state-upgrade', 'canonical-clean-replay'].includes(profile),
     'explicit accepted profile required',
@@ -210,7 +211,7 @@ export async function assertStaffCheckpoint(
   const repository = await readGate4RepositoryMigrationInventory();
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62, 63, 64, 65, 66, 67, 68].includes(repository.migrations.length),
+    [61, 62, 63, 64, 65, 66, 67, 68, 69].includes(repository.migrations.length),
     'Exact reviewed repository checkpoint required',
   );
   assert.equal(repository.migrations[60]?.name, STAFF_MIGRATION);
@@ -228,7 +229,11 @@ export async function assertStaffCheckpoint(
     assert.equal(repository.migrations[66]?.name, HEARING_LIFECYCLE_MIGRATION);
   if (repository.migrations.length >= 68)
     assert.equal(repository.migrations[67]?.name, ADMIN_EDIT_MIGRATION);
+  if (repository.migrations.length >= 69)
+    assert.equal(repository.migrations[68]?.name, ADMIN_LIFECYCLE_MIGRATION);
+  const adminLifecycle = await adminLifecycleApplied(db);
   const admin = await adminEditApplied(db);
+  assert.ok(!adminLifecycle || admin);
   const hearingLifecycle = await hearingLifecycleApplied(db);
   const hearing = await hearingEditApplied(db);
   assert.ok(!hearingLifecycle || hearing);
@@ -237,23 +242,25 @@ export async function assertStaffCheckpoint(
   const editing = await matterEditApplied(db);
   assert.ok(!lifecycle || editing);
   assert.ok(!admin || hearingLifecycle);
-  const checkpoint = admin
-    ? 68
-    : hearingLifecycle
-      ? 67
-      : hearing
-        ? 66
-        : lifecycle
-          ? 65
-          : editing
-            ? 64
-            : logosApplied
-              ? 63
-              : clientsApplied
-                ? 62
-                : applied
-                  ? 61
-                  : 60;
+  const checkpoint = adminLifecycle
+    ? 69
+    : admin
+      ? 68
+      : hearingLifecycle
+        ? 67
+        : hearing
+          ? 66
+          : lifecycle
+            ? 65
+            : editing
+              ? 64
+              : logosApplied
+                ? 63
+                : clientsApplied
+                  ? 62
+                  : applied
+                    ? 61
+                    : 60;
   const checkpointFiles = repository.migrations.slice(0, checkpoint);
   const evidence = reconcileGate4Migrations(history, {
     ...repository,

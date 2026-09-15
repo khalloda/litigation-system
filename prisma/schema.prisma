@@ -1511,6 +1511,7 @@ model Hearing {
 ///
 /// **The only area Paralegals can edit** (docs/PERMISSIONS.md).
 model AdminTask {
+  isArchived Boolean @default(false) @map("is_archived")
   rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
   /// Access ID_Task.
@@ -1592,6 +1593,7 @@ model AdminTask {
 /// 36 source rows name no task and 39 name none; they remain in immutable
 /// quarantine rather than becoming detached target steps.
 model TaskAction {
+  isArchived Boolean @default(false) @map("is_archived")
   /// Native append order; imported source ordinal remains unchanged.
   currentOrder Int? @map("current_order")
   id       Int  @id @default(autoincrement())

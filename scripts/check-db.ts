@@ -1,3 +1,4 @@
+import { assertAdminLifecycleBoundary } from './lib/admin-lifecycle-checkpoint';
 import { assertAdminEditBoundary, historicalAdminClient } from './lib/admin-edit-checkpoint';
 import { assertHearingLifecycleBoundary } from './lib/hearing-lifecycle-checkpoint';
 import { assertHearingEditBoundary, historicalHearingClient } from './lib/hearing-edit-checkpoint';
@@ -156,6 +157,7 @@ async function main() {
     hearingChecks,
     hearingLifecycleChecks,
     adminChecks,
+    adminLifecycleChecks,
     staffBoundary,
     rosterBaseline,
     staffChecks,
@@ -167,6 +169,7 @@ async function main() {
       clientBoundary: checkpoint >= 62,
       clientChecks: checkpoint >= 62 ? await assertClientContactBoundary(current, profile) : [],
       logoChecks: checkpoint >= 63 ? await assertClientLogoBoundary(current) : [],
+      adminLifecycleChecks: checkpoint >= 69 ? await assertAdminLifecycleBoundary(current) : [],
       adminChecks: checkpoint >= 68 ? await assertAdminEditBoundary(current, profile) : [],
       hearingChecks: checkpoint >= 66 ? await assertHearingEditBoundary(current, profile) : [],
       hearingLifecycleChecks: checkpoint >= 67 ? await assertHearingLifecycleBoundary(current) : [],
@@ -2637,6 +2640,7 @@ async function main() {
     ...matterChecks,
     ...hearingChecks,
     ...adminChecks,
+    ...adminLifecycleChecks,
     ...hearingLifecycleChecks,
   ])
     checks.push({

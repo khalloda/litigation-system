@@ -90,7 +90,7 @@ alias add/retire/restore, deactivate/reactivate and reviewer assignment. Existin
 migration-61 gateways enforce identity, concurrency, audit and account safety.
 No schema change was needed. Phase 4 completes keyboard, accessibility-tree,
 genuine browser zoom, reflow, visual and regression acceptance. The next return
-point is **independent combined review of Task 4.4 Phase 2 acceptance, local activation and publication evidence**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
+point is **independent review of the Task 4.4 Phase 3 local archive/restore candidate**. Phase 2 R1–R3 and Phase 3 implementation reviews have passed; Task 4.2
 overall is owner-accepted. See the 13 September acceptance record below.
 Khaled Helmy accepted Phase 1 at
 `2f8820a3053ab65a60ee183882cbd6a2462559bc` on 12 September 2026; its
@@ -558,3 +558,17 @@ the [original report](task-reports/2026-09-14-task-4-4-phase-2-editing.md),
 The external publication receipt records the authorized push after this
 documentation commit. Overall Task 4.4 remains unchecked. Archive/restore,
 exports, notifications, later tasks and Ubuntu deployment remain unstarted.
+
+## Task 4.4 Phase 3 candidate — D63, 15 September 2026
+
+The owner accepted the [combined Phase 2 PASS](reviews/2026-09-15-task-4-4-phase-2-activation-publication-independent-review.md) and its
+authenticated supplement at `f05787471812c8fb2bd03d31bc44614dad81a8d2`.
+D63 adds independent, reversible work and step archive states. Administrator
+alone changes these states; all four roles retain reads. D62 writers must restore
+an archived record and its required parents before editing. Archived client state
+remains independent. Current/archived/all work and step filters are separate;
+reports and historical relationship totals retain all records. Four Arabic
+confirmation flows recheck subject, version, parent eligibility and displayed facts.
+See the [Phase 3 report](task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md) and
+[matrix](testing/task-4-4-phase3-acceptance-matrix.md). Candidate only: the owner
+remains at migration 68/accepted Phase 2; overall Task 4.4 remains unchecked.

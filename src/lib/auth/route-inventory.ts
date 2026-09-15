@@ -627,6 +627,54 @@ export const ROUTE_INVENTORY = [
     exportName: 'updateAdminStepAction',
     classification: { access: 'permission', area: 'administrativeWorks', action: 'update' },
   },
+  {
+    kind: 'page',
+    source: 'src/app/admin-works/[id]/archive/page.tsx',
+    route: '/admin-works/[id]/archive',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'archive' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/admin-works/lifecycle-actions.ts',
+    exportName: 'archiveAdminTaskAction',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'archive' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/admin-works/[id]/restore/page.tsx',
+    route: '/admin-works/[id]/restore',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'restore' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/admin-works/lifecycle-actions.ts',
+    exportName: 'restoreAdminTaskAction',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'restore' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/admin-works/[id]/steps/[stepId]/archive/page.tsx',
+    route: '/admin-works/[id]/steps/[stepId]/archive',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'archive' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/admin-works/lifecycle-actions.ts',
+    exportName: 'archiveAdminStepAction',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'archive' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/admin-works/[id]/steps/[stepId]/restore/page.tsx',
+    route: '/admin-works/[id]/steps/[stepId]/restore',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'restore' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/admin-works/lifecycle-actions.ts',
+    exportName: 'restoreAdminStepAction',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'restore' },
+  },
 ] as const satisfies readonly RouteInventoryEntry[];
 
 export const PROXY_INFRASTRUCTURE_EXEMPTIONS = [

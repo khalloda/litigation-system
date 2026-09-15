@@ -1,3 +1,4 @@
+import { adminLifecycleApplied, ADMIN_LIFECYCLE_GATEWAYS } from './admin-lifecycle-checkpoint';
 import { adminEditApplied, ADMIN_EDIT_GATEWAYS, ADMIN_EDIT_TABLES } from './admin-edit-checkpoint';
 import {
   hearingLifecycleApplied,
@@ -361,6 +362,7 @@ export async function runtimeRoleBoundaryFailures(
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
   const adminBoundary = await adminEditApplied(db);
+  const adminLifecycle = await adminLifecycleApplied(db);
   const hearingBoundary = await hearingEditApplied(db);
   const hearingLifecycle = await hearingLifecycleApplied(db);
   const matterBoundary = await matterEditApplied(db);
@@ -380,6 +382,7 @@ export async function runtimeRoleBoundaryFailures(
     ...(matterBoundary ? MATTER_EDIT_GATEWAYS : []),
     ...(hearingBoundary ? HEARING_EDIT_GATEWAYS : []),
     ...(adminBoundary ? ADMIN_EDIT_GATEWAYS : []),
+    ...(adminLifecycle ? ADMIN_LIFECYCLE_GATEWAYS : []),
     ...(hearingLifecycle ? HEARING_LIFECYCLE_GATEWAYS : []),
     ...(lifecycle ? MATTER_LIFECYCLE_GATEWAYS : []),
   ];

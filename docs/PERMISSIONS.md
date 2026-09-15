@@ -345,3 +345,17 @@ The preceding Phase 2 exclusion remains historical to that phase.
 Administrator, Litigation Assistant and Paralegal retain administrativeWorks create/update; Lawyer views only. Four new guarded pages are `/admin-works/new`, `/admin-works/[id]/edit`, `/admin-works/[id]/steps/new` and `/admin-works/[id]/steps/[stepId]/edit`. Four corresponding server actions enforce create/update before the mutation service. Service and committing gateway independently require current server-derived authority. Eight entries bring the route/action inventory to 88; no permission matrix meaning changes.
 
 The database checks enabled/password/reset/account role/session version/expiry and active internal login identity, tied to the trusted audit actor. New assignments use active internal staff independently of login access; lookup selections must be active. Associated archived matters block writes for all three roles, including Administrator; all four roles retain reads beneath archived parents. Exact committed retries still revalidate authority before receipt reuse. Direct runtime writes/sequence reservations and broad/internal gateway access remain denied. Implemented, pending independent review; actual migration/activation and publication remain unauthorized.
+
+## Task 4.4 Phase 3 candidate lifecycle enforcement — D63
+
+Administrator alone may archive/restore a work or a step. Four pages and four
+Server Actions add eight exact inventory entries (88 to 96). Literal page/action
+guards, fresh service authorization, restricted runtime calls and two narrow
+SECURITY DEFINER gateways enforce the same policy. Receipt reuse rechecks the
+current source account/session before returning; tokens are owned and shared
+with D62 editing. Other roles retain reads; Administrator, Litigation Assistant
+and Paralegal retain eligible D62 create/update. An archived subject blocks edits;
+step writes require active work and matter, work writes require active matter,
+and an archived client does not add a prerequisite. No runtime table/sequence,
+private helper or PUBLIC gateway grant is added. See the
+[candidate report](task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md) for executed direct refusal evidence.

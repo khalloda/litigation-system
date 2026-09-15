@@ -5,11 +5,12 @@ Move the authoritative Access data to PostgreSQL with **provable** zero loss.
 **Core rule: never delete, clean or fix anything during extraction or load.**
 Data that cannot be mapped is *quarantined*, not dropped.
 
-**Current checkpoint — 14 September 2026:** reviewed migration 68 is complete
+**Current checkpoint — 15 September 2026:** reviewed migration 68 is complete
 on the actual local development database after protected recovery and isolated
 rehearsal. Its dated activation record is appended below and the
 [report](task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md) records the permitted delta. Earlier pending
-milestones remain historical; no additional migration is authorized here.
+milestones remain historical. Candidate 69 is tested only on owned disposable
+copies; applying it to the owner database is prohibited in this phase.
 
 ## Historical Task 4.2 Phase 2 forward boundary — pending migration 64 at 12 September
 
@@ -3665,3 +3666,18 @@ proof. Earlier checkpoints below/above remain dated history. D1–D62 and C1's
 owner-accepted development risk remain unchanged. Publication is authorized after
 the single documentation commit and recorded externally. Overall Task 4.4 remains
 unchecked; remaining lifecycle work and Ubuntu deployment are outside this stop.
+
+## Task 4.4 Phase 3 candidate 69 — D63 preservation boundary
+
+Only `20260915120000_admin_work_archive_restore` is new. Migrations 1–68 are
+byte-frozen. A coherent full-state 68 copy and a genuine edited/native 68 control
+exercise the forward boundary; an empty controlled replay exercises the canonical
+chain. Old-column projections include every original table, ledger row, audit,
+mapping, history and receipt; only the new flags/boundary, two archive field
+registrations and new ledger row are permitted. Complete sequence vectors are
+preserved through the migration and through its late-failure rollback proof.
+Historical missing flags are interpreted only up to the frozen per-work boundary;
+new history is never stripped of archive state. Permanent checks reject tampering
+with history, state, subject, actor, parent, version, receipt or structural guards.
+See the [Phase 3 report](task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md) for actual gate totals and exact
+evidence. Owner migration 69 is prohibited in this candidate phase.

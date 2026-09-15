@@ -124,7 +124,7 @@ async function prove(fixture: IsolatedPostgres, output: string) {
       parseAdminDetailParams(
         Object.fromEntries(new URL(adminDetailHref(12, f, 2), 'http://localhost').searchParams),
       ),
-      { filters: f, stepPage: 2 },
+      { filters: f, stepPage: 2, stepArchive: 'current' },
     );
     pass(
       'Four-role policy, pre-query refusal and live session/account mismatch controls; bounded input and return parsing',

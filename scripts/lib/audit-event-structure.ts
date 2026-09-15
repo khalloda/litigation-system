@@ -1,3 +1,4 @@
+import { adminLifecycleApplied, ADMIN_LIFECYCLE_FIELDS } from './admin-lifecycle-checkpoint';
 import { adminEditApplied, ADMIN_EDIT_FIELDS } from './admin-edit-checkpoint';
 import { hearingLifecycleApplied, HEARING_LIFECYCLE_FIELDS } from './hearing-lifecycle-checkpoint';
 import { hearingEditApplied, HEARING_EDIT_FIELDS } from './hearing-edit-checkpoint';
@@ -156,6 +157,7 @@ export async function auditEventStructureFailures(
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
   const adminBoundary = await adminEditApplied(db);
+  const adminLifecycle = await adminLifecycleApplied(db);
   const hearingBoundary = await hearingEditApplied(db);
   const hearingLifecycle = await hearingLifecycleApplied(db);
   const matterBoundary = await matterEditApplied(db);
@@ -167,6 +169,7 @@ export async function auditEventStructureFailures(
     ...(matterBoundary ? MATTER_EDIT_FIELDS : []),
     ...(hearingBoundary ? HEARING_EDIT_FIELDS : []),
     ...(adminBoundary ? ADMIN_EDIT_FIELDS : []),
+    ...(adminLifecycle ? ADMIN_LIFECYCLE_FIELDS : []),
     ...(hearingLifecycle ? HEARING_LIFECYCLE_FIELDS : []),
     ...(lifecycle ? MATTER_LIFECYCLE_FIELDS : []),
   ];

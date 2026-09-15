@@ -154,7 +154,7 @@ export default async function MatterPage({
         <h2>{t.adminWorks.title}</h2>
         <Link
           className={styles.link}
-          href={`/admin-works?matter=${matter.id}&fromMatter=${encodeURIComponent(matterDetailHref(matter.id, filters))}`}
+          href={`/admin-works?archive=all&matter=${matter.id}&fromMatter=${encodeURIComponent(matterDetailHref(matter.id, filters))}`}
         >
           {t.adminWorks.title}
         </Link>
