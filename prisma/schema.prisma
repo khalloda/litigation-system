@@ -1673,6 +1673,8 @@ model TaskAction {
 /// (personally) or a corporate office. Free text, 306 distinct values, no
 /// list and no lookup table. Do not conflate them.
 model PowerOfAttorney {
+  rowVersion BigInt @default(1) @map("row_version")
+  isArchived Boolean @default(false) @map("is_archived")
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
 
@@ -1774,6 +1776,7 @@ model PowerOfAttorney {
   @@index([clientId])
   @@index([createdBy], map: "powers_of_attorney_created_by_idx")
   @@index([updatedBy], map: "powers_of_attorney_updated_by_idx")
+  @@index([isArchived,id], map: "poa_operational_list_idx")
   @@map("powers_of_attorney")
 }
 
@@ -1781,6 +1784,8 @@ model PowerOfAttorney {
 /// repeated on every migrated member so a row remains independently auditable;
 /// the ordered rule/member provenance identifies the exact reviewed decision.
 model PowerOfAttorneyLawyer {
+  isRetired Boolean @default(false) @map("is_retired")
+  currentOrder Int? @map("current_order")
   id                           Int                       @id @default(autoincrement())
   powerOfAttorneyId            Int                       @map("power_of_attorney_id")
   powerOfAttorney              PowerOfAttorney           @relation(fields: [powerOfAttorneyId], references: [id], onDelete: Restrict, map: "power_of_attorney_lawyers_poa_fk")
@@ -1806,6 +1811,7 @@ model PowerOfAttorneyLawyer {
   @@index([reviewedRuleId])
   @@index([createdBy], map: "power_of_attorney_lawyers_created_by_idx")
   @@index([updatedBy], map: "power_of_attorney_lawyers_updated_by_idx")
+  @@unique([powerOfAttorneyId, currentOrder], map: "poa_current_order_idx")
   @@map("power_of_attorney_lawyers")
 }
 

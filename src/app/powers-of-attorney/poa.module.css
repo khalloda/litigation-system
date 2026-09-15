@@ -1,0 +1,53 @@
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.card {
+  border-block-end: 1px solid var(--hairline);
+  padding-block: var(--space-4);
+  min-inline-size: 0;
+}
+.card h3 {
+  margin-block: var(--space-2);
+}
+.source {
+  background: var(--panel-inset);
+  padding: var(--space-4);
+  margin-block-start: var(--space-4);
+}
+.members {
+  padding-inline-start: var(--space-6);
+}
+.members li {
+  margin-block: var(--space-2);
+  overflow-wrap: anywhere;
+}
+.zero {
+  border-inline-start: 4px solid var(--colour-accent-warm);
+  padding-inline-start: var(--space-2);
+}
+.editor {
+  display: grid;
+  gap: var(--space-4);
+}
+.editor fieldset {
+  min-inline-size: 0;
+}
+.editor textarea {
+  min-block-size: 7rem;
+}
+.feedback {
+  border: 2px solid var(--colour-primary);
+  padding: var(--space-3);
+}
+@media (max-width: 44rem) {
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -3724,3 +3724,21 @@ ACLs were checked without change. All restored logical sequence values match;
 45 log_cnt resets and the recorded equivalent schema ACL
 representation are portable-restore differences only. Actual complete sequences
 were not normalized. Earlier entries remain dated historical checkpoints.
+
+
+## Task 4.5 forward candidate — D64, migration 70 pending
+
+All migration files 1–69 and their existing evidence remain unchanged. The candidate
+freezes complete old-column POA and reviewed-member rows before adding operational
+state. No inferred mapping, source repair, migration re-import, quarantine cleanup,
+row deletion or sequence reset occurs. Current edits retain all immutable imported
+fields and relationship evidence. New application records carry null Access
+identity/provenance. A complete aggregate history and owned submission receipts
+explain every current value and membership change; historical reconciliation uses
+the typed frozen projection and independently checks current replay. Counts alone
+do not establish preservation.
+
+Proof covers the accepted migration-69 copy and the established canonical fixture
+path. The candidate is not applied to the actual owner database. Trial failures,
+exact executed source versions, original sequence vectors and disposable cleanup
+belong to the Task 4.5 evidence package and implementation report.

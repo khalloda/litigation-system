@@ -675,6 +675,66 @@ export const ROUTE_INVENTORY = [
     exportName: 'restoreAdminStepAction',
     classification: { access: 'permission', area: 'administrativeWorks', action: 'restore' },
   },
+  {
+    kind: 'page',
+    source: 'src/app/powers-of-attorney/page.tsx',
+    route: '/powers-of-attorney',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'view' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/powers-of-attorney/[id]/page.tsx',
+    route: '/powers-of-attorney/[id]',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'view' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/powers-of-attorney/new/page.tsx',
+    route: '/powers-of-attorney/new',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'create' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/powers-of-attorney/[id]/edit/page.tsx',
+    route: '/powers-of-attorney/[id]/edit',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'update' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/powers-of-attorney/[id]/archive/page.tsx',
+    route: '/powers-of-attorney/[id]/archive',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'archive' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/powers-of-attorney/[id]/restore/page.tsx',
+    route: '/powers-of-attorney/[id]/restore',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'restore' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/powers-of-attorney/actions.ts',
+    exportName: 'createPoaAction',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'create' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/powers-of-attorney/actions.ts',
+    exportName: 'updatePoaAction',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'update' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/powers-of-attorney/actions.ts',
+    exportName: 'archivePoaAction',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'archive' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/powers-of-attorney/actions.ts',
+    exportName: 'restorePoaAction',
+    classification: { access: 'permission', area: 'powersOfAttorney', action: 'restore' },
+  },
 ] as const satisfies readonly RouteInventoryEntry[];
 
 export const PROXY_INFRASTRUCTURE_EXEMPTIONS = [

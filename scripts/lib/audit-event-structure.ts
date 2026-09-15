@@ -1,3 +1,4 @@
+import { poaEditApplied, POA_EDIT_FIELDS } from './poa-edit-checkpoint';
 import { adminLifecycleApplied, ADMIN_LIFECYCLE_FIELDS } from './admin-lifecycle-checkpoint';
 import { adminEditApplied, ADMIN_EDIT_FIELDS } from './admin-edit-checkpoint';
 import { hearingLifecycleApplied, HEARING_LIFECYCLE_FIELDS } from './hearing-lifecycle-checkpoint';
@@ -156,6 +157,7 @@ export async function auditEventStructureFailures(
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
+  const poaBoundary = await poaEditApplied(db);
   const adminBoundary = await adminEditApplied(db);
   const adminLifecycle = await adminLifecycleApplied(db);
   const hearingBoundary = await hearingEditApplied(db);
@@ -163,6 +165,7 @@ export async function auditEventStructureFailures(
   const matterBoundary = await matterEditApplied(db);
   const lifecycle = await matterLifecycleApplied(db);
   const currentFieldRules = [
+    ...(poaBoundary ? POA_EDIT_FIELDS : []),
     ...(staffBoundary ? STAFF_FIELD_RULES : []),
     ...(clientBoundary ? CLIENT_CONTACT_FIELD_RULES : []),
     ...(logoBoundary ? CLIENT_LOGO_FIELD_RULES : []),

@@ -1,3 +1,4 @@
+import { assertPoaEditBoundary, historicalPoaClient } from './lib/poa-edit-checkpoint';
 import { assertAdminLifecycleBoundary } from './lib/admin-lifecycle-checkpoint';
 import { assertAdminEditBoundary, historicalAdminClient } from './lib/admin-edit-checkpoint';
 import { assertHearingLifecycleBoundary } from './lib/hearing-lifecycle-checkpoint';
@@ -158,6 +159,7 @@ async function main() {
     hearingLifecycleChecks,
     adminChecks,
     adminLifecycleChecks,
+    poaChecks,
     staffBoundary,
     rosterBaseline,
     staffChecks,
@@ -166,6 +168,7 @@ async function main() {
     const staffChecks = checkpoint !== 60 ? await assertStaffBoundary(current, profile) : [];
     return {
       checkpoint,
+      poaChecks: checkpoint >= 70 ? await assertPoaEditBoundary(current, profile) : [],
       clientBoundary: checkpoint >= 62,
       clientChecks: checkpoint >= 62 ? await assertClientContactBoundary(current, profile) : [],
       logoChecks: checkpoint >= 63 ? await assertClientLogoBoundary(current) : [],
@@ -2357,7 +2360,9 @@ async function main() {
         `${adminCourt26.exact} of ${adminCourt26.rows} exact`,
         adminCourt26.rows === '1' && adminCourt26.exact === '1',
       );
-      const poaResult = await reconcilePowersOfAttorney(historicalRosterDb);
+      const poaResult = await reconcilePowersOfAttorney(
+        historicalPoaClient(historicalRosterDb, checkpoint >= 70),
+      );
       record(
         'Powers of attorney reconcile to source and reviewed relationships',
         '752 source records; every value, typed field, reviewed member and evidence row exact',
@@ -2641,6 +2646,7 @@ async function main() {
     ...hearingChecks,
     ...adminChecks,
     ...adminLifecycleChecks,
+    ...poaChecks,
     ...hearingLifecycleChecks,
   ])
     checks.push({

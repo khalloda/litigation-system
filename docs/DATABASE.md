@@ -1188,3 +1188,22 @@ ACLs were checked without change. All restored logical sequence values match;
 45 log_cnt resets and the recorded equivalent schema ACL
 representation are portable-restore differences only. Actual complete sequences
 were not normalized. Earlier entries remain dated historical checkpoints.
+
+
+## Task 4.5 candidate database boundary — unactivated
+
+Candidate migration `20260915180000_poa_editing_lifecycle_boundary` is migration 70.
+Do not deploy it to the owner database under this implementation mandate. The
+candidate gateways `poa_edit_state` and `poa_edit_save` revalidate account, role,
+login eligibility, reset state, expiry and session version. Runtime direct table
+and sequence writes are revoked. Imported evidence and complete history/receipts
+are private and immutable. `npm run db:check` recognizes exact checkpoint 70,
+checks original POA evidence and replays current history, while checkpoint 69
+retains its historical meaning. The new canonical fixture checkpoint is limited
+to the positively identified `litigation_task45_canonical_prestate` copy.
+
+Writers lock the existing roster mutex, current and selected client
+IDs, aggregate and selected people deterministically. Both old and new clients
+must be unarchived; clearing cannot bypass that prerequisite. Fresh authority
+precedes receipt lookup. Exact committed retries acknowledge the original result;
+current state is read again. Current-version identical operations write nothing.

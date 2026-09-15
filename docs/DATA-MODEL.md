@@ -1346,3 +1346,23 @@ freezes per-work pre-69 versions plus exact old history/receipt digests. Only th
 historical partition receives missing-flag interpretation; new history retains
 and validates both flags. See the [candidate report](task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md).
 Actual owner schema remains 68 pending a later reviewed activation mandate.
+
+
+## Task 4.5 candidate storage — D64 (unactivated)
+
+Candidate migration 70 adds `row_version` and `is_archived` to powers of attorney,
+and `is_retired` / nullable `current_order` to their retained lawyer memberships.
+All 752 imported POAs start at version 1 and unarchived. Exactly the 87 reviewed
+links start current; the 717 relationship-evidence rows never seed assignments.
+Original old-column rows are frozen in `_migration.poa_edit_import`; typed views
+expose that original shape only for historical verification. Current membership
+retirement changes no original field, person, source key or recorded rule/order.
+New members have null imported provenance and append stable positions; re-addition
+reactivates their retained identity. No retired position is assigned to a different
+person. Unique POA/person membership prevents duplicates.
+
+`poa_edit_change` stores complete before/after POA and membership aggregates, actor
+and request identity. `poa_edit_submission` owns each successful version by actor,
+UUID and exact payload. One shared aggregate version covers edits and lifecycle.
+An immutable boundary anchors original rows to the already accepted release.
+The canonical empty profile is explicit. Actual owner migration remains 69.

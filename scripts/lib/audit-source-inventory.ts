@@ -1,3 +1,5 @@
+const POA_READ_SERVICE = 'src/lib/poa-query.ts';
+const POA_MUTATION_SERVICE = 'src/lib/poa-mutations.ts';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -124,6 +126,51 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/poa-query.ts',
+    'snapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/poa-query.ts',
+    'snapshot',
+    'bc3e197542de16afb154310da2809dde3f977ba1ced2828bfbc1b73d9ae1be5b',
+  ],
+  [
+    'src/lib/poa-query.ts',
+    'readPoas',
+    '30ee7acea42133bf464d76624d89164e4fc4d33a923338b49b5dcef8ba22079e',
+  ],
+  [
+    'src/lib/poa-query.ts',
+    'readPoas',
+    'df9b72f13e6c58e612967442707737b7857e53967415863ec92d9e05a022d570',
+  ],
+  [
+    'src/lib/poa-query.ts',
+    'readPoas',
+    '61f84414d13bfcb18aed77b7bb5b92b05345adcb553954fb843765729ab552b2',
+  ],
+  [
+    'src/lib/poa-query.ts',
+    'readPoa',
+    '54ef423e8a7388067a01b0e52e5a2c596675fde9798feedcf88797ff931e2bb3',
+  ],
+  [
+    'src/lib/poa-mutations.ts',
+    'readPoaMutation',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/poa-mutations.ts',
+    'readPoaMutation',
+    'ed10dc212759635ca5ef988a002b828946f6d1b77f0bd209faa5e83ac5084b90',
+  ],
+  [
+    'src/lib/poa-mutations.ts',
+    'mutatePoa',
+    'a76144c8daf22bc04ee027e36333a249958fcdd221a71957367db5cadc26ceef',
+  ],
   [
     'src/lib/admin-lifecycle.ts',
     'readAdminLifecycle',
@@ -1938,6 +1985,19 @@ export function auditRuntimeSourceFailures(
         ADMIN_LIFECYCLE_SHA256
     )
       failures.add('Administrative lifecycle closure differs from reviewed inventory');
+    const isPoaMutationService = source.path === POA_MUTATION_SERVICE;
+    if (
+      isPoaMutationService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        '72c664716b1a110ddfdc38e73a0ee924c6a8eb3288f219140f55d402296f596d'
+    )
+      failures.add('POA mutation closure differs from reviewed inventory');
+    if (
+      source.path === 'src/lib/poa-mutation-input.ts' &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        'd9383fdac0d774aa91157c37c80cb606b8ece5441760675a11bcd9ba60fd1c5c'
+    )
+      failures.add('POA input differs from reviewed inventory');
     const isAdminMutationService = source.path === ADMIN_MUTATION_SERVICE;
     if (
       isAdminMutationService &&
@@ -1991,6 +2051,7 @@ export function auditRuntimeSourceFailures(
       isLogoMutationService ||
       isMatterMutationService ||
       isHearingMutationService ||
+      isPoaMutationService ||
       isAdminMutationService ||
       isMatterLifecycleService ||
       isHearingLifecycleService ||
@@ -1999,6 +2060,13 @@ export function auditRuntimeSourceFailures(
     const isStaffReadService = source.path === STAFF_READ_SERVICE;
     const isClientReadService = source.path === CLIENT_READ_SERVICE;
     const isMatterReadService = source.path === MATTER_READ_SERVICE;
+    const isPoaReadService = source.path === POA_READ_SERVICE;
+    if (
+      isPoaReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        '9becbabff998b972425475341a9cf1db178a0fc553dce54474d3999ef2103eca'
+    )
+      failures.add('POA read closure differs from reviewed inventory');
     const isAdminReadService = source.path === ADMIN_READ_SERVICE;
     if (
       isAdminReadService &&
@@ -2124,6 +2192,7 @@ export function auditRuntimeSourceFailures(
                   isLogoMutationService ||
                   isMatterMutationService ||
                   isHearingMutationService ||
+                  isPoaMutationService ||
                   isAdminMutationService ||
                   isMatterLifecycleService ||
                   isHearingLifecycleService ||
@@ -2340,7 +2409,8 @@ export function auditRuntimeSourceFailures(
               isClientReadService ||
               isMatterReadService ||
               isHearingReadService ||
-              isAdminReadService
+              isAdminReadService ||
+              isPoaReadService
             ) ||
             !reviewedSql
           ) {
@@ -2453,6 +2523,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'mutatePoa',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'mutateAdminLifecycle',

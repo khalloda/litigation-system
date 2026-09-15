@@ -607,3 +607,23 @@ The documentation child's SHA and publication outcome are recorded externally
 after verification. Stop for independent correction/closure/publication review;
 Task 4.5 remains unstarted. No migration, rebuild, restart, login or database test
 is part of this documentation continuation.
+
+
+## Task 4.5 combined candidate — 15 September 2026
+
+The owner adopted D64 and authorized the complete powers-of-attorney candidate:
+paged list/search/filter/detail, creation/editing with current lawyer selections,
+and Administrator-only recoverable archive/restore. All four roles can read;
+Administrator and Litigation Assistant can edit. Imported evidence remains separate
+from current client and lawyer selections. This candidate is based directly on
+`e747e0efbdadb92892e933d768924e3e287e9a9a`.
+
+Migration 70 is a local, unactivated candidate tested only on disposable copies.
+The owner database stays at migration 69 and the accepted Task 4.4 app remains in
+place. Task 4.4 stays checked; Task 4.5 stays unchecked pending independent
+implementation review and later owner acceptance. No push, activation, Task 4.6,
+movement workflow or reporting work is included. The dated earlier checkpoints
+above retain their original scope.
+
+See the [Task 4.5 implementation report](task-reports/2026-09-15-task-4-5-combined-implementation.md)
+and [acceptance matrix](testing/task-4-5-combined-acceptance-matrix.md).
