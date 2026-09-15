@@ -53,3 +53,32 @@ exact artifact evidence.
 
 See the [implementation report](../task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md)
 for commands, scope, failed-attempt explanations and the independent-review stop.
+
+
+## Owner acceptance and local activation — 15 September 2026
+
+The owner accepted Phase 3 at `2966570c368ef484b4d32c77d5bd4c971c19ff4f` and its
+[independent PASS review](../reviews/2026-09-15-task-4-4-phase-3-independent-review.md).
+The combined mandate authorized protected backup/restore/rehearsal, exact actual
+migration 69, accepted-app activation and ordinary publication of one eight-document
+child over the accepted source. Overall Task 4.4 remains unchecked.
+
+Actual migration 69 is verified: 137 historical invariants and 15 setup checks;
+all 123 old-table projections, original account/session/credential state and all
+48 full sequence vectors remain exact. Two false archive flags, the exact source-derived
+private boundary, reviewed named catalog changes, two audit registrations and
+the new ledger entry are the only permitted delta. The same new backup passed
+135 pre-69 and 137 post-69 invariants plus 15 setup checks on the owned restore.
+Four independent lifecycle transitions and all four confirmation/Cancel flows
+passed focused authenticated checks on that restore using the final accepted build.
+
+Build `LyN77RMhXZbOvG44OcUhg` runs on actual `http://127.0.0.1:3000`.
+Actual anonymous RTL/assets/protected-route/mobile smoke passed. Actual authenticated
+observation is pending: interactive browser tools failed kernel initialization,
+including a reset/retry; no owner cookie was fabricated, password reset or business
+record changed. The accepted exhaustive implementation evidence is reused with
+its original limits, not represented as a new full run. No screen-reader claim.
+
+See the [acceptance/activation report](../task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md)
+and external activation/publication/delivery receipts. Stop for independent review;
+all existing checkbox lines, D1–D63 and governance remain unchanged.

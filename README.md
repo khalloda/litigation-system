@@ -3,18 +3,21 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Current checkpoint — 15 September 2026:** Khaled Helmy accepted the
-[combined Phase 2 PASS review and authenticated supplement](docs/reviews/2026-09-15-task-4-4-phase-2-activation-publication-independent-review.md)
-at published `f05787471812c8fb2bd03d31bc44614dad81a8d2` and explicitly adopted D63.
-Task 4.4 Phase 3 implements Administrator-only archive/restore for works and
-individual steps as one local candidate, pending independent review. Migration
-69 and the candidate production build were tested only on separate disposable
-copies; the owner database remains at migration 68 and accepted Phase 2 build
-`schZeUhP0RGWF_DHI827w` remains on loopback port 3000.
-See the [Phase 3 report](docs/task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md) and
-[acceptance matrix](docs/testing/task-4-4-phase3-acceptance-matrix.md).
-Stop for independent Phase 3 review. Overall Task 4.4 remains unchecked.
-No owner migration 69, accepted-app activation, push or later task is authorized.
+**Current checkpoint — 15 September 2026:** Khaled Helmy accepted Task 4.4
+Phase 3 at `2966570c368ef484b4d32c77d5bd4c971c19ff4f` and its
+[independent PASS review](docs/reviews/2026-09-15-task-4-4-phase-3-independent-review.md). Reviewed migration 69 is verified on the
+actual local development database after a fresh protected backup, isolated
+restore/rehearsal and exact preservation checks. Accepted build
+`LyN77RMhXZbOvG44OcUhg` is running at `http://127.0.0.1:3000`.
+The same build passed focused authenticated checks on the isolated restore;
+actual anonymous smoke passed. Actual authenticated observation remains pending
+because the interactive browser tools could not initialize; no owner session was
+fabricated or account changed. See the [acceptance/activation report](docs/task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md)
+and [matrix](docs/testing/task-4-4-phase3-acceptance-matrix.md). The single documentation child and accepted source are
+authorized for ordinary publication; the external publication receipt records
+the observed result. Stop for independent combined review. All existing TASKS
+checkboxes remain unchanged; overall Task 4.4 is unchecked and no later task or
+Ubuntu deployment has started.
 
 **Earlier accepted checkpoints — 14 September 2026:** Khaled Helmy accepted Task 4.2 Phase 1
 at `2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the preserved

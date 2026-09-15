@@ -559,7 +559,7 @@ The external publication receipt records the authorized push after this
 documentation commit. Overall Task 4.4 remains unchecked. Archive/restore,
 exports, notifications, later tasks and Ubuntu deployment remain unstarted.
 
-## Task 4.4 Phase 3 candidate — D63, 15 September 2026
+## Task 4.4 Phase 3 — D63 accepted and locally active, 15 September 2026
 
 The owner accepted the [combined Phase 2 PASS](reviews/2026-09-15-task-4-4-phase-2-activation-publication-independent-review.md) and its
 authenticated supplement at `f05787471812c8fb2bd03d31bc44614dad81a8d2`.
@@ -570,5 +570,12 @@ remains independent. Current/archived/all work and step filters are separate;
 reports and historical relationship totals retain all records. Four Arabic
 confirmation flows recheck subject, version, parent eligibility and displayed facts.
 See the [Phase 3 report](task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md) and
-[matrix](testing/task-4-4-phase3-acceptance-matrix.md). Candidate only: the owner
-remains at migration 68/accepted Phase 2; overall Task 4.4 remains unchecked.
+[matrix](testing/task-4-4-phase3-acceptance-matrix.md). The owner accepted
+`2966570c368ef484b4d32c77d5bd4c971c19ff4f` and the independent PASS review. Reviewed
+migration 69 is verified on actual development and build `LyN77RMhXZbOvG44OcUhg`
+runs at `http://127.0.0.1:3000` after protected recovery and isolated rehearsal.
+Actual anonymous checks and focused authenticated isolated checks passed;
+actual authenticated observation is pending because interactive browser tools
+failed initialization. The [acceptance/activation report](task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md)
+and external publication receipt establish the combined dated outcome.
+Overall Task 4.4 remains unchecked; no later task or Ubuntu deployment began.
