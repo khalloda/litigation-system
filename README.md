@@ -3,21 +3,26 @@
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 
-**Current checkpoint — 15 September 2026:** Khaled Helmy accepted Task 4.4
-Phase 3 at `2966570c368ef484b4d32c77d5bd4c971c19ff4f` and its
-[independent PASS review](docs/reviews/2026-09-15-task-4-4-phase-3-independent-review.md). Reviewed migration 69 is verified on the
-actual local development database after a fresh protected backup, isolated
-restore/rehearsal and exact preservation checks. Accepted build
-`LyN77RMhXZbOvG44OcUhg` is running at `http://127.0.0.1:3000`.
-The same build passed focused authenticated checks on the isolated restore;
-actual anonymous smoke passed. Actual authenticated observation remains pending
-because the interactive browser tools could not initialize; no owner session was
-fabricated or account changed. See the [acceptance/activation report](docs/task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md)
-and [matrix](docs/testing/task-4-4-phase3-acceptance-matrix.md). The single documentation child and accepted source are
-authorized for ordinary publication; the external publication receipt records
-the observed result. Stop for independent combined review. All existing TASKS
-checkboxes remain unchanged; overall Task 4.4 is unchecked and no later task or
-Ubuntu deployment has started.
+**Current documented checkpoint — 15 September 2026:** Khaled Helmy accepted
+Task 4.4 locally after the existing-evidence closure checks and P3-A1 correction.
+Phase 1/R1, corrected D62 editing and D63 archive/restore are complete within
+their recorded scope. Actual migration 69 and accepted source `2966570`, build
+`LyN77RMhXZbOvG44OcUhg`, were activated on loopback port 3000 and published
+through `b39a7a134a4da9f22ff06b28a68930814f2ba720`.
+The later legitimate Administrator observation passed in its separate supplement;
+normal login bookkeeping is distinguished from unchanged read/navigation/Cancel
+state. The original activation report's then-pending observation remains historical.
+The [qualified combined review](docs/reviews/2026-09-15-task-4-4-phase-3-activation-publication-independent-review.md)
+passes operational evidence within stated limits and records P3-A1 at that earlier
+checkpoint. The [final local acceptance record](docs/task-reports/2026-09-15-task-4-4-final-acceptance.md)
+and [matrix addendum](docs/testing/task-4-4-phase3-acceptance-matrix.md#final-local-acceptance-and-p3-a1-correction--15-september-2026)
+record the correction and closure. Only the overall Task 4.4 checkbox changes;
+all other task checkboxes remain as before. Earlier dated phase-only, pending and
+unchecked statements below describe their historical checkpoints. This documentation
+child's exact SHA and ordinary publication result belong to the external receipts.
+Stop for independent correction/closure/publication review. Task 4.5 remains
+unstarted; Ubuntu deployment and final Access cutover remain separate. These dated
+activation records do not claim continuous runtime health.
 
 **Earlier accepted checkpoints — 14 September 2026:** Khaled Helmy accepted Task 4.2 Phase 1
 at `2f8820a3053ab65a60ee183882cbd6a2462559bc`, based on the preserved

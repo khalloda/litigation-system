@@ -579,3 +579,31 @@ actual authenticated observation is pending because interactive browser tools
 failed initialization. The [acceptance/activation report](task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md)
 and external publication receipt establish the combined dated outcome.
 Overall Task 4.4 remains unchecked; no later task or Ubuntu deployment began.
+
+
+## Latest Task 4.4 final local acceptance — 15 September 2026
+
+Khaled Helmy accepted Task 4.4 locally after the existing-evidence reconciliation
+and P3-A1 documentation correction. Phase 1/R1 reads and normalized ID search,
+corrected D62 work/step editing, and D63 independent Administrator archive/restore
+are complete within their approved contracts. Actual migration 69 and accepted
+source `2966570`, build `LyN77RMhXZbOvG44OcUhg`, were activated locally and
+published through `b39a7a134a4da9f22ff06b28a68930814f2ba720`. The later
+legitimate Administrator authenticated supplement passed; the original report's
+then-pending observation remains a correct historical record.
+
+The [qualified combined review](reviews/2026-09-15-task-4-4-phase-3-activation-publication-independent-review.md)
+passes operational evidence with stated limits and preserves its original P3-A1
+finding. The [final acceptance record](task-reports/2026-09-15-task-4-4-final-acceptance.md)
+and [matrix addendum](testing/task-4-4-phase3-acceptance-matrix.md#final-local-acceptance-and-p3-a1-correction--15-september-2026)
+record the two checkpoint corrections, requirement-to-evidence closure and the
+single overall 4.4 checkbox transition. Earlier phase-only, pending-authentication
+and unchecked statements above are historical, not the latest acceptance status.
+Business contracts, D1–D63 and all other task checkboxes are unchanged. Future
+report/export screens remain Task 6. No production, off-machine recovery,
+screen-reader-speech or full accessibility-conformance claim is made.
+
+The documentation child's SHA and publication outcome are recorded externally
+after verification. Stop for independent correction/closure/publication review;
+Task 4.5 remains unstarted. No migration, rebuild, restart, login or database test
+is part of this documentation continuation.

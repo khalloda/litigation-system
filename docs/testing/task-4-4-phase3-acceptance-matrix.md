@@ -82,3 +82,43 @@ its original limits, not represented as a new full run. No screen-reader claim.
 See the [acceptance/activation report](../task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md)
 and external activation/publication/delivery receipts. Stop for independent review;
 all existing checkbox lines, D1–D63 and governance remain unchanged.
+
+
+## Final local acceptance and P3-A1 correction — 15 September 2026
+
+Khaled Helmy accepted the qualified Phase 3 migration 69/activation/publication
+review and legitimate authenticated supplement, with their stated limits, and
+authorized final local Task 4.4 acceptance after evidence reconciliation and the
+P3-A1 correction. The [final acceptance record](../task-reports/2026-09-15-task-4-4-final-acceptance.md)
+contains the six-row requirement-to-evidence closure table and all limitations.
+The [qualified review](../reviews/2026-09-15-task-4-4-phase-3-activation-publication-independent-review.md)
+retains its original verdict and open finding at b39a7a1 verbatim.
+
+| Closure gate | Result and attribution |
+| --- | --- |
+| Phase 1/R1 | Accepted corrected 1df5383 and publication fbf47d7; four-role reads, filters/history and both-digit PostgreSQL/legacy-ID search; original bindings and limitations reused. |
+| Corrected D62 | Accepted 90bfc66/f057874; three writers/Lawyer reads, fixed parents, value preservation, version/no-op/retry/audit/history; P2-R1 current/source separation and P2-N1 dated erratum remain closed. |
+| D63 | Accepted 2966570 and exact candidate PASS; independent Administrator work/step archive/restore, parent prerequisites, all-role filtered reads, full history/order/context, deliberate Arabic confirmation, non-cascading report inclusion and permanent/concurrency protection. |
+| Actual migration/activation/publication | Reused original protected recovery/rehearsal/actual69 evidence and b39a7a1 publication, assessed by the qualified review; no new operational run. |
+| Authenticated supplement | Later legitimate Administrator read/navigation/load/Cancel observation closes the earlier bounded gap. Actual restore unavailable because all records current; exact-build isolated proof retained. Login audit 868/869 and two table-counter increments are distinct from 48 unchanged PostgreSQL sequences. Post-login/observation public states exact; private equality retains reported-proof limits. |
+| P3-A1 and new document gates | Both opening checkpoint paragraphs and Phase 3 links corrected exactly; README/TASKS/PRD current status reconciled. Whole preceding 10,813-byte matrix remains an exact prefix; imported review verbatim; only overall 4.4 checkbox changes, all 85 others exact. |
+
+All completed Task 4.4 requirements reconcile with accepted evidence; no material
+unresolved scope gap was found. Overall local Task 4.4 is owner-accepted and its
+single existing checkbox is checked. P3-A1 is corrected in the new record,
+pending independent review of this documentation child and publication.
+
+New activation Windows counts were 135/137 plus 15 setup; 119 canonical, 448 permission,
+nine concurrency overlaps, 13 corruption cases and ID/D62/browser evidence are
+reused, not new runs here. The reviewer checked 1,120 received members, complete
+commit/tree/patch, 666 source and 12 helper bindings and supplied public states;
+no new reviewer Windows/database/browser execution. Private recovery/generated
+runtime/source exceptions, the scoped 6,988-file claim and two omitted unchanged
+D59-bearing bodies remain explicit. No off-machine recovery, production,
+screen-reader speech or full accessibility-conformance claim. Original pending-auth
+and phase-only status above remain accurate historical records.
+
+The child's exact SHA/push outcome belongs to external publication/delivery
+receipts after verification. No runtime/database/account/credential or business
+operation occurs in this documentation continuation. Task 4.5 remains unstarted;
+stop for independent correction/closure/publication review.

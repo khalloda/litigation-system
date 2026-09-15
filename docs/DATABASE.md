@@ -5,13 +5,18 @@ You need Docker installed and running; nothing else.
 
 ---
 
-**Current local checkpoint — 15 September 2026:** actual migration 68 and
-accepted Task 4.4 Phase 2 build `schZeUhP0RGWF_DHI827w` are verified and running on
-loopback port 3000. Use the frozen artifact/start receipt in the
-[activation report](task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md); the dated commands and milestones
-below do not authorize a new deployment or reset. The checkout now contains
-Task 4.4 Phase 3 candidate migration 69, tested only on disposable copies and
-pending independent review. Do not deploy it to the owner database.
+**Current documented checkpoint — 15 September 2026:** actual migration 69
+was completed and accepted Task 4.4 Phase 3 source `2966570` was activated from
+its frozen artifact, build `LyN77RMhXZbOvG44OcUhg`, on loopback port 3000.
+That accepted source and its activation record were published through `b39a7a1`.
+Use the frozen artifact/start evidence in the
+[Phase 3 activation report](task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md).
+The later [combined independent review](reviews/2026-09-15-task-4-4-phase-3-activation-publication-independent-review.md)
+and [final acceptance record](task-reports/2026-09-15-task-4-4-final-acceptance.md)
+record the separate authenticated supplement, P3-A1 correction and Task 4.4 closure.
+These are dated activation and review records, not continuous runtime monitoring.
+Earlier pending-migration milestones below are historical and do not authorize
+repeating a deployment or reset.
 
 ## Everyday commands
 

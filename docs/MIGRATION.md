@@ -5,12 +5,17 @@ Move the authoritative Access data to PostgreSQL with **provable** zero loss.
 **Core rule: never delete, clean or fix anything during extraction or load.**
 Data that cannot be mapped is *quarantined*, not dropped.
 
-**Current checkpoint — 15 September 2026:** reviewed migration 68 is complete
-on the actual local development database after protected recovery and isolated
-rehearsal. Its dated activation record is appended below and the
-[report](task-reports/2026-09-14-task-4-4-phase-2-acceptance-activation.md) records the permitted delta. Earlier pending
-milestones remain historical. Candidate 69 is tested only on owned disposable
-copies; applying it to the owner database is prohibited in this phase.
+**Current documented checkpoint — 15 September 2026:** reviewed migration 69
+was completed on the actual local development database after protected recovery,
+isolated restore/rehearsal and exact preservation checks. Accepted Phase 3 source
+`2966570`, activated as build `LyN77RMhXZbOvG44OcUhg`, was published through `b39a7a1`.
+The [Phase 3 activation report](task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md)
+records the permitted migration delta and frozen artifact. The later
+[combined independent review](reviews/2026-09-15-task-4-4-phase-3-activation-publication-independent-review.md)
+and [final acceptance record](task-reports/2026-09-15-task-4-4-final-acceptance.md)
+record the authenticated supplement, P3-A1 correction and Task 4.4 closure.
+The dated milestones below retain their original historical scope; their earlier
+pending-migration restrictions do not describe the completed migration 69 checkpoint.
 
 ## Historical Task 4.2 Phase 2 forward boundary — pending migration 64 at 12 September
 

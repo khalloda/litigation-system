@@ -6,21 +6,26 @@ Tick a box only when it is committed to git and actually works.
 Do not jump ahead. Do not batch several tasks together. If a task turns out to
 be bigger than expected, split it and tell the owner.
 
-**Current checkpoint — 15 September 2026:** Khaled Helmy accepted Task 4.4
-Phase 3 at `2966570c368ef484b4d32c77d5bd4c971c19ff4f` and its
-[independent PASS review](docs/reviews/2026-09-15-task-4-4-phase-3-independent-review.md). Reviewed migration 69 is verified on the
-actual local development database after a fresh protected backup, isolated
-restore/rehearsal and exact preservation checks. Accepted build
-`LyN77RMhXZbOvG44OcUhg` is running at `http://127.0.0.1:3000`.
-The same build passed focused authenticated checks on the isolated restore;
-actual anonymous smoke passed. Actual authenticated observation remains pending
-because the interactive browser tools could not initialize; no owner session was
-fabricated or account changed. See the [acceptance/activation report](docs/task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md)
-and [matrix](docs/testing/task-4-4-phase3-acceptance-matrix.md). The single documentation child and accepted source are
-authorized for ordinary publication; the external publication receipt records
-the observed result. Stop for independent combined review. All existing TASKS
-checkboxes remain unchanged; overall Task 4.4 is unchecked and no later task or
-Ubuntu deployment has started.
+**Current documented checkpoint — 15 September 2026:** Khaled Helmy accepted
+Task 4.4 locally after the existing-evidence closure checks and P3-A1 correction.
+Phase 1/R1, corrected D62 editing and D63 archive/restore are complete within
+their recorded scope. Actual migration 69 and accepted source `2966570`, build
+`LyN77RMhXZbOvG44OcUhg`, were activated on loopback port 3000 and published
+through `b39a7a134a4da9f22ff06b28a68930814f2ba720`.
+The later legitimate Administrator observation passed in its separate supplement;
+normal login bookkeeping is distinguished from unchanged read/navigation/Cancel
+state. The original activation report's then-pending observation remains historical.
+The [qualified combined review](docs/reviews/2026-09-15-task-4-4-phase-3-activation-publication-independent-review.md)
+passes operational evidence within stated limits and records P3-A1 at that earlier
+checkpoint. The [final local acceptance record](docs/task-reports/2026-09-15-task-4-4-final-acceptance.md)
+and [matrix addendum](docs/testing/task-4-4-phase3-acceptance-matrix.md#final-local-acceptance-and-p3-a1-correction--15-september-2026)
+record the correction and closure. Only the overall Task 4.4 checkbox changes;
+all other task checkboxes remain as before. Earlier dated phase-only, pending and
+unchecked statements below describe their historical checkpoints. This documentation
+child's exact SHA and ordinary publication result belong to the external receipts.
+Stop for independent correction/closure/publication review. Task 4.5 remains
+unstarted; Ubuntu deployment and final Access cutover remain separate. These dated
+activation records do not claim continuous runtime health.
 
 **Earlier checkpoint — 14 September 2026:** Phase 1 remains accepted. Khaled
 accepted Phase 2 on 12 September at `6771218164c992781902374efb62f0b2f54b2a20`
@@ -2227,7 +2232,7 @@ than assuming one rule for every workflow. Test with real volumes.
       under the successful-activation mandate. Publication was subsequently
       accepted at `98ba737300f1c0cefce361cb3da4e250b11b71d2`; its exact PASS
       review is preserved above. Ubuntu deployment remains Stage 7.
-- [ ] **4.4 Administrative works + task steps** — the only area Paralegals edit
+- [x] **4.4 Administrative works + task steps** — the only area Paralegals edit
       Phase 1 read-only list/search/filters/detail/step history owner-accepted
       on 14 September 2026 at `1df53838063b1d9466bd2da0582c7ffc9b7bbf85`.
       All four usable authenticated roles view.
@@ -2250,14 +2255,21 @@ than assuming one rule for every workflow. Test with real volumes.
       Khaled accepted D63 Phase 3 at `2966570c368ef484b4d32c77d5bd4c971c19ff4f`
       and its independent PASS review. Actual migration 69 is verified after
       protected backup/restore and isolated rehearsal; the accepted build
-      `LyN77RMhXZbOvG44OcUhg` runs at 127.0.0.1:3000. See the
+      `LyN77RMhXZbOvG44OcUhg` was activated at 127.0.0.1:3000. See the
       [acceptance/activation report](docs/task-reports/2026-09-15-task-4-4-phase-3-acceptance-activation.md)
       and [matrix](docs/testing/task-4-4-phase3-acceptance-matrix.md).
-      Actual anonymous and authenticated isolated smoke passed; actual authenticated
-      observation remains pending because interactive browser tools failed to initialize.
-      The external publication receipt records the authorized ordinary push.
-      Stop for independent combined review. Overall Task 4.4 stays unchecked;
-      later tasks and Ubuntu deployment remain outside this mandate.
+      The later legitimate Administrator authenticated supplement passed; it
+      preserves the original report's earlier pending observation and separates
+      normal login bookkeeping from unchanged navigation/Cancel state.
+      Khaled accepted the qualified combined operational review and authorized
+      overall local closure after evidence reconciliation and P3-A1 correction.
+      The two stale DATABASE/MIGRATION entry points are corrected; all three
+      phases and Task 4.4 are now locally owner-accepted within the recorded limits.
+      See the [final acceptance record](docs/task-reports/2026-09-15-task-4-4-final-acceptance.md)
+      and [qualified review](docs/reviews/2026-09-15-task-4-4-phase-3-activation-publication-independent-review.md).
+      This single documentation child's final publication outcome belongs to the
+      external receipt. Stop for independent correction/closure/publication review.
+      Task 4.5 is unstarted; later work and Ubuntu deployment are separate.
 - [ ] **4.5 Powers of attorney**
 - [ ] **4.6 Documents** — including the optional `mfiles_id` field
 - [ ] **4.7 Fee letters** — with linked matters
