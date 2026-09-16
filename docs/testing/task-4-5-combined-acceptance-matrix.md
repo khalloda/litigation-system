@@ -58,3 +58,24 @@ Earlier448 permission decisions,123 canonical checks, exhaustive concurrency,
 corruption/retry and correction green02 evidence are source-bound reuse, not fresh
 counts for this operation. No screen-reader speech or full accessibility claim.
 Only the existing Task4.5 checkbox changes; the other85 lines remain exact.
+
+
+## T45-A1 correction and local closure — 16 September 2026
+
+Correction `b7fc7c7a6afc412ad5a8dc42d72ef2109380b1fb`; stable build `WvgH-6nuin9o1QPJrPst4`.
+Locally accepted/verified; final independent review pending. The original A1
+observation above remains historical. All 86 task checkbox lines stay exact.
+
+| Evidence | Result and boundary |
+| --- | --- |
+| Original defect | Reproduced on unchanged production build: client325 → Clear gives bare URL/752 results but stale325, then Search reapplies325 |
+| Fresh corrected navigation | Four roles; 263 observation records, not independent-test counts; individual filters, missing/unknown, intersections, text/Western/Arabic-Indic q, Clear/Search, same-URL drafts, repeated Clear, paging, history, detail/edit and Administrator archive/restore Cancel |
+| Independent expected results | Raw database snapshot plus test-side filters/order/page IDs and count; production list/parser/query builder not used as oracle |
+| UI preservation | 320px Arabic RTL/no overflow, keyboard Tab/Enter with focus contrast/visibility; native GET/clear-anchor HTML retained; ordinary no-JS loading limitation unchanged |
+| Existing mutation/security proof | Exact unchanged-source reuse of R1 native invalid number/date recovery, CRUD/current lawyers/lifecycle,448 permission/123 canonical and backend/retry/concurrency/corruption evidence; not freshly rerun |
+| Database | Owner and final disposable141 historical/15 setup gates;70 completed, zero unfinished; no new DDL |
+| Recovery/preservation | Fresh protected70 dump restored on distinct owned cluster;128 table digests/all48 full owner sequences, ledger/ACLs, accounts/credentials/config/54logos exact |
+| Corrected actual app | Stable artifact, loopback3000; anonymous and legitimate Administrator read/navigation/Cancel PASS; no owner business submission; no fabricated restore |
+| Scope/stop | Two bounded commits; ordinary publication in external receipt; final independent review pending; no4.6/Ubuntu |
+
+See [A1 closure report](../task-reports/2026-09-16-task-4-5-a1-closure.md).

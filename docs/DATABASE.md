@@ -1,6 +1,25 @@
 # The database — running it, checking it, fixing it
 
-## Current Task 4.5 local acceptance and activation — 16 September 2026
+## Current Task 4.5 A1 correction and local closure — 16 September 2026
+
+T45-A1 is corrected and locally verified at `b7fc7c7a6afc412ad5a8dc42d72ef2109380b1fb`.
+Clear now resets every visible filter and discards unsent drafts, including at the
+bare list URL; the next Search cannot reapply cleared selections. Four-role
+production-browser navigation proof and the full project checks passed.
+The corrected stable build `WvgH-6nuin9o1QPJrPst4` is active on
+`http://127.0.0.1:3000`. Anonymous and existing-session read/Cancel checks passed.
+Migration 70 was freshly verified with 141 historical and 15 setup checks;
+**no migration was applied in this correction**. Owner state and credentials stayed exact.
+
+Task 4.5 is locally accepted/closed under the owner's combined mandate;
+**final independent review is pending**. All 86 checkbox lines remain unchanged:
+4.4 and 4.5 checked, 4.6 unchecked. See the [A1 closure report](task-reports/2026-09-16-task-4-5-a1-closure.md)
+and [prior readiness review](reviews/2026-09-16-task-4-5-cd89148-closure-readiness-review.md).
+The documentation child and ordinary publication are identified in external
+post-publication receipts. Earlier findings and checkpoints below remain history.
+No Task 4.6, Ubuntu deployment or Access cutover.
+
+## Historical Task 4.5 local acceptance and activation — 16 September 2026
 
 Khaled Helmy accepted the complete D64 powers-of-attorney module at `e4806160bf70184526e3a8bc10e18b0d7e6f953f`
 and the [independent correction PASS](reviews/2026-09-16-task-4-5-e480616-independent-correction-review.md), closing T45-R1 and T45-N1.
