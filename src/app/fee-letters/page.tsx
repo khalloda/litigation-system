@@ -10,6 +10,7 @@ import {
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
 import { FeeLetterFields } from './fee-letter-fields';
+import { ListFilterClear } from '../list-filter-clear';
 import styles from '../staff/staff.module.css';
 import local from '../powers-of-attorney/poa.module.css';
 export const metadata = { title: t.feeLettersModule.title };
@@ -57,7 +58,12 @@ export default async function Page({
         )}
       </header>
       <section className={styles.panel}>
-        <form method="get" action="/fee-letters">
+        <form
+          key={JSON.stringify(params)}
+          method="get"
+          action="/fee-letters"
+          data-filter-form="/fee-letters"
+        >
           <div className={local.fields}>
             <div className={styles.field}>
               <label htmlFor="fee-q">{t.feeLettersModule.search}</label>
@@ -112,9 +118,19 @@ export default async function Page({
             <button className={styles.button} type="submit">
               {t.common.search}
             </button>
-            <Link className={styles.link} href="/fee-letters">
-              {t.feeLettersModule.clear}
-            </Link>
+            <ListFilterClear
+              className={styles.link}
+              href="/fee-letters"
+              label={t.feeLettersModule.clear}
+              defaults={{
+                q: '',
+                client: 'all',
+                covered: 'all',
+                referencing: 'all',
+                archive: 'current',
+                mfiles: 'all',
+              }}
+            />
           </div>
         </form>
       </section>

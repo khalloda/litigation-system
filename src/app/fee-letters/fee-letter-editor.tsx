@@ -284,17 +284,24 @@ export function CoveredMatterEditor({
     [matter, setMatter] = useState(''),
     [result, setResult] = useState<FeeLetterActionResult | null>(null),
     [pending, start] = useTransition();
-  const feedback = useRef<HTMLDivElement>(null);
+  const feedback = useRef<HTMLDivElement>(null),
+    frozen = useRef<{ operation: FeeLetterOperation; payload: string } | null>(null),
+    uncertain = result?.code === 'generic',
+    disabled = pending || uncertain;
   const current = record.covered.filter((x) => !x.retired).map((x) => x.matterId);
+  useEffect(() => {
+    if (result) feedback.current?.focus();
+  }, [result]);
   function send(
-    operation: FeeLetterOperation,
-    membershipId: number | null,
-    matterId: number | null,
+    operation?: FeeLetterOperation,
+    membershipId?: number | null,
+    matterId?: number | null,
   ) {
-    const form = new FormData();
-    form.set(
-      'payload',
-      JSON.stringify({
+    const retry = frozen.current;
+    if (uncertain && !retry) return;
+    const exact = retry ?? {
+      operation: operation!,
+      payload: JSON.stringify({
         operation,
         id: record.id,
         version: record.version,
@@ -303,15 +310,23 @@ export function CoveredMatterEditor({
         related: { membershipId, matterId },
         facts: null,
       }),
-    );
+    };
+    frozen.current = exact;
+    const form = new FormData();
+    form.set('payload', exact.payload);
     start(async () => {
-      const r = await (operation === 'covered-add'
-        ? addCoveredMatterAction(form)
-        : operation === 'covered-retire'
-          ? retireCoveredMatterAction(form)
-          : restoreCoveredMatterAction(form));
-      setResult(r);
-      if (r.kind === 'success') window.location.reload();
+      try {
+        const r = await (exact.operation === 'covered-add'
+          ? addCoveredMatterAction(form)
+          : exact.operation === 'covered-retire'
+            ? retireCoveredMatterAction(form)
+            : restoreCoveredMatterAction(form));
+        setResult(r);
+        if (r.kind === 'success') window.location.reload();
+        else if (r.code !== 'generic') frozen.current = null;
+      } catch {
+        setResult({ kind: 'error', code: 'generic', message: t.feeLettersModule.errors.generic });
+      }
     });
   }
   return (
@@ -327,7 +342,7 @@ export function CoveredMatterEditor({
             <button
               className={styles.link}
               type="button"
-              disabled={pending}
+              disabled={disabled}
               onClick={() => send(x.retired ? 'covered-restore' : 'covered-retire', x.id, null)}
             >
               {x.retired ? t.feeLettersModule.restoreCovered : t.feeLettersModule.retireCovered}
@@ -341,7 +356,7 @@ export function CoveredMatterEditor({
           id="covered-matter"
           value={matter}
           onChange={(e) => setMatter(e.target.value)}
-          disabled={pending}
+          disabled={disabled}
         >
           <option value="">{t.feeLettersModule.chooseMatter}</option>
           {s.matters
@@ -356,12 +371,17 @@ export function CoveredMatterEditor({
       <button
         className={styles.button}
         type="button"
-        disabled={pending || !matter}
+        disabled={disabled || !matter}
         onClick={() => send('covered-add', null, Number(matter))}
       >
         {t.feeLettersModule.addCovered}
       </button>
       <Feedback result={result} reload={reload} feedback={feedback} />
+      {uncertain ? (
+        <button className={styles.button} type="button" disabled={pending} onClick={() => send()}>
+          {pending ? t.feeLettersModule.pending : t.feeLettersModule.retry}
+        </button>
+      ) : null}
     </section>
   );
 }
@@ -376,32 +396,50 @@ export function MatterFeeReferenceEditor({
     [selected, setSelected] = useState(current ? String(current) : ''),
     [result, setResult] = useState<FeeLetterActionResult | null>(null),
     [pending, start] = useTransition();
-  const feedback = useRef<HTMLDivElement>(null);
+  const feedback = useRef<HTMLDivElement>(null),
+    frozen = useRef<{ operation: MatterFeeReferenceOperation; payload: string } | null>(null),
+    uncertain = result?.code === 'generic',
+    currentName = s.feeLetters.find((f) => f.id === current),
+    selectedName = s.feeLetters.find((f) => f.id === Number(selected));
+  useEffect(() => {
+    if (result) feedback.current?.focus();
+  }, [result]);
   function submit() {
-    const next = selected ? Number(selected) : null,
-      operation: MatterFeeReferenceOperation =
-        current === null ? 'set' : next === null ? 'clear' : 'replace';
+    const next = selected ? Number(selected) : null;
+    const exact =
+      frozen.current ??
+      (() => {
+        const operation: MatterFeeReferenceOperation =
+          current === null ? 'set' : next === null ? 'clear' : 'replace';
+        return {
+          operation,
+          payload: JSON.stringify({
+            operation,
+            id: s.matterId,
+            version: s.version,
+            submission: crypto.randomUUID(),
+            values: {},
+            related: { oldFeeLetterId: current, newFeeLetterId: next },
+            facts: null,
+          }),
+        };
+      })();
+    frozen.current = exact;
     const form = new FormData();
-    form.set(
-      'payload',
-      JSON.stringify({
-        operation,
-        id: s.matterId,
-        version: s.version,
-        submission: crypto.randomUUID(),
-        values: {},
-        related: { oldFeeLetterId: current, newFeeLetterId: next },
-        facts: null,
-      }),
-    );
+    form.set('payload', exact.payload);
     start(async () => {
-      const r = await (operation === 'set'
-        ? setMatterFeeReferenceAction(form)
-        : operation === 'clear'
-          ? clearMatterFeeReferenceAction(form)
-          : replaceMatterFeeReferenceAction(form));
-      setResult(r);
-      if (r.kind === 'success') window.location.assign(cancel);
+      try {
+        const r = await (exact.operation === 'set'
+          ? setMatterFeeReferenceAction(form)
+          : exact.operation === 'clear'
+            ? clearMatterFeeReferenceAction(form)
+            : replaceMatterFeeReferenceAction(form));
+        setResult(r);
+        if (r.kind === 'success') window.location.assign(cancel);
+        else if (r.code !== 'generic') frozen.current = null;
+      } catch {
+        setResult({ kind: 'error', code: 'generic', message: t.feeLettersModule.errors.generic });
+      }
     });
   }
   return (
@@ -420,7 +458,7 @@ export function MatterFeeReferenceEditor({
           id="matter-fee-letter"
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
-          disabled={pending}
+          disabled={pending || uncertain}
         >
           <option value="">{t.feeLettersModule.unknown}</option>
           {s.feeLetters.map((f) => (
@@ -430,12 +468,31 @@ export function MatterFeeReferenceEditor({
           ))}
         </select>
       </div>
+      <dl className={local.fields}>
+        <ValueName label={t.feeLettersModule.referenceFrom} value={feeName(currentName)} />
+        <ValueName label={t.feeLettersModule.referenceTo} value={feeName(selectedName)} />
+      </dl>
       <Feedback result={result} reload={cancel} feedback={feedback} />
       <Actions
         pending={pending || selected === String(current ?? '')}
-        uncertain={false}
+        uncertain={uncertain}
         cancel={cancel}
       />
     </form>
+  );
+}
+
+function feeName(value: MatterFeeReferenceSnapshot['feeLetters'][number] | undefined) {
+  return value
+    ? `${value.contractId ?? value.id} · ${value.clientName ?? t.feeLettersModule.unknown}`
+    : t.feeLettersModule.unknown;
+}
+
+function ValueName({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
   );
 }

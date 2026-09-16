@@ -21,8 +21,17 @@ export function staffZoomExtension(mirror) {
   return directory;
 }
 
-export async function proveStaffBrowserZoom({ context, page, audit, screenshot, evidence, name }) {
-  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+export async function proveStaffBrowserZoom({
+  context,
+  page,
+  audit,
+  screenshot,
+  evidence,
+  name,
+  worker: retainedWorker,
+}) {
+  const worker =
+    retainedWorker ?? context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const viewport = page.viewportSize();
   const cdp = await context.newCDPSession(page);
   const zoom = async (factor) =>

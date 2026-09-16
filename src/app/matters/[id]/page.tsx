@@ -188,6 +188,46 @@ export default async function MatterPage({
             </Link>
           ) : null}
         </div>
+        <dl className={styles.facts}>
+          <Field
+            label={t.feeLettersModule.currentMatterReference}
+            value={
+              matter.currentFeeLetterId ? (
+                <Link
+                  className={styles.nameLink}
+                  href={`/fee-letters/${matter.currentFeeLetterId}`}
+                >
+                  {matter.currentFeeContractId ?? matter.currentFeeLetterId} ·{' '}
+                  {matter.currentFeeClientName ?? t.feeLettersModule.unknown}
+                </Link>
+              ) : null
+            }
+          />
+          <Field
+            label={t.feeLettersModule.originalMatterReference}
+            value={
+              <>
+                {matter.originalFeeReference ?? t.feeLettersModule.unknown}
+                {matter.originalFeeLetterId ? (
+                  <>
+                    {' '}
+                    ·{' '}
+                    <Link
+                      className={styles.nameLink}
+                      href={`/fee-letters/${matter.originalFeeLetterId}`}
+                    >
+                      {matter.originalFeeContractId ?? matter.originalFeeLetterId} ·{' '}
+                      {matter.originalFeeClientName ?? t.feeLettersModule.unknown}
+                    </Link>
+                  </>
+                ) : null}
+                {matter.originalFeeIdentifierSpace
+                  ? ` · ${t.feeLettersModule.sourceNamespace}: ${matter.originalFeeIdentifierSpace}`
+                  : ''}
+              </>
+            }
+          />
+        </dl>
       </section>
       <section className={styles.panel} aria-label={t.hearings.title}>
         <h2>{t.hearings.title}</h2>

@@ -2,22 +2,31 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { Client, type ClientBase } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../src/generated/prisma/client';
+import type { Session } from 'next-auth';
 import { withApprovedMigrationClient, migrationDatabaseTarget } from './lib/migration-principal';
 import { assertTasks46_47Boundary } from './lib/tasks46-47-checkpoint';
 import { parseDocumentForm, DocumentMutationError } from '../src/lib/document-mutation-input';
 import { parseFeeLetterForm, FeeLetterMutationError } from '../src/lib/fee-letter-mutation-input';
+import { readDocuments } from '../src/lib/document-query';
+import { readFeeLetters } from '../src/lib/fee-letter-query';
 
 const base = process.env.MIGRATION_DATABASE_URL;
 assert.ok(base, 'MIGRATION_DATABASE_URL required');
 const url = new URL(base);
 const requested = process.env.TASKS46_47_TEST_DATABASE;
 assert.ok(
-  requested && /^litigation_t4647_[a-z0-9_]+$/u.test(requested),
+  requested && /^litigation_t(?:ask)?4647_[a-z0-9_]+$/u.test(requested),
   'explicit disposable TASKS46_47_TEST_DATABASE required',
 );
 assert.notEqual(requested, 'litigation');
 url.pathname = '/' + requested;
 const databaseUrl = url.toString();
+const runtime = new URL(process.env.DATABASE_URL!);
+assert.equal(runtime.username, 'litigation_runtime');
+runtime.pathname = '/' + requested;
+const runtimeDatabaseUrl = runtime.toString();
 assert.equal(migrationDatabaseTarget(databaseUrl).database, requested);
 
 type Account = { id: number; session: number; role: string };
@@ -279,20 +288,18 @@ async function functionalProof() {
           request('create', null, null, { client_id: client, contract_type: 'replacement' }),
         );
         await context(db, accounts.assistant);
+        const coveredPayload = request(
+          'covered-add',
+          first.id,
+          first.version,
+          {},
+          { membershipId: null, matterId: matter },
+        );
         const covered = await gateway(
           db,
           'fee_letter_edit_save',
           accounts.assistant,
-          request(
-            'covered-add',
-            first.id,
-            first.version,
-            {},
-            {
-              membershipId: null,
-              matterId: matter,
-            },
-          ),
+          coveredPayload,
         );
         let feeState = await state(db, 'fee_letter_edit_state', accounts.assistant, first.id);
         const membership = feeState.record.covered.find(
@@ -342,20 +349,18 @@ async function functionalProof() {
           matter,
         );
         await context(db, accounts.assistant);
+        const setPayload = request(
+          'set',
+          matter,
+          reference.version,
+          {},
+          { oldFeeLetterId: null, newFeeLetterId: first.id },
+        );
         const set = await gateway(
           db,
           'matter_fee_reference_edit_save',
           accounts.assistant,
-          request(
-            'set',
-            matter,
-            reference.version,
-            {},
-            {
-              oldFeeLetterId: null,
-              newFeeLetterId: first.id,
-            },
-          ),
+          setPayload,
         );
         await context(db, accounts.assistant);
         const replaced = await gateway(
@@ -389,6 +394,16 @@ async function functionalProof() {
             },
           ),
         );
+        assert.deepEqual(
+          await gateway(db, 'fee_letter_edit_save', accounts.assistant, coveredPayload),
+          covered,
+          'lost covered-add response remains stable after retire and restore',
+        );
+        assert.deepEqual(
+          await gateway(db, 'matter_fee_reference_edit_save', accounts.assistant, setPayload),
+          set,
+          'lost matter-side set response remains stable after replace and clear',
+        );
         reference = await state(db, 'matter_fee_reference_edit_state', accounts.assistant, matter);
         assert.equal(
           reference.references.filter((row: { is_retired: boolean }) => !row.is_retired).length,
@@ -413,6 +428,16 @@ async function functionalProof() {
           'fee_letter_edit_save',
           accounts.administrator,
           request('archive', first.id, readded.version, {}, null, feeState.record.facts),
+        );
+        await context(db, accounts.administrator);
+        await db.query('UPDATE user_accounts SET session_version=session_version+1 WHERE id=$1', [
+          accounts.assistant.id,
+        ]);
+        await context(db, accounts.assistant);
+        await rejected(
+          db,
+          () => gateway(db, 'fee_letter_edit_save', accounts.assistant, coveredPayload),
+          /authorized document\/fee-letter session/u,
         );
         assert.equal(
           (
@@ -481,6 +506,135 @@ async function functionalProof() {
           await db.query('ROLLBACK');
         }
       }
+      for (const variant of ['operation', 'subject', 'version', 'values', 'orphan'] as const) {
+        await db.query('BEGIN');
+        try {
+          await context(db, accounts.administrator);
+          const submission = randomUUID();
+          const payload = request(
+            'create',
+            null,
+            null,
+            { description: 'semantic receipt fixture', client_id: client },
+            null,
+            null,
+            submission,
+          );
+          const made = await gateway(db, 'document_edit_save', accounts.administrator, payload);
+          await db.query(
+            'ALTER TABLE _migration.document_edit_submission DISABLE TRIGGER immutable_rows',
+          );
+          await db.query(
+            'ALTER TABLE _migration.tasks46_47_submission_owner DISABLE TRIGGER immutable_rows',
+          );
+          if (variant === 'orphan') {
+            const orphan = randomUUID();
+            const orphanPayload = { ...payload, submission: orphan };
+            await db.query(
+              `INSERT INTO _migration.tasks46_47_submission_owner
+               (submission_id,actor_id,gateway,operation,entity_id,request_payload,result_version)
+               SELECT $1,actor_id,'documents','create',document_id,$2,result_version+50
+               FROM _migration.document_edit_submission WHERE submission_id=$3`,
+              [orphan, orphanPayload, submission],
+            );
+            await db.query(
+              `INSERT INTO _migration.document_edit_submission
+               (submission_id,actor_id,request_payload,document_id,result_version)
+               SELECT $1,actor_id,$2,document_id,result_version+50
+               FROM _migration.document_edit_submission WHERE submission_id=$3`,
+              [orphan, orphanPayload, submission],
+            );
+          } else {
+            const changed = structuredClone(payload);
+            if (variant === 'operation') {
+              changed.operation = 'update';
+              changed.id = made.id;
+            } else if (variant === 'subject') {
+              changed.operation = 'update';
+              changed.id = made.id + 1;
+              changed.version = '1';
+            } else if (variant === 'version') {
+              changed.operation = 'update';
+              changed.id = made.id;
+              changed.version = '99';
+            } else changed.values.description = 'corrupt semantic value';
+            await db.query(
+              'UPDATE _migration.document_edit_submission SET request_payload=$1 WHERE submission_id=$2',
+              [changed, submission],
+            );
+            await db.query(
+              `UPDATE _migration.tasks46_47_submission_owner
+               SET request_payload=$1,operation=$2 WHERE submission_id=$3`,
+              [changed, changed.operation, submission],
+            );
+          }
+          assert.equal(
+            (await db.query('SELECT _migration.document_edit_current_valid($1) valid', [made.id]))
+              .rows[0].valid,
+            false,
+            `semantic ${variant} corruption must be detected`,
+          );
+        } finally {
+          await db.query('ROLLBACK');
+        }
+      }
+      await db.query('BEGIN');
+      try {
+        await context(db, accounts.administrator);
+        const otherMatter = (
+          await db.query(
+            'SELECT id FROM matters WHERE id<>$1 AND NOT is_archived ORDER BY id LIMIT 1',
+            [matter],
+          )
+        ).rows[0].id as number;
+        const made = await gateway(
+          db,
+          'fee_letter_edit_save',
+          accounts.administrator,
+          request('create', null, null, { client_id: client, contract_type: 'semantic relation' }),
+        );
+        await context(db, accounts.administrator);
+        const submission = randomUUID();
+        const related = request(
+          'covered-add',
+          made.id,
+          made.version,
+          {},
+          { membershipId: null, matterId: matter },
+          null,
+          submission,
+        );
+        await gateway(db, 'fee_letter_edit_save', accounts.administrator, related);
+        await db.query(
+          'ALTER TABLE _migration.fee_letter_edit_submission DISABLE TRIGGER immutable_rows',
+        );
+        await db.query(
+          'ALTER TABLE _migration.tasks46_47_submission_owner DISABLE TRIGGER immutable_rows',
+        );
+        const corrupt = {
+          ...related,
+          related: { membershipId: null, matterId: otherMatter },
+        };
+        await db.query(
+          'UPDATE _migration.fee_letter_edit_submission SET request_payload=$1 WHERE submission_id=$2',
+          [corrupt, submission],
+        );
+        await db.query(
+          'UPDATE _migration.tasks46_47_submission_owner SET request_payload=$1 WHERE submission_id=$2',
+          [corrupt, submission],
+        );
+        assert.equal(
+          (await db.query('SELECT _migration.fee_letter_edit_current_valid($1) valid', [made.id]))
+            .rows[0].valid,
+          false,
+          'covered-matter semantic payload corruption must be detected',
+        );
+      } finally {
+        await db.query('ROLLBACK');
+      }
+      console.log(
+        'PASS semantic operation, subject, version, values, relationship and orphan receipt corruption detection',
+      );
       await db.query('BEGIN');
       try {
         await rejected(
@@ -509,16 +663,39 @@ async function concurrencyProof() {
   });
   await Promise.all([a.connect(), b.connect(), observer.connect()]);
   try {
+    const writerBWaits = async (message: string) => {
+      let waiting = false;
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const row = (
+          await observer.query(
+            "SELECT wait_event_type FROM pg_stat_activity WHERE application_name='t4647-writer-b'",
+          )
+        ).rows[0];
+        if (row?.wait_event_type === 'Lock') {
+          waiting = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      assert.equal(waiting, true, message);
+    };
     const client = (
       await a.query('SELECT id FROM clients WHERE NOT is_archived ORDER BY id LIMIT 1')
     ).rows[0].id as number;
     await a.query('BEGIN');
     await context(a, accounts.administrator);
-    const made = await gateway(
-      a,
-      'document_edit_save',
-      accounts.administrator,
-      request('create', null, null, { description: 'concurrency fixture', client_id: client }),
+    const madePayload = request('create', null, null, {
+      description: 'concurrency fixture',
+      client_id: client,
+    });
+    const made = await gateway(a, 'document_edit_save', accounts.administrator, madePayload);
+    await a.query('COMMIT');
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    assert.deepEqual(
+      await gateway(a, 'document_edit_save', accounts.administrator, madePayload),
+      made,
+      'Administrator lost create response retries exactly after commit',
     );
     await a.query('COMMIT');
 
@@ -610,20 +787,18 @@ async function concurrencyProof() {
       matter,
     );
     await context(a, accounts.administrator);
+    const setPayload = request(
+      'set',
+      matter,
+      initial.version,
+      {},
+      { oldFeeLetterId: null, newFeeLetterId: first.id },
+    );
     const set = await gateway(
       a,
       'matter_fee_reference_edit_save',
       accounts.administrator,
-      request(
-        'set',
-        matter,
-        initial.version,
-        {},
-        {
-          oldFeeLetterId: null,
-          newFeeLetterId: first.id,
-        },
-      ),
+      setPayload,
     );
     await a.query('COMMIT');
 
@@ -691,12 +866,968 @@ async function concurrencyProof() {
         .map((row: { fee_letter_id: number }) => row.fee_letter_id),
       [second.id],
     );
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    assert.deepEqual(
+      await gateway(a, 'matter_fee_reference_edit_save', accounts.administrator, setPayload),
+      set,
+      'Administrator lost set response retries exactly after later replacement',
+    );
+    await a.query('COMMIT');
     console.log(
       'PASS true lock-overlap concurrency: one matter-side replacement commits and stale peer fails',
     );
+
+    let documentState = await state(
+      observer,
+      'document_edit_state',
+      accounts.administrator,
+      made.id,
+    );
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const documentEditBeforeArchive = await gateway(
+      a,
+      'document_edit_save',
+      accounts.administrator,
+      request('update', made.id, winner.version, { notes: 'edit beats archive' }),
+    );
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const staleDocumentArchive = gateway(
+      b,
+      'document_edit_save',
+      accounts.administrator,
+      request('archive', made.id, winner.version, {}, null, documentState.record.facts),
+    );
+    await writerBWaits('document archive waited behind a conflicting edit');
+    await a.query('COMMIT');
+    await assert.rejects(staleDocumentArchive, /version or confirmation is stale/u);
+    await b.query('ROLLBACK');
+
+    documentState = await state(observer, 'document_edit_state', accounts.administrator, made.id);
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const documentArchived = await gateway(
+      a,
+      'document_edit_save',
+      accounts.administrator,
+      request(
+        'archive',
+        made.id,
+        documentEditBeforeArchive.version,
+        {},
+        null,
+        documentState.record.facts,
+      ),
+    );
+    await a.query('COMMIT');
+    documentState = await state(observer, 'document_edit_state', accounts.administrator, made.id);
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const restoredDocument = await gateway(
+      a,
+      'document_edit_save',
+      accounts.administrator,
+      request('restore', made.id, documentArchived.version, {}, null, documentState.record.facts),
+    );
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const staleDocumentRestore = gateway(
+      b,
+      'document_edit_save',
+      accounts.administrator,
+      request('restore', made.id, documentArchived.version, {}, null, documentState.record.facts),
+    );
+    await writerBWaits('second document restore waited behind the committed restore');
+    await a.query('COMMIT');
+    await assert.rejects(staleDocumentRestore, /version or confirmation is stale/u);
+    await b.query('ROLLBACK');
+    assert.equal(Number(restoredDocument.version), Number(documentArchived.version) + 1);
+
+    let feeState = await state(observer, 'fee_letter_edit_state', accounts.administrator, third.id);
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const feeEditWinner = await gateway(
+      a,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request('update', third.id, feeState.record.version, { contract_details: 'winner' }),
+    );
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const staleFeeEdit = gateway(
+      b,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request('update', third.id, feeState.record.version, { contract_details: 'loser' }),
+    );
+    await writerBWaits('second fee-letter edit waited behind the winning edit');
+    await a.query('COMMIT');
+    await assert.rejects(staleFeeEdit, /version or confirmation is stale/u);
+    await b.query('ROLLBACK');
+
+    feeState = await state(observer, 'fee_letter_edit_state', accounts.administrator, third.id);
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const feeEditBeforeArchive = await gateway(
+      a,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request('update', third.id, feeEditWinner.version, {
+        contract_details: 'edit beats archive',
+      }),
+    );
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const staleFeeArchive = gateway(
+      b,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request('archive', third.id, feeEditWinner.version, {}, null, feeState.record.facts),
+    );
+    await writerBWaits('fee-letter archive waited behind a conflicting edit');
+    await a.query('COMMIT');
+    await assert.rejects(staleFeeArchive, /version or confirmation is stale/u);
+    await b.query('ROLLBACK');
+
+    feeState = await state(observer, 'fee_letter_edit_state', accounts.administrator, third.id);
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const feeArchived = await gateway(
+      a,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request('archive', third.id, feeEditBeforeArchive.version, {}, null, feeState.record.facts),
+    );
+    await a.query('COMMIT');
+    feeState = await state(observer, 'fee_letter_edit_state', accounts.administrator, third.id);
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const feeRestored = await gateway(
+      a,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request('restore', third.id, feeArchived.version, {}, null, feeState.record.facts),
+    );
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const staleFeeRestore = gateway(
+      b,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request('restore', third.id, feeArchived.version, {}, null, feeState.record.facts),
+    );
+    await writerBWaits('second fee-letter restore waited behind the committed restore');
+    await a.query('COMMIT');
+    await assert.rejects(staleFeeRestore, /version or confirmation is stale/u);
+    await b.query('ROLLBACK');
+    assert.equal(Number(feeRestored.version), Number(feeArchived.version) + 1);
+
+    const membershipMatters = (
+      await observer.query(
+        `SELECT id FROM matters WHERE NOT is_archived AND id<>$1 ORDER BY id LIMIT 2`,
+        [matter],
+      )
+    ).rows.map((row) => row.id as number);
+    assert.equal(membershipMatters.length, 2);
+    const membershipState = await state(
+      observer,
+      'fee_letter_edit_state',
+      accounts.administrator,
+      second.id,
+    );
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const membershipWinner = await gateway(
+      a,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request(
+        'covered-add',
+        second.id,
+        membershipState.record.version,
+        {},
+        { membershipId: null, matterId: membershipMatters[0] },
+      ),
+    );
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const membershipLoser = gateway(
+      b,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request(
+        'covered-add',
+        second.id,
+        membershipState.record.version,
+        {},
+        { membershipId: null, matterId: membershipMatters[1] },
+      ),
+    );
+    await writerBWaits('competing covered-matter order allocation waited on a real lock');
+    await a.query('COMMIT');
+    await assert.rejects(membershipLoser, /version or confirmation is stale/u);
+    await b.query('ROLLBACK');
+    assert.deepEqual(
+      (
+        await observer.query(
+          `SELECT matter_id,current_order FROM fee_letter_matters
+           WHERE fee_letter_id=$1 AND NOT is_retired ORDER BY current_order,id`,
+          [second.id],
+        )
+      ).rows,
+      [{ matter_id: membershipMatters[0], current_order: 1 }],
+    );
+    assert.equal(Number(membershipWinner.version), Number(membershipState.record.version) + 1);
+    const committedMembership = (
+      await observer.query(
+        `SELECT id FROM fee_letter_matters
+         WHERE fee_letter_id=$1 AND matter_id=$2 AND NOT is_retired`,
+        [second.id, membershipMatters[0]],
+      )
+    ).rows[0].id as number;
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const committedRetirement = await gateway(
+      a,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request(
+        'covered-retire',
+        second.id,
+        membershipWinner.version,
+        {},
+        { membershipId: committedMembership, matterId: null },
+      ),
+    );
+    await a.query('COMMIT');
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    await gateway(
+      a,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request(
+        'covered-restore',
+        second.id,
+        committedRetirement.version,
+        {},
+        { membershipId: committedMembership, matterId: null },
+      ),
+    );
+    await a.query('COMMIT');
+    assert.equal(
+      (
+        await observer.query('SELECT _migration.fee_letter_edit_current_valid($1) valid', [
+          second.id,
+        ])
+      ).rows[0].valid,
+      true,
+      'committed covered-matter retire/restore passes the deferred permanent replay constraint',
+    );
+
+    const parentMatter = membershipMatters[1]!;
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const parentDocument = await gateway(
+      a,
+      'document_edit_save',
+      accounts.administrator,
+      request('create', null, null, {
+        description: 'matter archive overlap',
+        matter_id: parentMatter,
+      }),
+    );
+    await a.query('COMMIT');
+    const lifecycle = await state(
+      observer,
+      'matter_lifecycle_state',
+      accounts.administrator,
+      parentMatter,
+    );
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const archivedParent = (
+      await a.query(`SELECT public.matter_lifecycle_save($1,$2,$3,$4,$5) result`, [
+        accounts.administrator.id,
+        accounts.administrator.session,
+        accounts.administrator.role,
+        expires,
+        {
+          id: parentMatter,
+          version: lifecycle.version,
+          submission: randomUUID(),
+          action: 'archive',
+          counts: lifecycle.counts,
+          confirmation: parentMatter,
+        },
+      ])
+    ).rows[0].result;
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const childAfterParentArchive = gateway(
+      b,
+      'document_edit_save',
+      accounts.administrator,
+      request('update', parentDocument.id, parentDocument.version, { notes: 'must not commit' }),
+    );
+    await writerBWaits('document edit waited behind its shared matter archive');
+    await a.query('COMMIT');
+    await assert.rejects(childAfterParentArchive, /Restore archived document parent/u);
+    await b.query('ROLLBACK');
+    const archivedLifecycle = await state(
+      observer,
+      'matter_lifecycle_state',
+      accounts.administrator,
+      parentMatter,
+    );
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    await a.query(`SELECT public.matter_lifecycle_save($1,$2,$3,$4,$5)`, [
+      accounts.administrator.id,
+      accounts.administrator.session,
+      accounts.administrator.role,
+      expires,
+      {
+        id: parentMatter,
+        version: archivedParent.version,
+        submission: randomUUID(),
+        action: 'restore',
+        counts: archivedLifecycle.counts,
+        confirmation: parentMatter,
+      },
+    ]);
+    await a.query('COMMIT');
+
+    const clientRaceFee = await state(
+      observer,
+      'fee_letter_edit_state',
+      accounts.administrator,
+      first.id,
+    );
+    const clientRow = (
+      await observer.query('SELECT id,row_version::text version FROM clients WHERE id=$1', [client])
+    ).rows[0];
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const archivedClientVersion = (
+      await a.query(`SELECT public.client_contact_set_archived('clients',$1,$2,true) version`, [
+        clientRow.id,
+        clientRow.version,
+      ])
+    ).rows[0].version;
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const feeAfterClientArchive = gateway(
+      b,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request('update', first.id, clientRaceFee.record.version, { contract_details: 'blocked' }),
+    );
+    await writerBWaits('fee-letter edit waited behind its shared client archive');
+    await a.query('COMMIT');
+    await assert.rejects(feeAfterClientArchive, /Restore archived fee-letter client/u);
+    await b.query('ROLLBACK');
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    await a.query(`SELECT public.client_contact_set_archived('clients',$1,$2,false)`, [
+      clientRow.id,
+      archivedClientVersion,
+    ]);
+    await a.query('COMMIT');
+
+    const staff = (
+      await observer.query(
+        `SELECT p.id,p.row_version::text version,p.name_en,p.email,p.is_trainee,p.team_id
+         FROM people p WHERE p.is_staff AND p.is_active
+           AND NOT EXISTS(SELECT 1 FROM user_accounts u WHERE u.person_id=p.id)
+         ORDER BY p.id LIMIT 1`,
+      )
+    ).rows[0];
+    assert.ok(staff, 'active disposable staff fixture without an account');
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const deactivatedVersion = (
+      await a.query('SELECT public.staff_update_person($1,$2,$3,$4,false,$5,$6) version', [
+        staff.id,
+        staff.version,
+        staff.name_en,
+        staff.email,
+        staff.is_trainee,
+        staff.team_id,
+      ])
+    ).rows[0].version;
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const personAfterDeactivation = gateway(
+      b,
+      'document_edit_save',
+      accounts.administrator,
+      request('update', parentDocument.id, parentDocument.version, {
+        responsible_person_id: staff.id,
+      }),
+    );
+    await writerBWaits('responsible-person selection waited behind staff deactivation');
+    await a.query('COMMIT');
+    await assert.rejects(personAfterDeactivation, /Active staff person required/u);
+    await b.query('ROLLBACK');
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    await a.query('SELECT public.staff_update_person($1,$2,$3,$4,true,$5,$6)', [
+      staff.id,
+      deactivatedVersion,
+      staff.name_en,
+      staff.email,
+      staff.is_trainee,
+      staff.team_id,
+    ]);
+    await a.query('COMMIT');
+
+    await a.query('BEGIN');
+    await activateDisposableAssistant(a);
+    await a.query('COMMIT');
+    const invalidatedSession = accounts.assistant.session;
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const replacementSession = (
+      await a.query(
+        'UPDATE user_accounts SET session_version=session_version+1 WHERE id=$1 RETURNING session_version',
+        [accounts.assistant.id],
+      )
+    ).rows[0].session_version as number;
+    await b.query('BEGIN');
+    await context(b, accounts.assistant);
+    const afterSessionInvalidation = gateway(
+      b,
+      'document_edit_save',
+      { ...accounts.assistant, session: invalidatedSession },
+      request('update', parentDocument.id, parentDocument.version, { notes: 'revoked writer' }),
+    );
+    await writerBWaits('pending write waited behind account/session invalidation');
+    await a.query('COMMIT');
+    await assert.rejects(afterSessionInvalidation, /authorized document\/fee-letter session/u);
+    await b.query('ROLLBACK');
+    accounts.assistant.session = replacementSession;
+
+    const duplicatePayload = request('create', null, null, {
+      description: 'exact concurrent duplicate',
+      client_id: client,
+    });
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    const firstDuplicate = await gateway(
+      a,
+      'document_edit_save',
+      accounts.administrator,
+      duplicatePayload,
+    );
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const duplicateRetry = gateway(
+      b,
+      'document_edit_save',
+      accounts.administrator,
+      duplicatePayload,
+    );
+    await writerBWaits('exact duplicate submission waited for its first commit');
+    await a.query('COMMIT');
+    assert.deepEqual(await duplicateRetry, firstDuplicate);
+    await b.query('COMMIT');
+    assert.equal(
+      (
+        await observer.query(
+          'SELECT count(*)::integer n FROM _migration.document_edit_submission WHERE submission_id=$1',
+          [duplicatePayload.submission],
+        )
+      ).rows[0].n,
+      1,
+    );
+    console.log(
+      'PASS observed overlap matrix: document and fee edit/archive/restore, membership order, shared parents, person/session invalidation and exact duplicate',
+    );
+
+    const sequentialToken = randomUUID();
+    const sequentialDocument = request(
+      'create',
+      null,
+      null,
+      { description: 'cross-gateway sequential token', client_id: client },
+      null,
+      null,
+      sequentialToken,
+    );
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    await gateway(a, 'document_edit_save', accounts.administrator, sequentialDocument);
+    await a.query('COMMIT');
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    await rejected(
+      b,
+      () =>
+        gateway(
+          b,
+          'fee_letter_edit_save',
+          accounts.administrator,
+          request(
+            'create',
+            null,
+            null,
+            { client_id: client, contract_type: 'cross-gateway sequential token' },
+            null,
+            null,
+            sequentialToken,
+          ),
+        ),
+      /submission payload differs across gateway/u,
+    );
+    await b.query('ROLLBACK');
+
+    const overlapToken = randomUUID();
+    await a.query('BEGIN');
+    await context(a, accounts.administrator);
+    await gateway(
+      a,
+      'document_edit_save',
+      accounts.administrator,
+      request(
+        'create',
+        null,
+        null,
+        { description: 'cross-gateway overlap token', client_id: client },
+        null,
+        null,
+        overlapToken,
+      ),
+    );
+    await b.query('BEGIN');
+    await context(b, accounts.administrator);
+    const crossGateway = gateway(
+      b,
+      'fee_letter_edit_save',
+      accounts.administrator,
+      request(
+        'create',
+        null,
+        null,
+        { client_id: client, contract_type: 'cross-gateway overlap token' },
+        null,
+        null,
+        overlapToken,
+      ),
+    );
+    observed = false;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const row = (
+        await observer.query(
+          "SELECT wait_event_type FROM pg_stat_activity WHERE application_name='t4647-writer-b'",
+        )
+      ).rows[0];
+      if (row?.wait_event_type === 'Lock') {
+        observed = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.equal(observed, true, 'cross-gateway token reuse waited on the global advisory lock');
+    await a.query('COMMIT');
+    await assert.rejects(crossGateway, /submission payload differs across gateway/u);
+    await b.query('ROLLBACK');
+    console.log('PASS sequential and true-overlap cross-gateway submission ownership');
   } finally {
     await Promise.allSettled([a.query('ROLLBACK'), b.query('ROLLBACK')]);
     await Promise.all([a.end(), b.end(), observer.end()]);
+  }
+}
+
+async function fullPopulationReadOracle() {
+  const owner = new Client({
+    connectionString: databaseUrl,
+    application_name: 't4647-read-oracle',
+  });
+  const service = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: runtimeDatabaseUrl }),
+    log: ['error'],
+  });
+  const fixtureAccountIds = [accounts.assistant.id, accounts.lawyer.id, accounts.paralegal.id];
+  let originalFixtureAccounts: Record<string, unknown>[] = [];
+  await owner.connect();
+  try {
+    originalFixtureAccounts = (
+      await owner.query('SELECT * FROM user_accounts WHERE id=ANY($1::integer[]) ORDER BY id', [
+        fixtureAccountIds,
+      ])
+    ).rows;
+    assert.equal(originalFixtureAccounts.length, fixtureAccountIds.length);
+    await owner.query('BEGIN');
+    try {
+      await owner.query("SET LOCAL session_replication_role='replica'");
+      for (const target of fixtureAccountIds)
+        await owner.query(
+          `UPDATE user_accounts target SET is_enabled=true,password_hash=source.password_hash,
+            password_changed_at=statement_timestamp(),must_change_password=false,
+            failed_login_attempts=0,locked_until=NULL,session_version=target.session_version+1
+           FROM user_accounts source WHERE target.id=$1 AND source.id=$2`,
+          [target, accounts.administrator.id],
+        );
+      await owner.query('COMMIT');
+    } catch (error) {
+      await owner.query('ROLLBACK');
+      throw error;
+    }
+    const accountRows = (
+      await owner.query(
+        `SELECT u.id,u.person_id,u.username,u.role_code,u.session_version,p.name_ar
+        FROM user_accounts u JOIN people p ON p.id=u.person_id
+        WHERE u.role_code=ANY($1::text[]) AND u.is_enabled AND u.password_hash IS NOT NULL
+          AND NOT u.must_change_password AND p.is_active AND p.is_staff AND p.can_login
+        ORDER BY array_position($1::text[],u.role_code),u.id`,
+        [['Administrator', 'Litigation Assistant', 'Lawyer', 'Paralegal']],
+      )
+    ).rows;
+    assert.deepEqual(
+      accountRows.map((row) => row.role_code),
+      ['Administrator', 'Litigation Assistant', 'Lawyer', 'Paralegal'],
+      'full-population oracle has all four reader roles',
+    );
+    const sessions = accountRows.map(
+      (account) =>
+        ({
+          expires,
+          user: {
+            id: String(account.id),
+            personId: account.person_id,
+            username: account.username,
+            name: account.name_ar,
+            role: account.role_code,
+            mustChangePassword: false,
+            sessionVersion: account.session_version,
+            auditSessionId: randomUUID(),
+          },
+        }) as Session,
+    );
+    const arNormalise = (input: unknown) => {
+      if (input === null || input === undefined) return '';
+      const characterMap = new Map(
+        [...'أإآٱةىؤئ٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹'].map((character, index) => [
+          character,
+          [...'ااااهيوي01234567890123456789'][index]!,
+        ]),
+      );
+      return Array.from(
+        String(input)
+          .normalize('NFC')
+          .replace(/[ًٌٍَُِّْـٰ]/gu, '')
+          .toLowerCase(),
+      )
+        .map((character) => characterMap.get(character) ?? character)
+        .join('')
+        .replaceAll(' ', '');
+    };
+    type RawDocument = {
+      id: number;
+      legacy_id: number | null;
+      is_archived: boolean;
+      client_id: number | null;
+      matter_id: number | null;
+      responsible_person_id: number | null;
+      mfiles_id: string | null;
+      search_values: unknown[];
+    };
+    const rawDocuments = (
+      await owner.query<RawDocument>(`SELECT d.id,d.legacy_id,d.is_archived,d.client_id,d.matter_id,
+        d.responsible_person_id,d.mfiles_id,ARRAY[d.description,d.movement_card,d.storage_location,
+        d.notes,d.mfiles_id,d.legacy_client_name_raw,d.legacy_matter_ref_raw,
+        d.legacy_responsible_raw,d.legacy_page_count_raw,c.name_ar,c.full_name,c.name_en,
+        m.case_number_ar,m.subject,p.name_ar] || coalesce(ARRAY(SELECT a.alias_ar
+          FROM person_name_alias a WHERE a.person_id=p.id AND NOT a.is_retired),'{}') search_values
+        FROM documents d LEFT JOIN clients c ON c.id=d.client_id
+        LEFT JOIN matters m ON m.id=d.matter_id LEFT JOIN people p ON p.id=d.responsible_person_id
+        ORDER BY d.id DESC`)
+    ).rows;
+    type RawFee = {
+      id: number;
+      contract_id: number | null;
+      is_archived: boolean;
+      client_id: number | null;
+      mfiles_id: string | null;
+      search_values: unknown[];
+      covered: { matter: number; retired: boolean; original: boolean; values: unknown[] }[];
+      referencing: { matter: number; retired: boolean; original: boolean; values: unknown[] }[];
+    };
+    const rawFees = (
+      await owner.query<RawFee>(`SELECT f.id,f.contract_id,f.is_archived,f.client_id,f.mfiles_id,
+        ARRAY[f.mfiles_id,f.legacy_mfiles_id_raw,f.client_name,f.contract_type,f.contract_details,
+          f.contract_structure,f.status,c.name_ar,c.full_name,c.name_en] search_values,
+        coalesce((SELECT jsonb_agg(jsonb_build_object('matter',l.matter_id,'retired',l.is_retired,
+          'original',l.legacy_source_record_key IS NOT NULL,'values',jsonb_build_array(m.case_number_ar,l.legacy_matter_ref)))
+          FROM fee_letter_matters l JOIN matters m ON m.id=l.matter_id WHERE l.fee_letter_id=f.id),'[]') covered,
+        coalesce((SELECT jsonb_agg(jsonb_build_object('matter',r.matter_id,'retired',r.is_retired,
+          'original',r.legacy_source_record_key IS NOT NULL,'values',jsonb_build_array(m.case_number_ar,r.legacy_reference_raw)))
+          FROM matter_fee_letter_references r JOIN matters m ON m.id=r.matter_id WHERE r.fee_letter_id=f.id),'[]') referencing
+        FROM fee_letters f LEFT JOIN clients c ON c.id=f.client_id ORDER BY f.id DESC`)
+    ).rows;
+    const selectId = (rows: object[], key: string) => {
+      const selected = rows
+        .map((row) => (row as Record<string, unknown>)[key])
+        .find((value) => value !== null && value !== undefined);
+      return String(selected ?? 'missing');
+    };
+    const finalPage = (ids: number[]) =>
+      ids.slice(Math.floor(Math.max(0, ids.length - 1) / 25) * 25);
+    const documentCases: Record<string, string>[] = [
+      { archive: 'all' },
+      { archive: 'current' },
+      { archive: 'archived' },
+      { archive: 'all', client: 'missing' },
+      { archive: 'all', client: selectId(rawDocuments, 'client_id') },
+      { archive: 'all', matter: 'missing' },
+      { archive: 'all', matter: selectId(rawDocuments, 'matter_id') },
+      { archive: 'all', person: 'missing' },
+      { archive: 'all', person: selectId(rawDocuments, 'responsible_person_id') },
+      { archive: 'all', mfiles: 'missing' },
+      { archive: 'all', mfiles: 'present' },
+      { archive: 'all', q: String(rawDocuments[0]!.id) },
+      { archive: 'all', q: String(rawDocuments.find((row) => row.legacy_id)?.legacy_id) },
+      { archive: 'all', q: 'أحمد' },
+      { archive: 'all', q: '%' },
+      { archive: 'all', q: '_' },
+    ];
+    const feeCases: Record<string, string>[] = [
+      { archive: 'all' },
+      { archive: 'current' },
+      { archive: 'archived' },
+      { archive: 'all', client: 'missing' },
+      { archive: 'all', client: selectId(rawFees, 'client_id') },
+      { archive: 'all', covered: 'missing' },
+      {
+        archive: 'all',
+        covered: String(
+          rawFees.flatMap((row) => row.covered).find((link) => !link.retired)?.matter,
+        ),
+      },
+      { archive: 'all', referencing: 'missing' },
+      {
+        archive: 'all',
+        referencing: String(
+          rawFees.flatMap((row) => row.referencing).find((link) => !link.retired)?.matter,
+        ),
+      },
+      { archive: 'all', mfiles: 'missing' },
+      { archive: 'all', mfiles: 'present' },
+      { archive: 'all', q: String(rawFees[0]!.id) },
+      { archive: 'all', q: String(rawFees.find((row) => row.contract_id)?.contract_id) },
+      { archive: 'all', q: 'أحمد' },
+      { archive: 'all', q: '%' },
+      { archive: 'all', q: '_' },
+    ];
+    const documentExpected = (params: Record<string, string>) => {
+      const q = arNormalise(params.q ?? '');
+      return rawDocuments
+        .filter((row) => {
+          if (params.archive !== 'all' && row.is_archived !== (params.archive === 'archived'))
+            return false;
+          for (const [parameter, property] of [
+            ['client', 'client_id'],
+            ['matter', 'matter_id'],
+            ['person', 'responsible_person_id'],
+          ] as const) {
+            const value = params[parameter] ?? 'all';
+            if (value === 'missing' && row[property] !== null) return false;
+            if (value !== 'all' && value !== 'missing' && row[property] !== Number(value))
+              return false;
+          }
+          if (params.mfiles === 'present' && row.mfiles_id === null) return false;
+          if (params.mfiles === 'missing' && row.mfiles_id !== null) return false;
+          return (
+            !q ||
+            arNormalise(row.id) === q ||
+            arNormalise(row.legacy_id) === q ||
+            row.search_values.some((value) => arNormalise(value).includes(q))
+          );
+        })
+        .map((row) => row.id);
+    };
+    const feeExpected = (params: Record<string, string>) => {
+      const q = arNormalise(params.q ?? '');
+      return rawFees
+        .filter((row) => {
+          if (params.archive !== 'all' && row.is_archived !== (params.archive === 'archived'))
+            return false;
+          const clientFilter = params.client ?? 'all';
+          if (clientFilter === 'missing' && row.client_id !== null) return false;
+          if (
+            clientFilter !== 'all' &&
+            clientFilter !== 'missing' &&
+            row.client_id !== Number(clientFilter)
+          )
+            return false;
+          for (const [parameter, links] of [
+            ['covered', row.covered],
+            ['referencing', row.referencing],
+          ] as const) {
+            const value = params[parameter] ?? 'all';
+            if (value === 'missing' && links.some((link) => !link.retired)) return false;
+            if (
+              value !== 'all' &&
+              value !== 'missing' &&
+              !links.some((link) => !link.retired && link.matter === Number(value))
+            )
+              return false;
+          }
+          if (params.mfiles === 'present' && row.mfiles_id === null) return false;
+          if (params.mfiles === 'missing' && row.mfiles_id !== null) return false;
+          const relationshipHit = [...row.covered, ...row.referencing].some(
+            (link) =>
+              (!link.retired || link.original) &&
+              link.values.some((value) => arNormalise(value).includes(q)),
+          );
+          return (
+            !q ||
+            arNormalise(row.id) === q ||
+            arNormalise(row.contract_id) === q ||
+            row.search_values.some((value) => arNormalise(value).includes(q)) ||
+            relationshipHit
+          );
+        })
+        .map((row) => row.id);
+    };
+    const allFeeRows: Awaited<ReturnType<typeof readFeeLetters>>['rows'] = [];
+    for (const session of sessions) {
+      for (const params of documentCases) {
+        const expected = documentExpected(params);
+        const actual: number[] = [];
+        let page = 1;
+        let pages = 1;
+        do {
+          const result = await readDocuments(session, { ...params, page: String(page) }, service);
+          pages = result.pages;
+          actual.push(...result.rows.map((row) => row.id));
+          page += 1;
+        } while (page <= pages);
+        assert.deepEqual(
+          actual,
+          expected,
+          `${session.user.role} document oracle ${JSON.stringify(params)}`,
+        );
+        const edge = await readDocuments(session, { ...params, page: '2147483647' }, service);
+        assert.deepEqual(
+          edge.rows.map((row) => row.id),
+          finalPage(expected),
+          `${session.user.role} document last-page clamp`,
+        );
+      }
+      for (const params of feeCases) {
+        const expected = feeExpected(params);
+        const actual: Awaited<ReturnType<typeof readFeeLetters>>['rows'] = [];
+        let page = 1;
+        let pages = 1;
+        do {
+          const result = await readFeeLetters(session, { ...params, page: String(page) }, service);
+          pages = result.pages;
+          actual.push(...result.rows);
+          page += 1;
+        } while (page <= pages);
+        assert.deepEqual(
+          actual.map((row) => row.id),
+          expected,
+          `${session.user.role} fee-letter oracle ${JSON.stringify(params)}`,
+        );
+        const edge = await readFeeLetters(session, { ...params, page: '2147483647' }, service);
+        assert.deepEqual(
+          edge.rows.map((row) => row.id),
+          finalPage(expected),
+          `${session.user.role} fee-letter last-page clamp`,
+        );
+        if (params.archive === 'all' && Object.keys(params).length === 1)
+          allFeeRows.push(...actual);
+      }
+    }
+    const feeRows = allFeeRows.slice(0, rawFees.length);
+    const documentIds = documentExpected({ archive: 'all' });
+    const serviceLinks = feeRows
+      .flatMap((row) => [
+        ...row.covered.map(
+          (link) =>
+            [
+              'covered',
+              row.id,
+              link.id,
+              link.matterId,
+              link.retired,
+              link.sourceReference,
+            ] as const,
+        ),
+        ...row.referencing.map(
+          (link) =>
+            [
+              'referencing',
+              row.id,
+              link.id,
+              link.matterId,
+              link.retired,
+              link.sourceReference,
+            ] as const,
+        ),
+      ])
+      .sort((a, b) => `${a[0]}:${a[1]}:${a[2]}`.localeCompare(`${b[0]}:${b[1]}:${b[2]}`));
+    const directLinks = (
+      await owner.query(`SELECT 'covered' kind,l.fee_letter_id fee,l.id,l.matter_id matter,l.is_retired retired,
+          l.legacy_matter_ref source FROM fee_letter_matters l
+        UNION ALL SELECT 'referencing',r.fee_letter_id,r.id,r.matter_id,r.is_retired,r.legacy_reference_raw
+          FROM matter_fee_letter_references r ORDER BY 1,2,3`)
+    ).rows
+      .map((row) => [row.kind, row.fee, row.id, row.matter, row.retired, row.source])
+      .sort((a, b) => `${a[0]}:${a[1]}:${a[2]}`.localeCompare(`${b[0]}:${b[1]}:${b[2]}`));
+    assert.deepEqual(
+      serviceLinks,
+      directLinks,
+      'all forward and reverse relationship rows match SQL oracle',
+    );
+    console.log(
+      `PASS independent full-population read/search/filter oracle: four roles, ${documentCases.length} document and ${feeCases.length} fee-letter cases each, ${documentIds.length} documents, ${feeRows.length} fee letters, ${serviceLinks.length} relationship rows`,
+    );
+  } finally {
+    await owner.query('ROLLBACK');
+    if (originalFixtureAccounts.length) {
+      await owner.query('BEGIN');
+      try {
+        await owner.query("SET LOCAL session_replication_role='replica'");
+        for (const row of originalFixtureAccounts)
+          await owner.query(
+            `UPDATE user_accounts SET person_id=$2,username=$3,username_normalized=$4,password_hash=$5,
+              role_code=$6,is_enabled=$7,must_change_password=$8,failed_login_attempts=$9,
+              locked_until=$10,session_version=$11,password_changed_at=$12,last_login_at=$13,
+              created_at=$14,created_by=$15,updated_at=$16,updated_by=$17 WHERE id=$1`,
+            [
+              row.id,
+              row.person_id,
+              row.username,
+              row.username_normalized,
+              row.password_hash,
+              row.role_code,
+              row.is_enabled,
+              row.must_change_password,
+              row.failed_login_attempts,
+              row.locked_until,
+              row.session_version,
+              row.password_changed_at,
+              row.last_login_at,
+              row.created_at,
+              row.created_by,
+              row.updated_at,
+              row.updated_by,
+            ],
+          );
+        await owner.query('COMMIT');
+      } catch (error) {
+        await owner.query('ROLLBACK');
+        throw error;
+      }
+    }
+    await service.$disconnect();
+    await owner.end();
   }
 }
 
@@ -704,6 +1835,7 @@ async function main() {
   parserProof();
   await functionalProof();
   await concurrencyProof();
+  await fullPopulationReadOracle();
 }
 main().catch((error) => {
   console.error(error);

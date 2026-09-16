@@ -20,6 +20,12 @@ function Matters({ rows, empty }: { rows: FeeLetterMatterLink[]; empty: string }
           {r.retired ? ' · ' + t.feeLettersModule.retired : ''}
           {r.original ? ' · ' + t.feeLettersModule.original : ''}
           {r.matterArchived ? ' · ' + t.feeLettersModule.archived : ''}
+          {r.sourceReference ? (
+            <span>
+              {' '}
+              · {t.feeLettersModule.sourceReference}: {r.sourceReference}
+            </span>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -85,6 +91,11 @@ export function FeeLetterFields({
             <h3>{t.feeLettersModule.coveredHistory}</h3>
             <Matters
               rows={r.covered.filter((x) => x.retired || x.original)}
+              empty={t.feeLettersModule.missing}
+            />
+            <h3>{t.feeLettersModule.referencingHistory}</h3>
+            <Matters
+              rows={r.referencing.filter((x) => x.retired || x.original)}
               empty={t.feeLettersModule.missing}
             />
           </section>

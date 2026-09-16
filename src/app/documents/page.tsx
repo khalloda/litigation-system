@@ -6,6 +6,7 @@ import { DocumentFilterError, documentListHref, documentDetailHref } from '@/lib
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
 import { DocumentFields } from './document-fields';
+import { ListFilterClear } from '../list-filter-clear';
 import styles from '../staff/staff.module.css';
 import local from '../powers-of-attorney/poa.module.css';
 export const metadata = { title: t.documentsModule.title };
@@ -53,7 +54,12 @@ export default async function Page({
         )}
       </header>
       <section className={styles.panel}>
-        <form method="get" action="/documents">
+        <form
+          key={JSON.stringify(params)}
+          method="get"
+          action="/documents"
+          data-filter-form="/documents"
+        >
           <div className={local.fields}>
             <div className={styles.field}>
               <label htmlFor="doc-q">{t.documentsModule.search}</label>
@@ -108,9 +114,19 @@ export default async function Page({
             <button className={styles.button} type="submit">
               {t.common.search}
             </button>
-            <Link className={styles.link} href="/documents">
-              {t.documentsModule.clear}
-            </Link>
+            <ListFilterClear
+              className={styles.link}
+              href="/documents"
+              label={t.documentsModule.clear}
+              defaults={{
+                q: '',
+                client: 'all',
+                matter: 'all',
+                person: 'all',
+                archive: 'current',
+                mfiles: 'all',
+              }}
+            />
           </div>
         </form>
       </section>

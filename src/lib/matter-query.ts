@@ -189,6 +189,14 @@ export type MatterDetail = Omit<MatterRow, 'matches'> & {
   legalOpinion: string | null;
   notes1: string | null;
   notes2: string | null;
+  currentFeeLetterId: number | null;
+  currentFeeContractId: number | null;
+  currentFeeClientName: string | null;
+  originalFeeReference: string | null;
+  originalFeeLetterId: number | null;
+  originalFeeContractId: number | null;
+  originalFeeClientName: string | null;
+  originalFeeIdentifierSpace: string | null;
   lawyers: MatterLawyer[];
   parties: MatterParty[];
 };
@@ -268,9 +276,20 @@ export function matterDetailQuery(id: number) {
     m.court_floor AS "courtFloor",m.court_hall AS "courtHall",m.court_shelf AS "courtShelf",m.court_secretary_room AS "courtSecretaryRoom",
     i.label_ar AS importance,ds.label_ar AS destination,m.start_date::text AS "startDate",m.end_date::text AS "endDate",
     m.asked_amount::text AS "askedAmount",m.judged_amount::text AS "judgedAmount",m.current_status AS "currentStatus",
-    m.evaluation,m.legal_opinion AS "legalOpinion",m.notes_1 AS "notes1",m.notes_2 AS "notes2"
+    m.evaluation,m.legal_opinion AS "legalOpinion",m.notes_1 AS "notes1",m.notes_2 AS "notes2",
+    current_ref.fee_letter_id AS "currentFeeLetterId",current_fee.contract_id AS "currentFeeContractId",
+    current_client.name_ar AS "currentFeeClientName",m.fee_letter_ref AS "originalFeeReference",
+    original_ref.fee_letter_id AS "originalFeeLetterId",original_fee.contract_id AS "originalFeeContractId",
+    original_client.name_ar AS "originalFeeClientName",original_ref.identifier_space AS "originalFeeIdentifierSpace"
     ${joins} LEFT JOIN public.lookup_court ct ON ct.id=m.court_id LEFT JOIN public.lookup_importance i ON i.id=m.importance_id
-    LEFT JOIN public.lookup_matter_destination ds ON ds.id=m.destination_id WHERE m.id=${id}`;
+    LEFT JOIN public.lookup_matter_destination ds ON ds.id=m.destination_id
+    LEFT JOIN LATERAL (SELECT r.fee_letter_id FROM public.matter_fee_letter_references r WHERE r.matter_id=m.id AND NOT r.is_retired ORDER BY r.id LIMIT 1) current_ref ON true
+    LEFT JOIN public.fee_letters current_fee ON current_fee.id=current_ref.fee_letter_id
+    LEFT JOIN public.clients current_client ON current_client.id=current_fee.client_id
+    LEFT JOIN LATERAL (SELECT r.fee_letter_id,r.identifier_space FROM public.matter_fee_letter_references r WHERE r.matter_id=m.id AND r.legacy_source_record_key IS NOT NULL ORDER BY r.id LIMIT 1) original_ref ON true
+    LEFT JOIN public.fee_letters original_fee ON original_fee.id=original_ref.fee_letter_id
+    LEFT JOIN public.clients original_client ON original_client.id=original_fee.client_id
+    WHERE m.id=${id}`;
 }
 export function matterOptionsQuery() {
   return Prisma.sql`SELECT * FROM (

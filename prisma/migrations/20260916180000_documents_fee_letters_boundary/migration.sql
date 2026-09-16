@@ -132,6 +132,17 @@ CREATE TABLE _migration.matter_fee_reference_submission (
  result_version bigint NOT NULL, created_at timestamptz NOT NULL DEFAULT statement_timestamp(),
  UNIQUE(matter_id,result_version)
 );
+CREATE TABLE _migration.tasks46_47_submission_owner (
+ submission_id uuid PRIMARY KEY,
+ actor_id integer NOT NULL REFERENCES public.audit_actors(id),
+ gateway text NOT NULL CHECK(gateway IN('documents','fee_letters','matter_fee_references')),
+ operation text NOT NULL,
+ entity_id integer NOT NULL,
+ request_payload jsonb NOT NULL,
+ result_version bigint NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT statement_timestamp(),
+ UNIQUE(gateway,entity_id,result_version)
+);
 
 CREATE FUNCTION _migration.tasks46_47_immutable() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
@@ -142,7 +153,7 @@ DECLARE t text;
 BEGIN
  FOREACH t IN ARRAY ARRAY['tasks46_47_import','tasks46_47_boundary','document_edit_change',
   'document_edit_submission','fee_letter_edit_change','fee_letter_edit_submission',
-  'matter_fee_reference_change','matter_fee_reference_submission'] LOOP
+  'matter_fee_reference_change','matter_fee_reference_submission','tasks46_47_submission_owner'] LOOP
   EXECUTE format('CREATE TRIGGER immutable_rows BEFORE UPDATE OR DELETE OR TRUNCATE ON _migration.%I FOR EACH STATEMENT EXECUTE FUNCTION _migration.tasks46_47_immutable()',t);
   IF t IN('tasks46_47_import','tasks46_47_boundary') THEN
    EXECUTE format('CREATE TRIGGER immutable_insert BEFORE INSERT ON _migration.%I FOR EACH STATEMENT EXECUTE FUNCTION _migration.tasks46_47_immutable()',t);
@@ -206,6 +217,48 @@ BEGIN
 END;
 $$;
 
+CREATE FUNCTION _migration.tasks46_47_receipt_valid(
+ p_gateway text,p_actor integer,p_request jsonb,p_entity integer,p_result bigint
+) RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE r record; owner record; op text;
+BEGIN
+ BEGIN SELECT * INTO r FROM _migration.tasks46_47_request_identity(p_request);
+ EXCEPTION WHEN OTHERS THEN RETURN false; END;
+ op:=r.operation;
+ SELECT * INTO owner FROM _migration.tasks46_47_submission_owner WHERE submission_id=r.submission;
+ IF NOT FOUND OR owner.actor_id<>p_actor OR owner.gateway<>p_gateway OR owner.operation<>op
+  OR owner.entity_id<>p_entity OR owner.result_version<>p_result
+  OR owner.request_payload IS DISTINCT FROM p_request THEN RETURN false; END IF;
+ IF (op='create') IS DISTINCT FROM (r.identity IS NULL) OR
+  (op='create' AND (p_request->'version'<>'null' OR p_result<>1)) OR
+  (op<>'create' AND (r.identity<>p_entity OR r.expected<>p_result-1)) THEN RETURN false; END IF;
+ IF p_gateway='documents' THEN
+  IF op NOT IN('create','update','archive','restore')
+   OR (op IN('create','update') AND (p_request->'related'<>'null' OR p_request->'facts'<>'null'))
+   OR (op IN('archive','restore') AND (p_request->'values'<>'{}' OR p_request->'related'<>'null'
+    OR jsonb_typeof(p_request->'facts')<>'object')) THEN RETURN false; END IF;
+ ELSIF p_gateway='fee_letters' THEN
+  IF op NOT IN('create','update','archive','restore','covered-add','covered-retire','covered-restore') THEN RETURN false; END IF;
+  IF op IN('create','update') AND (p_request->'related'<>'null' OR p_request->'facts'<>'null') THEN RETURN false; END IF;
+  IF op IN('archive','restore') AND (p_request->'values'<>'{}' OR p_request->'related'<>'null'
+   OR jsonb_typeof(p_request->'facts')<>'object') THEN RETURN false; END IF;
+  IF op LIKE 'covered-%' AND (p_request->'values'<>'{}' OR p_request->'facts'<>'null'
+   OR jsonb_typeof(p_request->'related')<>'object'
+   OR NOT p_request->'related' ?& ARRAY['membershipId','matterId']
+   OR EXISTS(SELECT 1 FROM jsonb_object_keys(p_request->'related') k WHERE k NOT IN('membershipId','matterId')))
+   THEN RETURN false; END IF;
+ ELSIF p_gateway='matter_fee_references' THEN
+  IF op NOT IN('set','clear','replace') OR p_request->'values'<>'{}' OR p_request->'facts'<>'null'
+   OR jsonb_typeof(p_request->'related')<>'object'
+   OR NOT p_request->'related' ?& ARRAY['oldFeeLetterId','newFeeLetterId']
+   OR EXISTS(SELECT 1 FROM jsonb_object_keys(p_request->'related') k WHERE k NOT IN('oldFeeLetterId','newFeeLetterId'))
+   THEN RETURN false; END IF;
+ ELSE RETURN false;
+ END IF;
+ RETURN true;
+END;
+$$;
+
 CREATE FUNCTION _migration.document_edit_initial_aggregate(p_id integer) RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
  SELECT initial_values||jsonb_build_object('row_version',1,'is_archived',false)
@@ -217,21 +270,36 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public SET TimeZ
 $$;
 CREATE FUNCTION _migration.document_edit_current_valid(p_id integer) RETURNS boolean
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
-DECLARE expected jsonb:=_migration.document_edit_initial_aggregate(p_id); c record; s record; v bigint;
+DECLARE expected jsonb:=_migration.document_edit_initial_aggregate(p_id); c record; s record; v bigint; op text; patch jsonb;
 BEGIN
  v:=CASE WHEN expected IS NULL THEN 1 ELSE 2 END;
  FOR c IN SELECT * FROM _migration.document_edit_change WHERE document_id=p_id ORDER BY version LOOP
   SELECT * INTO s FROM _migration.document_edit_submission WHERE document_id=p_id AND result_version=c.version;
-  IF NOT FOUND OR s.actor_id<>c.actor_id OR c.version<>v OR c.before_values IS DISTINCT FROM expected
-   OR s.request_payload->>'submission' IS DISTINCT FROM s.submission_id::text
-   OR (c.after_values->>'id')::integer<>p_id OR (c.after_values->>'row_version')::bigint<>v
+	  IF NOT FOUND OR s.actor_id<>c.actor_id OR c.version<>v OR c.before_values IS DISTINCT FROM expected
+	   OR NOT _migration.tasks46_47_receipt_valid('documents',s.actor_id,s.request_payload,p_id,c.version)
+	   OR s.submission_id::text<>s.request_payload->>'submission'
+	   OR (c.after_values->>'id')::integer<>p_id OR (c.after_values->>'row_version')::bigint<>v
    OR NOT EXISTS(SELECT 1 FROM public.audit_events e WHERE e.entity_schema='public'
     AND e.entity_table='documents' AND e.entity_key=jsonb_build_object('id',p_id)
     AND e.actor_id=c.actor_id AND e.request_id=c.request_id AND e.outcome='succeeded'
-    AND e.after_values->>'row_version'=v::text) THEN RETURN false; END IF;
+	    AND e.after_values->>'row_version'=v::text) THEN RETURN false; END IF;
+	  op:=s.request_payload->>'operation';
+	  IF op IN('create','update') THEN
+	   BEGIN patch:=_migration.document_edit_values(s.request_payload->'values',c.before_values,op='create');
+	   EXCEPTION WHEN OTHERS THEN RETURN false; END;
+	   IF op='create' THEN
+	    IF c.before_values IS NOT NULL OR NOT c.after_values @> patch THEN RETURN false; END IF;
+	   ELSIF c.after_values-ARRAY['row_version','updated_at','updated_by']
+	    IS DISTINCT FROM (c.before_values||patch)-ARRAY['row_version','updated_at','updated_by'] THEN RETURN false; END IF;
+	  ELSIF c.before_values IS NULL OR c.after_values-ARRAY['row_version','updated_at','updated_by','is_archived']
+	   IS DISTINCT FROM c.before_values-ARRAY['row_version','updated_at','updated_by','is_archived']
+	   OR (c.after_values->>'is_archived')::boolean IS DISTINCT FROM (op='archive') THEN RETURN false;
+	  END IF;
   expected:=c.after_values; v:=v+1;
  END LOOP;
- RETURN expected IS NOT NULL AND expected IS NOT DISTINCT FROM _migration.document_edit_aggregate(p_id);
+	 IF EXISTS(SELECT 1 FROM _migration.document_edit_submission sr WHERE sr.document_id=p_id
+	  AND NOT EXISTS(SELECT 1 FROM _migration.document_edit_change ch WHERE ch.document_id=sr.document_id AND ch.version=sr.result_version AND ch.actor_id=sr.actor_id)) THEN RETURN false; END IF;
+	 RETURN expected IS NOT NULL AND expected IS NOT DISTINCT FROM _migration.document_edit_aggregate(p_id);
 END;
 $$;
 CREATE FUNCTION _migration.fee_letter_edit_initial_aggregate(p_id integer) RETURNS jsonb
@@ -250,21 +318,64 @@ $$;
 CREATE FUNCTION _migration.fee_letter_edit_current_valid(p_id integer) RETURNS boolean
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE expected jsonb:=_migration.fee_letter_edit_initial_aggregate(p_id); c record; s record; v bigint;
+ op text; patch jsonb; member integer; matter integer; before_member jsonb; after_member jsonb;
 BEGIN
  v:=CASE WHEN expected IS NULL THEN 1 ELSE 2 END;
  FOR c IN SELECT * FROM _migration.fee_letter_edit_change WHERE fee_letter_id=p_id ORDER BY version LOOP
   SELECT * INTO s FROM _migration.fee_letter_edit_submission WHERE fee_letter_id=p_id AND result_version=c.version;
-  IF NOT FOUND OR s.actor_id<>c.actor_id OR c.version<>v OR c.before_values IS DISTINCT FROM expected
-   OR s.request_payload->>'submission' IS DISTINCT FROM s.submission_id::text
+	  IF NOT FOUND OR s.actor_id<>c.actor_id OR c.version<>v OR c.before_values IS DISTINCT FROM expected
+	   OR NOT _migration.tasks46_47_receipt_valid('fee_letters',s.actor_id,s.request_payload,p_id,c.version)
+	   OR s.request_payload->>'submission' IS DISTINCT FROM s.submission_id::text
    OR (c.after_values->'feeLetter'->>'id')::integer<>p_id
    OR (c.after_values->'feeLetter'->>'row_version')::bigint<>v
    OR NOT EXISTS(SELECT 1 FROM public.audit_events e WHERE e.entity_schema='public'
     AND e.entity_table='fee_letters' AND e.entity_key=jsonb_build_object('id',p_id)
     AND e.actor_id=c.actor_id AND e.request_id=c.request_id AND e.outcome='succeeded'
-    AND e.after_values->>'row_version'=v::text) THEN RETURN false; END IF;
+	    AND e.after_values->>'row_version'=v::text) THEN RETURN false; END IF;
+	  op:=s.request_payload->>'operation';
+	  IF op IN('create','update') THEN
+	   BEGIN patch:=_migration.fee_letter_edit_values(s.request_payload->'values',c.before_values->'feeLetter',op='create');
+	   EXCEPTION WHEN OTHERS THEN RETURN false; END;
+	   IF op='create' THEN
+	    IF c.before_values IS NOT NULL OR NOT c.after_values->'feeLetter' @> patch OR c.after_values->'covered'<>'[]' THEN RETURN false; END IF;
+	   ELSIF c.after_values->'covered' IS DISTINCT FROM c.before_values->'covered'
+	    OR (c.after_values->'feeLetter')-ARRAY['row_version','updated_at','updated_by']
+	    IS DISTINCT FROM ((c.before_values->'feeLetter')||patch)-ARRAY['row_version','updated_at','updated_by'] THEN RETURN false; END IF;
+	  ELSIF op IN('archive','restore') THEN
+	   IF c.after_values->'covered' IS DISTINCT FROM c.before_values->'covered'
+	    OR (c.after_values->'feeLetter')-ARRAY['row_version','updated_at','updated_by','is_archived']
+	    IS DISTINCT FROM (c.before_values->'feeLetter')-ARRAY['row_version','updated_at','updated_by','is_archived']
+	    OR (c.after_values->'feeLetter'->>'is_archived')::boolean IS DISTINCT FROM (op='archive') THEN RETURN false; END IF;
+	  ELSE
+	   member:=(s.request_payload->'related'->>'membershipId')::integer;
+	   matter:=(s.request_payload->'related'->>'matterId')::integer;
+	   IF (c.after_values->'feeLetter')-ARRAY['row_version','updated_at','updated_by']
+	    IS DISTINCT FROM (c.before_values->'feeLetter')-ARRAY['row_version','updated_at','updated_by'] THEN RETURN false; END IF;
+	   IF op='covered-add' THEN
+	    IF member IS NOT NULL OR matter IS NULL
+	     OR jsonb_array_length(c.after_values->'covered')<>coalesce(jsonb_array_length(c.before_values->'covered'),0)+1
+	     OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(c.after_values->'covered') e
+	      WHERE (e->>'matter_id')::integer=matter AND NOT (e->>'is_retired')::boolean AND e->>'legacy_source_record_key' IS NULL)
+	     OR EXISTS(SELECT 1 FROM jsonb_array_elements(c.before_values->'covered') b
+	      WHERE NOT EXISTS(SELECT 1 FROM jsonb_array_elements(c.after_values->'covered') a WHERE a IS NOT DISTINCT FROM b)) THEN RETURN false; END IF;
+	   ELSE
+	    SELECT e INTO before_member FROM jsonb_array_elements(c.before_values->'covered') e WHERE (e->>'id')::integer=member;
+	    SELECT e INTO after_member FROM jsonb_array_elements(c.after_values->'covered') e WHERE (e->>'id')::integer=member;
+	    IF member IS NULL OR before_member IS NULL OR after_member IS NULL
+	     OR jsonb_array_length(c.after_values->'covered')<>jsonb_array_length(c.before_values->'covered')
+	     OR before_member-ARRAY['is_retired','updated_at','updated_by']
+	      IS DISTINCT FROM after_member-ARRAY['is_retired','updated_at','updated_by']
+	     OR (before_member->>'is_retired')::boolean IS DISTINCT FROM (op='covered-restore')
+	     OR (after_member->>'is_retired')::boolean IS DISTINCT FROM (op='covered-retire')
+	     OR EXISTS(SELECT 1 FROM jsonb_array_elements(c.before_values->'covered') b
+	      WHERE (b->>'id')::integer<>member AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(c.after_values->'covered') a WHERE a IS NOT DISTINCT FROM b)) THEN RETURN false; END IF;
+	   END IF;
+	  END IF;
   expected:=c.after_values; v:=v+1;
  END LOOP;
- RETURN expected IS NOT NULL AND expected IS NOT DISTINCT FROM _migration.fee_letter_edit_aggregate(p_id);
+	 IF EXISTS(SELECT 1 FROM _migration.fee_letter_edit_submission sr WHERE sr.fee_letter_id=p_id
+	  AND NOT EXISTS(SELECT 1 FROM _migration.fee_letter_edit_change ch WHERE ch.fee_letter_id=sr.fee_letter_id AND ch.version=sr.result_version AND ch.actor_id=sr.actor_id)) THEN RETURN false; END IF;
+	 RETURN expected IS NOT NULL AND expected IS NOT DISTINCT FROM _migration.fee_letter_edit_aggregate(p_id);
 END;
 $$;
 CREATE FUNCTION _migration.matter_fee_reference_initial_aggregate(p_id integer) RETURNS jsonb
@@ -282,18 +393,32 @@ $$;
 CREATE FUNCTION _migration.matter_fee_reference_current_valid(p_id integer) RETURNS boolean
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE expected jsonb:=_migration.matter_fee_reference_initial_aggregate(p_id); c record; s record; v bigint:=2;
+ op text; old_fee integer; new_fee integer; before_current integer; after_current integer;
 BEGIN
  FOR c IN SELECT * FROM _migration.matter_fee_reference_change WHERE matter_id=p_id ORDER BY version LOOP
   SELECT * INTO s FROM _migration.matter_fee_reference_submission WHERE matter_id=p_id AND result_version=c.version;
-  IF NOT FOUND OR s.actor_id<>c.actor_id OR c.version<>v OR c.before_values IS DISTINCT FROM expected
-   OR s.request_payload->>'submission' IS DISTINCT FROM s.submission_id::text
+	  IF NOT FOUND OR s.actor_id<>c.actor_id OR c.version<>v OR c.before_values IS DISTINCT FROM expected
+	   OR NOT _migration.tasks46_47_receipt_valid('matter_fee_references',s.actor_id,s.request_payload,p_id,c.version)
+	   OR s.request_payload->>'submission' IS DISTINCT FROM s.submission_id::text
    OR c.after_values->>'matterId'<>p_id::text OR c.after_values->>'version'<>v::text
    OR NOT EXISTS(SELECT 1 FROM public.audit_events e WHERE e.entity_schema='public'
     AND e.entity_table='matter_fee_letter_references' AND e.actor_id=c.actor_id
-    AND e.request_id=c.request_id AND e.outcome='succeeded') THEN RETURN false; END IF;
+	    AND e.request_id=c.request_id AND e.outcome='succeeded') THEN RETURN false; END IF;
+	  op:=s.request_payload->>'operation'; old_fee:=(s.request_payload->'related'->>'oldFeeLetterId')::integer;
+	  new_fee:=(s.request_payload->'related'->>'newFeeLetterId')::integer;
+	  SELECT (e->>'fee_letter_id')::integer INTO before_current FROM jsonb_array_elements(c.before_values->'references') e WHERE NOT (e->>'is_retired')::boolean;
+	  SELECT (e->>'fee_letter_id')::integer INTO after_current FROM jsonb_array_elements(c.after_values->'references') e WHERE NOT (e->>'is_retired')::boolean;
+	  IF (op='set' AND (old_fee IS NOT NULL OR new_fee IS NULL OR before_current IS NOT NULL OR after_current IS DISTINCT FROM new_fee))
+	   OR (op='clear' AND (old_fee IS NULL OR new_fee IS NOT NULL OR before_current IS DISTINCT FROM old_fee OR after_current IS NOT NULL))
+	   OR (op='replace' AND (old_fee IS NULL OR new_fee IS NULL OR old_fee=new_fee OR before_current IS DISTINCT FROM old_fee OR after_current IS DISTINCT FROM new_fee))
+	   OR EXISTS(SELECT 1 FROM jsonb_array_elements(c.before_values->'references') b
+	    WHERE (b->>'fee_letter_id')::integer NOT IN(old_fee,new_fee)
+	     AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(c.after_values->'references') a WHERE a IS NOT DISTINCT FROM b)) THEN RETURN false; END IF;
   expected:=c.after_values; v:=v+1;
  END LOOP;
- RETURN expected IS NOT DISTINCT FROM _migration.matter_fee_reference_aggregate(p_id);
+	 IF EXISTS(SELECT 1 FROM _migration.matter_fee_reference_submission sr WHERE sr.matter_id=p_id
+	  AND NOT EXISTS(SELECT 1 FROM _migration.matter_fee_reference_change ch WHERE ch.matter_id=sr.matter_id AND ch.version=sr.result_version AND ch.actor_id=sr.actor_id)) THEN RETURN false; END IF;
+	 RETURN expected IS NOT DISTINCT FROM _migration.matter_fee_reference_aggregate(p_id);
 END;
 $$;
 
@@ -444,7 +569,7 @@ $$;
 
 CREATE FUNCTION public.document_edit_save(p_account integer,p_session integer,p_role text,p_expires timestamptz,p_request jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET TimeZone='UTC' AS $$
-DECLARE actor integer; r record; receipt _migration.document_edit_submission%ROWTYPE; original jsonb;
+DECLARE actor integer; r record; receipt _migration.document_edit_submission%ROWTYPE; owner _migration.tasks46_47_submission_owner%ROWTYPE; original jsonb;
  before_state jsonb; after_state jsonb; patch jsonb; columns text; selections text; assignments text;
  op text; creating boolean; lifecycle boolean; old_matter integer; new_matter integer; old_client integer;
  new_client integer; old_person integer; new_person integer; v bigint; request_id uuid;
@@ -456,9 +581,14 @@ BEGIN
  op:=r.operation; creating:=op='create'; lifecycle:=op IN('archive','restore');
  IF op NOT IN('create','update','archive','restore') OR creating<>(r.identity IS NULL)
   OR (lifecycle AND p_role<>'Administrator') THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Invalid document operation'; END IF;
- PERFORM pg_advisory_xact_lock(hashtextextended(r.submission::text,46));
- SELECT * INTO receipt FROM _migration.document_edit_submission WHERE submission_id=r.submission;
- IF FOUND THEN
+	 PERFORM pg_advisory_xact_lock(hashtextextended(r.submission::text,4647));
+	 SELECT * INTO owner FROM _migration.tasks46_47_submission_owner WHERE submission_id=r.submission;
+	 IF FOUND AND (owner.actor_id<>actor OR owner.gateway<>'documents' OR owner.operation<>op OR owner.request_payload IS DISTINCT FROM p_request) THEN
+	  RAISE EXCEPTION USING ERRCODE=CASE WHEN owner.actor_id<>actor THEN '42501' ELSE '22023' END,MESSAGE='submission payload differs across gateway, actor, or payload';
+	 END IF;
+	 SELECT * INTO receipt FROM _migration.document_edit_submission WHERE submission_id=r.submission;
+	 IF FOUND THEN
+	  IF owner.submission_id IS NULL THEN RAISE EXCEPTION 'Document receipt has no global submission owner'; END IF;
   IF receipt.actor_id<>actor THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Document submission belongs to another actor'; END IF;
   IF receipt.request_payload IS DISTINCT FROM p_request THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Document submission payload differs'; END IF;
   RETURN jsonb_build_object('id',receipt.document_id,'version',receipt.result_version::text,'changed',true);
@@ -515,7 +645,8 @@ BEGIN
  SELECT row_version INTO v FROM public.documents WHERE id=r.identity; after_state:=_migration.document_edit_aggregate(r.identity);
  request_id:=current_setting('litigation.audit_request_id')::uuid;
  INSERT INTO _migration.document_edit_change VALUES(r.identity,v,actor,before_state,after_state,request_id);
- INSERT INTO _migration.document_edit_submission(submission_id,actor_id,request_payload,document_id,result_version) VALUES(r.submission,actor,p_request,r.identity,v);
+	 INSERT INTO _migration.tasks46_47_submission_owner(submission_id,actor_id,gateway,operation,entity_id,request_payload,result_version) VALUES(r.submission,actor,'documents',op,r.identity,p_request,v);
+	 INSERT INTO _migration.document_edit_submission(submission_id,actor_id,request_payload,document_id,result_version) VALUES(r.submission,actor,p_request,r.identity,v);
  RETURN jsonb_build_object('id',r.identity,'version',v::text,'changed',true);
 END;
 $$;
@@ -542,7 +673,7 @@ $$;
 
 CREATE FUNCTION public.fee_letter_edit_save(p_account integer,p_session integer,p_role text,p_expires timestamptz,p_request jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET TimeZone='UTC' AS $$
-DECLARE actor integer; r record; receipt _migration.fee_letter_edit_submission%ROWTYPE; original jsonb;
+DECLARE actor integer; r record; receipt _migration.fee_letter_edit_submission%ROWTYPE; owner _migration.tasks46_47_submission_owner%ROWTYPE; original jsonb;
  before_state jsonb; after_state jsonb; patch jsonb; columns text; selections text; assignments text;
  op text; creating boolean; lifecycle boolean; relation boolean; old_client integer; new_client integer;
  member_id integer; target_matter integer; next_order integer; v bigint; request_id uuid;
@@ -554,9 +685,14 @@ BEGIN
  op:=r.operation; creating:=op='create'; lifecycle:=op IN('archive','restore'); relation:=op IN('covered-add','covered-retire','covered-restore');
  IF op NOT IN('create','update','archive','restore','covered-add','covered-retire','covered-restore')
   OR creating<>(r.identity IS NULL) OR (lifecycle AND p_role<>'Administrator') THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Invalid fee-letter operation'; END IF;
- PERFORM pg_advisory_xact_lock(hashtextextended(r.submission::text,47));
- SELECT * INTO receipt FROM _migration.fee_letter_edit_submission WHERE submission_id=r.submission;
- IF FOUND THEN
+	 PERFORM pg_advisory_xact_lock(hashtextextended(r.submission::text,4647));
+	 SELECT * INTO owner FROM _migration.tasks46_47_submission_owner WHERE submission_id=r.submission;
+	 IF FOUND AND (owner.actor_id<>actor OR owner.gateway<>'fee_letters' OR owner.operation<>op OR owner.request_payload IS DISTINCT FROM p_request) THEN
+	  RAISE EXCEPTION USING ERRCODE=CASE WHEN owner.actor_id<>actor THEN '42501' ELSE '22023' END,MESSAGE='submission payload differs across gateway, actor, or payload';
+	 END IF;
+	 SELECT * INTO receipt FROM _migration.fee_letter_edit_submission WHERE submission_id=r.submission;
+	 IF FOUND THEN
+	  IF owner.submission_id IS NULL THEN RAISE EXCEPTION 'Fee-letter receipt has no global submission owner'; END IF;
   IF receipt.actor_id<>actor THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Fee-letter submission belongs to another actor'; END IF;
   IF receipt.request_payload IS DISTINCT FROM p_request THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Fee-letter submission payload differs'; END IF;
   RETURN jsonb_build_object('id',receipt.fee_letter_id,'version',receipt.result_version::text,'changed',true);
@@ -623,7 +759,8 @@ BEGIN
  SELECT row_version INTO v FROM public.fee_letters WHERE id=r.identity; after_state:=_migration.fee_letter_edit_aggregate(r.identity);
  request_id:=current_setting('litigation.audit_request_id')::uuid;
  INSERT INTO _migration.fee_letter_edit_change VALUES(r.identity,v,actor,before_state,after_state,request_id);
- INSERT INTO _migration.fee_letter_edit_submission(submission_id,actor_id,request_payload,fee_letter_id,result_version) VALUES(r.submission,actor,p_request,r.identity,v);
+	 INSERT INTO _migration.tasks46_47_submission_owner(submission_id,actor_id,gateway,operation,entity_id,request_payload,result_version) VALUES(r.submission,actor,'fee_letters',op,r.identity,p_request,v);
+	 INSERT INTO _migration.fee_letter_edit_submission(submission_id,actor_id,request_payload,fee_letter_id,result_version) VALUES(r.submission,actor,p_request,r.identity,v);
  RETURN jsonb_build_object('id',r.identity,'version',v::text,'changed',true);
 END;
 $$;
@@ -643,7 +780,7 @@ END;
 $$;
 CREATE FUNCTION public.matter_fee_reference_edit_save(p_account integer,p_session integer,p_role text,p_expires timestamptz,p_request jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public SET TimeZone='UTC' AS $$
-DECLARE actor integer; r record; receipt _migration.matter_fee_reference_submission%ROWTYPE;
+DECLARE actor integer; r record; receipt _migration.matter_fee_reference_submission%ROWTYPE; owner _migration.tasks46_47_submission_owner%ROWTYPE;
  op text; old_fee integer; new_fee integer; current_ref integer; version bigint; before_state jsonb; after_state jsonb; request_id uuid;
 BEGIN
  PERFORM 1 FROM _migration.staff_roster_mutex WHERE singleton FOR UPDATE;
@@ -655,9 +792,14 @@ BEGIN
  old_fee:=(p_request->'related'->>'oldFeeLetterId')::integer; new_fee:=(p_request->'related'->>'newFeeLetterId')::integer;
  IF (op='set' AND (old_fee IS NOT NULL OR new_fee IS NULL)) OR (op='clear' AND (old_fee IS NULL OR new_fee IS NOT NULL))
   OR (op='replace' AND (old_fee IS NULL OR new_fee IS NULL OR old_fee=new_fee)) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Explicit set/clear/replace values required'; END IF;
- PERFORM pg_advisory_xact_lock(hashtextextended(r.submission::text,48));
- SELECT * INTO receipt FROM _migration.matter_fee_reference_submission WHERE submission_id=r.submission;
- IF FOUND THEN
+	 PERFORM pg_advisory_xact_lock(hashtextextended(r.submission::text,4647));
+	 SELECT * INTO owner FROM _migration.tasks46_47_submission_owner WHERE submission_id=r.submission;
+	 IF FOUND AND (owner.actor_id<>actor OR owner.gateway<>'matter_fee_references' OR owner.operation<>op OR owner.request_payload IS DISTINCT FROM p_request) THEN
+	  RAISE EXCEPTION USING ERRCODE=CASE WHEN owner.actor_id<>actor THEN '42501' ELSE '22023' END,MESSAGE='submission payload differs across gateway, actor, or payload';
+	 END IF;
+	 SELECT * INTO receipt FROM _migration.matter_fee_reference_submission WHERE submission_id=r.submission;
+	 IF FOUND THEN
+	  IF owner.submission_id IS NULL THEN RAISE EXCEPTION 'Matter fee-reference receipt has no global submission owner'; END IF;
   IF receipt.actor_id<>actor THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Matter fee-reference submission belongs to another actor'; END IF;
   IF receipt.request_payload IS DISTINCT FROM p_request THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Matter fee-reference submission payload differs'; END IF;
   RETURN jsonb_build_object('id',receipt.matter_id,'version',receipt.result_version::text,'changed',true);
@@ -693,7 +835,8 @@ BEGIN
  UPDATE _migration.matter_fee_reference_state SET row_version=row_version+1 WHERE matter_id=r.identity RETURNING row_version INTO version;
  after_state:=_migration.matter_fee_reference_aggregate(r.identity); request_id:=current_setting('litigation.audit_request_id')::uuid;
  INSERT INTO _migration.matter_fee_reference_change VALUES(r.identity,version,actor,before_state,after_state,request_id);
- INSERT INTO _migration.matter_fee_reference_submission(submission_id,actor_id,request_payload,matter_id,result_version) VALUES(r.submission,actor,p_request,r.identity,version);
+	 INSERT INTO _migration.tasks46_47_submission_owner(submission_id,actor_id,gateway,operation,entity_id,request_payload,result_version) VALUES(r.submission,actor,'matter_fee_references',op,r.identity,p_request,version);
+	 INSERT INTO _migration.matter_fee_reference_submission(submission_id,actor_id,request_payload,matter_id,result_version) VALUES(r.submission,actor,p_request,r.identity,version);
  RETURN jsonb_build_object('id',r.identity,'version',version::text,'changed',true);
 END;
 $$;
@@ -743,13 +886,17 @@ GRANT EXECUTE ON FUNCTION public.document_edit_state(integer,integer,text,timest
  public.matter_fee_reference_edit_save(integer,integer,text,timestamptz,jsonb) TO litigation_runtime;
 
 DO $postcondition$
-DECLARE invalid_documents integer; invalid_fees integer; invalid_matter_references integer;
+DECLARE invalid_documents integer; invalid_fees integer; invalid_matter_references integer; invalid_receipts integer;
 BEGIN
  SELECT count(*) INTO invalid_documents FROM public.documents d WHERE _migration.document_edit_current_valid(d.id) IS DISTINCT FROM true;
  SELECT count(*) INTO invalid_fees FROM public.fee_letters f WHERE _migration.fee_letter_edit_current_valid(f.id) IS DISTINCT FROM true;
- SELECT count(*) INTO invalid_matter_references FROM public.matters m WHERE _migration.matter_fee_reference_current_valid(m.id) IS DISTINCT FROM true;
- IF invalid_documents<>0 OR invalid_fees<>0 OR invalid_matter_references<>0 THEN
-  RAISE EXCEPTION 'Task 4.6/4.7 migration changed original values or relationships: documents %, fee letters %, matter references %',invalid_documents,invalid_fees,invalid_matter_references;
+	 SELECT count(*) INTO invalid_matter_references FROM public.matters m WHERE _migration.matter_fee_reference_current_valid(m.id) IS DISTINCT FROM true;
+	 SELECT count(*) INTO invalid_receipts FROM _migration.tasks46_47_submission_owner o WHERE
+	  (o.gateway='documents' AND NOT EXISTS(SELECT 1 FROM _migration.document_edit_submission s WHERE s.submission_id=o.submission_id AND s.actor_id=o.actor_id AND s.document_id=o.entity_id AND s.result_version=o.result_version AND s.request_payload IS NOT DISTINCT FROM o.request_payload)) OR
+	  (o.gateway='fee_letters' AND NOT EXISTS(SELECT 1 FROM _migration.fee_letter_edit_submission s WHERE s.submission_id=o.submission_id AND s.actor_id=o.actor_id AND s.fee_letter_id=o.entity_id AND s.result_version=o.result_version AND s.request_payload IS NOT DISTINCT FROM o.request_payload)) OR
+	  (o.gateway='matter_fee_references' AND NOT EXISTS(SELECT 1 FROM _migration.matter_fee_reference_submission s WHERE s.submission_id=o.submission_id AND s.actor_id=o.actor_id AND s.matter_id=o.entity_id AND s.result_version=o.result_version AND s.request_payload IS NOT DISTINCT FROM o.request_payload));
+	 IF invalid_documents<>0 OR invalid_fees<>0 OR invalid_matter_references<>0 OR invalid_receipts<>0 THEN
+	  RAISE EXCEPTION 'Task 4.6/4.7 migration changed original values or relationships: documents %, fee letters %, matter references %, receipts %',invalid_documents,invalid_fees,invalid_matter_references,invalid_receipts;
  END IF;
 END
 $postcondition$;

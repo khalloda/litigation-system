@@ -74,6 +74,7 @@ export async function tasks46_47Applied(db: ClientBase) {
         'matter_fee_reference_submission',
         'tasks46_47_boundary',
         'tasks46_47_import',
+        'tasks46_47_submission_owner',
       ],
       views: TASKS46_47_TABLES.map((table) => 'tasks46_47_initial_' + table).sort(),
       columns: TASKS46_47_FIELDS.map(([table, column]) => table + '.' + column).sort(),
@@ -239,6 +240,7 @@ export async function assertTasks46_47Boundary(db: ClientBase, profile: string) 
     'fee_letter_edit_submission',
     'matter_fee_reference_change',
     'matter_fee_reference_submission',
+    'tasks46_47_submission_owner',
   ]) {
     const guards = (
       await db.query(

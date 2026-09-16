@@ -1,0 +1,171 @@
+import 'dotenv/config';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { withIsolatedPostgres } from './lib/isolated-postgres-fixture';
+import { withApprovedMigrationClient } from './lib/migration-principal';
+
+type RunRecord = {
+  name: string;
+  command: string[];
+  startedAt: string;
+  finishedAt: string;
+  exitCode: number | null;
+  log: string;
+};
+
+async function main() {
+  const output = resolve(
+    process.env.TASKS46_47_TEST_OUTPUT ??
+      `test-results/tasks46-47-correction-historical-${Date.now()}`,
+  );
+  mkdirSync(output, { recursive: true });
+  const sourceFiles = execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard'],
+    { encoding: 'utf8', windowsHide: true },
+  )
+    .trim()
+    .split('\n')
+    .filter((path) => /^(?:scripts|src|prisma|docs)\//u.test(path) || path === 'package.json')
+    .map((path) => ({
+      path,
+      sha256: createHash('sha256').update(readFileSync(path)).digest('hex'),
+    }));
+  writeFileSync(resolve(output, 'source-binding.json'), JSON.stringify(sourceFiles, null, 2));
+  const runs: RunRecord[] = [];
+  await withIsolatedPostgres(async (initial) => {
+    await initial.restoreProject();
+    const migrationUrl = await initial.createDatabase(
+      'litigation_task4647_correction',
+      'litigation',
+    );
+    const runtimeUrl = new URL(initial.runtimeUrl);
+    runtimeUrl.pathname = new URL(migrationUrl).pathname;
+    const environment = {
+      ...initial.environment,
+      MIGRATION_DATABASE_URL: migrationUrl,
+      DATABASE_URL: runtimeUrl.toString(),
+      TASKS46_47_TEST_DATABASE: 'litigation_task4647_correction',
+    };
+    writeFileSync(
+      resolve(output, 'isolation.json'),
+      JSON.stringify(
+        {
+          at: new Date().toISOString(),
+          container: initial.container,
+          cluster: initial.clusterId,
+          sourceCluster: initial.sourceClusterId,
+          database: 'litigation_task4647_correction',
+          port: new URL(migrationUrl).port,
+          image: initial.imageId,
+        },
+        null,
+        2,
+      ),
+    );
+    const run = (name: string, command: string[], assertSuccess = true) => {
+      const startedAt = new Date().toISOString();
+      const result = spawnSync(process.execPath, command, {
+        env: environment,
+        encoding: 'utf8',
+        windowsHide: true,
+        maxBuffer: 64_000_000,
+      });
+      const finishedAt = new Date().toISOString();
+      const log = (result.stdout + result.stderr).replace(
+        /postgres(?:ql)?:\/\/[^\s"']+/gu,
+        '[redacted]',
+      );
+      writeFileSync(resolve(output, `${name}.log`), log);
+      runs.push({
+        name,
+        command: [process.execPath, ...command],
+        startedAt,
+        finishedAt,
+        exitCode: result.status,
+        log: `${name}.log`,
+      });
+      writeFileSync(resolve(output, 'execution-record.json'), JSON.stringify(runs, null, 2));
+      if (assertSuccess) assert.equal(result.status, 0, log);
+      return result.status;
+    };
+    const deploy = run(
+      'deploy',
+      ['--import', 'tsx', 'scripts/run-prisma-migration.ts', 'deploy'],
+      false,
+    );
+    if (deploy !== 0) {
+      await withApprovedMigrationClient(
+        async (db) => {
+          const logs = await db.query(
+            `SELECT migration_name,logs FROM _prisma_migrations
+             WHERE migration_name='20260916180000_documents_fee_letters_boundary'`,
+          );
+          writeFileSync(
+            resolve(output, 'deploy-database-error.json'),
+            JSON.stringify(logs.rows, null, 2),
+          );
+          try {
+            await db.query(
+              readFileSync(
+                'prisma/migrations/20260916180000_documents_fee_letters_boundary/migration.sql',
+                'utf8',
+              ),
+            );
+          } catch (error) {
+            const problem = error as Error & { code?: string; detail?: string; where?: string };
+            writeFileSync(
+              resolve(output, 'direct-migration-error.json'),
+              JSON.stringify(
+                {
+                  name: problem.name,
+                  message: problem.message,
+                  code: problem.code,
+                  detail: problem.detail,
+                  where: problem.where,
+                  stack: problem.stack,
+                },
+                null,
+                2,
+              ),
+            );
+          }
+        },
+        { databaseUrl: migrationUrl },
+      );
+      throw new Error('Disposable migration deploy failed; see deploy-database-error.json');
+    }
+    run('functional', ['--import', 'tsx', 'scripts/test-documents-fee-letters.ts']);
+    run('invariants', [
+      '--import',
+      'tsx',
+      'scripts/check-db.ts',
+      '--profile=historical-full-state-upgrade',
+    ]);
+    writeFileSync(
+      resolve(output, 'tool-versions.json'),
+      JSON.stringify(
+        {
+          recordedAt: new Date().toISOString(),
+          node: process.version,
+          platform: process.platform,
+          architecture: process.arch,
+          postgresImage: initial.imageId,
+        },
+        null,
+        2,
+      ),
+    );
+  });
+  console.log(
+    'PASS correction historical migration, functional suite, full read oracle and invariants',
+  );
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
