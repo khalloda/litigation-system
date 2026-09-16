@@ -339,7 +339,9 @@ async function main() {
         console.log('PASS canonical 1–69→70 empty boundary and native create/archive/restore');
       }
       if (process.argv.includes('--browser') || process.argv.includes('--browser-only')) {
-        const browserModule = './test-poa-browser.mjs';
+        const browserModule = process.argv.includes('--r1-browser')
+          ? './test-poa-r1-browser.mjs'
+          : './test-poa-browser.mjs';
         const { provePoaBrowser } = await import(browserModule);
         await provePoaBrowser(fixture, output);
       }

@@ -1,5 +1,17 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Task 4.5 R1 correction candidate — 16 September 2026
+
+The reviewed invalid number/date draft issue is corrected locally: incomplete
+entries are refused with Arabic feedback and retained for correction; deliberate
+clearing remains supported. The six original evidence files identified by the
+review are supplied unchanged. See the [R1 correction report](docs/task-reports/2026-09-16-task-4-5-r1-correction.md)
+and [matrix](docs/testing/task-4-5-r1-correction-matrix.md).
+Independent correction review remains required. Migration 70 is unactivated;
+Task 4.4 stays checked and Task 4.5 unchecked. No owner activation or publication
+is included. Earlier checkpoint statements below remain historical.
+
+
 A web application replacing a Microsoft Access database that has run the firm's
 litigation practice since 2010.
 

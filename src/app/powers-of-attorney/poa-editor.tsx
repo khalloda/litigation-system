@@ -49,6 +49,8 @@ export function PoaEditor(props: {
     [pending, start] = useTransition();
   const feedback = useRef<HTMLDivElement>(null),
     heading = useRef<HTMLHeadingElement>(null),
+    copiesInput = useRef<HTMLInputElement>(null),
+    dateInput = useRef<HTMLInputElement>(null),
     lastPayload = useRef<string | null>(null),
     prefix = useId();
   const uncertain = result?.code === 'generic',
@@ -77,6 +79,25 @@ export function PoaEditor(props: {
     if (pending || result?.kind === 'success') return;
     let payload = lastPayload.current;
     if (!uncertain) {
+      // Native number/date controls can expose an unfinished draft as an empty
+      // value. Keep their DOM draft and distinguish bad input from a real clear
+      // before building any payload. An uncertain retry uses its frozen payload.
+      if (!lifecycle) {
+        for (const [field, input] of [
+          ['copies_count', copiesInput.current],
+          ['issue_date', dateInput.current],
+        ] as const) {
+          if (input && !input.validity.valid) {
+            setResult({
+              kind: 'error',
+              code: 'invalid',
+              field,
+              message: new Map(Object.entries(labels)).get(field) + ' — ' + t.poa.errors.invalid,
+            });
+            return;
+          }
+        }
+      }
       const patch = lifecycle
         ? {}
         : Object.fromEntries(
@@ -216,30 +237,35 @@ export function PoaEditor(props: {
                   </select>
                 ) : k === 'copies_count' ? (
                   <input
+                    ref={copiesInput}
                     id={prefix + k}
                     disabled={disabled}
                     type="number"
                     min={0}
                     max={2147483647}
                     step={1}
-                    value={
-                      new Map(Object.entries(values)).get(k) === null
-                        ? ''
-                        : String(new Map(Object.entries(values)).get(k))
-                    }
-                    onChange={(e) =>
-                      change(k, e.target.value === '' ? null : Number(e.target.value))
-                    }
+                    defaultValue={String(s.record?.values.copies_count ?? '')}
+                    aria-invalid={result?.field === k || undefined}
+                    aria-describedby={result?.field === k ? prefix + 'feedback' : undefined}
+                    onChange={(e) => {
+                      if (e.target.validity.valid)
+                        change(k, e.target.value === '' ? null : Number(e.target.value));
+                    }}
                   />
                 ) : k === 'issue_date' ? (
                   <input
+                    ref={dateInput}
                     id={prefix + k}
                     disabled={disabled}
                     type="date"
                     min="0001-01-01"
                     max="9999-12-31"
-                    value={String(new Map(Object.entries(values)).get(k) ?? '')}
-                    onChange={(e) => change(k, e.target.value || null)}
+                    defaultValue={String(s.record?.values.issue_date ?? '')}
+                    aria-invalid={result?.field === k || undefined}
+                    aria-describedby={result?.field === k ? prefix + 'feedback' : undefined}
+                    onChange={(e) => {
+                      if (e.target.validity.valid) change(k, e.target.value || null);
+                    }}
                   />
                 ) : (
                   <textarea
@@ -357,6 +383,7 @@ export function PoaEditor(props: {
       </section>
       {result ? (
         <div
+          id={prefix + 'feedback'}
           ref={feedback}
           tabIndex={-1}
           role={result.kind === 'error' ? 'alert' : 'status'}

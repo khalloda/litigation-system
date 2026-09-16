@@ -1,5 +1,17 @@
 # Product Requirements — Litigation Management System
 
+## Task 4.5 R1 correction candidate — 16 September 2026
+
+The reviewed invalid number/date draft issue is corrected locally: incomplete
+entries are refused with Arabic feedback and retained for correction; deliberate
+clearing remains supported. The six original evidence files identified by the
+review are supplied unchanged. See the [R1 correction report](task-reports/2026-09-16-task-4-5-r1-correction.md)
+and [matrix](testing/task-4-5-r1-correction-matrix.md).
+Independent correction review remains required. Migration 70 is unactivated;
+Task 4.4 stays checked and Task 4.5 unchecked. No owner activation or publication
+is included. Earlier checkpoint statements below remain historical.
+
+
 ## 1. The problem
 
 Sarie Eldin & Partners runs its litigation practice on a Microsoft Access file
