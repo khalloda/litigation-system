@@ -1,11 +1,32 @@
 # Data migration
 
+## Current Task 4.5 local acceptance and activation — 16 September 2026
+
+Khaled Helmy accepted the complete D64 powers-of-attorney module at `e4806160bf70184526e3a8bc10e18b0d7e6f953f`
+and the [independent correction PASS](reviews/2026-09-16-task-4-5-e480616-independent-correction-review.md), closing T45-R1 and T45-N1.
+The fresh protected backup and isolated restore/rehearsal passed. Only reviewed
+migration 70 was applied to the actual local development database: 141 historical
+invariants and 15 setup checks passed. The accepted source runs at
+`http://127.0.0.1:3000`, build `lMSctpvPZP2Yn99F0XmmD`, from its stable external artifact.
+All prior accepted functionality and the complete POA module are active.
+
+Task 4.4 remains checked; Task 4.5 is now checked under the owner's bounded local
+acceptance. Task 4.6 remains unstarted. Actual anonymous health and exact-build
+isolated authenticated proof passed. Actual authenticated owner observation:
+**PASS_WITH_FINDING**; see the [acceptance/activation report](task-reports/2026-09-16-task-4-5-acceptance-activation.md)
+for its precise scope and any remaining observation gap.
+The approved ordinary publication follows this documentation child; its final SHA,
+fresh remote outcome and final runtime observation are bound by external receipts.
+The return point is independent combined acceptance/activation/publication review
+in the same task. Earlier dated candidate, unchecked and unstarted statements below
+describe historical checkpoints. No Task 4.6, Ubuntu deployment or Access cutover.
+
 Move the authoritative Access data to PostgreSQL with **provable** zero loss.
 
 **Core rule: never delete, clean or fix anything during extraction or load.**
 Data that cannot be mapped is *quarantined*, not dropped.
 
-**Current documented checkpoint — 15 September 2026:** reviewed migration 69
+**Historical documented checkpoint — 15 September 2026:** reviewed migration 69
 was completed on the actual local development database after protected recovery,
 isolated restore/rehearsal and exact preservation checks. Accepted Phase 3 source
 `2966570`, activated as build `LyN77RMhXZbOvG44OcUhg`, was published through `b39a7a1`.

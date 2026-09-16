@@ -1,6 +1,27 @@
 # Product Requirements — Litigation Management System
 
-## Task 4.5 R1 correction candidate — 16 September 2026
+## Current Task 4.5 local acceptance and activation — 16 September 2026
+
+Khaled Helmy accepted the complete D64 powers-of-attorney module at `e4806160bf70184526e3a8bc10e18b0d7e6f953f`
+and the [independent correction PASS](reviews/2026-09-16-task-4-5-e480616-independent-correction-review.md), closing T45-R1 and T45-N1.
+The fresh protected backup and isolated restore/rehearsal passed. Only reviewed
+migration 70 was applied to the actual local development database: 141 historical
+invariants and 15 setup checks passed. The accepted source runs at
+`http://127.0.0.1:3000`, build `lMSctpvPZP2Yn99F0XmmD`, from its stable external artifact.
+All prior accepted functionality and the complete POA module are active.
+
+Task 4.4 remains checked; Task 4.5 is now checked under the owner's bounded local
+acceptance. Task 4.6 remains unstarted. Actual anonymous health and exact-build
+isolated authenticated proof passed. Actual authenticated owner observation:
+**PASS_WITH_FINDING**; see the [acceptance/activation report](task-reports/2026-09-16-task-4-5-acceptance-activation.md)
+for its precise scope and any remaining observation gap.
+The approved ordinary publication follows this documentation child; its final SHA,
+fresh remote outcome and final runtime observation are bound by external receipts.
+The return point is independent combined acceptance/activation/publication review
+in the same task. Earlier dated candidate, unchecked and unstarted statements below
+describe historical checkpoints. No Task 4.6, Ubuntu deployment or Access cutover.
+
+## Historical Task 4.5 R1 correction candidate — 16 September 2026
 
 The reviewed invalid number/date draft issue is corrected locally: incomplete
 entries are refused with Arabic feedback and retained for correction; deliberate
@@ -8,7 +29,7 @@ clearing remains supported. The six original evidence files identified by the
 review are supplied unchanged. See the [R1 correction report](task-reports/2026-09-16-task-4-5-r1-correction.md)
 and [matrix](testing/task-4-5-r1-correction-matrix.md).
 Independent correction review remains required. Migration 70 is unactivated;
-Task 4.4 stays checked and Task 4.5 unchecked. No owner activation or publication
+At that correction-candidate checkpoint, Task 4.4 stayed checked and Task 4.5 unchecked. No owner activation or publication
 is included. Earlier checkpoint statements below remain historical.
 
 
@@ -617,11 +638,11 @@ screen-reader-speech or full accessibility-conformance claim is made.
 
 The documentation child's SHA and publication outcome are recorded externally
 after verification. Stop for independent correction/closure/publication review;
-Task 4.5 remains unstarted. No migration, rebuild, restart, login or database test
-is part of this documentation continuation.
+At that Task 4.4 closure checkpoint, Task 4.5 was unstarted. No migration, rebuild,
+restart, login or database test was part of that documentation continuation.
 
 
-## Task 4.5 combined candidate — 15 September 2026
+## Historical Task 4.5 combined candidate — 15 September 2026
 
 The owner adopted D64 and authorized the complete powers-of-attorney candidate:
 paged list/search/filter/detail, creation/editing with current lawyer selections,
@@ -632,7 +653,7 @@ from current client and lawyer selections. This candidate is based directly on
 
 Migration 70 is a local, unactivated candidate tested only on disposable copies.
 The owner database stays at migration 69 and the accepted Task 4.4 app remains in
-place. Task 4.4 stays checked; Task 4.5 stays unchecked pending independent
+place. At that candidate checkpoint, Task 4.4 stayed checked; Task 4.5 stayed unchecked pending independent
 implementation review and later owner acceptance. No push, activation, Task 4.6,
 movement workflow or reporting work is included. The dated earlier checkpoints
 above retain their original scope.

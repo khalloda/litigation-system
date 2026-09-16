@@ -33,3 +33,28 @@ Attempts 01–08 have incomplete historical source capture; available artifacts 
 retained and no final passing result relies on them. Attempt14's dynamic browser
 body was recovered against its recorded hash. Later captured source versions are
 not substituted for earlier execution.
+
+
+## Owner acceptance and actual local activation — 16 September 2026
+
+The complete corrected D64 module at `e4806160bf70184526e3a8bc10e18b0d7e6f953f` is owner-accepted.
+The independent correction PASS closes T45-R1 and T45-N1. The original matrix
+above remains an exact 6,041-byte prefix; the R1 matrix and earlier reports/reviews
+remain unchanged. This addendum records fresh operations separately from reused proof.
+
+| Gate | Result and evidence |
+| --- | --- |
+| Inputs/source | Separate handoff manifest verified; exact e480616 source and all migrations1–70 bound |
+| Recovery | Fresh protected database/roles/config/logo backup, complete member hashes and ACL checks; exact dump restored in a distinct PostgreSQL17.11 cluster |
+| Pristine rehearsal | 137/15 at69; only exact70 deployed; 141/15 at70; old rows/projections and complete sequence states preserved |
+| Stable build smoke | Build lMSctpvPZP2Yn99F0XmmD: authenticated fixture reads, filters, native create/edit/clear, both R1 draft paths, archive/restore, Cancel/Escape, RTL/mobile and prior module navigation |
+| Actual operation | Migration70 once; 128 tables; all124 prior table projections exact except explicitly enumerated additions; all48 full sequences exact; accounts/credentials/config/logos preserved; 141/15 checks PASS |
+| Actual runtime | Loopback3000; exact accepted build/source and owner70 target; anonymous login/assets/protected-route refusal PASS |
+| Actual authenticated observation | PASS_WITH_FINDING; precise limitation in the report; no owner business mutation used as a smoke test |
+| Publication | Authorized ordinary main publication occurs after the sole documentation child; external receipt owns its outcome |
+| Cleanup/stop | Only identified disposable resources removed; accepted app and private recovery retained; stop for independent combined review |
+
+Earlier448 permission decisions,123 canonical checks, exhaustive concurrency,
+corruption/retry and correction green02 evidence are source-bound reuse, not fresh
+counts for this operation. No screen-reader speech or full accessibility claim.
+Only the existing Task4.5 checkbox changes; the other85 lines remain exact.
