@@ -6,6 +6,7 @@ import { PoaFilterError, poaListHref, poaDetailHref } from '@/lib/poa-query';
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
 import { PoaFields } from './poa-fields';
+import { PoaFilterClear } from './poa-filter-clear';
 import styles from '../staff/staff.module.css';
 import local from './poa.module.css';
 export const metadata = { title: t.poa.title };
@@ -15,9 +16,10 @@ export default async function Page({
   searchParams: Promise<ClientSearchParams>;
 }) {
   const session = await requirePagePermission({ area: 'powersOfAttorney', action: 'view' });
+  const params = await searchParams;
   let data;
   try {
-    data = await getPoas(session, await searchParams);
+    data = await getPoas(session, params);
   } catch (e) {
     if (!(e instanceof PoaFilterError)) throw e;
     return (
@@ -57,7 +59,7 @@ export default async function Page({
         )}
       </header>
       <section className={styles.panel} aria-label={t.poa.search}>
-        <form method="get" action="/powers-of-attorney">
+        <form key={JSON.stringify(params)} method="get" action="/powers-of-attorney">
           <div className={local.fields}>
             <div className={styles.field}>
               <label htmlFor="poa-q">{t.poa.search}</label>
@@ -152,9 +154,7 @@ export default async function Page({
             <button className={styles.button} type="submit">
               {t.common.search}
             </button>
-            <Link className={styles.link} href="/powers-of-attorney">
-              {t.clients.clear}
-            </Link>
+            <PoaFilterClear className={styles.link} />
           </div>
         </form>
       </section>

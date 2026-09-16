@@ -7,6 +7,7 @@ import { lifecycleSessions } from './lib/matter-lifecycle-proof.ts';
 import { readPoaMutation, mutatePoa } from '../src/lib/poa-mutations.ts';
 import { createMaintenanceAuditMetadata } from '../src/lib/audit-metadata.ts';
 import { readPoa, readPoas } from '../src/lib/poa-query.ts';
+import { provePoaFilterNavigation } from './test-poa-filter-browser.mjs';
 
 export async function provePoaBrowser(fixture, output) {
   return proveHearingBrowser(
@@ -321,6 +322,7 @@ export async function provePoaBrowser(fixture, output) {
       evidence.push({
         name: 'Both writer roles create/edit/current lawyer add and retire; stale drafts retained; Administrator archive/restore; keyboard Escape; real 320px and zoom',
       });
+      await provePoaFilterNavigation(api, output);
     },
     { preserveAccounts: true },
   );
