@@ -94,6 +94,16 @@ export default async function ClientPage({
         <p className={`${styles.panel} ${styles.state}`}>{t.clients.archivedNotice}</p>
       ) : null}
       <div className={styles.actions}>
+        {hasPermission(session.user.role, 'documents', 'view') ? (
+          <Link className={styles.link} href={`/documents?client=${client.id}&archive=all`}>
+            {t.nav.documents}
+          </Link>
+        ) : null}
+        {hasPermission(session.user.role, 'feeLetters', 'view') ? (
+          <Link className={styles.link} href={`/fee-letters?client=${client.id}&archive=all`}>
+            {t.nav.feeLetters}
+          </Link>
+        ) : null}
         <Link
           className={styles.link}
           href={matterListHref(

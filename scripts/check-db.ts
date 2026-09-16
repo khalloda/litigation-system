@@ -1,4 +1,5 @@
 import { assertPoaEditBoundary, historicalPoaClient } from './lib/poa-edit-checkpoint';
+import { assertTasks46_47Boundary, historicalTasks46_47Client } from './lib/tasks46-47-checkpoint';
 import { assertAdminLifecycleBoundary } from './lib/admin-lifecycle-checkpoint';
 import { assertAdminEditBoundary, historicalAdminClient } from './lib/admin-edit-checkpoint';
 import { assertHearingLifecycleBoundary } from './lib/hearing-lifecycle-checkpoint';
@@ -160,6 +161,7 @@ async function main() {
     adminChecks,
     adminLifecycleChecks,
     poaChecks,
+    tasks46_47Checks,
     staffBoundary,
     rosterBaseline,
     staffChecks,
@@ -169,6 +171,7 @@ async function main() {
     return {
       checkpoint,
       poaChecks: checkpoint >= 70 ? await assertPoaEditBoundary(current, profile) : [],
+      tasks46_47Checks: checkpoint >= 71 ? await assertTasks46_47Boundary(current, profile) : [],
       clientBoundary: checkpoint >= 62,
       clientChecks: checkpoint >= 62 ? await assertClientContactBoundary(current, profile) : [],
       logoChecks: checkpoint >= 63 ? await assertClientLogoBoundary(current) : [],
@@ -2382,7 +2385,9 @@ async function main() {
       poaStructure.length === 0,
     );
     if (historical) {
-      const documentResult = await reconcileDocuments(historicalRosterDb);
+      const documentResult = await reconcileDocuments(
+        historicalTasks46_47Client(historicalRosterDb, checkpoint >= 71),
+      );
       record(
         'Paper documents reconcile to source and reviewed relationships',
         '407 source records; every scalar, typed value, raw value, link and evidence row exact',
@@ -2402,7 +2407,9 @@ async function main() {
       documentStructure.length === 0,
     );
     if (historical) {
-      const feeResult = await reconcileFeeLetters(historicalRosterDb);
+      const feeResult = await reconcileFeeLetters(
+        historicalTasks46_47Client(historicalRosterDb, checkpoint >= 71),
+      );
       record(
         'Fee letters and both matter-link directions reconcile',
         '331 fee letters; 288 forward links; 412 reverse references; every value, rule and evidence row exact',
@@ -2647,6 +2654,7 @@ async function main() {
     ...adminChecks,
     ...adminLifecycleChecks,
     ...poaChecks,
+    ...tasks46_47Checks,
     ...hearingLifecycleChecks,
   ])
     checks.push({

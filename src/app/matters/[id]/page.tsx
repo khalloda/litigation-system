@@ -159,6 +159,36 @@ export default async function MatterPage({
           {t.adminWorks.title}
         </Link>
       </section>
+      <section className={styles.panel} aria-label={t.documentsModule.title}>
+        <h2>{t.documentsModule.title}</h2>
+        <div className={styles.actions}>
+          {hasPermission(session.user.role, 'documents', 'view') ? (
+            <Link className={styles.link} href={`/documents?matter=${matter.id}&archive=all`}>
+              {t.documentsModule.title}
+            </Link>
+          ) : null}
+          {hasPermission(session.user.role, 'feeLetters', 'view') ? (
+            <>
+              <Link className={styles.link} href={`/fee-letters?covered=${matter.id}&archive=all`}>
+                {t.feeLettersModule.covered}
+              </Link>
+              <Link
+                className={styles.link}
+                href={`/fee-letters?referencing=${matter.id}&archive=all`}
+              >
+                {t.feeLettersModule.referencing}
+              </Link>
+            </>
+          ) : null}
+          {!matter.archived &&
+          hasPermission(session.user.role, 'feeLetters', 'update') &&
+          hasPermission(session.user.role, 'matters', 'update') ? (
+            <Link className={styles.link} href={`/fee-letters/matter/${matter.id}`}>
+              {t.feeLettersModule.manageMatterReference}
+            </Link>
+          ) : null}
+        </div>
+      </section>
       <section className={styles.panel} aria-label={t.hearings.title}>
         <h2>{t.hearings.title}</h2>
         <p>{t.hearings.matterHint}</p>

@@ -12,7 +12,7 @@ import {
 
 const AUTHORIZATION_MODULE = '@/lib/auth/authorization';
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
-const NON_PROJECT_SOURCE_DIRECTORIES = new Set(['.git', '.next', 'node_modules']);
+const NON_PROJECT_SOURCE_DIRECTORIES = new Set(['.git', '.next', 'node_modules', 'test-results']);
 const INSPECTED_SOURCE_EXTENSIONS = new Set<string>(AUTHORIZATION_SOURCE_EXTENSIONS);
 const NEXT_CONFIG_FILES = ['next.config.js', 'next.config.mjs', 'next.config.ts'] as const;
 

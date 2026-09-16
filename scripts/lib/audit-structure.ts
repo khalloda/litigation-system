@@ -1,4 +1,5 @@
 import { poaEditApplied, POA_EDIT_GATEWAYS, POA_EDIT_TABLES } from './poa-edit-checkpoint';
+import { tasks46_47Applied, TASKS46_47_GATEWAYS, TASKS46_47_TABLES } from './tasks46-47-checkpoint';
 import { adminLifecycleApplied, ADMIN_LIFECYCLE_GATEWAYS } from './admin-lifecycle-checkpoint';
 import { adminEditApplied, ADMIN_EDIT_GATEWAYS, ADMIN_EDIT_TABLES } from './admin-edit-checkpoint';
 import {
@@ -363,6 +364,7 @@ export async function runtimeRoleBoundaryFailures(
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
   const poaBoundary = await poaEditApplied(db);
+  const tasks46_47Boundary = await tasks46_47Applied(db);
   const adminBoundary = await adminEditApplied(db);
   const adminLifecycle = await adminLifecycleApplied(db);
   const hearingBoundary = await hearingEditApplied(db);
@@ -376,10 +378,12 @@ export async function runtimeRoleBoundaryFailures(
     (matterBoundary && MATTER_EDIT_TABLES.includes(table as never)) ||
     (hearingBoundary && HEARING_EDIT_TABLES.includes(table as never)) ||
     (adminBoundary && ADMIN_EDIT_TABLES.includes(table as never)) ||
-    (poaBoundary && POA_EDIT_TABLES.includes(table as never));
+    (poaBoundary && POA_EDIT_TABLES.includes(table as never)) ||
+    (tasks46_47Boundary && TASKS46_47_TABLES.includes(table as never));
   const approvedDefiners: readonly string[] = [
     ...APPROVED_RUNTIME_SECURITY_DEFINERS,
     ...(poaBoundary ? POA_EDIT_GATEWAYS : []),
+    ...(tasks46_47Boundary ? TASKS46_47_GATEWAYS : []),
     ...(staffBoundary ? STAFF_RUNTIME_GATEWAYS : []),
     ...(clientBoundary ? CLIENT_CONTACT_GATEWAYS : []),
     ...(logoBoundary ? CLIENT_LOGO_GATEWAYS : []),

@@ -1247,3 +1247,29 @@ IDs, aggregate and selected people deterministically. Both old and new clients
 must be unarchived; clearing cannot bypass that prerequisite. Fresh authority
 precedes receipt lookup. Exact committed retries acknowledge the original result;
 current state is read again. Current-version identical operations write nothing.
+
+## Tasks 4.6–4.7 combined candidate boundary — unactivated
+
+Candidate migration `20260916180000_documents_fee_letters_boundary` is migration
+71. It is not applied to the owner database in this candidate phase. It freezes
+the complete imported document and fee-letter values and the two independent
+matter-link populations before adding current row versions, archive state,
+relationship retirement/order, complete aggregate histories and owned submission
+receipts. Original document evidence, fee-letter source values, the 231 reviewed
+covered-matter links, 393 reviewed matter-side references and all 57 plus 19
+quarantine rows remain immutable and separately checked.
+
+The restricted runtime role receives only guarded state/save gateways and narrow
+evidence-count readers; it has no direct access to private boundary/history/receipt
+tables, business-table writes or related sequences. Document and fee-letter writes
+revalidate the current account/session/role and lock affected aggregates and
+parents. Covered-matter membership and the matter-side single current fee-letter
+reference remain separate operations. Archive/restore is Administrator-only and
+does not cascade to links, invoices or source evidence.
+
+The final historical migration-70 copy passed all 146 permanent checks at migration
+71, and the canonical empty replay passed all 128 applicable checks. Production
+browser proof ran only against an isolated PostgreSQL 17.11 cluster and disposable
+build. The owner database remains at migration 70 and the accepted application
+remains active; review and explicit later acceptance are required before migration
+71 or a new build is activated.

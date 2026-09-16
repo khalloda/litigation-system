@@ -24,6 +24,7 @@ assets/
 # comments. Prettier does not understand either and would wreck the alignment.
 sql/
 scripts/**/*.ps1
+scripts/**/*.py
 
 # Reference documents. Prettier reflows Arabic paragraphs and tables badly.
 docs/

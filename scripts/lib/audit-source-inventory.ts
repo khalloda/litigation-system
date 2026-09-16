@@ -1,5 +1,9 @@
 const POA_READ_SERVICE = 'src/lib/poa-query.ts';
 const POA_MUTATION_SERVICE = 'src/lib/poa-mutations.ts';
+const DOCUMENT_READ_SERVICE = 'src/lib/document-query.ts';
+const DOCUMENT_MUTATION_SERVICE = 'src/lib/document-mutations.ts';
+const FEE_LETTER_READ_SERVICE = 'src/lib/fee-letter-query.ts';
+const FEE_LETTER_MUTATION_SERVICE = 'src/lib/fee-letter-mutations.ts';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -126,6 +130,126 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/document-query.ts',
+    'snapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/document-query.ts',
+    'snapshot',
+    '4df6e4b42372281f07684fc102f8b6dafb3b34023b1d8441a8db3e0643626d4c',
+  ],
+  [
+    'src/lib/document-query.ts',
+    'readDocuments',
+    'fbd3b7b8d7f014728125284d9fbe99438e6e6e4d18b7aca3783cbf0f8920fa61',
+  ],
+  [
+    'src/lib/document-query.ts',
+    'readDocuments',
+    'b3c3f3c7eabcbc979f1219c0f4f990b96eab5c050dd0b41f764ab0e0c91a2876',
+  ],
+  [
+    'src/lib/document-query.ts',
+    'readDocuments',
+    '984d43f19983fff44bb6f7e2fc35d21f027e3a267043ada873645f377761c732',
+  ],
+  [
+    'src/lib/document-query.ts',
+    'readDocuments',
+    '7106dc2f6676328bf681518d78b5a59ab8071e8e94cad9dab8d45ee636c1ad43',
+  ],
+  [
+    'src/lib/document-query.ts',
+    'readDocuments',
+    '65193a7eeee7b53ce1f32952a572cbdf058f925ca663d4c33ef9688f88ed761a',
+  ],
+  [
+    'src/lib/document-query.ts',
+    'readDocument',
+    '3847888c25ec139c194fa55e55c2ca65af2f720cdd412ba61faeb0c7087f0eb5',
+  ],
+  [
+    'src/lib/document-mutations.ts',
+    'readDocumentMutation',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/document-mutations.ts',
+    'readDocumentMutation',
+    'a4ef8a865940f32ac5471712465cf6948f4718f40a94f2670357ce7e97980a4c',
+  ],
+  [
+    'src/lib/document-mutations.ts',
+    'mutateDocument',
+    'd9b1375868f8194c22fcd664a25e28a6528bff9cae70f2effd3a85a3bfa807d3',
+  ],
+  [
+    'src/lib/fee-letter-query.ts',
+    'snapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/fee-letter-query.ts',
+    'snapshot',
+    '6dd5be7f93b218de5b5d7df25053c1599189116e17e3cd811c6d8e1f925b72ea',
+  ],
+  [
+    'src/lib/fee-letter-query.ts',
+    'readFeeLetters',
+    'f838f3160b2cd3f1c2f2ddcb1a6177c99f6390cbfd9f25de25f01cd21ea12127',
+  ],
+  [
+    'src/lib/fee-letter-query.ts',
+    'readFeeLetters',
+    '9a972755544750dab96b04f71a1003f6501d72ac6c429bc435f58238ad01480f',
+  ],
+  [
+    'src/lib/fee-letter-query.ts',
+    'readFeeLetters',
+    '7106dc2f6676328bf681518d78b5a59ab8071e8e94cad9dab8d45ee636c1ad43',
+  ],
+  [
+    'src/lib/fee-letter-query.ts',
+    'readFeeLetters',
+    'ad763cbed575115cc16aa7ff1c00f49a32854da6e4e6cfd5a2919d454c258f10',
+  ],
+  [
+    'src/lib/fee-letter-query.ts',
+    'readFeeLetter',
+    '173122724961ad415d3435d703a868ed7870f874a57dd8eaaeef0a64ef8f01a9',
+  ],
+  [
+    'src/lib/fee-letter-mutations.ts',
+    'readFeeLetterMutation',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/fee-letter-mutations.ts',
+    'readFeeLetterMutation',
+    'ba006bff0bcb2aa20679c09972cff4d7b7ea3628679753f72f27d6a864c0a438',
+  ],
+  [
+    'src/lib/fee-letter-mutations.ts',
+    'mutateFeeLetter',
+    'a4c2f0d308027589f9075d95bcf05440f29ec2cf4ecaae6bc715e31874896209',
+  ],
+  [
+    'src/lib/fee-letter-mutations.ts',
+    'readMatterFeeReferenceMutation',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/fee-letter-mutations.ts',
+    'readMatterFeeReferenceMutation',
+    '8813a8d3ab555b22d679ae6d2fcd7f5080c585b82388832bad2ed1d0ee3caa66',
+  ],
+  [
+    'src/lib/fee-letter-mutations.ts',
+    'mutateMatterFeeReference',
+    '8f48a90c4fd74fa51d3c8df2e6777709436d1aaa6f132283d40eacf1a77a255f',
+  ],
   [
     'src/lib/poa-query.ts',
     'snapshot',
@@ -1986,6 +2110,8 @@ export function auditRuntimeSourceFailures(
     )
       failures.add('Administrative lifecycle closure differs from reviewed inventory');
     const isPoaMutationService = source.path === POA_MUTATION_SERVICE;
+    const isDocumentMutationService = source.path === DOCUMENT_MUTATION_SERVICE;
+    const isFeeLetterMutationService = source.path === FEE_LETTER_MUTATION_SERVICE;
     if (
       isPoaMutationService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -1998,6 +2124,30 @@ export function auditRuntimeSourceFailures(
         'd9383fdac0d774aa91157c37c80cb606b8ece5441760675a11bcd9ba60fd1c5c'
     )
       failures.add('POA input differs from reviewed inventory');
+    if (
+      isDocumentMutationService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        'c1e2be6a6f652103854b9968aba054bd0dcac28d39e248dd335610b6268ccbe5'
+    )
+      failures.add('Document mutation closure differs from reviewed inventory');
+    if (
+      source.path === 'src/lib/document-mutation-input.ts' &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        '066451b54edec2774872bf8d66829c549acd7912d03c5d83b1345506650ded7d'
+    )
+      failures.add('Document input differs from reviewed inventory');
+    if (
+      isFeeLetterMutationService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        'eddd93434374273851cfe81dd6cd64c325cce839f9703157a2a76b5b318c7ae4'
+    )
+      failures.add('Fee-letter mutation closure differs from reviewed inventory');
+    if (
+      source.path === 'src/lib/fee-letter-mutation-input.ts' &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        '9cb32690935f6d00a82822e5f53c511a6b652b25174f415eb1aeb6fac1f259d1'
+    )
+      failures.add('Fee-letter input differs from reviewed inventory');
     const isAdminMutationService = source.path === ADMIN_MUTATION_SERVICE;
     if (
       isAdminMutationService &&
@@ -2052,6 +2202,8 @@ export function auditRuntimeSourceFailures(
       isMatterMutationService ||
       isHearingMutationService ||
       isPoaMutationService ||
+      isDocumentMutationService ||
+      isFeeLetterMutationService ||
       isAdminMutationService ||
       isMatterLifecycleService ||
       isHearingLifecycleService ||
@@ -2061,6 +2213,20 @@ export function auditRuntimeSourceFailures(
     const isClientReadService = source.path === CLIENT_READ_SERVICE;
     const isMatterReadService = source.path === MATTER_READ_SERVICE;
     const isPoaReadService = source.path === POA_READ_SERVICE;
+    const isDocumentReadService = source.path === DOCUMENT_READ_SERVICE;
+    const isFeeLetterReadService = source.path === FEE_LETTER_READ_SERVICE;
+    if (
+      isDocumentReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        '11c9264d519b0bf06692e34d2aa7b491b3e5b577c029bac2142b6e7c40bbba2d'
+    )
+      failures.add('Document read closure differs from reviewed inventory');
+    if (
+      isFeeLetterReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        'bed60eaf2edcf53ab93a953c514843e6dc5f83f2e8fba90301d63fed311e84b2'
+    )
+      failures.add('Fee-letter read closure differs from reviewed inventory');
     if (
       isPoaReadService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -2193,6 +2359,8 @@ export function auditRuntimeSourceFailures(
                   isMatterMutationService ||
                   isHearingMutationService ||
                   isPoaMutationService ||
+                  isDocumentMutationService ||
+                  isFeeLetterMutationService ||
                   isAdminMutationService ||
                   isMatterLifecycleService ||
                   isHearingLifecycleService ||
@@ -2410,7 +2578,9 @@ export function auditRuntimeSourceFailures(
               isMatterReadService ||
               isHearingReadService ||
               isAdminReadService ||
-              isPoaReadService
+              isPoaReadService ||
+              isDocumentReadService ||
+              isFeeLetterReadService
             ) ||
             !reviewedSql
           ) {
@@ -2526,6 +2696,24 @@ export function auditRuntimeSourceFailures(
       [
         'setHumanAuditContext',
         'mutatePoa',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
+      [
+        'setHumanAuditContext',
+        'mutateDocument',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
+      [
+        'setHumanAuditContext',
+        'mutateFeeLetter',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
+      [
+        'setHumanAuditContext',
+        'mutateMatterFeeReference',
         'tx,Number(actor.user.id),dependencies.auditMetadata',
         1,
       ],

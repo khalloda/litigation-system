@@ -15,7 +15,7 @@
     "lint:fix": "eslint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run check:rtl && npm run check:authorization && npm run check:audit && npm run check:user-management && npm run check:staff-read-only && npm run check:client-read-only && npm run check:admin-work-read-only && npm run check:poa-read-only && npm run check:gitignore && npm run check:encoding",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run check:rtl && npm run check:authorization && npm run check:audit && npm run check:user-management && npm run check:staff-read-only && npm run check:client-read-only && npm run check:admin-work-read-only && npm run check:poa-read-only && npm run check:documents-fee-letters-read-only && npm run check:gitignore && npm run check:encoding",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f db",
@@ -115,7 +115,11 @@
     "check:poa-read-only": "tsx scripts/check-poa-read-only.ts",
     "test:poa-implementation": "tsx scripts/test-poa-implementation.ts",
     "test:poa-browser": "tsx scripts/test-poa-implementation.ts --browser",
-    "test:poa-canonical": "tsx scripts/test-poa-implementation.ts --canonical"
+    "test:poa-canonical": "tsx scripts/test-poa-implementation.ts --canonical",
+    "check:documents-fee-letters-read-only": "tsx scripts/check-documents-fee-letters-read-only.ts",
+    "test:documents-fee-letters": "tsx scripts/test-documents-fee-letters.ts",
+    "test:documents-fee-letters-canonical": "tsx scripts/test-documents-fee-letters-canonical.ts",
+    "test:documents-fee-letters-browser": "tsx scripts/run-documents-fee-letters-browser.ts"
   },
   "dependencies": {
     "@fontsource-variable/noto-naskh-arabic": "^5.3.0",

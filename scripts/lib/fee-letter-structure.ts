@@ -350,7 +350,14 @@ const canon = (v: string) => v.replace(/\r\n?/gu, '\n').trim();
 const same = (a: readonly unknown[], b: readonly unknown[]) =>
   JSON.stringify(a) === JSON.stringify(b);
 export async function feeLetterStructureFailures(db: ClientBase): Promise<string[]> {
-  const names = [...checks.map((x) => x[0]), ...fks.map((x) => x[0])];
+  const operational = (
+    await db.query<{ present: boolean }>(`SELECT EXISTS(SELECT 1 FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='matter_fee_letter_references' AND column_name='is_retired') present`)
+  ).rows[0]?.present;
+  const expectedChecks = checks.filter(
+    ([name]) => !(operational && name === 'matter_fee_letter_references_matter_id_key'),
+  );
+  const names = [...expectedChecks.map((x) => x[0]), ...fks.map((x) => x[0])];
   const cs = await db.query<C>(
     `SELECT con.conname name,ns.nspname schema_name,rel.relname table_name,con.contype::text type,con.convalidated validated,con.connoinherit no_inherit,con.condeferrable deferrable,con.condeferred deferred,pg_get_constraintdef(con.oid,true)definition,coalesce((SELECT array_agg(a.attname ORDER BY k.ordinality)FROM unnest(con.conkey)WITH ORDINALITY k(attnum,ordinality)JOIN pg_attribute a ON a.attrelid=con.conrelid AND a.attnum=k.attnum),ARRAY[]::name[])::text[]source_columns,tns.nspname target_schema,trel.relname target_table,coalesce((SELECT array_agg(a.attname ORDER BY k.ordinality)FROM unnest(con.confkey)WITH ORDINALITY k(attnum,ordinality)JOIN pg_attribute a ON a.attrelid=con.confrelid AND a.attnum=k.attnum),ARRAY[]::name[])::text[]target_columns,con.confupdtype::text update_action,con.confdeltype::text delete_action,con.confmatchtype::text match_type FROM pg_constraint con JOIN pg_class rel ON rel.oid=con.conrelid JOIN pg_namespace ns ON ns.oid=rel.relnamespace LEFT JOIN pg_class trel ON trel.oid=con.confrelid LEFT JOIN pg_namespace tns ON tns.oid=trel.relnamespace WHERE con.conname=ANY($1::text[])ORDER BY con.conname`,
     [names],
@@ -367,7 +374,7 @@ export async function feeLetterStructureFailures(db: ClientBase): Promise<string
     `SELECT p.oid::regprocedure::text signature,p.proname name,ns.nspname schema_name,pg_get_function_result(p.oid)return_type,pg_get_function_arguments(p.oid)arguments,pg_get_function_identity_arguments(p.oid)identity_arguments,l.lanname language_name,p.prokind::text function_kind,p.provolatile::text volatility,p.proisstrict strict,p.prosecdef security_definer,p.proleakproof leakproof,p.proparallel::text parallel_safety,p.proconfig configuration,p.prosrc body FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace JOIN pg_language l ON l.oid=p.prolang WHERE p.oid='quarantine.refuse_fee_letter_evidence_change()'::regprocedure`,
   );
   const failures: string[] = [];
-  for (const [name, schema, table, type, noInherit, definition] of checks) {
+  for (const [name, schema, table, type, noInherit, definition] of expectedChecks) {
     const r = cs.rows.find((x) => x.name === name);
     if (
       !r ||
@@ -416,7 +423,7 @@ export async function feeLetterStructureFailures(db: ClientBase): Promise<string
     )
       failures.push(`foreign-key definition: ${name}`);
   }
-  if (cs.rows.length !== checks.length + fks.length)
+  if (cs.rows.length !== expectedChecks.length + fks.length)
     failures.push('Task 2.9D constraint inventory');
   for (const [name, schema, table, unique, columns, definition] of indexes) {
     const r = ix.rows.find((x) => x.name === name);

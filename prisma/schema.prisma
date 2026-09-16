@@ -1389,7 +1389,10 @@ model Matter {
   /// Task 2.9D's resolved reverse reference. Kept separate from
   /// fee_letter_matters because the two Access relationships have different
   /// source columns and different cardinalities.
-  feeLetterReferenceLink MatterFeeLetterReference?
+  /// PostgreSQL enforces at most one non-retired row with a partial unique
+  /// index. Prisma cannot express partial uniqueness, so history is modelled
+  /// as a collection here and operational reads use the guarded SQL boundary.
+  feeLetterReferenceLinks MatterFeeLetterReference[]
 
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   createdBy      Int               @default(dbgenerated("audit_current_actor_id()")) @map("created_by")
@@ -1823,6 +1826,9 @@ model Document {
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
 
+  rowVersion BigInt  @default(1) @map("row_version")
+  isArchived Boolean @default(false) @map("is_archived")
+
   matterId Int?    @map("matter_id")
   matter   Matter? @relation(fields: [matterId], references: [id])
 
@@ -1868,6 +1874,7 @@ model Document {
   @@index([responsiblePersonId])
   @@index([createdBy], map: "documents_created_by_idx")
   @@index([updatedBy], map: "documents_updated_by_idx")
+  @@index([isArchived, id], map: "documents_operational_list_idx")
   @@map("documents")
 }
 
@@ -1887,6 +1894,9 @@ model Document {
 /// becomes the fee_letter_matters table at task 1.4, not a column here.
 model FeeLetter {
   id Int @id @default(autoincrement())
+
+  rowVersion BigInt  @default(1) @map("row_version")
+  isArchived Boolean @default(false) @map("is_archived")
 
   /// Access contractID. Unique and preserved exactly — see above.
   contractId Int? @unique @map("contract_id")
@@ -1933,6 +1943,7 @@ model FeeLetter {
   @@index([clientId])
   @@index([createdBy], map: "fee_letters_created_by_idx")
   @@index([updatedBy], map: "fee_letters_updated_by_idx")
+  @@index([isArchived, id], map: "fee_letters_operational_list_idx")
   @@map("fee_letters")
 }
 
@@ -2181,6 +2192,8 @@ model HearingAttendee {
 /// two different numbers must not be reconciled together.
 model FeeLetterMatter {
   id          Int       @id @default(autoincrement())
+  isRetired   Boolean   @default(false) @map("is_retired")
+  currentOrder Int?     @map("current_order")
   feeLetterId Int       @map("fee_letter_id")
   feeLetter   FeeLetter @relation(fields: [feeLetterId], references: [id], onDelete: Cascade)
 
@@ -2221,7 +2234,8 @@ model FeeLetterMatter {
 /// later in the application keep every legacy provenance field null.
 model MatterFeeLetterReference {
   id                           Int        @id @default(autoincrement())
-  matterId                     Int        @unique @map("matter_id")
+  isRetired                    Boolean    @default(false) @map("is_retired")
+  matterId                     Int        @map("matter_id")
   matter                       Matter     @relation(fields: [matterId], references: [id], onDelete: Restrict, map: "matter_fee_letter_references_matter_fk")
   feeLetterId                  Int        @map("fee_letter_id")
   feeLetter                    FeeLetter  @relation(fields: [feeLetterId], references: [id], onDelete: Restrict, map: "matter_fee_letter_references_fee_fk")
@@ -2238,6 +2252,7 @@ model MatterFeeLetterReference {
   updatedByActor               AuditActor @relation("MatterFeeLetterReferenceUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_fee_letter_references_updated_by_fkey")
 
   @@index([feeLetterId])
+  @@unique([matterId, feeLetterId], map: "matter_fee_reference_matter_fee_idx")
   @@index([createdBy], map: "matter_fee_letter_references_created_by_idx")
   @@index([updatedBy], map: "matter_fee_letter_references_updated_by_idx")
   @@map("matter_fee_letter_references")

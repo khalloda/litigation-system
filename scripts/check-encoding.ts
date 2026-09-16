@@ -27,7 +27,16 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 const ROOT = process.cwd();
-const SKIP = new Set(['node_modules', '.next', '.git', 'out', 'build', 'generated', 'coverage']);
+const SKIP = new Set([
+  'node_modules',
+  '.next',
+  '.git',
+  'out',
+  'build',
+  'generated',
+  'coverage',
+  'test-results',
+]);
 
 const BOM = Buffer.from([0xef, 0xbb, 0xbf]);
 

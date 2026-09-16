@@ -3782,3 +3782,27 @@ Proof covers the accepted migration-69 copy and the established canonical fixtur
 path. The candidate is not applied to the actual owner database. Trial failures,
 exact executed source versions, original sequence vectors and disposable cleanup
 belong to the Task 4.5 evidence package and implementation report.
+
+## Tasks 4.6–4.7 forward candidate — D65/D66, migration 71 pending
+
+Migrations 1–70 and their ledger bytes are frozen. Migration 71 creates an exact
+pre-edit boundary for all imported documents, fee letters, reviewed covered-matter
+memberships and reviewed matter-side fee-letter references. It preserves every old
+column, row, sequence state, source/quarantine record, audit event, account/session
+record and logo. Existing operational rows gain only row-version/archive state;
+existing forward links gain retirement/order state and existing reverse links gain
+retirement state. New application rows retain NULL Access identities and provenance.
+
+Current values are proved from the frozen boundary plus append-only change history;
+the two relationship directions replay independently. The permanent checker also
+pins the exact functions, grants, constraints, triggers and indexes and rejects
+runtime direct access to private evidence. The historical rehearsal used a
+positively identified migration-70 owner copy; the canonical fixture replay used a
+separate owned PostgreSQL 17.11 cluster. Late-failure rollback, native create/retry,
+corruption refusal, exact retry and observed conflicting-writer locks were exercised
+only on disposable copies.
+
+This candidate does not run migration 71 on the owner database, activate a build,
+change either task checkbox, push, or begin Task 4.7a/4.8. See the combined
+[implementation report](reviews/2026-09-16-tasks-4-6-4-7-combined-implementation.md)
+and its external verified review envelope for exact evidence and Git identities.
