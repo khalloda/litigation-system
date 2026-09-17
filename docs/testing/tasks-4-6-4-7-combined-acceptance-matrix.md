@@ -50,3 +50,35 @@ rows; 393 reverse links plus 19 reverse quarantine rows. No owner write was used
 OS screen-reader speech remains owner-excluded. This candidate must not apply
 migration 71 to the owner database, replace the accepted runtime, push, close either
 task checkbox, begin Task 4.7a/4.8, or claim production acceptance.
+
+## Owner acceptance, migration 71 and local activation — 17 September 2026
+
+The owner accepted corrected source
+`3f0c6c6fc7d41296c8b55f7454cc9c82ec6fcdfb` after the independent review
+closed T4647-R1–R6. That review verified the supplied source, receipts and packages;
+it did not itself execute Windows, PostgreSQL or native-browser tests. The original
+owner verification pair never existed, and the original executed-source body whose
+receipt named `66992ab0…` was never preserved. Those historical absences remain
+absences; this activation record does not manufacture or relabel them.
+
+| Operational area | Result | Fresh/reused boundary |
+| --- | --- | --- |
+| Approval handoff | PASS — 7,497,320-byte ZIP SHA-256 `d8c32053…` and all 38 safe unique members verified against the separate unchanged manifest | Fresh verification; nested implementation/correction packages hash-bound |
+| Accepted source | PASS — commit `3f0c6c6…`, tree `7925335…`, sole-parent chain and 766 candidate paths exact | Fresh Git identity checks |
+| Stable build | PASS — external artifact `accepted-tasks46-47-3f0c6c6-2026-09-17T08-06-59-307Z`, build `3OBUE7ppFmV5DINhNdi0s`; 766 tracked inputs stayed exact | Fresh build from accepted raw source identities |
+| Recovery | PASS — fresh restricted 60-member package, 22,132,119-byte readable dump, 54 logos, verified hashes/ACLs | Fresh owner migration-70 recovery; private bodies excluded from shareable delivery |
+| Restore/rehearsal | PASS — exact package restored to separate PostgreSQL 17.11, exact 128→138/70→71 delta, final 147 historical and 15 setup checks, owned cleanup | Fresh exact restore/delta/browser/final gates; unchanged exhaustive role/oracle/corruption/concurrency/canonical/retry proof reused explicitly |
+| Failed attempts | DISCLOSED — task-owned attempts remain sealed; attempt 4 passed strict/core/ACL/source and two true-overlap proofs before a fixed-session fixture assumption failed; attempt 7 exposed a browser-launch helper mismatch | Neither failed attempt is represented as a pass; successful stages were preserved and final proof used corrected task-only helpers |
+| Actual migration 71 | PASS — exact accepted SQL applied once; ten reviewed private tables, seven audit fields, no new sequence; 147+15 gates | Fresh actual owner verification; 48 complete sequence vectors, existing data, accounts/sessions/credentials/configuration and 54 logos unchanged |
+| Actual activation | PASS — accepted build active at `http://127.0.0.1:3000`, restricted runtime principal, actual checkpoint 71 | Fresh process/listener/build/database binding |
+| Actual authenticated smoke | PASS — both lists, text/internal search, explicit archive filters, Clear, detail/current/source labels, create/edit/archive confirmation Cancel, covered-matter editor Cancel, matter-side editor Cancel and earlier matter navigation | Fresh actual reads/Cancels; no write submitted; complete 138-table/catalog/48-sequence digest exact before/after |
+| Actual restore screen | LIMITED — archived filters returned zero documents and zero fee letters | No owner record was archived merely to display Restore; isolated lifecycle proof is reused |
+| Task closure | PASS — only existing 4.6 and 4.7 markers changed; all other 84 checkbox lines retained | Local owner acceptance; independent operational-delivery review remains next |
+| Publication | EXTERNAL RECEIPT — performed only after the documentation child exists | The committed matrix does not preclaim its own future commit SHA or remote result |
+
+Fresh actual browser observation supplements rather than replaces the accepted
+isolated mutation evidence. The final complete database comparison digest was
+`353d0467ed0679b2d3b1361eb9018ecdf22278197ec47e7a1228f090a0d16d0f`
+both immediately after migration and after all owner read/Cancel checks. This is
+local-development acceptance under D59, not Ubuntu deployment, production cutover,
+Task 4.7a approval or Task 4.8 work.

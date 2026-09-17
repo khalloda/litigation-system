@@ -2342,8 +2342,8 @@ than assuming one rule for every workflow. Test with real volumes.
       external receipt. Stop for independent correction/closure/publication review.
       At the 15 September Task 4.4 checkpoint, Task 4.5 was unstarted; see the current acceptance entry above.
 - [x] **4.5 Powers of attorney**
-- [ ] **4.6 Documents** — including the optional `mfiles_id` field
-- [ ] **4.7 Fee letters** — with linked matters
+- [x] **4.6 Documents** — including the optional `mfiles_id` field
+- [x] **4.7 Fee letters** — with linked matters
 - [ ] **4.7a Firm approval of Arabic billing labels** — prerequisite for 4.8
       (**D28**). Prepare a review table containing each of the 11 exact source
       codes and its established meaning: five invoice statuses, two invoice

@@ -1,6 +1,33 @@
 # Sarie Eldin & Partners — Litigation Management System
 
-## Current Task 4.5 A1 correction and local closure — 16 September 2026
+## Current Tasks 4.6–4.7 local acceptance and activation — 17 September 2026
+
+Khaled Helmy accepted the combined Documents and Fee letters implementation at
+`3f0c6c6fc7d41296c8b55f7454cc9c82ec6fcdfb` after the independent PASS closed
+T4647-R1–R6. A fresh restricted recovery package was restored and migration 71
+rehearsed on an isolated PostgreSQL 17.11 copy before the exact reviewed migration
+was applied once to the actual local development database. The 128→138 table and
+70→71 migration delta, all 48 sequence vectors, existing data, accounts, sessions,
+credentials and 54 logos passed preservation checks; 147 historical and 15 setup
+checks passed.
+
+The accepted source runs at `http://127.0.0.1:3000` from stable external artifact
+`D:\Projects\LitigationData\accepted-tasks46-47-3f0c6c6-2026-09-17T08-06-59-307Z`,
+build `3OBUE7ppFmV5DINhNdi0s`. Fresh authenticated owner read/navigation/form/Cancel
+checks covered both modules and their distinct relationship editors. No business
+write was submitted, and the complete database digest remained exact. The actual
+database has no archived document or fee-letter record, so restore screens were
+not fabricated there; archive/restore mutations remain isolated proof.
+
+Tasks 4.6 and 4.7 are locally accepted and checked. Task 4.7a and Task 4.8 remain
+unchecked. See the [acceptance/activation report](docs/task-reports/2026-09-17-tasks-4-6-4-7-acceptance-activation.md),
+[independent review](docs/reviews/2026-09-17-tasks-4-6-4-7-3f0c6c6-independent-review.md)
+and [combined matrix](docs/testing/tasks-4-6-4-7-combined-acceptance-matrix.md).
+The documentation child's exact identity and publication outcome are recorded in
+external receipts. Stop for independent operational-delivery review; no Task 4.7a,
+Task 4.8, Ubuntu deployment or Access cutover is included.
+
+## Historical Task 4.5 A1 correction and local closure — 16 September 2026
 
 T45-A1 is corrected and locally verified at `b7fc7c7a6afc412ad5a8dc42d72ef2109380b1fb`.
 Clear now resets every visible filter and discards unsent drafts, including at the

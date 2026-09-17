@@ -1,6 +1,32 @@
 # Product Requirements — Litigation Management System
 
-## Current Task 4.5 A1 correction and local closure — 16 September 2026
+## Current Tasks 4.6–4.7 local acceptance and activation — 17 September 2026
+
+Khaled Helmy accepted the combined Documents and Fee letters implementation at
+`3f0c6c6fc7d41296c8b55f7454cc9c82ec6fcdfb` after the independent PASS closed
+T4647-R1–R6. The complete D65/D66 behavior is active locally: paged read/search/
+filter/detail, creation/editing, recoverable archive/restore, immutable original
+evidence, independent current covered-matter membership and current matter-side
+fee-letter set/clear/replace.
+
+Fresh restricted recovery and isolated PostgreSQL 17.11 restore/rehearsal passed
+before reviewed migration 71 was applied once to the actual local database. The
+exact 128→138 table and 70→71 migration delta, all 48 sequence vectors, existing
+data, accounts, sessions, credentials and 54 logos passed preservation checks;
+147 historical and 15 setup checks passed. Stable build `3OBUE7ppFmV5DINhNdi0s`
+from accepted source runs at `http://127.0.0.1:3000`.
+
+Fresh actual authenticated read/navigation/form/Cancel checks covered both modules
+and both relationship directions without a business write; the complete database
+digest stayed exact. No actual archived row existed, so restore-screen observation
+remains limited to isolated proof. Tasks 4.6 and 4.7 are checked; Task 4.7a and
+Task 4.8 remain unchecked. See the [acceptance report](task-reports/2026-09-17-tasks-4-6-4-7-acceptance-activation.md),
+[independent review](reviews/2026-09-17-tasks-4-6-4-7-3f0c6c6-independent-review.md)
+and [matrix](testing/tasks-4-6-4-7-combined-acceptance-matrix.md). Stop for independent
+operational-delivery review; no billing-label approval, reporting, Ubuntu deployment
+or Access cutover is included.
+
+## Historical Task 4.5 A1 correction and local closure — 16 September 2026
 
 T45-A1 is corrected and locally verified at `b7fc7c7a6afc412ad5a8dc42d72ef2109380b1fb`.
 Clear now resets every visible filter and discards unsent drafts, including at the

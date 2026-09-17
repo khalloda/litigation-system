@@ -1,6 +1,34 @@
 # The database — running it, checking it, fixing it
 
-## Current Task 4.5 A1 correction and local closure — 16 September 2026
+## Current Tasks 4.6–4.7 local acceptance and activation — 17 September 2026
+
+Accepted migration `20260916180000_documents_fee_letters_boundary` is now the
+actual local-development migration 71. A fresh restricted migration-70 recovery was
+restored and rehearsed on an isolated PostgreSQL 17.11 copy before one actual apply.
+The exact delta is 128→138 non-system tables, 70→71 completed migrations, ten new
+private `_migration` tables, seven audit fields and no new sequence. All 48 complete
+sequence vectors and all pre-existing business values remained exact; account,
+credential, session, configuration and 54-logo checks passed. The permanent gates
+passed 147 historical checks plus 15 setup checks.
+
+Accepted source `3f0c6c6fc7d41296c8b55f7454cc9c82ec6fcdfb`, build
+`3OBUE7ppFmV5DINhNdi0s`, runs from the stable external artifact at
+`http://127.0.0.1:3000` using the unchanged restricted runtime principal. Fresh
+authenticated read/navigation/form/Cancel checks exercised Documents, Fee letters,
+covered-matter membership and the separate matter-side reference editor. No owner
+business write occurred and the complete post-smoke database digest matched the
+immediate post-migration digest. Both archived filters correctly returned zero;
+actual restore-screen observation was therefore unavailable and remains isolated
+proof.
+
+Tasks 4.6 and 4.7 are locally accepted and checked after the independent PASS of
+T4647-R1–R6. Task 4.7a and Task 4.8 remain unchecked. See the
+[acceptance report](task-reports/2026-09-17-tasks-4-6-4-7-acceptance-activation.md),
+[independent review](reviews/2026-09-17-tasks-4-6-4-7-3f0c6c6-independent-review.md)
+and [matrix](testing/tasks-4-6-4-7-combined-acceptance-matrix.md). Publication is
+recorded externally; stop for independent operational-delivery review.
+
+## Historical Task 4.5 A1 correction and local closure — 16 September 2026
 
 T45-A1 is corrected and locally verified at `b7fc7c7a6afc412ad5a8dc42d72ef2109380b1fb`.
 Clear now resets every visible filter and discards unsent drafts, including at the
