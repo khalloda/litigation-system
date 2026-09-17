@@ -6,6 +6,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { withIsolatedPostgres } from './lib/isolated-postgres-fixture';
 import { withApprovedMigrationClient } from './lib/migration-principal';
+import { adminEditState } from './lib/admin-edit-state';
 
 type RunRecord = {
   name: string;
@@ -50,6 +51,13 @@ async function main() {
       DATABASE_URL: runtimeUrl.toString(),
       TASKS46_47_TEST_DATABASE: 'litigation_task4647_correction',
     };
+    const beforeMigration = await withApprovedMigrationClient((db) => adminEditState(db), {
+      databaseUrl: migrationUrl,
+    });
+    writeFileSync(
+      resolve(output, 'migration-state-before.json'),
+      JSON.stringify(beforeMigration, null, 2),
+    );
     writeFileSync(
       resolve(output, 'isolation.json'),
       JSON.stringify(
@@ -138,6 +146,92 @@ async function main() {
       );
       throw new Error('Disposable migration deploy failed; see deploy-database-error.json');
     }
+    const afterMigration = await withApprovedMigrationClient((db) => adminEditState(db), {
+      databaseUrl: migrationUrl,
+    });
+    writeFileSync(
+      resolve(output, 'migration-state-after.json'),
+      JSON.stringify(afterMigration, null, 2),
+    );
+    assert.deepEqual(
+      afterMigration.sequences,
+      beforeMigration.sequences,
+      'all complete pre-existing sequence definitions and last_value/log_cnt/is_called vectors',
+    );
+    const changedExisting = new Set([
+      'public._prisma_migrations',
+      'public.audit_event_fields',
+      'public.documents',
+      'public.fee_letters',
+      'public.fee_letter_matters',
+      'public.matter_fee_letter_references',
+    ]);
+    const beforeTables = new Map(
+      beforeMigration.tables.map((row) => [`${row.schema}.${row.table}`, row]),
+    );
+    const afterTables = new Map(
+      afterMigration.tables.map((row) => [`${row.schema}.${row.table}`, row]),
+    );
+    for (const [name, before] of beforeTables) {
+      const after = afterTables.get(name);
+      assert.ok(after, `pre-existing table retained: ${name}`);
+      if (!changedExisting.has(name))
+        assert.deepEqual(after, before, `unrelated table remains byte-value equivalent: ${name}`);
+    }
+    for (const name of [
+      'public.documents',
+      'public.fee_letters',
+      'public.fee_letter_matters',
+      'public.matter_fee_letter_references',
+    ])
+      assert.equal(
+        afterTables.get(name)!.count,
+        beforeTables.get(name)!.count,
+        `${name} row count is unchanged by migration 71`,
+      );
+    assert.equal(
+      afterTables.get('public.audit_event_fields')!.count,
+      beforeTables.get('public.audit_event_fields')!.count + 7,
+      'exact seven audit-field registrations',
+    );
+    assert.equal(
+      afterTables.get('public._prisma_migrations')!.count,
+      beforeTables.get('public._prisma_migrations')!.count + 1,
+      'exact one completed migration-ledger row',
+    );
+    const addedTables = [...afterTables.keys()].filter((name) => !beforeTables.has(name)).sort();
+    assert.deepEqual(addedTables, [
+      '_migration.document_edit_change',
+      '_migration.document_edit_submission',
+      '_migration.fee_letter_edit_change',
+      '_migration.fee_letter_edit_submission',
+      '_migration.matter_fee_reference_change',
+      '_migration.matter_fee_reference_state',
+      '_migration.matter_fee_reference_submission',
+      '_migration.tasks46_47_boundary',
+      '_migration.tasks46_47_import',
+      '_migration.tasks46_47_submission_owner',
+    ]);
+    writeFileSync(
+      resolve(output, 'migration-delta.json'),
+      JSON.stringify(
+        {
+          beforeTables: beforeMigration.tables.length,
+          afterTables: afterMigration.tables.length,
+          addedTables,
+          changedExisting: [...changedExisting].sort(),
+          unchangedExisting: beforeMigration.tables.length - changedExisting.size,
+          completeSequences: afterMigration.sequences.length,
+          completeSequenceVectorsEqual: true,
+          catalogBefore: beforeMigration.catalogDigest,
+          catalogAfter: afterMigration.catalogDigest,
+          exactCatalogSurfaceValidatedBy: 'scripts/lib/tasks46-47-checkpoint.ts',
+          fixtureAccountsOrBusinessMutationsStarted: false,
+        },
+        null,
+        2,
+      ),
+    );
     run('functional', ['--import', 'tsx', 'scripts/test-documents-fee-letters.ts']);
     run('invariants', [
       '--import',

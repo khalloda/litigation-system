@@ -166,6 +166,12 @@ export async function assertTasks46_47Boundary(db: ClientBase, profile: string) 
     ).rows,
     [],
   );
+  assert.equal(
+    (await db.query('SELECT _migration.tasks46_47_submission_correspondence_valid() valid')).rows[0]
+      .valid,
+    true,
+    'Global ownership, local receipts and retained change history correspond in both directions',
+  );
   assert.deepEqual(
     (
       await db.query(`SELECT indexname,indexdef FROM pg_indexes WHERE schemaname='public'
@@ -355,6 +361,7 @@ export async function assertTasks46_47Boundary(db: ClientBase, profile: string) 
     'Complete document aggregate replay',
     'Complete fee-letter and covered-matter replay',
     'Independent current matter fee-letter replay',
+    'Bidirectional global receipt and history correspondence',
     'Exact guarded runtime gateways',
   ].map((description, index) => ({ id: `Tasks 4.6/4.7 boundary ${index + 1}`, description }));
 }

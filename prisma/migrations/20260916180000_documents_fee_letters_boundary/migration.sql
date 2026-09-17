@@ -259,6 +259,49 @@ BEGIN
 END;
 $$;
 
+CREATE FUNCTION _migration.tasks46_47_submission_correspondence_valid() RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+ WITH local_receipts AS (
+  SELECT 'documents'::text gateway,s.submission_id,s.actor_id,s.request_payload,
+   s.document_id entity_id,s.result_version
+  FROM _migration.document_edit_submission s
+  UNION ALL
+  SELECT 'fee_letters',s.submission_id,s.actor_id,s.request_payload,
+   s.fee_letter_id,s.result_version
+  FROM _migration.fee_letter_edit_submission s
+  UNION ALL
+  SELECT 'matter_fee_references',s.submission_id,s.actor_id,s.request_payload,
+   s.matter_id,s.result_version
+  FROM _migration.matter_fee_reference_submission s
+ ), changes AS (
+  SELECT 'documents'::text gateway,c.document_id entity_id,c.version result_version,c.actor_id
+  FROM _migration.document_edit_change c
+  UNION ALL
+  SELECT 'fee_letters',c.fee_letter_id,c.version,c.actor_id
+  FROM _migration.fee_letter_edit_change c
+  UNION ALL
+  SELECT 'matter_fee_references',c.matter_id,c.version,c.actor_id
+  FROM _migration.matter_fee_reference_change c
+ )
+ SELECT NOT EXISTS(
+  SELECT 1 FROM local_receipts l
+  WHERE NOT _migration.tasks46_47_receipt_valid(
+    l.gateway,l.actor_id,l.request_payload,l.entity_id,l.result_version)
+   OR NOT EXISTS(SELECT 1 FROM changes c WHERE c.gateway=l.gateway
+    AND c.entity_id=l.entity_id AND c.result_version=l.result_version AND c.actor_id=l.actor_id)
+  UNION ALL
+  SELECT 1 FROM _migration.tasks46_47_submission_owner o
+  WHERE NOT EXISTS(SELECT 1 FROM local_receipts l WHERE l.gateway=o.gateway
+   AND l.submission_id=o.submission_id AND l.actor_id=o.actor_id
+   AND l.entity_id=o.entity_id AND l.result_version=o.result_version
+   AND l.request_payload IS NOT DISTINCT FROM o.request_payload)
+  UNION ALL
+  SELECT 1 FROM changes c
+  WHERE NOT EXISTS(SELECT 1 FROM local_receipts l WHERE l.gateway=c.gateway
+   AND l.entity_id=c.entity_id AND l.result_version=c.result_version AND l.actor_id=c.actor_id)
+ )
+$$;
+
 CREATE FUNCTION _migration.document_edit_initial_aggregate(p_id integer) RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
  SELECT initial_values||jsonb_build_object('row_version',1,'is_archived',false)
@@ -394,6 +437,8 @@ CREATE FUNCTION _migration.matter_fee_reference_current_valid(p_id integer) RETU
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE expected jsonb:=_migration.matter_fee_reference_initial_aggregate(p_id); c record; s record; v bigint:=2;
  op text; old_fee integer; new_fee integer; before_current integer; after_current integer;
+ before_active integer; after_active integer; before_count integer; after_count integer;
+ before_old jsonb; after_old jsonb; before_new jsonb; after_new jsonb;
 BEGIN
  FOR c IN SELECT * FROM _migration.matter_fee_reference_change WHERE matter_id=p_id ORDER BY version LOOP
   SELECT * INTO s FROM _migration.matter_fee_reference_submission WHERE matter_id=p_id AND result_version=c.version;
@@ -406,14 +451,79 @@ BEGIN
 	    AND e.request_id=c.request_id AND e.outcome='succeeded') THEN RETURN false; END IF;
 	  op:=s.request_payload->>'operation'; old_fee:=(s.request_payload->'related'->>'oldFeeLetterId')::integer;
 	  new_fee:=(s.request_payload->'related'->>'newFeeLetterId')::integer;
-	  SELECT (e->>'fee_letter_id')::integer INTO before_current FROM jsonb_array_elements(c.before_values->'references') e WHERE NOT (e->>'is_retired')::boolean;
-	  SELECT (e->>'fee_letter_id')::integer INTO after_current FROM jsonb_array_elements(c.after_values->'references') e WHERE NOT (e->>'is_retired')::boolean;
-	  IF (op='set' AND (old_fee IS NOT NULL OR new_fee IS NULL OR before_current IS NOT NULL OR after_current IS DISTINCT FROM new_fee))
-	   OR (op='clear' AND (old_fee IS NULL OR new_fee IS NOT NULL OR before_current IS DISTINCT FROM old_fee OR after_current IS NOT NULL))
-	   OR (op='replace' AND (old_fee IS NULL OR new_fee IS NULL OR old_fee=new_fee OR before_current IS DISTINCT FROM old_fee OR after_current IS DISTINCT FROM new_fee))
+	  IF jsonb_typeof(c.before_values->'references')<>'array'
+	   OR jsonb_typeof(c.after_values->'references')<>'array'
+	   OR EXISTS(SELECT 1 FROM jsonb_array_elements(c.before_values->'references') e
+	    WHERE jsonb_typeof(e)<>'object' OR (e->>'matter_id')::integer IS DISTINCT FROM p_id)
+	   OR EXISTS(SELECT 1 FROM jsonb_array_elements(c.after_values->'references') e
+	    WHERE jsonb_typeof(e)<>'object' OR (e->>'matter_id')::integer IS DISTINCT FROM p_id)
+	   OR (SELECT count(*) FROM jsonb_array_elements(c.before_values->'references'))
+	      IS DISTINCT FROM (SELECT count(DISTINCT (e->>'id')::integer) FROM jsonb_array_elements(c.before_values->'references') e)
+	   OR (SELECT count(*) FROM jsonb_array_elements(c.after_values->'references'))
+	      IS DISTINCT FROM (SELECT count(DISTINCT (e->>'id')::integer) FROM jsonb_array_elements(c.after_values->'references') e)
+	   OR (SELECT count(*) FROM jsonb_array_elements(c.before_values->'references'))
+	      IS DISTINCT FROM (SELECT count(DISTINCT (e->>'fee_letter_id')::integer) FROM jsonb_array_elements(c.before_values->'references') e)
+	   OR (SELECT count(*) FROM jsonb_array_elements(c.after_values->'references'))
+	      IS DISTINCT FROM (SELECT count(DISTINCT (e->>'fee_letter_id')::integer) FROM jsonb_array_elements(c.after_values->'references') e)
+	  THEN RETURN false; END IF;
+	  SELECT count(*)::integer,min((e->>'fee_letter_id')::integer)
+	   INTO before_active,before_current FROM jsonb_array_elements(c.before_values->'references') e
+	   WHERE NOT (e->>'is_retired')::boolean;
+	  SELECT count(*)::integer,min((e->>'fee_letter_id')::integer)
+	   INTO after_active,after_current FROM jsonb_array_elements(c.after_values->'references') e
+	   WHERE NOT (e->>'is_retired')::boolean;
+	  SELECT count(*)::integer INTO before_count FROM jsonb_array_elements(c.before_values->'references');
+	  SELECT count(*)::integer INTO after_count FROM jsonb_array_elements(c.after_values->'references');
+	  SELECT e INTO before_old FROM jsonb_array_elements(c.before_values->'references') e
+	   WHERE (e->>'fee_letter_id')::integer=old_fee;
+	  SELECT e INTO after_old FROM jsonb_array_elements(c.after_values->'references') e
+	   WHERE (e->>'fee_letter_id')::integer=old_fee;
+	  SELECT e INTO before_new FROM jsonb_array_elements(c.before_values->'references') e
+	   WHERE (e->>'fee_letter_id')::integer=new_fee;
+	  SELECT e INTO after_new FROM jsonb_array_elements(c.after_values->'references') e
+	   WHERE (e->>'fee_letter_id')::integer=new_fee;
+	  IF (op='set' AND (old_fee IS NOT NULL OR new_fee IS NULL OR before_active<>0
+	      OR after_active<>1 OR after_current IS DISTINCT FROM new_fee))
+	   OR (op='clear' AND (old_fee IS NULL OR new_fee IS NOT NULL OR before_active<>1
+	      OR before_current IS DISTINCT FROM old_fee OR after_active<>0))
+	   OR (op='replace' AND (old_fee IS NULL OR new_fee IS NULL OR old_fee=new_fee
+	      OR before_active<>1 OR before_current IS DISTINCT FROM old_fee
+	      OR after_active<>1 OR after_current IS DISTINCT FROM new_fee))
+	   OR (old_fee IS NOT NULL AND (before_old IS NULL OR after_old IS NULL
+	      OR (before_old->>'is_retired')::boolean
+	      OR NOT (after_old->>'is_retired')::boolean
+	      OR after_old-ARRAY['is_retired','updated_at','updated_by']
+	         IS DISTINCT FROM before_old-ARRAY['is_retired','updated_at','updated_by']
+	      OR (after_old->>'updated_by')::integer IS DISTINCT FROM c.actor_id))
+	   OR (new_fee IS NOT NULL AND (after_new IS NULL OR (after_new->>'is_retired')::boolean))
+	   OR (new_fee IS NOT NULL AND before_new IS NOT NULL AND (
+	      NOT (before_new->>'is_retired')::boolean
+	      OR after_new-ARRAY['is_retired','updated_at','updated_by']
+	         IS DISTINCT FROM before_new-ARRAY['is_retired','updated_at','updated_by']
+	      OR (after_new->>'updated_by')::integer IS DISTINCT FROM c.actor_id))
+	   OR (new_fee IS NOT NULL AND before_new IS NULL AND (
+	      after_count<>before_count+1
+	      OR (after_new->>'matter_id')::integer IS DISTINCT FROM p_id
+	      OR (after_new->>'fee_letter_id')::integer IS DISTINCT FROM new_fee
+	      OR after_new->'identifier_space'<>'null' OR after_new->'legacy_reference_raw'<>'null'
+	      OR after_new->'legacy_source_record_key'<>'null'
+	      OR after_new->'legacy_source_extraction_sha256'<>'null'
+	      OR after_new->'legacy_source_payload'<>'null'
+	      OR (after_new->>'created_by')::integer IS DISTINCT FROM c.actor_id
+	      OR (after_new->>'updated_by')::integer IS DISTINCT FROM c.actor_id))
+	   OR (new_fee IS NOT NULL AND before_new IS NOT NULL AND after_count<>before_count)
+	   OR (new_fee IS NULL AND after_count<>before_count)
 	   OR EXISTS(SELECT 1 FROM jsonb_array_elements(c.before_values->'references') b
-	    WHERE (b->>'fee_letter_id')::integer NOT IN(old_fee,new_fee)
-	     AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(c.after_values->'references') a WHERE a IS NOT DISTINCT FROM b)) THEN RETURN false; END IF;
+	      WHERE (b->>'fee_letter_id')::integer IS DISTINCT FROM old_fee
+	        AND (b->>'fee_letter_id')::integer IS DISTINCT FROM new_fee
+	        AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(c.after_values->'references') a
+	         WHERE a IS NOT DISTINCT FROM b))
+	   OR EXISTS(SELECT 1 FROM jsonb_array_elements(c.after_values->'references') a
+	      WHERE (a->>'fee_letter_id')::integer IS DISTINCT FROM old_fee
+	        AND (a->>'fee_letter_id')::integer IS DISTINCT FROM new_fee
+	        AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(c.before_values->'references') b
+	         WHERE b IS NOT DISTINCT FROM a))
+	  THEN RETURN false; END IF;
   expected:=c.after_values; v:=v+1;
  END LOOP;
 	 IF EXISTS(SELECT 1 FROM _migration.matter_fee_reference_submission sr WHERE sr.matter_id=p_id
@@ -886,17 +996,14 @@ GRANT EXECUTE ON FUNCTION public.document_edit_state(integer,integer,text,timest
  public.matter_fee_reference_edit_save(integer,integer,text,timestamptz,jsonb) TO litigation_runtime;
 
 DO $postcondition$
-DECLARE invalid_documents integer; invalid_fees integer; invalid_matter_references integer; invalid_receipts integer;
+DECLARE invalid_documents integer; invalid_fees integer; invalid_matter_references integer; receipts_valid boolean;
 BEGIN
  SELECT count(*) INTO invalid_documents FROM public.documents d WHERE _migration.document_edit_current_valid(d.id) IS DISTINCT FROM true;
  SELECT count(*) INTO invalid_fees FROM public.fee_letters f WHERE _migration.fee_letter_edit_current_valid(f.id) IS DISTINCT FROM true;
 	 SELECT count(*) INTO invalid_matter_references FROM public.matters m WHERE _migration.matter_fee_reference_current_valid(m.id) IS DISTINCT FROM true;
-	 SELECT count(*) INTO invalid_receipts FROM _migration.tasks46_47_submission_owner o WHERE
-	  (o.gateway='documents' AND NOT EXISTS(SELECT 1 FROM _migration.document_edit_submission s WHERE s.submission_id=o.submission_id AND s.actor_id=o.actor_id AND s.document_id=o.entity_id AND s.result_version=o.result_version AND s.request_payload IS NOT DISTINCT FROM o.request_payload)) OR
-	  (o.gateway='fee_letters' AND NOT EXISTS(SELECT 1 FROM _migration.fee_letter_edit_submission s WHERE s.submission_id=o.submission_id AND s.actor_id=o.actor_id AND s.fee_letter_id=o.entity_id AND s.result_version=o.result_version AND s.request_payload IS NOT DISTINCT FROM o.request_payload)) OR
-	  (o.gateway='matter_fee_references' AND NOT EXISTS(SELECT 1 FROM _migration.matter_fee_reference_submission s WHERE s.submission_id=o.submission_id AND s.actor_id=o.actor_id AND s.matter_id=o.entity_id AND s.result_version=o.result_version AND s.request_payload IS NOT DISTINCT FROM o.request_payload));
-	 IF invalid_documents<>0 OR invalid_fees<>0 OR invalid_matter_references<>0 OR invalid_receipts<>0 THEN
-	  RAISE EXCEPTION 'Task 4.6/4.7 migration changed original values or relationships: documents %, fee letters %, matter references %, receipts %',invalid_documents,invalid_fees,invalid_matter_references,invalid_receipts;
+	 SELECT _migration.tasks46_47_submission_correspondence_valid() INTO receipts_valid;
+	 IF invalid_documents<>0 OR invalid_fees<>0 OR invalid_matter_references<>0 OR receipts_valid IS DISTINCT FROM true THEN
+	  RAISE EXCEPTION 'Task 4.6/4.7 migration changed original values or relationships: documents %, fee letters %, matter references %, receipt correspondence %',invalid_documents,invalid_fees,invalid_matter_references,receipts_valid;
  END IF;
 END
 $postcondition$;

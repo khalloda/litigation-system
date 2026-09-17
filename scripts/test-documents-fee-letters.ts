@@ -106,6 +106,96 @@ async function rejected(db: ClientBase, work: () => Promise<unknown>, pattern: R
   await assert.rejects(work, pattern);
   await db.query('ROLLBACK TO SAVEPOINT expected_refusal');
 }
+async function completeBoundaryRejects(db: ClientBase, message: string) {
+  let refused = false;
+  try {
+    await assertTasks46_47Boundary(db, 'historical-full-state-upgrade');
+  } catch {
+    refused = true;
+  }
+  assert.equal(refused, true, message);
+}
+async function receiptCorrespondenceFaultProof(db: ClientBase) {
+  const gateways = [
+    {
+      gateway: 'documents',
+      submission: 'document_edit_submission',
+      change: 'document_edit_change',
+      entity: 'document_id',
+    },
+    {
+      gateway: 'fee_letters',
+      submission: 'fee_letter_edit_submission',
+      change: 'fee_letter_edit_change',
+      entity: 'fee_letter_id',
+    },
+    {
+      gateway: 'matter_fee_references',
+      submission: 'matter_fee_reference_submission',
+      change: 'matter_fee_reference_change',
+      entity: 'matter_id',
+    },
+  ] as const;
+  for (const gateway of gateways) {
+    const receipt = (
+      await db.query(
+        `SELECT s.submission_id,s.${gateway.entity} entity_id,s.result_version
+         FROM _migration.${gateway.submission} s
+         JOIN _migration.tasks46_47_submission_owner o USING(submission_id)
+         JOIN _migration.${gateway.change} c
+           ON c.${gateway.entity}=s.${gateway.entity} AND c.version=s.result_version
+         ORDER BY s.created_at DESC LIMIT 1`,
+      )
+    ).rows[0];
+    assert.ok(receipt, `${gateway.gateway} correspondence fixture`);
+    for (const missing of ['global', 'local', 'history'] as const) {
+      await db.query('SAVEPOINT receipt_correspondence_fault');
+      await db.query(`ALTER TABLE _migration.${gateway.submission} DISABLE TRIGGER immutable_rows`);
+      await db.query(`ALTER TABLE _migration.${gateway.change} DISABLE TRIGGER immutable_rows`);
+      await db.query(
+        'ALTER TABLE _migration.tasks46_47_submission_owner DISABLE TRIGGER immutable_rows',
+      );
+      if (missing === 'global') {
+        await db.query(
+          'DELETE FROM _migration.tasks46_47_submission_owner WHERE submission_id=$1',
+          [receipt.submission_id],
+        );
+      } else if (missing === 'local') {
+        await db.query(`DELETE FROM _migration.${gateway.submission} WHERE submission_id=$1`, [
+          receipt.submission_id,
+        ]);
+      } else {
+        await db.query(
+          `DELETE FROM _migration.${gateway.change}
+           WHERE ${gateway.entity}=$1 AND version=$2`,
+          [receipt.entity_id, receipt.result_version],
+        );
+      }
+      await db.query(`ALTER TABLE _migration.${gateway.submission} ENABLE TRIGGER immutable_rows`);
+      await db.query(`ALTER TABLE _migration.${gateway.change} ENABLE TRIGGER immutable_rows`);
+      await db.query(
+        'ALTER TABLE _migration.tasks46_47_submission_owner ENABLE TRIGGER immutable_rows',
+      );
+      assert.equal(
+        (await db.query('SELECT _migration.tasks46_47_submission_correspondence_valid() valid'))
+          .rows[0].valid,
+        false,
+        `${gateway.gateway} missing ${missing} correspondence`,
+      );
+      await completeBoundaryRejects(
+        db,
+        `${gateway.gateway} missing ${missing} must fail the complete permanent checker`,
+      );
+      await db.query('ROLLBACK TO SAVEPOINT receipt_correspondence_fault');
+      assert.equal(
+        (await db.query('SELECT _migration.tasks46_47_submission_correspondence_valid() valid'))
+          .rows[0].valid,
+        true,
+        `${gateway.gateway} ${missing} fault rollback`,
+      );
+    }
+  }
+}
 function parserProof() {
   const duplicate = new FormData();
   duplicate.set(
@@ -404,10 +494,135 @@ async function functionalProof() {
           set,
           'lost matter-side set response remains stable after replace and clear',
         );
+        await context(db, accounts.assistant);
+        await gateway(
+          db,
+          'document_edit_save',
+          accounts.assistant,
+          request('create', null, null, {
+            description: 'receipt correspondence fixture',
+            client_id: client,
+          }),
+        );
+        await receiptCorrespondenceFaultProof(db);
         reference = await state(db, 'matter_fee_reference_edit_state', accounts.assistant, matter);
         assert.equal(
           reference.references.filter((row: { is_retired: boolean }) => !row.is_retired).length,
           0,
+        );
+        for (const fault of ['set-provenance', 'clear-retained', 'replace-provenance'] as const) {
+          await db.query('SAVEPOINT reverse_fault');
+          const start = (
+            await db.query('SELECT _migration.matter_fee_reference_aggregate($1) state', [matter])
+          ).rows[0].state;
+          await context(db, accounts.assistant);
+          const reset = await gateway(
+            db,
+            'matter_fee_reference_edit_save',
+            accounts.assistant,
+            request(
+              'set',
+              matter,
+              start.version,
+              {},
+              { oldFeeLetterId: null, newFeeLetterId: first.id },
+            ),
+          );
+          let targetVersion = reset.version;
+          if (fault === 'clear-retained') {
+            await context(db, accounts.assistant);
+            targetVersion = (
+              await gateway(
+                db,
+                'matter_fee_reference_edit_save',
+                accounts.assistant,
+                request(
+                  'clear',
+                  matter,
+                  reset.version,
+                  {},
+                  { oldFeeLetterId: first.id, newFeeLetterId: null },
+                ),
+              )
+            ).version;
+          } else if (fault === 'replace-provenance') {
+            await context(db, accounts.assistant);
+            targetVersion = (
+              await gateway(
+                db,
+                'matter_fee_reference_edit_save',
+                accounts.assistant,
+                request(
+                  'replace',
+                  matter,
+                  reset.version,
+                  {},
+                  { oldFeeLetterId: first.id, newFeeLetterId: second.id },
+                ),
+              )
+            ).version;
+          }
+          const change = (
+            await db.query(
+              `SELECT after_values FROM _migration.matter_fee_reference_change
+               WHERE matter_id=$1 AND version=$2`,
+              [matter, targetVersion],
+            )
+          ).rows[0];
+          const corrupted = structuredClone(change.after_values);
+          if (fault === 'clear-retained') {
+            corrupted.references = corrupted.references.filter(
+              (row: { fee_letter_id: number }) => row.fee_letter_id !== first.id,
+            );
+          } else {
+            const row = corrupted.references.find(
+              (item: { fee_letter_id: number }) => item.fee_letter_id === first.id,
+            );
+            assert.ok(row, 'touched reverse-reference row');
+            row.created_by = accounts.administrator.id;
+          }
+          await db.query("SET LOCAL session_replication_role='replica'");
+          await db.query(
+            `UPDATE _migration.matter_fee_reference_change SET after_values=$3
+             WHERE matter_id=$1 AND version=$2`,
+            [matter, targetVersion, corrupted],
+          );
+          if (fault === 'clear-retained') {
+            await db.query(
+              'DELETE FROM matter_fee_letter_references WHERE matter_id=$1 AND fee_letter_id=$2',
+              [matter, first.id],
+            );
+          } else {
+            await db.query(
+              `UPDATE matter_fee_letter_references SET created_by=$3
+               WHERE matter_id=$1 AND fee_letter_id=$2`,
+              [matter, first.id, accounts.administrator.id],
+            );
+          }
+          await db.query("SET LOCAL session_replication_role='origin'");
+          assert.equal(
+            (
+              await db.query('SELECT _migration.matter_fee_reference_current_valid($1) valid', [
+                matter,
+              ])
+            ).rows[0].valid,
+            false,
+            `${fault} must be rejected by permanent reverse replay`,
+          );
+          await completeBoundaryRejects(
+            db,
+            `${fault} must be rejected through the complete permanent checker`,
+          );
+          await db.query('ROLLBACK TO SAVEPOINT reverse_fault');
+        }
+        assert.equal(
+          (
+            await db.query('SELECT _migration.matter_fee_reference_current_valid($1) valid', [
+              matter,
+            ])
+          ).rows[0].valid,
+          true,
+          'set/clear/replace fault probes leave the legitimate sequence intact',
         );
         assert.equal(
           (await db.query('SELECT fee_letter_ref FROM matters WHERE id=$1', [matter])).rows[0]
@@ -534,14 +749,7 @@ async function functionalProof() {
               `INSERT INTO _migration.tasks46_47_submission_owner
                (submission_id,actor_id,gateway,operation,entity_id,request_payload,result_version)
                SELECT $1,actor_id,'documents','create',document_id,$2,result_version+50
-               FROM _migration.document_edit_submission WHERE submission_id=$3`,
-              [orphan, orphanPayload, submission],
-            );
-            await db.query(
-              `INSERT INTO _migration.document_edit_submission
-               (submission_id,actor_id,request_payload,document_id,result_version)
-               SELECT $1,actor_id,$2,document_id,result_version+50
-               FROM _migration.document_edit_submission WHERE submission_id=$3`,
+              FROM _migration.document_edit_submission WHERE submission_id=$3`,
               [orphan, orphanPayload, submission],
             );
           } else {
@@ -568,12 +776,40 @@ async function functionalProof() {
               [changed, changed.operation, submission],
             );
           }
-          assert.equal(
-            (await db.query('SELECT _migration.document_edit_current_valid($1) valid', [made.id]))
-              .rows[0].valid,
-            false,
-            `semantic ${variant} corruption must be detected`,
-          );
+          if (variant === 'orphan') {
+            assert.equal(
+              (await db.query('SELECT _migration.document_edit_current_valid($1) valid', [made.id]))
+                .rows[0].valid,
+              true,
+              'global-only ownership row does not alter the document aggregate',
+            );
+            assert.equal(
+              (
+                await db.query(
+                  'SELECT _migration.tasks46_47_submission_correspondence_valid() valid',
+                )
+              ).rows[0].valid,
+              false,
+              'global-only ownership row must fail bidirectional correspondence',
+            );
+            await db.query(
+              'ALTER TABLE _migration.document_edit_submission ENABLE TRIGGER immutable_rows',
+            );
+            await db.query(
+              'ALTER TABLE _migration.tasks46_47_submission_owner ENABLE TRIGGER immutable_rows',
+            );
+            await completeBoundaryRejects(
+              db,
+              'global-only ownership row must be rejected through the complete permanent checker',
+            );
+          } else {
+            assert.equal(
+              (await db.query('SELECT _migration.document_edit_current_valid($1) valid', [made.id]))
+                .rows[0].valid,
+              false,
+              `semantic ${variant} corruption must be detected`,
+            );
+          }
         } finally {
           await db.query('ROLLBACK');
         }
@@ -1574,6 +1810,59 @@ async function fullPopulationReadOracle() {
         .find((value) => value !== null && value !== undefined);
       return String(selected ?? 'missing');
     };
+    const arabicDigits = (value: number) =>
+      String(value).replace(/[0-9]/gu, (digit) => '٠١٢٣٤٥٦٧٨٩'[Number(digit)]!);
+    const persianDigits = (value: number) =>
+      String(value).replace(/[0-9]/gu, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]!);
+    const nonExactNumericForms = (value: number) => {
+      const text = String(value);
+      return [text.slice(0, -1), `${text}x`, `0${text}`];
+    };
+    const documentControl = (key: 'id' | 'legacy_id') => {
+      const found = rawDocuments.find((row) => {
+        const value = row[key];
+        if (value === null || String(value).length < 2) return false;
+        const variants = nonExactNumericForms(value);
+        const other = key === 'id' ? row.legacy_id : row.id;
+        return variants.every(
+          (variant) =>
+            arNormalise(other) !== arNormalise(variant) &&
+            !row.search_values.some((candidate) =>
+              arNormalise(candidate).includes(arNormalise(variant)),
+            ),
+        );
+      });
+      assert.ok(found, `document ${key} non-exact ID control`);
+      return found;
+    };
+    const feeControl = (key: 'id' | 'contract_id') => {
+      const found = rawFees.find((row) => {
+        const value = row[key];
+        if (value === null || String(value).length < 2) return false;
+        const variants = nonExactNumericForms(value);
+        const other = key === 'id' ? row.contract_id : row.id;
+        const values = [
+          ...row.search_values,
+          ...row.covered.flatMap((link) => link.values),
+          ...row.referencing.flatMap((link) => link.values),
+        ];
+        return variants.every(
+          (variant) =>
+            arNormalise(other) !== arNormalise(variant) &&
+            !values.some((candidate) => arNormalise(candidate).includes(arNormalise(variant))),
+        );
+      });
+      assert.ok(found, `fee-letter ${key} non-exact ID control`);
+      return found;
+    };
+    const documentId = documentControl('id');
+    const documentLegacyId = documentControl('legacy_id');
+    const feeId = feeControl('id');
+    const feeContractId = feeControl('contract_id');
+    const documentMulti =
+      rawDocuments.find((row) => row.client_id !== null && row.matter_id !== null) ??
+      rawDocuments[0]!;
+    const feeMulti = rawFees.find((row) => row.client_id !== null) ?? rawFees[0]!;
     const finalPage = (ids: number[]) =>
       ids.slice(Math.floor(Math.max(0, ids.length - 1) / 25) * 25);
     const documentCases: Record<string, string>[] = [
@@ -1588,8 +1877,25 @@ async function fullPopulationReadOracle() {
       { archive: 'all', person: selectId(rawDocuments, 'responsible_person_id') },
       { archive: 'all', mfiles: 'missing' },
       { archive: 'all', mfiles: 'present' },
-      { archive: 'all', q: String(rawDocuments[0]!.id) },
-      { archive: 'all', q: String(rawDocuments.find((row) => row.legacy_id)?.legacy_id) },
+      { archive: 'all', q: String(documentId.id) },
+      { archive: 'all', q: arabicDigits(documentId.id) },
+      { archive: 'all', q: persianDigits(documentId.id) },
+      { archive: 'all', q: String(documentLegacyId.legacy_id) },
+      { archive: 'all', q: arabicDigits(documentLegacyId.legacy_id!) },
+      { archive: 'all', q: persianDigits(documentLegacyId.legacy_id!) },
+      ...nonExactNumericForms(documentId.id).map((q) => ({ archive: 'all', q })),
+      ...nonExactNumericForms(documentLegacyId.legacy_id!).map((q) => ({ archive: 'all', q })),
+      {
+        archive: documentMulti.is_archived ? 'archived' : 'current',
+        client: documentMulti.client_id === null ? 'missing' : String(documentMulti.client_id),
+        matter: documentMulti.matter_id === null ? 'missing' : String(documentMulti.matter_id),
+        person:
+          documentMulti.responsible_person_id === null
+            ? 'missing'
+            : String(documentMulti.responsible_person_id),
+        mfiles: documentMulti.mfiles_id === null ? 'missing' : 'present',
+        q: String(documentMulti.id),
+      },
       { archive: 'all', q: 'أحمد' },
       { archive: 'all', q: '%' },
       { archive: 'all', q: '_' },
@@ -1616,8 +1922,23 @@ async function fullPopulationReadOracle() {
       },
       { archive: 'all', mfiles: 'missing' },
       { archive: 'all', mfiles: 'present' },
-      { archive: 'all', q: String(rawFees[0]!.id) },
-      { archive: 'all', q: String(rawFees.find((row) => row.contract_id)?.contract_id) },
+      { archive: 'all', q: String(feeId.id) },
+      { archive: 'all', q: arabicDigits(feeId.id) },
+      { archive: 'all', q: persianDigits(feeId.id) },
+      { archive: 'all', q: String(feeContractId.contract_id) },
+      { archive: 'all', q: arabicDigits(feeContractId.contract_id!) },
+      { archive: 'all', q: persianDigits(feeContractId.contract_id!) },
+      ...nonExactNumericForms(feeId.id).map((q) => ({ archive: 'all', q })),
+      ...nonExactNumericForms(feeContractId.contract_id!).map((q) => ({ archive: 'all', q })),
+      {
+        archive: feeMulti.is_archived ? 'archived' : 'current',
+        client: feeMulti.client_id === null ? 'missing' : String(feeMulti.client_id),
+        covered: feeMulti.covered.find((link) => !link.retired)?.matter.toString() ?? 'missing',
+        referencing:
+          feeMulti.referencing.find((link) => !link.retired)?.matter.toString() ?? 'missing',
+        mfiles: feeMulti.mfiles_id === null ? 'missing' : 'present',
+        q: String(feeMulti.id),
+      },
       { archive: 'all', q: 'أحمد' },
       { archive: 'all', q: '%' },
       { archive: 'all', q: '_' },
@@ -1693,6 +2014,30 @@ async function fullPopulationReadOracle() {
         })
         .map((row) => row.id);
     };
+    for (const [row, key] of [
+      [documentId, 'id'],
+      [documentLegacyId, 'legacy_id'],
+    ] as const) {
+      const value = row[key]!;
+      for (const q of nonExactNumericForms(value))
+        assert.equal(
+          documentExpected({ archive: 'all', q }).includes(row.id),
+          false,
+          `document ${key} control ${q} must not match by ID or incidental text`,
+        );
+    }
+    for (const [row, key] of [
+      [feeId, 'id'],
+      [feeContractId, 'contract_id'],
+    ] as const) {
+      const value = row[key]!;
+      for (const q of nonExactNumericForms(value))
+        assert.equal(
+          feeExpected({ archive: 'all', q }).includes(row.id),
+          false,
+          `fee-letter ${key} control ${q} must not match by ID or incidental text`,
+        );
+    }
     const allFeeRows: Awaited<ReturnType<typeof readFeeLetters>>['rows'] = [];
     for (const session of sessions) {
       for (const params of documentCases) {
@@ -1702,6 +2047,12 @@ async function fullPopulationReadOracle() {
         let pages = 1;
         do {
           const result = await readDocuments(session, { ...params, page: String(page) }, service);
+          assert.equal(result.total, expected.length, 'document oracle total');
+          assert.equal(
+            result.pages,
+            Math.max(1, Math.ceil(expected.length / 25)),
+            'document oracle page count',
+          );
           pages = result.pages;
           actual.push(...result.rows.map((row) => row.id));
           page += 1;
@@ -1712,6 +2063,8 @@ async function fullPopulationReadOracle() {
           `${session.user.role} document oracle ${JSON.stringify(params)}`,
         );
         const edge = await readDocuments(session, { ...params, page: '2147483647' }, service);
+        assert.equal(edge.total, expected.length, 'document edge total');
+        assert.equal(edge.pages, Math.max(1, Math.ceil(expected.length / 25)));
         assert.deepEqual(
           edge.rows.map((row) => row.id),
           finalPage(expected),
@@ -1725,6 +2078,12 @@ async function fullPopulationReadOracle() {
         let pages = 1;
         do {
           const result = await readFeeLetters(session, { ...params, page: String(page) }, service);
+          assert.equal(result.total, expected.length, 'fee-letter oracle total');
+          assert.equal(
+            result.pages,
+            Math.max(1, Math.ceil(expected.length / 25)),
+            'fee-letter oracle page count',
+          );
           pages = result.pages;
           actual.push(...result.rows);
           page += 1;
@@ -1735,6 +2094,8 @@ async function fullPopulationReadOracle() {
           `${session.user.role} fee-letter oracle ${JSON.stringify(params)}`,
         );
         const edge = await readFeeLetters(session, { ...params, page: '2147483647' }, service);
+        assert.equal(edge.total, expected.length, 'fee-letter edge total');
+        assert.equal(edge.pages, Math.max(1, Math.ceil(expected.length / 25)));
         assert.deepEqual(
           edge.rows.map((row) => row.id),
           finalPage(expected),
