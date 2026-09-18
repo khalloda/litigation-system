@@ -1825,3 +1825,39 @@ Prepared and adopted with D65 under the same combined implementation mandate. Fe
 10. **Archive/restore.** Every existing fee letter starts unarchived. Archive is reversible removal from ordinary operational use, not termination, revocation, cancellation, payment or deletion. Archived fee letters retain complete labelled read access; metadata and their current relationship mutations are refused until restoration. Archive/restore preserves covered matters, matter-side references, invoices, original evidence and independent retired states without cascading. Existing financial/report calculations and inclusion rules remain unchanged. Confirmation names the fee letter and accurately describes retained relationships; a changed subject/version/relevant confirmation state requires refresh rather than stale submission.
 
 11. **Cross-module proof.** Demonstrate separate relationship permissions and complete audit/history for set/clear/replacement, both writer roles, true concurrent replacements, linked-client/matter archive races, fee-letter archive races, exact retry after later relink, rejected ambiguous references, imported duplicates, native rows and retained unresolved evidence. A shared token or helper cannot bypass module/action/subject scoping. Old Task 4.4/4.5 behavior and all earlier import decisions remain intact. Both Tasks 4.6 and 4.7 stay unchecked until the complete candidate passes independent review and owner acceptance.
+
+## D67 — Firm-approved Arabic billing display labels
+
+**Approved by Khaled Helmy, 17 September 2026; recorded 18 September 2026.**
+Khaled approved all 11 Arabic billing display labels, explicitly including
+`Later` → `مؤجلة`. This fulfills D28's terminology prerequisite and closes
+Task 4.7a only. The [exact approval](approvals/2026-09-17-task-4-7a-arabic-billing-labels.md)
+is preserved byte-identically; the
+[closure report](task-reports/2026-09-17-task-4-7a-approval-closure.md) records scope.
+
+| Group | Exact source code | Approved Arabic display | Meaning and boundary |
+|---|---|---|---|
+| Invoice status | `Paid` | مسددة | Invoice recorded as paid. |
+| Invoice status | `Unpaid` | غير مسددة | Invoice recorded as unpaid. |
+| Invoice status | `Partially Paid` | مسددة جزئيًا | Invoice recorded as partly paid. |
+| Invoice status | `Later` | مؤجلة | The firm approves this Arabic display for the existing Later status; no new due-date, collection or automatic status rule is created. |
+| Invoice status | `Canceled` | ملغاة | Canceled invoice; distinct from archived or deleted. |
+| Invoice type | `Service` | خدمات | Service invoice; no narrower fee category is introduced. |
+| Invoice type | `Expenses` | مصروفات | Expense invoice. |
+| Lawyer-share role | `Reviewer` | الشريك المراجع | Reviewing partner; no equivalent matter-assignment role. |
+| Lawyer-share role | `LawyerA` | المحامي الرئيسي | Lead lawyer. |
+| Lawyer-share role | `LawyerB` | محامٍ مساعد | Supporting lawyer. |
+| Lawyer-share role | `LawyerA+` | محامٍ رئيسي مشارك | A distinct second/co-lead lawyer sharing the lead allocation; no fixed percentage is implied. |
+
+Five statuses, two types and four roles total 11; the two historical NULL invoice
+types remain unknown, not another code. Preserve exact stored source codes,
+amounts, currencies, fractions, invoice/payment history, provenance and all
+existing relationships. Actual recorded allocations apply; no fixed 37.5%
+rule is created. These billing labels are a separate approval from the
+12 September matter-assignment labels and do not modify those assignments.
+
+This is approval/documentation only: no lookup rows or active UI are changed.
+Billing remains read-only under existing decisions, including for administrators.
+Task 4.8 remains unstarted; implementing approved lookup/application displays
+and any necessary migration belongs to that future scope. No migration number
+is reserved. D1–D66, including D28, remain unchanged.

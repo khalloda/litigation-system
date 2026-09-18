@@ -37,7 +37,8 @@ Preserve original spellings in historical evidence. Unrelated edits and no-op
 saves must not normalize existing values; blanks remain blank unless
 deliberately changed. Implement these labels in `src/strings.ts` when Task 4.1
 begins; this documentation approval does not edit application strings. D28's
-separate approval of 11 billing-code labels remains outstanding.
+separate approval of 11 billing-code labels was fulfilled on 17 September 2026
+by D67; see the billing table below. The two approvals have separate scopes.
 
 The firm's responsible-lawyer source text is historical information under D54.
 It is distinct from the client's own main contact in `contacts`. Editable staff
@@ -176,8 +177,31 @@ attorney*: `شخصي` (personally), or a corporate office such as
 These are the **only** lookups in the system whose values are Latin. They stay
 exactly as Access holds them — the value is what Stage 2 matches on. Under D28,
 firm-approved Arabic display labels for all 11 codes are required before Task
-4.8. They are **not yet supplied**, temporary English display labels are not
-permitted, and Arabic financial terminology must not be invented.
+4.8. Khaled approved all 11 on 17 September 2026, explicitly including `Later`
+→ `مؤجلة`; **D67 satisfies this prerequisite**. See the byte-preserved
+[approval](approvals/2026-09-17-task-4-7a-arabic-billing-labels.md).
+This records terminology only, not a lookup-data or active-UI deployment.
+Temporary English display labels remain prohibited.
+
+| Group | Exact source code | Approved Arabic display | Meaning and boundary |
+|---|---|---|---|
+| Invoice status | `Paid` | مسددة | Invoice recorded as paid. |
+| Invoice status | `Unpaid` | غير مسددة | Invoice recorded as unpaid. |
+| Invoice status | `Partially Paid` | مسددة جزئيًا | Invoice recorded as partly paid. |
+| Invoice status | `Later` | مؤجلة | The firm approves this Arabic display for the existing Later status; no new due-date, collection or automatic status rule is created. |
+| Invoice status | `Canceled` | ملغاة | Canceled invoice; distinct from archived or deleted. |
+| Invoice type | `Service` | خدمات | Service invoice; no narrower fee category is introduced. |
+| Invoice type | `Expenses` | مصروفات | Expense invoice. |
+| Lawyer-share role | `Reviewer` | الشريك المراجع | Reviewing partner; no equivalent matter-assignment role. |
+| Lawyer-share role | `LawyerA` | المحامي الرئيسي | Lead lawyer. |
+| Lawyer-share role | `LawyerB` | محامٍ مساعد | Supporting lawyer. |
+| Lawyer-share role | `LawyerA+` | محامٍ رئيسي مشارك | A distinct second/co-lead lawyer sharing the lead allocation; no fixed percentage is implied. |
+
+These are five statuses, two types and four roles. The two historical NULL
+invoice types remain unknown, not a twelfth code. Preserve source codes,
+amounts, currencies, fractions, invoice/payment history, provenance and all
+relationships. Actual recorded allocations govern; no fixed 37.5% rule is
+created. Task 4.8 remains future work.
 
 | Access | Values |
 |---|---|
@@ -206,6 +230,8 @@ created. Any other unresolved English name quarantines — never guess.
 `lead` → `المحامي الرئيسي`; `co_lead` → `محامٍ رئيسي مشارك`;
 `support` → `محامٍ مساعد`. These describe existing matter assignments only;
 they do not approve D28's separate billing-code labels or change allocations.
+The separate 17 September 2026 billing-label approval above supplies that
+approval under D67; it does not change the earlier matter-label decision.
 
 **CONFIRMED BY THE FIRM IN WRITING, 23 August 2026.** This was previously
 recorded as "believed correct, not confirmed", which mattered: it decides who

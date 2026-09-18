@@ -2344,12 +2344,13 @@ than assuming one rule for every workflow. Test with real volumes.
 - [x] **4.5 Powers of attorney**
 - [x] **4.6 Documents** — including the optional `mfiles_id` field
 - [x] **4.7 Fee letters** — with linked matters
-- [ ] **4.7a Firm approval of Arabic billing labels** — prerequisite for 4.8
-      (**D28**). Prepare a review table containing each of the 11 exact source
-      codes and its established meaning: five invoice statuses, two invoice
-      types and four lawyer-share roles. The firm supplies or approves every
-      Arabic display label. Do not invent terminology and do not use temporary
-      English labels on the Arabic interface.
+- [x] **4.7a Firm approval of Arabic billing labels** — prerequisite for 4.8
+      (**D28**, fulfilled by **D67**). Khaled approved all 11 exact-code labels
+      on 17 September 2026, including `Later` → `مؤجلة`; documentation closure
+      recorded on 18 September 2026. See the
+      [approval](docs/approvals/2026-09-17-task-4-7a-arabic-billing-labels.md) and
+      [closure report](docs/task-reports/2026-09-17-task-4-7a-approval-closure.md).
+      Task 4.8 remains unstarted; no lookup/application deployment is included.
 - [ ] **4.8 Billing** — read-only list of invoices and payments
 - [ ] **4.9 Audit history UI** — deferred owner-approved direction (**D31**,
       **D34**), to be implemented only under a later explicit prompt. Provide a

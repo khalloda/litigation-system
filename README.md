@@ -1,5 +1,17 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Current Task 4.7a approval and closure — 17 September 2026
+
+Khaled approved all 11 Arabic billing labels, explicitly including `Later` →
+`مؤجلة`. D67 records fulfillment of D28's terminology prerequisite; only Task
+4.7a is closed by this documentation change, executed on 18 September 2026.
+See the [exact approval](docs/approvals/2026-09-17-task-4-7a-arabic-billing-labels.md)
+and [closure report](docs/task-reports/2026-09-17-task-4-7a-approval-closure.md).
+Task 4.8 is next and remains unstarted. No labels were deployed to lookup data
+or active UI; no runtime, database or migration operation was performed.
+Earlier dated statements that billing-label approval is pending are historical
+and superseded by this approval; accepted operational facts remain unchanged.
+
 ## Current Tasks 4.6–4.7 local acceptance and activation — 17 September 2026
 
 Khaled Helmy accepted the combined Documents and Fee letters implementation at

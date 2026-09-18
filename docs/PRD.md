@@ -1,5 +1,18 @@
 # Product Requirements — Litigation Management System
 
+## Task 4.7a terminology approval — 17 September 2026
+
+D28's prerequisite is satisfied: Khaled approved all 11 Arabic billing display
+labels, explicitly including `Later` → `مؤجلة`; D67 records this approval.
+The [exact approval](approvals/2026-09-17-task-4-7a-arabic-billing-labels.md)
+and [closure report](task-reports/2026-09-17-task-4-7a-approval-closure.md)
+close only the terminology/documentation task, recorded on 18 September 2026.
+Earlier dated pending-approval statements below are historical. Task 4.8 remains
+unstarted and billing remains read-only under existing decisions, including for
+administrators. Implementing approved labels in lookup data/application display
+is future Task 4.8 work; this approval changes neither stored codes nor active UI,
+financial facts, allocations or workflows and reserves no migration number.
+
 ## Current Tasks 4.6–4.7 local acceptance and activation — 17 September 2026
 
 Khaled Helmy accepted the combined Documents and Fee letters implementation at
