@@ -6,6 +6,7 @@ import { getPoa } from '@/lib/powers-of-attorney';
 import { parsePoaFilters, poaListHref, poaDetailHref, PoaFilterError } from '@/lib/poa-query';
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import { PoaFields } from '../poa-fields';
 import styles from '../../staff/staff.module.css';
 export default async function Page({
@@ -35,11 +36,12 @@ export default async function Page({
           {t.poa.back}
         </Link>
       </header>
+      <AuditRecordEntry session={session} table="powers_of_attorney" id={r.id} />
       <section className={styles.panel}>
         <p>{r.archived ? t.poa.archived : t.poa.current}</p>
         {r.archived ? <p>{t.poa.recordArchived}</p> : null}
         {r.clientArchived ? <p>{t.poa.parentArchived}</p> : null}
-        <PoaFields record={r} full />
+        <PoaFields record={r} full session={session} />
         <div className={styles.actions}>
           {!r.archived &&
           !r.clientArchived &&

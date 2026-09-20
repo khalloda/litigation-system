@@ -24,6 +24,27 @@ export const AUDIT_GATEWAY = 'src/lib/audit.ts';
 export const AUDIT_AUTH_SERVICE = 'src/lib/auth/service.ts';
 export const AUDIT_USER_MANAGEMENT_SERVICE = 'src/lib/auth/user-management.ts';
 export const AUDIT_DATABASE_MODULE = 'src/lib/db.ts';
+// Task 4.9 reviewed closures: authorization must not be removable while leaving
+// the same permitted SQL calls behind. Whitespace-normalized file identities
+// supplement (never replace) the route, call and mutation inventories below.
+const AUDIT_HISTORY_CLOSURES = new Map([
+  [
+    'src/lib/audit-history-query.ts',
+    '5c42e3e0ee620a373c08fea5e212477f40c67bc47f02405b6b19f87fff5d8775',
+  ],
+  [
+    'src/lib/audit-history-export.ts',
+    '09b2d4d6d949f188f196f3cc374932ea2c64130b35a9af50ee59afcb94d62191',
+  ],
+  [
+    'src/app/audit-history/record-entry.tsx',
+    '2c115a910d51af97f0b6f5f5c11024a39592b462b2210e4c8863751607be7f33',
+  ],
+  [
+    'src/lib/auth/account-form-input.ts',
+    'eff8a54debf9322430fd0192d0afbf49e0646f31433056e7067cdca31abb83e2',
+  ],
+]);
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
 const HEARING_LIFECYCLE_SERVICE = 'src/lib/hearing-lifecycle.ts';
@@ -111,6 +132,7 @@ const CONTROLLED_LOCAL_ADMINISTRATION = 'setApprovedAccountPassword';
 const MIGRATION_DATABASE_ENV = 'MIGRATION_DATABASE_URL';
 const ALTERNATE_DATABASE_FACTORY = 'createDatabaseClient';
 const REVIEWED_RUNTIME_ENVIRONMENT_KEYS = new Set([
+  'AUDIT_PDF_CHROMIUM',
   'AUDIT_TRUST_PROXY',
   'AUTH_SECRET',
   'DATABASE_URL',
@@ -130,6 +152,36 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/audit-history-query.ts',
+    'requireAuditAuthority',
+    '7dcb1a2453567d70cd142ccfd8cb061400a4c3fd4780d6d00a5a4ccf0cdb5421',
+  ],
+  [
+    'src/lib/audit-history-query.ts',
+    'readAuditHistory',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/audit-history-query.ts',
+    'readAuditHistory',
+    '516eee9de1a93d5e1e9cc4199aea6d3d0d86448919746e51a40ef3ea5c26a86c',
+  ],
+  [
+    'src/lib/audit-history-query.ts',
+    'readAuditHistory',
+    '9f8916125894f2c745353ae1f945b9b80a8212e22d5e808e4a5671b031242e7d',
+  ],
+  [
+    'src/lib/audit-history-query.ts',
+    'readAuditHistory',
+    '19c76bab894b2d85b844611bd1a2cb0a29c8e2fcf04610dedb761153cd5997b1',
+  ],
+  [
+    'src/lib/audit-history-export.ts',
+    'handleAuditExport',
+    '98c52881ba7c93041488d0d8395b6c292981138a6286ccfeec924fb60faf1f40',
+  ],
   [
     'src/lib/billing-query.ts',
     'snapshot',
@@ -1096,6 +1148,21 @@ function isReviewedRawCall(
       file === sourcePath &&
       reviewedFunction === functionName &&
       reviewedFingerprint === fingerprint,
+  );
+}
+
+// One literal, fingerprinted read-only timeout statement. This is not an
+// exemption for set_config, actor selectors or other session settings.
+function isReviewedAuditReadTimeout(node: ts.Node, sourcePath: string, sourceFile: ts.SourceFile) {
+  if (sourcePath !== 'src/lib/audit-history-query.ts') return false;
+  let current: ts.Node | undefined = node;
+  while (current && !ts.isCallExpression(current)) current = current.parent;
+  return Boolean(
+    current &&
+    ts.isCallExpression(current) &&
+    isReviewedRawCall(sourcePath, sourceFile, current) &&
+    rawCallFingerprint(current, sourceFile) ===
+      '516eee9de1a93d5e1e9cc4199aea6d3d0d86448919746e51a40ef3ea5c26a86c',
   );
 }
 
@@ -2129,6 +2196,15 @@ export function auditRuntimeSourceFailures(
     }
     const isGateway = absolute === gatewayAbsolute;
     const isAuthService = absolute === serviceAbsolute;
+    const isAuditExportService = source.path === 'src/lib/audit-history-export.ts';
+    const isAuditHistoryReadService = source.path === 'src/lib/audit-history-query.ts';
+    const auditHistoryHash = AUDIT_HISTORY_CLOSURES.get(source.path);
+    if (
+      auditHistoryHash &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        auditHistoryHash
+    )
+      failures.add('Audit-history guarded closure differs from reviewed inventory: ' + source.path);
     const isUserManagementService = absolute === userManagementServiceAbsolute;
     const isStaffMutationService = source.path === STAFF_MUTATION_SERVICE;
     const isClientMutationService = source.path === CLIENT_MUTATION_SERVICE;
@@ -2239,6 +2315,7 @@ export function auditRuntimeSourceFailures(
     )
       failures.add('Logo mutation closure differs from reviewed inventory');
     const isReviewedAuthService =
+      isAuditExportService ||
       isAuthService ||
       isUserManagementService ||
       isStaffMutationService ||
@@ -2405,7 +2482,8 @@ export function auditRuntimeSourceFailures(
             const imported = element.propertyName?.text ?? element.name.text;
             const approvedHelpers = isAuthService
               ? AUTH_SERVICE_HELPERS
-              : isStaffMutationService ||
+              : isAuditExportService ||
+                  isStaffMutationService ||
                   isClientMutationService ||
                   isLogoMutationService ||
                   isMatterMutationService ||
@@ -2624,6 +2702,7 @@ export function auditRuntimeSourceFailures(
           if (
             !(
               isGateway ||
+              isAuditHistoryReadService ||
               isReviewedAuthService ||
               isStaffReadService ||
               isClientReadService ||
@@ -2652,7 +2731,11 @@ export function auditRuntimeSourceFailures(
           add(node, `${node.expression.name.text} execution is prohibited`);
         }
         const joinedFragments = joinedLiteralFragments(node);
-        if (!isGateway && LOW_LEVEL_PATTERN.test(joinedFragments)) {
+        if (
+          !isGateway &&
+          LOW_LEVEL_PATTERN.test(joinedFragments) &&
+          !isReviewedAuditReadTimeout(node, source.path, sourceFile)
+        ) {
           add(node, 'low-level audit function or GUC access is allowed only in the audit gateway');
         }
         if ([...RAW_SQL_METHODS].some((name) => joinedFragments.includes(name))) {
@@ -2666,7 +2749,11 @@ export function auditRuntimeSourceFailures(
       if (ts.isTaggedTemplateExpression(node)) {
         const method = rawSqlMethod(checker, node.tag);
         if (method) add(node, `${method} tagged execution is not a reviewed call shape`);
-        if (!isGateway && LOW_LEVEL_PATTERN.test(joinedLiteralFragments(node.template))) {
+        if (
+          !isGateway &&
+          LOW_LEVEL_PATTERN.test(joinedLiteralFragments(node.template)) &&
+          !isReviewedAuditReadTimeout(node, source.path, sourceFile)
+        ) {
           add(node, 'low-level audit SQL is allowed only in the audit gateway');
         }
       }
@@ -2705,7 +2792,11 @@ export function auditRuntimeSourceFailures(
         if (literal === MIGRATION_DATABASE_ENV) {
           add(node, 'runtime source cannot access the migration-only database credential');
         }
-        if (!isGateway && LOW_LEVEL_PATTERN.test(literal)) {
+        if (
+          !isGateway &&
+          LOW_LEVEL_PATTERN.test(literal) &&
+          !isReviewedAuditReadTimeout(node, source.path, sourceFile)
+        ) {
           add(node, 'low-level audit token is allowed only in the audit gateway');
         }
       }
@@ -2746,6 +2837,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'handleAuditExport',
+        'transaction,Number(session.user.id),createServerActionAuditMetadata(request.headers,session.user.auditSessionId)',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'mutatePoa',

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { requirePagePermission } from '@/lib/auth/authorization';
 import { getStaff } from '@/lib/staff-roster';
 import { t } from '@/strings';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import styles from '../staff.module.css';
 
 export const metadata: Metadata = { title: t.staff.title };
@@ -31,6 +32,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
           </Link>
         </div>
       </header>
+      <AuditRecordEntry session={session} table="people" id={person.id} />
       <div className={styles.detailGrid}>
         <section className={styles.panel} aria-labelledby="staff-identity">
           <h2 id="staff-identity">{t.staff.identity}</h2>
@@ -105,6 +107,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
         <ul className={styles.aliasList}>
           {person.aliases.map((alias) => (
             <li key={alias.id}>
+              <AuditRecordEntry session={session} table="person_name_alias" id={alias.id} />
               <p>
                 <strong>{alias.name}</strong>
               </p>

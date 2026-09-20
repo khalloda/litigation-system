@@ -3,6 +3,8 @@ import 'server-only';
 import type { Session } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
+import { requireAuditAuthority } from '@/lib/audit-history-query';
+import { AuthorizationError } from './authorization-core';
 import {
   decideAuthorization,
   requireAuthorizedDecision,
@@ -64,6 +66,26 @@ export function withRoutePermission<TArguments extends unknown[]>(
 ): (...arguments_: TArguments) => Promise<Response> {
   return async (...arguments_: TArguments) =>
     runAuthorizedRoute(() => authorizeRoutePermission(permission), handler, arguments_);
+}
+
+/** Separate persisted account capability, checked before any export work. */
+export function withAuditExportRoutePermission<TArguments extends unknown[]>(
+  permission: PermissionRequest,
+  handler: RouteOperation<TArguments>,
+): (...arguments_: TArguments) => Promise<Response> {
+  return withRoutePermission(permission, async (session, ...arguments_) => {
+    try {
+      await requireAuditAuthority(session, true);
+    } catch (error) {
+      if (error instanceof AuthorizationError)
+        return new Response(null, {
+          status: error.status,
+          headers: { 'Cache-Control': 'no-store' },
+        });
+      throw error;
+    }
+    return handler(session, ...arguments_);
+  });
 }
 
 /**

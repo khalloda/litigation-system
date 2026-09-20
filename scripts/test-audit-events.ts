@@ -168,7 +168,13 @@ async function main(): Promise<void> {
     const restored = await createCurrentClientFixture(admin, source, fixtureName);
     if (!restored) await admin.query(`CREATE DATABASE ${identifier(fixtureName)}`);
     created = true;
-    if (!restored) migrate(fixtureUrl.toString());
+    if (process.argv.includes('--foundation-profile')) {
+      assert.equal(restored, false, 'Foundation replay must start with its own empty database');
+      await migrateFixtureThroughCheckpoint(fixtureUrl.toString(), 60);
+      console.log(
+        'PROFILE exact audit-foundation checkpoint 60; later lifecycle prohibitions separately tested at candidate 73',
+      );
+    } else if (!restored) migrate(fixtureUrl.toString());
     const owner = new Client({ connectionString: fixtureUrl.toString() });
     const runtime = new Client({ connectionString: runtimeUrl.toString() });
     const runtimePrisma = createDatabaseClient(runtimeUrl.toString());
@@ -179,7 +185,42 @@ async function main(): Promise<void> {
       assert.deepEqual(await auditEventDataFailures(owner, { historicalLive: restored }), []);
       const initialEventCount = (await owner.query('SELECT count(*)::integer n FROM audit_events'))
         .rows[0].n;
-      if (!restored) assert.equal(initialEventCount, 1);
+      if (!restored) {
+        const completed = (
+          await owner.query(
+            'SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL',
+          )
+        ).rows.map((r) => r.migration_name);
+        const billingLabels = completed.includes('20260918100000_billing_arabic_labels');
+        const auditCapability = completed.includes('20260920140000_audit_history_capability');
+        assert.equal(initialEventCount, 1 + (billingLabels ? 11 : 0) + (auditCapability ? 1 : 0));
+        assert.equal(
+          (
+            await owner.query(
+              "SELECT count(*)::int n FROM audit_events WHERE action='audit_baseline_established'",
+            )
+          ).rows[0].n,
+          1,
+        );
+        if (billingLabels)
+          assert.equal(
+            (
+              await owner.query(
+                "SELECT count(*)::int n FROM audit_events WHERE action='record_updated' AND entity_table IN('lookup_invoice_status','lookup_invoice_type','lookup_lawyer_share_role') AND changed_fields=ARRAY['label_ar']",
+              )
+            ).rows[0].n,
+            11,
+          );
+        if (auditCapability)
+          assert.equal(
+            (
+              await owner.query(
+                "SELECT count(*)::int n FROM audit_events WHERE action='audit_export_granted' AND entity_table='user_accounts'",
+              )
+            ).rows[0].n,
+            1,
+          );
+      }
 
       await owner.query('ALTER TABLE lookup_importance ADD COLUMN task33b_unclassified text');
       assert.ok(

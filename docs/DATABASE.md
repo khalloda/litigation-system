@@ -1,5 +1,21 @@
 # The database — running it, checking it, fixing it
 
+## Task 4.9 candidate only — actual checkpoint stays 72
+
+Forward candidate `20260920140000_audit_history_capability` adds three private
+purpose-specific capability/change/export-receipt tables, three narrow runtime
+gateways and exact permanent integrity checks. It adds no sequence and changes
+no business row. The existing action constraint gains only
+`audit_export_granted` / `audit_export_revoked`. Migrations 1–72 are unchanged.
+Only independent disposable PostgreSQL clusters have received it. The owner
+database, accepted Task 4.8 process and credentials remain at the actual state
+described below; future operation needs a separate explicit authorization.
+
+Candidate `db:check` distinguishes completed migration 73 from actual migration
+72 and verifies exhaustive private-object classification, exact function and
+grant boundaries, constraints/indexes/triggers and bidirectional capability and
+export-receipt correspondence. No old protected baseline is regenerated.
+
 ## Current actual migration 72 — 20 September 2026
 
 `20260918100000_billing_arabic_labels` was applied once through the guarded

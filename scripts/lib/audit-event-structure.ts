@@ -1,4 +1,5 @@
 import { poaEditApplied, POA_EDIT_FIELDS } from './poa-edit-checkpoint';
+import { auditHistoryApplied, auditHistoryFailures } from './audit-history-checkpoint';
 import { tasks46_47Applied, TASKS46_47_FIELDS } from './tasks46-47-checkpoint';
 import { adminLifecycleApplied, ADMIN_LIFECYCLE_FIELDS } from './admin-lifecycle-checkpoint';
 import { adminEditApplied, ADMIN_EDIT_FIELDS } from './admin-edit-checkpoint';
@@ -155,6 +156,8 @@ export async function auditEventStructureFailures(
   runtimeRole = RUNTIME_DATABASE_ROLE,
 ): Promise<string[]> {
   const failures: string[] = [];
+  const auditHistory = await auditHistoryApplied(db);
+  failures.push(...(await auditHistoryFailures(db)));
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
@@ -244,7 +247,13 @@ export async function auditEventStructureFailures(
        AND conname='audit_events_action_shape'`);
   if (
     eventActionConstraint.rows.length !== 1 ||
-    eventActionConstraint.rows[0]?.definition !== EVENT_ACTION_CONSTRAINT
+    eventActionConstraint.rows[0]?.definition !==
+      (auditHistory
+        ? EVENT_ACTION_CONSTRAINT.replace(
+            "'audit_baseline_established'::text",
+            "'audit_baseline_established'::text, 'audit_export_granted'::text, 'audit_export_revoked'::text",
+          )
+        : EVENT_ACTION_CONSTRAINT)
   ) {
     failures.push('audit_events approved action constraint differs');
   }

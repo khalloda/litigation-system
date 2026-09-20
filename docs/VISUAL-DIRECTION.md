@@ -1,5 +1,18 @@
 # Visual direction
 
+## Task 4.9 candidate application
+
+The candidate provides a guarded global Arabic audit page and contextual modal
+drawer, becoming a full-screen narrow-screen sheet. Both use existing fonts,
+tokens, logical layout properties and centralized strings. Filters retain URL
+Back/Forward state; Clear also discards unsubmitted drafts. Modal focus starts
+on Close, remains within its controls, closes with Escape and returns to its
+trigger. UTC is explicitly labelled for display and filtering. Excel is RTL
+with literal text cells; Chromium PDF embeds the bundled Arabic fonts and logo.
+Candidate testing covers keyboard, mobile, actual browser zoom, automated
+accessibility and visual output; it does not claim screen-reader speech testing
+or full accessibility conformance. This is not owner activation or acceptance.
+
 Agreed from mockups, 23 August 2026. **Direction only — not a specification.**
 Task 3.4's bounded `/users` administrative screen now applies the relevant
 direction; the Stage 4 core screens and Stage 6 reports still must be revisited

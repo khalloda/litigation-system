@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type { EligibleStaffPerson, ManagedAccount } from '@/lib/auth/user-management';
 import { t } from '@/strings';
+import { AuditHistoryButton } from '@/app/audit-history/viewer';
 import {
   changeRoleAction,
   correctUsernameAction,
@@ -427,6 +428,7 @@ function AccountCard({
       <header className={styles.accountHeader}>
         <div>
           <h3>{account.personName}</h3>
+          <AuditHistoryButton subject={{ table: 'user_accounts', id: String(account.id) }} />
           <p className={styles.username} dir="ltr">
             {account.username}
           </p>

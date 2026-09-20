@@ -12,6 +12,7 @@ import {
 } from '@/lib/hearing-query';
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import { Field } from '../../clients/client-fields';
 import { ClientAlert } from '../../clients/client-alert';
 import styles from '../../staff/staff.module.css';
@@ -98,6 +99,7 @@ export default async function HearingPage({
           </Link>
         ) : null}
       </header>
+      <AuditRecordEntry session={session} table="hearings" id={hearing.id} />
       <section className={styles.panel} aria-label={t.hearings.details}>
         <h2>{t.hearings.details}</h2>
         <dl className={styles.facts}>
@@ -159,6 +161,7 @@ export default async function HearingPage({
           <ol className={local.attendees}>
             {hearing.attendees.map((a) => (
               <li key={a.id} data-attendee-id={a.id}>
+                <AuditRecordEntry session={session} table="hearing_attendees" id={a.id} />
                 <bdi>{a.name?.trim() ? a.name : t.common.notRecorded}</bdi>
                 {a.active === false ? <span> — {t.matters.former}</span> : null}
               </li>
@@ -174,6 +177,7 @@ export default async function HearingPage({
           <ol className={local.attendees}>
             {hearing.retiredAttendees.map((a) => (
               <li key={a.id} data-retired-attendee-id={a.id}>
+                <AuditRecordEntry session={session} table="hearing_attendees" id={a.id} />
                 <bdi>{a.name?.trim() ? a.name : t.common.notRecorded}</bdi>
                 {a.active === false ? <span> {t.matters.former}</span> : null}
               </li>

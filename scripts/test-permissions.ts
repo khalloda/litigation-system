@@ -121,6 +121,7 @@ function expectedAllowed(): Record<AuthRole, ReadonlySet<string>> {
       permissionKey('usersAndRoles', 'manage'),
       permissionKey('dropdownLists', 'view'),
       permissionKey('dropdownLists', 'manage'),
+      permissionKey('auditHistory', 'view'),
     ]),
     'Litigation Assistant': new Set([...operationalEdit, ...adminWorkEdit, ...universal]),
     Lawyer: new Set([...operationalView, ...adminWorkView, ...universal]),
@@ -464,7 +465,48 @@ async function proveDatabaseSessionAuthorization(): Promise<void> {
 async function main(): Promise<void> {
   assert.deepEqual(permissionPolicyStructureFailures(PERMISSION_POLICY), []);
   assert.deepEqual(expectationFailures(PERMISSION_POLICY), []);
-  assert.equal(AUTH_ROLES.length * PERMISSION_AREAS.length * PERMISSION_ACTIONS.length, 448);
+  assert.equal(
+    AUTH_ROLES.length *
+      PERMISSION_AREAS.filter((area) => area !== 'auditHistory').length *
+      PERMISSION_ACTIONS.length,
+    448,
+  );
+  assert.equal(AUTH_ROLES.length * PERMISSION_AREAS.length * PERMISSION_ACTIONS.length, 480);
+  const auditRoute = 'src/app/audit-history/export/route.ts';
+  const auditInventory: RouteInventoryEntry[] = [
+    {
+      kind: 'route',
+      source: auditRoute,
+      exportName: 'POST',
+      classification: {
+        access: 'permission',
+        area: 'auditHistory',
+        action: 'view',
+        capability: 'auditExport',
+      },
+    },
+  ];
+  const auditHeader =
+    "import { withAuditExportRoutePermission, withRoutePermission } from '@/lib/auth/authorization';\n";
+  const auditValid =
+    "export const POST = withAuditExportRoutePermission({area:'auditHistory',action:'view'},async()=>new Response());";
+  assert.deepEqual(
+    staticFixture({ [auditRoute]: auditHeader + auditValid }, auditInventory).failures,
+    [],
+  );
+  for (const broken of [
+    "export const POST = withRoutePermission({area:'auditHistory',action:'view'},async()=>new Response());",
+    "export async function POST(){ const bytes='protected work'; await withAuditExportRoutePermission; return new Response(bytes);}",
+    "const alias=withAuditExportRoutePermission;export const POST=alias({area:'auditHistory',action:'view'},async()=>new Response());",
+    auditValid.replace('export const POST', 'export let POST'),
+    auditValid +
+      "\nexport const GET=withRoutePermission({area:'auditHistory',action:'view'},async()=>new Response());",
+    auditValid + '\nPOST=async()=>new Response();',
+  ])
+    assert.ok(
+      staticFixture({ [auditRoute]: auditHeader + broken }, auditInventory).failures.length,
+      'Missing/late/alias/mutable/alternate capability guard must fail',
+    );
 
   for (const role of AUTH_ROLES) {
     assert.equal(hasPermission(role, 'billing', 'view'), true);
@@ -1161,7 +1203,12 @@ export async function updateClient() {
   if (staticOnly) assert.deepEqual(process.argv.slice(2), ['--static-only']);
   else await proveDatabaseSessionAuthorization();
 
-  console.log('PASS exhaustive permission matrix: 4 roles × 14 areas × 8 actions = 448 decisions');
+  console.log(
+    'PASS original 448 role decisions preserved; 32 audit-history decisions added: 4 roles × 15 areas × 8 actions = 480 decisions',
+  );
+  console.log(
+    'PASS separate audit-export wrapper: missing, late, aliased, mutable, reassigned and alternate-method negative fixtures',
+  );
   console.log('PASS recoverable archive/restore is Administrator-only on the 9 approved areas');
   console.log('PASS physical delete remains absent and lifecycle mutation proofs fail closed');
   console.log('PASS fail-closed unknowns, billing/report rules, and independent mutation proofs');

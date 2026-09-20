@@ -11,6 +11,7 @@ import {
 } from '@/lib/document-query';
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import { DocumentFields } from '../document-fields';
 import styles from '../../staff/staff.module.css';
 export default async function Page({
@@ -41,6 +42,7 @@ export default async function Page({
           {t.documentsModule.back}
         </Link>
       </header>
+      <AuditRecordEntry session={session} table="documents" id={r.id} />
       <section className={styles.panel}>
         <p>{r.archived ? t.documentsModule.archived : t.documentsModule.current}</p>
         {r.archived ? <p>{t.documentsModule.recordArchived}</p> : null}

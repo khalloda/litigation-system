@@ -11,6 +11,7 @@ import {
 import { billingPercent } from '@/lib/billing-format';
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import { BillingFields } from './billing-fields';
 import styles from '../staff/staff.module.css';
 import local from './billing.module.css';
@@ -54,6 +55,7 @@ export async function BillingDetail({
         </h1>
         <Link href={billingHref(kind, filters)}>{t.billing.back}</Link>
       </header>
+      <AuditRecordEntry session={session} table={kind} id={data.record.id} />
       <section className={styles.panel}>
         <p>{t.billing.readOnly}</p>
         <BillingFields record={data.record} kind={kind} full />
@@ -105,6 +107,7 @@ export async function BillingDetail({
                   <thead>
                     <tr>
                       <th scope="col">{t.billing.id}</th>
+                      <th scope="col">{t.auditHistory.title}</th>
                       <th scope="col">{t.billing.person}</th>
                       <th scope="col">{t.billing.role}</th>
                       <th scope="col">{t.billing.share}</th>
@@ -114,6 +117,13 @@ export async function BillingDetail({
                     {data.allocations.map((a) => (
                       <tr key={a.id} data-allocation-id={a.id}>
                         <td>{a.id}</td>
+                        <td>
+                          <AuditRecordEntry
+                            session={session}
+                            table="invoice_allocations"
+                            id={a.id}
+                          />
+                        </td>
                         <td>
                           {a.personName ?? t.billing.missing}
                           {a.personId !== null ? ' · ' + a.personId : ''}

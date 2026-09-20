@@ -11,6 +11,7 @@ import {
 } from '@/lib/fee-letter-query';
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import { FeeLetterFields } from '../fee-letter-fields';
 import styles from '../../staff/staff.module.css';
 export default async function Page({
@@ -43,11 +44,12 @@ export default async function Page({
           {t.feeLettersModule.back}
         </Link>
       </header>
+      <AuditRecordEntry session={session} table="fee_letters" id={r.id} />
       <section className={styles.panel}>
         <p>{r.archived ? t.feeLettersModule.archived : t.feeLettersModule.current}</p>
         {r.archived ? <p>{t.feeLettersModule.recordArchived}</p> : null}
         {r.clientArchived ? <p>{t.feeLettersModule.parentArchived}</p> : null}
-        <FeeLetterFields record={r} full />
+        <FeeLetterFields record={r} full session={session} />
         <p>
           <Link className={styles.link} href={'/billing/invoices?fee=' + r.id}>
             {t.feeLettersModule.invoices} · {r.invoiceCount}

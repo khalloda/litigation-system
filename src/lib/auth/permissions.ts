@@ -15,6 +15,7 @@ export const PERMISSION_AREAS = [
   'staff',
   'usersAndRoles',
   'dropdownLists',
+  'auditHistory',
 ] as const;
 
 export const PERMISSION_ACTIONS = [
@@ -74,6 +75,7 @@ export const PERMISSION_POLICY = {
     staff: administer,
     usersAndRoles: administer,
     dropdownLists: administer,
+    auditHistory: view,
   },
   'Litigation Assistant': {
     clients: edit,
@@ -90,6 +92,7 @@ export const PERMISSION_POLICY = {
     staff: view,
     usersAndRoles: none,
     dropdownLists: none,
+    auditHistory: none,
   },
   Lawyer: {
     clients: view,
@@ -106,6 +109,7 @@ export const PERMISSION_POLICY = {
     staff: view,
     usersAndRoles: none,
     dropdownLists: none,
+    auditHistory: none,
   },
   Paralegal: {
     clients: view,
@@ -122,6 +126,7 @@ export const PERMISSION_POLICY = {
     staff: view,
     usersAndRoles: none,
     dropdownLists: none,
+    auditHistory: none,
   },
 } as const satisfies PermissionPolicy;
 

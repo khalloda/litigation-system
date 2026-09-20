@@ -1,4 +1,5 @@
 import { poaEditApplied, POA_EDIT_GATEWAYS, POA_EDIT_TABLES } from './poa-edit-checkpoint';
+import { auditHistoryApplied, AUDIT_HISTORY_GATEWAYS } from './audit-history-checkpoint';
 import { tasks46_47Applied, TASKS46_47_GATEWAYS, TASKS46_47_TABLES } from './tasks46-47-checkpoint';
 import { adminLifecycleApplied, ADMIN_LIFECYCLE_GATEWAYS } from './admin-lifecycle-checkpoint';
 import { adminEditApplied, ADMIN_EDIT_GATEWAYS, ADMIN_EDIT_TABLES } from './admin-edit-checkpoint';
@@ -360,6 +361,7 @@ export async function runtimeRoleBoundaryFailures(
   roleName = RUNTIME_DATABASE_ROLE,
 ): Promise<string[]> {
   const failures: string[] = [];
+  const auditHistory = await auditHistoryApplied(db);
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
   const logoBoundary = await clientLogoBoundaryApplied(db);
@@ -381,6 +383,7 @@ export async function runtimeRoleBoundaryFailures(
     (poaBoundary && POA_EDIT_TABLES.includes(table as never)) ||
     (tasks46_47Boundary && TASKS46_47_TABLES.includes(table as never));
   const approvedDefiners: readonly string[] = [
+    ...(auditHistory ? AUDIT_HISTORY_GATEWAYS : []),
     ...APPROVED_RUNTIME_SECURITY_DEFINERS,
     ...(poaBoundary ? POA_EDIT_GATEWAYS : []),
     ...(tasks46_47Boundary ? TASKS46_47_GATEWAYS : []),

@@ -1,5 +1,23 @@
 # Data migration
 
+## Task 4.9 implementation candidate — no actual migration authorized
+
+`20260920140000_audit_history_capability` is the next forward candidate after
+the accepted migration 72, tested only on protected full-data disposable copies
+and canonical replay. Initial capability resolution asserts one approved account
+through username, person 139 and its actual immutable audit-actor relationship;
+the owner snapshot resolves account 2/actor 1002, while canonical replay resolves
+account 3/actor 1003. Account numbers are not inferred across those histories.
+This is one-time provisioning, never a runtime username permission check.
+
+Permitted candidate delta: three private tables, their permanent guards and
+exact narrow functions/grants, two added semantic action names, one initial
+capability-grant event and audit-counter increment, and one completed ledger row.
+All old event/ledger rows, all business/source state, migrations 1–72 and every
+full sequence vector are preserved. The owner's actual state remains migration
+72. See the [candidate report](task-reports/2026-09-20-task-4-9-audit-history-candidate.md)
+for fresh versus reused evidence and the independent-review stop.
+
 ## Current Task 4.8 actual acceptance boundary — 20 September 2026
 
 The owner accepted `90d0219aeffdd8e32b51ff60380e4edcc7e404b9` and authorized

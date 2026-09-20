@@ -12,6 +12,7 @@ import {
 } from '@/lib/admin-work-query';
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import { Field } from '../../clients/client-fields';
 import { ClientAlert } from '../../clients/client-alert';
 import styles from '../../staff/staff.module.css';
@@ -95,6 +96,7 @@ export default async function AdminWorkPage({
           {t.adminWorks.back}
         </Link>
       </header>
+      <AuditRecordEntry session={session} table="admin_tasks" id={record.id} />
       <section className={styles.panel} aria-label={t.adminWorks.details}>
         <h2>{t.adminWorks.details}</h2>
         <dl className={styles.facts}>
@@ -213,6 +215,7 @@ export default async function AdminWorkPage({
           <ol className={local.timeline}>
             {record.steps.map((step) => (
               <li className={local.multiline} key={step.id} data-step-id={step.id}>
+                <AuditRecordEntry session={session} table="task_actions" id={step.id} />
                 <h3>{t.adminWorks.stepIdentity(step.id)}</h3>
                 {step.archived ? <p>{t.adminWorks.lifecycle.stepArchived}</p> : null}
                 {lifecycle && !record.archived && !record.matterArchived ? (

@@ -10,6 +10,7 @@ import { db } from '@/lib/db';
 import { isAuthRole, normalizeUsername, type AuthRole } from './constants';
 import { hashPassword, passwordMeetsPolicy } from './password';
 import { withSerializableRetry } from './service';
+import { validManagementKeys } from './account-form-input';
 
 export type ManagedAccount = Readonly<{
   id: number;
@@ -226,6 +227,8 @@ export async function createManagedAccount(
   input: Readonly<{ personId: number; username: string; role: string; temporaryPassword: string }>,
   dependencies: ManagementDependencies,
 ): Promise<number> {
+  if (!validManagementKeys(input, ['personId', 'username', 'role', 'temporaryPassword']))
+    throw new UserManagementError('invalid-input');
   const personId = positiveId(input.personId);
   const username = validUsername(input.username);
   const role = validRole(input.role);
@@ -252,6 +255,8 @@ export async function correctManagedUsername(
   input: Readonly<{ accountId: number; expectedSessionVersion: number; username: string }>,
   dependencies: ManagementDependencies,
 ): Promise<void> {
+  if (!validManagementKeys(input, ['accountId', 'expectedSessionVersion', 'username']))
+    throw new UserManagementError('invalid-input');
   const accountId = positiveId(input.accountId);
   const username = validUsername(input.username);
   const database = dependencies.database ?? db;
@@ -279,6 +284,8 @@ export async function changeManagedRole(
   input: Readonly<{ accountId: number; expectedSessionVersion: number; role: string }>,
   dependencies: ManagementDependencies,
 ): Promise<void> {
+  if (!validManagementKeys(input, ['accountId', 'expectedSessionVersion', 'role']))
+    throw new UserManagementError('invalid-input');
   const accountId = positiveId(input.accountId);
   const role = validRole(input.role);
   const database = dependencies.database ?? db;
@@ -308,6 +315,8 @@ export async function disableManagedAccount(
   input: Readonly<{ accountId: number; expectedSessionVersion: number }>,
   dependencies: ManagementDependencies,
 ): Promise<void> {
+  if (!validManagementKeys(input, ['accountId', 'expectedSessionVersion']))
+    throw new UserManagementError('invalid-input');
   const accountId = positiveId(input.accountId);
   const database = dependencies.database ?? db;
   await serializable(database, async (transaction) => {
@@ -362,6 +371,8 @@ export async function reactivateManagedAccount(
   }>,
   dependencies: ManagementDependencies,
 ): Promise<void> {
+  if (!validManagementKeys(input, ['accountId', 'expectedSessionVersion', 'temporaryPassword']))
+    throw new UserManagementError('invalid-input');
   const accountId = positiveId(input.accountId);
   const passwordHash = await hashPassword(validTemporaryPassword(input.temporaryPassword));
   const database = dependencies.database ?? db;
@@ -387,6 +398,8 @@ export async function resetManagedPassword(
   }>,
   dependencies: ManagementDependencies,
 ): Promise<void> {
+  if (!validManagementKeys(input, ['accountId', 'expectedSessionVersion', 'temporaryPassword']))
+    throw new UserManagementError('invalid-input');
   const accountId = positiveId(input.accountId);
   const passwordHash = await hashPassword(validTemporaryPassword(input.temporaryPassword));
   const database = dependencies.database ?? db;

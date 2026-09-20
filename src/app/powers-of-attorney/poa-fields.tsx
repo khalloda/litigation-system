@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import type { Session } from 'next-auth';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import { t } from '@/strings';
 import type { PoaRecord, PoaLawyer } from '@/lib/poa-query';
 import styles from '../staff/staff.module.css';
@@ -17,11 +19,22 @@ export function PoaValue({
     </div>
   );
 }
-export function PoaMembers({ members, empty }: { members: PoaLawyer[]; empty: string }) {
+export function PoaMembers({
+  members,
+  empty,
+  session,
+}: {
+  members: PoaLawyer[];
+  empty: string;
+  session?: Session;
+}) {
   return members.length ? (
     <ul className={local.members}>
       {members.map((m) => (
         <li key={m.id}>
+          {session ? (
+            <AuditRecordEntry session={session} table="power_of_attorney_lawyers" id={m.id} />
+          ) : null}
           {m.staff ? (
             <Link className={styles.nameLink} href={'/staff/' + m.personId}>
               {m.name}
@@ -38,7 +51,15 @@ export function PoaMembers({ members, empty }: { members: PoaLawyer[]; empty: st
     <p>{empty}</p>
   );
 }
-export function PoaFields({ record: r, full = false }: { record: PoaRecord; full?: boolean }) {
+export function PoaFields({
+  record: r,
+  full = false,
+  session,
+}: {
+  record: PoaRecord;
+  full?: boolean;
+  session?: Session;
+}) {
   return (
     <>
       <dl className={local.fields}>
@@ -88,7 +109,11 @@ export function PoaFields({ record: r, full = false }: { record: PoaRecord; full
         ) : null}
       </dl>
       <h3>{t.poa.currentLawyers}</h3>
-      <PoaMembers members={r.lawyers.filter((m) => !m.retired)} empty={t.poa.noCurrent} />
+      <PoaMembers
+        members={r.lawyers.filter((m) => !m.retired)}
+        empty={t.poa.noCurrent}
+        session={session}
+      />
       {!r.lawyers.some((m) => !m.retired) ? (
         <p className={styles.hint}>{t.poa.noCurrentHint}</p>
       ) : null}
@@ -105,9 +130,17 @@ export function PoaFields({ record: r, full = false }: { record: PoaRecord; full
         {full ? (
           <>
             <h3>{t.poa.originalLawyers}</h3>
-            <PoaMembers members={r.lawyers.filter((m) => m.original)} empty={t.poa.noOriginal} />
+            <PoaMembers
+              members={r.lawyers.filter((m) => m.original)}
+              empty={t.poa.noOriginal}
+              session={session}
+            />
             <h3>{t.poa.retiredLawyers}</h3>
-            <PoaMembers members={r.lawyers.filter((m) => m.retired)} empty={t.poa.unknown} />
+            <PoaMembers
+              members={r.lawyers.filter((m) => m.retired)}
+              empty={t.poa.unknown}
+              session={session}
+            />
           </>
         ) : null}
       </section>

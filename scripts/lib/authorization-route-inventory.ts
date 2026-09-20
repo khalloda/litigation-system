@@ -768,7 +768,12 @@ function permissionWrapperFailures(
   entry: DiscoveredEntrypoint,
   expected: Extract<RouteInventoryEntry['classification'], { access: 'permission' }>,
 ): string[] {
-  const wrapper = entry.kind === 'route' ? 'withRoutePermission' : 'withActionPermission';
+  const wrapper =
+    entry.kind === 'route'
+      ? expected.capability === 'auditExport'
+        ? 'withAuditExportRoutePermission'
+        : 'withRoutePermission'
+      : 'withActionPermission';
   const requiredForm: EntrypointForm =
     entry.kind === 'route' ? 'route-variable' : 'module-server-variable';
   const failures = importFailures(entry, AUTHORIZATION_MODULE, wrapper);

@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import type { Session } from 'next-auth';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import type { FeeLetterRecord, FeeLetterMatterLink } from '@/lib/fee-letter-query';
 import { t } from '@/strings';
 import styles from '../staff/staff.module.css';
@@ -9,11 +11,22 @@ const Value = ({ label, value }: { label: string; value: string | number | null 
     <dd className={local.value}>{value ?? t.feeLettersModule.unknown}</dd>
   </div>
 );
-function Matters({ rows, empty }: { rows: FeeLetterMatterLink[]; empty: string }) {
+function Matters({
+  rows,
+  empty,
+  session,
+  table,
+}: {
+  rows: FeeLetterMatterLink[];
+  empty: string;
+  session?: Session;
+  table?: 'fee_letter_matters' | 'matter_fee_letter_references';
+}) {
   return rows.length ? (
     <ul className={local.members}>
       {rows.map((r) => (
         <li key={r.id}>
+          {session && table ? <AuditRecordEntry session={session} table={table} id={r.id} /> : null}
           <Link className={styles.nameLink} href={'/matters/' + r.matterId}>
             {r.matterNumber ?? String(r.matterId)}
           </Link>
@@ -36,9 +49,11 @@ function Matters({ rows, empty }: { rows: FeeLetterMatterLink[]; empty: string }
 export function FeeLetterFields({
   record: r,
   full = false,
+  session,
 }: {
   record: FeeLetterRecord;
   full?: boolean;
+  session?: Session;
 }) {
   return (
     <>
@@ -68,12 +83,19 @@ export function FeeLetterFields({
         ) : null}
       </dl>
       <h3>{t.feeLettersModule.covered}</h3>
-      <Matters rows={r.covered.filter((x) => !x.retired)} empty={t.feeLettersModule.missing} />
+      <Matters
+        rows={r.covered.filter((x) => !x.retired)}
+        empty={t.feeLettersModule.missing}
+        session={session}
+        table="fee_letter_matters"
+      />
       {full ? (
         <>
           <h3>{t.feeLettersModule.referencing}</h3>
           <Matters
             rows={r.referencing.filter((x) => !x.retired)}
+            session={session}
+            table="matter_fee_letter_references"
             empty={t.feeLettersModule.missing}
           />
           <section className={local.source}>
@@ -91,11 +113,15 @@ export function FeeLetterFields({
             <h3>{t.feeLettersModule.coveredHistory}</h3>
             <Matters
               rows={r.covered.filter((x) => x.retired || x.original)}
+              session={session}
+              table="fee_letter_matters"
               empty={t.feeLettersModule.missing}
             />
             <h3>{t.feeLettersModule.referencingHistory}</h3>
             <Matters
               rows={r.referencing.filter((x) => x.retired || x.original)}
+              session={session}
+              table="matter_fee_letter_references"
               empty={t.feeLettersModule.missing}
             />
           </section>

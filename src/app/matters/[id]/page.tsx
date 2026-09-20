@@ -18,6 +18,7 @@ import {
 } from '@/lib/matter-query';
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import { Field } from '../../clients/client-fields';
 import { ClientAlert } from '../../clients/client-alert';
 import styles from '../../staff/staff.module.css';
@@ -112,6 +113,7 @@ export default async function MatterPage({
           {t.matters.back}
         </Link>
       </header>
+      <AuditRecordEntry session={session} table="matters" id={matter.id} />
       {hasPermission(session.user.role, 'matters', matter.archived ? 'restore' : 'archive') ? (
         <Link
           className={styles.button}
@@ -272,6 +274,7 @@ export default async function MatterPage({
                     .filter((p) => p.side === side)
                     .map((p) => (
                       <li key={p.id} data-party-id={p.id}>
+                        <AuditRecordEntry session={session} table="matter_parties" id={p.id} />
                         <p className={local.multiline} dir="auto">
                           {p.name?.trim() ? p.name : t.common.notRecorded}
                         </p>
@@ -280,6 +283,11 @@ export default async function MatterPage({
                             {p.roles.map((r) => (
                               <li key={r.id} data-capacity-id={r.id}>
                                 {r.name}
+                                <AuditRecordEntry
+                                  session={session}
+                                  table="matter_party_roles"
+                                  id={r.id}
+                                />
                               </li>
                             ))}
                           </ul>
@@ -303,6 +311,7 @@ export default async function MatterPage({
           <ol className={local.parties}>
             {matter.lawyers.map((l) => (
               <li key={l.id} data-lawyer-id={l.personId}>
+                <AuditRecordEntry session={session} table="matter_lawyers" id={l.id} />
                 <p className={local.multiline} dir="auto">
                   {l.name}
                 </p>

@@ -6,6 +6,7 @@ type PermissionClassification = {
   access: 'permission';
   area: PermissionArea;
   action: PermissionAction;
+  capability?: 'auditExport';
 };
 
 type ExemptionEnforcement =
@@ -47,6 +48,45 @@ export type RouteInventoryEntry = {
  * rather than implicit omissions.
  */
 export const ROUTE_INVENTORY = [
+  {
+    kind: 'page',
+    source: 'src/app/audit-history/page.tsx',
+    route: '/audit-history',
+    classification: { access: 'permission', area: 'auditHistory', action: 'view' },
+  },
+  {
+    kind: 'route',
+    source: 'src/app/audit-history/read/route.ts',
+    route: '/audit-history/read',
+    exportName: 'GET',
+    classification: { access: 'permission', area: 'auditHistory', action: 'view' },
+  },
+  {
+    kind: 'route',
+    source: 'src/app/audit-history/read/route.ts',
+    route: '/audit-history/read',
+    exportName: 'HEAD',
+    classification: { access: 'permission', area: 'auditHistory', action: 'view' },
+  },
+  {
+    kind: 'route',
+    source: 'src/app/audit-history/read/route.ts',
+    route: '/audit-history/read',
+    exportName: 'OPTIONS',
+    classification: { access: 'permission', area: 'auditHistory', action: 'view' },
+  },
+  ...(['POST', 'GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'] as const).map((exportName) => ({
+    kind: 'route' as const,
+    source: 'src/app/audit-history/export/route.ts',
+    route: '/audit-history/export',
+    exportName,
+    classification: {
+      access: 'permission' as const,
+      area: 'auditHistory' as const,
+      action: 'view' as const,
+      capability: 'auditExport' as const,
+    },
+  })),
   {
     kind: 'page',
     source: 'src/app/billing/page.tsx',

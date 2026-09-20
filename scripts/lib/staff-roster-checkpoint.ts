@@ -195,7 +195,7 @@ export async function staffBoundaryApplied(db: ClientBase): Promise<boolean> {
 export async function assertStaffCheckpoint(
   db: ClientBase,
   profile: StaffProfile,
-): Promise<60 | 61 | 62 | 63 | 64 | 65 | 66 | 67 | 68 | 69 | 70 | 71 | 72> {
+): Promise<60 | 61 | 62 | 63 | 64 | 65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 | 73> {
   assert.ok(
     ['historical-full-state-upgrade', 'canonical-clean-replay'].includes(profile),
     'explicit accepted profile required',
@@ -213,7 +213,7 @@ export async function assertStaffCheckpoint(
   const repository = await readGate4RepositoryMigrationInventory();
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72].includes(repository.migrations.length),
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73].includes(repository.migrations.length),
     'Exact reviewed repository checkpoint required',
   );
   assert.equal(repository.migrations[60]?.name, STAFF_MIGRATION);
@@ -239,6 +239,14 @@ export async function assertStaffCheckpoint(
     assert.equal(repository.migrations[70]?.name, TASKS46_47_MIGRATION);
   if (repository.migrations.length >= 72)
     assert.equal(repository.migrations[71]?.name, '20260918100000_billing_arabic_labels');
+  if (repository.migrations.length === 73)
+    assert.equal(repository.migrations[72]?.name, '20260920140000_audit_history_capability');
+  const auditHistory = history.some(
+    (row) =>
+      row.migrationName === '20260920140000_audit_history_capability' &&
+      row.finishedAt !== null &&
+      row.rolledBackAt === null,
+  );
   const billingLabels = history.some(
     (row) =>
       row.migrationName === '20260918100000_billing_arabic_labels' &&
@@ -261,31 +269,34 @@ export async function assertStaffCheckpoint(
   assert.ok(!poa || adminLifecycle);
   assert.ok(!tasks46_47 || poa);
   assert.ok(!billingLabels || tasks46_47);
-  const checkpoint = billingLabels
-    ? 72
-    : tasks46_47
-      ? 71
-      : poa
-        ? 70
-        : adminLifecycle
-          ? 69
-          : admin
-            ? 68
-            : hearingLifecycle
-              ? 67
-              : hearing
-                ? 66
-                : lifecycle
-                  ? 65
-                  : editing
-                    ? 64
-                    : logosApplied
-                      ? 63
-                      : clientsApplied
-                        ? 62
-                        : applied
-                          ? 61
-                          : 60;
+  assert.ok(!auditHistory || billingLabels);
+  const checkpoint = auditHistory
+    ? 73
+    : billingLabels
+      ? 72
+      : tasks46_47
+        ? 71
+        : poa
+          ? 70
+          : adminLifecycle
+            ? 69
+            : admin
+              ? 68
+              : hearingLifecycle
+                ? 67
+                : hearing
+                  ? 66
+                  : lifecycle
+                    ? 65
+                    : editing
+                      ? 64
+                      : logosApplied
+                        ? 63
+                        : clientsApplied
+                          ? 62
+                          : applied
+                            ? 61
+                            : 60;
   const checkpointFiles = repository.migrations.slice(0, checkpoint);
   const evidence = reconcileGate4Migrations(history, {
     ...repository,

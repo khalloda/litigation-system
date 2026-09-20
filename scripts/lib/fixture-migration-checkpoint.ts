@@ -70,7 +70,7 @@ function checkpointFor(
   if (CHECKPOINT_61_TARGET.test(database)) return 61;
   assert.match(
     database,
-    /^litigation_(?:task33a_history_fixture_[0-9_]+|task40a_canonical_prestate)$/u,
+    /^litigation_(?:task33a_history_fixture_[0-9_]+|task33b_fixture_[0-9_]+|task40a_canonical_prestate)$/u,
   );
   return 60;
 }
@@ -79,8 +79,10 @@ function reviewedRepository(
 ) {
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72].includes(repository.migrations.length),
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73].includes(repository.migrations.length),
   );
+  if (repository.migrations.length === 73)
+    assert.equal(repository.migrations[72]?.name, '20260920140000_audit_history_capability');
   if (repository.migrations.length >= 72)
     assert.equal(repository.migrations[71]?.name, '20260918100000_billing_arabic_labels');
   assert.equal(repository.migrations[60]?.name, '20260906180000_staff_roster_database_boundary');

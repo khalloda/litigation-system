@@ -88,7 +88,16 @@ function main(): void {
   assert.equal((actionsSource.match(/Number\(session\.user\.id\)/gu) ?? []).length, 6);
   assert.doesNotMatch(actionsSource, /console\.|passwordHash|actorId|actorRole/iu);
   assert.doesNotMatch(componentSource, /useState[^;]*(?:password|hash)/iu);
-  assert.doesNotMatch(`${pageSource}\n${componentSource}`, /audit[_ -]?(?:history|export)/iu);
+  // Task 4.9 adds exactly one current-account history entry, not capability management.
+  const historyImport = "import { AuditHistoryButton } from '@/app/audit-history/viewer';";
+  const historyEntry =
+    "<AuditHistoryButton subject={{ table: 'user_accounts', id: String(account.id) }} />";
+  assert.equal(componentSource.split(historyImport).length, 2);
+  assert.equal(componentSource.split(historyEntry).length, 2);
+  assert.doesNotMatch(
+    `${pageSource}\n${componentSource.replace(historyImport, '').replace(historyEntry, '')}`,
+    /audit[_ -]?(?:history|export)/iu,
+  );
   assert.match(cssSource, /:focus-visible/u);
   assert.match(authCssSource, /\.secondaryButton:focus-visible/u);
   assert.match(authCssSource, /\.navigationLink/u);
@@ -201,7 +210,7 @@ function main(): void {
   );
   console.log('PASS focused JSX inspection covers the two known multiline-literal checker gaps');
   console.log(
-    'PASS no audit history, staff mutation, account deletion or password/hash output is introduced',
+    'PASS only the exact Task 4.9 account-history entry is added; no export-capability management, staff mutation, account deletion or password/hash output',
   );
 }
 

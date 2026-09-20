@@ -1,5 +1,20 @@
 # Data model
 
+## Task 4.9 candidate audit projection and capability
+
+This local candidate adds no business entity or invoice/matter relationship.
+Existing immutable audit events remain the evidence source. The viewer projects
+their typed values, actor/target snapshots and request identities without filling
+historical gaps from current business values. Contextual child associations use
+recorded keys and the allowlisted retained immutable parent-key relationships.
+Both fee-letter/matter relationship directions remain distinct.
+
+Three SQL-only `_migration` tables implement the separate account capability,
+append-only capability changes and idempotent completed-export receipts. Their
+exact columns are classified by `scripts/lib/audit-history-checkpoint.ts`; they
+are not ordinary Prisma business models and have no raw runtime table grants.
+No new sequence is needed. Candidate migration 73 is not applied to the owner.
+
 “17 tables in scope” means the Dashboard-traced **Access business-source
 scope** in D1, not the complete PostgreSQL physical schema. Gate 1 names that
 extraction scope as 15 migration-source tables plus two reference-only tables.

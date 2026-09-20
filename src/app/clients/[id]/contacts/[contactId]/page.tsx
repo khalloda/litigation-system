@@ -12,6 +12,7 @@ import {
   type ClientSearchParams,
 } from '@/lib/client-query';
 import { t } from '@/strings';
+import { AuditRecordEntry } from '@/app/audit-history/record-entry';
 import styles from '../../../../staff/staff.module.css';
 import local from '../../../clients.module.css';
 import { Field } from '../../../client-fields';
@@ -66,6 +67,7 @@ export default async function ContactPage({
           {t.clients.backClient}
         </Link>
       </header>
+      <AuditRecordEntry session={session} table="contacts" id={contact.id} />
       {contact.parentArchived ? (
         <p className={`${styles.panel} ${styles.state}`}>{t.clients.archivedNotice}</p>
       ) : null}

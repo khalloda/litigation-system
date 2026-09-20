@@ -14,6 +14,7 @@ import {
   UserManagementError,
 } from '@/lib/auth/user-management';
 import { t } from '@/strings';
+import { validManagementForm } from '@/lib/auth/account-form-input';
 
 export type UserManagementActionState = Readonly<{
   kind: 'idle' | 'error' | 'success';
@@ -76,6 +77,16 @@ function passwords(formData: FormData): Readonly<{ value: string; matches: boole
 export const createUserAction = withActionPermission(
   { area: 'usersAndRoles', action: 'manage' },
   async (session, previous: UserManagementActionState, formData: FormData) => {
+    if (
+      !validManagementForm(formData, [
+        'personId',
+        'username',
+        'role',
+        'temporaryPassword',
+        'confirmPassword',
+      ])
+    )
+      return result(previous, 'error', t.users.errors['invalid-input']);
     const temporaryPassword = passwords(formData);
     if (!temporaryPassword.matches) {
       return result(previous, 'error', t.users.errors.passwordMismatch, 'confirmPassword');
@@ -102,6 +113,8 @@ export const createUserAction = withActionPermission(
 export const correctUsernameAction = withActionPermission(
   { area: 'usersAndRoles', action: 'manage' },
   async (session, previous: UserManagementActionState, formData: FormData) => {
+    if (!validManagementForm(formData, ['accountId', 'sessionVersion', 'username']))
+      return result(previous, 'error', t.users.errors['invalid-input']);
     try {
       await correctManagedUsername(
         Number(session.user.id),
@@ -123,6 +136,8 @@ export const correctUsernameAction = withActionPermission(
 export const changeRoleAction = withActionPermission(
   { area: 'usersAndRoles', action: 'manage' },
   async (session, previous: UserManagementActionState, formData: FormData) => {
+    if (!validManagementForm(formData, ['accountId', 'sessionVersion', 'role']))
+      return result(previous, 'error', t.users.errors['invalid-input']);
     try {
       await changeManagedRole(
         Number(session.user.id),
@@ -144,6 +159,8 @@ export const changeRoleAction = withActionPermission(
 export const disableAccountAction = withActionPermission(
   { area: 'usersAndRoles', action: 'manage' },
   async (session, previous: UserManagementActionState, formData: FormData) => {
+    if (!validManagementForm(formData, ['accountId', 'sessionVersion', 'confirmation']))
+      return result(previous, 'error', t.users.errors['invalid-input']);
     const accountId = numeric(formData, 'accountId');
     if (String(formData.get('confirmation') ?? '') !== String(accountId)) {
       return result(previous, 'error', t.users.errors.confirmationRequired, 'confirmation');
@@ -165,6 +182,15 @@ export const disableAccountAction = withActionPermission(
 export const reactivateAccountAction = withActionPermission(
   { area: 'usersAndRoles', action: 'manage' },
   async (session, previous: UserManagementActionState, formData: FormData) => {
+    if (
+      !validManagementForm(formData, [
+        'accountId',
+        'sessionVersion',
+        'temporaryPassword',
+        'confirmPassword',
+      ])
+    )
+      return result(previous, 'error', t.users.errors['invalid-input']);
     const temporaryPassword = passwords(formData);
     if (!temporaryPassword.matches) {
       return result(previous, 'error', t.users.errors.passwordMismatch, 'confirmPassword');
@@ -190,6 +216,15 @@ export const reactivateAccountAction = withActionPermission(
 export const resetPasswordAction = withActionPermission(
   { area: 'usersAndRoles', action: 'manage' },
   async (session, previous: UserManagementActionState, formData: FormData) => {
+    if (
+      !validManagementForm(formData, [
+        'accountId',
+        'sessionVersion',
+        'temporaryPassword',
+        'confirmPassword',
+      ])
+    )
+      return result(previous, 'error', t.users.errors['invalid-input']);
     const temporaryPassword = passwords(formData);
     if (!temporaryPassword.matches) {
       return result(previous, 'error', t.users.errors.passwordMismatch, 'confirmPassword');

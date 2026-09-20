@@ -14,6 +14,7 @@ import {
   type ClientSearchParams,
 } from '@/lib/client-query';
 import { t } from '@/strings';
+import { AuditRecordEntry, AuditLogoEntry } from '@/app/audit-history/record-entry';
 import styles from '../../staff/staff.module.css';
 import local from '../clients.module.css';
 import { Field, classificationLabel, statusLabel } from '../client-fields';
@@ -90,6 +91,8 @@ export default async function ClientPage({
         </div>
         <ClientLogo key={client.id} id={client.id} name={client.nameAr} version={randomUUID()} />
       </header>
+      <AuditRecordEntry session={session} table="clients" id={client.id} />
+      <AuditLogoEntry session={session} clientId={client.id} />
       {client.isArchived ? (
         <p className={`${styles.panel} ${styles.state}`}>{t.clients.archivedNotice}</p>
       ) : null}
@@ -207,6 +210,7 @@ export default async function ClientPage({
           <ul className={styles.list}>
             {contacts.rows.map((contact) => (
               <li className={styles.row} key={contact.id}>
+                <AuditRecordEntry session={session} table="contacts" id={contact.id} />
                 <div className={local.multiline}>
                   <h3>
                     <Link

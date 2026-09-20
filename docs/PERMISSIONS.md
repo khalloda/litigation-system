@@ -1,5 +1,21 @@
 # Roles and permissions
 
+## Task 4.9 local candidate — not active
+
+The candidate audit-history page and contextual drawers are Administrator-only,
+with fresh server/database checks for all routes, metadata and result counts.
+The original 448 role/action decisions remain unchanged. Audit export is **not**
+an Administrator role permission: it also requires the account-specific persisted
+capability in `_migration.audit_export_capability`. Candidate migration 73 resolves
+the unique approved KHelmy/person-139/audit-actor relationship once; runtime checks
+use stable IDs, active role/account/person state, session version and expiry.
+
+Ordinary `/users` actions cannot grant this capability and reject additional
+payload fields. Grants/revocations are available only through the direct approved
+administration-principal maintenance command, with an append-only semantic event,
+reason and consistency-checked history. No capability provisioning or migration
+has been performed on the owner database. See the [candidate report](task-reports/2026-09-20-task-4-9-audit-history-candidate.md).
+
 About 10 users. Four roles. Accounts can be added and disabled by the
 Administrator; they are never physically deleted.
 
