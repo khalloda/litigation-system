@@ -328,12 +328,12 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
   SELECT 1 FROM _migration.audit_export_receipt r LEFT JOIN public.audit_events e ON e.id=r.event_id
   LEFT JOIN public.audit_actors a ON a.id=e.actor_id
   WHERE e.id IS NULL OR e.action<>'export_completed' OR e.outcome<>'succeeded'
-   OR a.user_account_id IS DISTINCT FROM r.account_id OR e.resource_identifier NOT LIKE 'audit_history:%'
+   OR a.user_account_id IS DISTINCT FROM r.account_id OR starts_with(e.resource_identifier,'audit_history:') IS DISTINCT FROM true
    OR e.parameters->>'request_sha256' IS DISTINCT FROM r.request_digest
    OR e.parameters->>'artifact_sha256' IS DISTINCT FROM r.artifact_digest
    OR e.parameters->>'operation_id' IS DISTINCT FROM r.operation_id::text
  ) AND NOT EXISTS(
-  SELECT 1 FROM public.audit_events e WHERE e.action='export_completed' AND e.resource_identifier LIKE 'audit_history:%'
+  SELECT 1 FROM public.audit_events e WHERE e.action='export_completed' AND starts_with(e.resource_identifier,'audit_history:')
    AND NOT EXISTS(SELECT 1 FROM _migration.audit_export_receipt r WHERE r.event_id=e.id)
  )
 $$;
@@ -350,7 +350,25 @@ CREATE CONSTRAINT TRIGGER audit_export_change_consistency AFTER INSERT ON _migra
  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.audit_export_assert_state();
 CREATE CONSTRAINT TRIGGER audit_export_receipt_consistency AFTER INSERT ON _migration.audit_export_receipt
  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.audit_export_assert_state();
-REVOKE ALL ON FUNCTION _migration.audit_export_state_valid(),_migration.audit_export_assert_state() FROM PUBLIC,litigation_runtime;
+-- The generic semantic writer must not commit an orphan by avoiding private
+-- tables. Queue from the append-only event side too. Ordinary audit events
+-- retain their writer semantics and do not scan the capability/receipt chain.
+CREATE FUNCTION _migration.audit_export_assert_event() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+BEGIN
+ IF NEW.action IN('audit_export_granted','audit_export_revoked')
+  OR (NEW.action='export_completed' AND starts_with(NEW.resource_identifier,'audit_history:')) THEN
+  IF NOT _migration.audit_export_state_valid() THEN
+   RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Audit export capability/receipt history differs';
+  END IF;
+ END IF;
+ RETURN NULL;
+END;
+$$;
+CREATE CONSTRAINT TRIGGER audit_export_event_consistency AFTER INSERT ON public.audit_events
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.audit_export_assert_event();
+REVOKE ALL ON FUNCTION _migration.audit_export_state_valid(),_migration.audit_export_assert_state(),
+ _migration.audit_export_assert_event() FROM PUBLIC,litigation_runtime;
 
 REVOKE ALL ON FUNCTION _migration.audit_history_authorize(integer,integer,integer,timestamptz,boolean),
  _migration.audit_export_set_capability(integer,boolean,text),_migration.audit_history_values(jsonb),

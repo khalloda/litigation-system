@@ -13,6 +13,13 @@ Candidate testing covers keyboard, mobile, actual browser zoom, automated
 accessibility and visual output; it does not claim screen-reader speech testing
 or full accessibility conformance. This is not owner activation or acceptance.
 
+Correction 1 visibly labels nonempty recorded strings as text in guillemets,
+so literal Arabic state labels cannot impersonate absence, null, empty, false,
+redaction or truncation. Whitespace-only strings display escaped characters;
+ordinary multiline text stays multiline. Forbidden XML controls are visibly
+escaped and exact typed values have a separate lossless XLSX envelope. Explicit
+browser surface assertions replace incidental first-parent button discovery.
+
 Agreed from mockups, 23 August 2026. **Direction only — not a specification.**
 Task 3.4's bounded `/users` administrative screen now applies the relevant
 direction; the Stage 4 core screens and Stage 6 reports still must be revisited

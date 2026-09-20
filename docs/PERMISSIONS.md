@@ -16,6 +16,12 @@ administration-principal maintenance command, with an append-only semantic event
 reason and consistency-checked history. No capability provisioning or migration
 has been performed on the owner database. See the [candidate report](task-reports/2026-09-20-task-4-9-audit-history-candidate.md).
 
+Correction 1 closes the generic semantic writer's orphan-completion path:
+the database now checks reserved event/receipt correspondence at commit even
+when the caller touches no private table. It also guards grant/revoke facts
+from the event side. This supplements, not replaces, current account/session/
+capability checks and preserves the documented trusted-application boundary.
+
 About 10 users. Four roles. Accounts can be added and disabled by the
 Administrator; they are never physically deleted.
 

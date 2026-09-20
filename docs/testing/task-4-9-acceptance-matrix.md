@@ -1,5 +1,27 @@
 # Task 4.9 — candidate acceptance matrix
 
+## Correction 1 supersession — pending independent review
+
+The original matrix below is historical implementation evidence, not acceptance.
+Independent review of `fe4452d` found R1's event-only orphan path, R2's lossy
+formatted Base64 values/state-label collisions, and R3's incomplete browser entry
+selection. Therefore H08's universal losslessness, H14's complete commit-boundary
+invariant and H20's complete surface implication are **superseded**, not reused
+as passing correction proof. H02/H03's original final observations predated the
+last browser run; correction preservation must finish after all tests/cleanup.
+
+Correction evidence lives under `test-results/task49-correction1-20260920`; its
+immutable pre-execution matrix precedes all corrective edits. Fresh results and
+exact source bindings are mapped in the dated correction report. The original
+report, matrix snapshot, failing samples and five-file delivery remain intact.
+No checkbox or acceptance status changes.
+
+| Correction | Fresh supplied outcome | Evidence |
+| --- | --- | --- |
+| T49-R1 | Event/private-side correspondence enforced at transaction boundary; legitimate exports and rollback/concurrency/refusals pass | `invariant-02`, `exports-01`, revised upgrade and canonical replay |
+| T49-R2 | 23 independently decoded typed inputs exact; visible state/literal distinctions in browser and PDF | `values-02`, `browser-03`, visual inspection |
+| T49-R3 | 23 explicit entity families, 26 surfaces and 29 openings; scope IDs, keyboard/focus and shared workflows pass | `browser-03`, required-surface oracle and successful focus trace |
+
 Prepared before implementation/test execution, updated with supplied Windows
 results on 20 September 2026. **Candidate only; not independently accepted.** Base:
 `ba360643937fd0af9d11b12b7f18f8ddec093aac`. The immutable initial copy is retained
@@ -57,19 +79,19 @@ authentication/writers will not be refactored merely for convenience.
 | H05 | Real events retain exact IDs, provenance and fields; no fabricated Access history | `core-03/proof` independent SQL versus reader | PASS: 905 events, 47 groups, 7,816 projected scalars at that snapshot |
 | H06 | One genuine request/save groups semantic and structural events; distinct requests never merge | `core-03`, `boundary-02` | PASS: genuine document lifecycle; 28 requests at one microsecond remain 28 groups, including 60-event group |
 | H07 | Retired/relinked children remain associated by historical/immutable keys; both fee directions distinct | `boundary-02` all-family oracle; `relationships-01` genuine mutations | PASS: 35 scope comparisons; covered add/retire/restore and reference set/replace/clear; original evidence retained |
-| H08 | Missing/null/empty/zero/false/redacted/truncated/unknown and exact numeric meaning remain distinct | `core-03`, `exports-03` independently decoded synthetic Excel | PASS: exact bigint/decimal, ordered chunks and reversible control encoding |
+| H08 | Missing/null/empty/zero/false/redacted/truncated/unknown and exact numeric meaning remain distinct | Original `core-03`, `exports-03`; corrected `values-02`, `browser-03` | Original universal PASS superseded by R2: formatted-label collisions/lossy original column; fresh typed-envelope proof replaces that claim |
 | H09 | Historical actor/action/date/value filters search full result, with approved normalization | `core-03`, `boundary-02` combined filters and UTC edges | PASS; no J-to-Arabic fold |
 | H10 | Complete stable pagination under appends/huge groups; microseconds and cursor safety | `boundary-02` and `core-03` | PASS: ID above 2^53, exact union, tampered/expired cursor refusal, concurrent append excluded from old watermark |
 | H11 | Every usable Administrator views; three other roles denied all protected surfaces | `permissions-03`, `browser-08`, `exports-03` | PASS: original 448 unchanged + 32 audit decisions = 480; second Administrator can view |
 | H12 | Unusable/stale/expired/forced-reset/non-Admin sessions refused before work | `auth-01`, `user-management-01`, `permissions-03`, `core-03` | PASS fresh current-profile regressions and full refusal-state equality |
 | H13 | Capability default denied, independent of rename; no ordinary UI/payload grant | `exports-03`, `browser-08`, `account-ui-02` | PASS: second Admin denied; rename/revocation race; real forged `/users` Server Action refused without writes |
-| H14 | No raw runtime access/escalation/audit mutation; permanent drift enforcement | `boundary-02`, `permissions-03`, `audit-foundation-01`, static check self-tests | PASS: 11 corruption/refusal cases; exact source guard negatives; legacy append-only foundation tested at checkpoint 60 |
+| H14 | No raw runtime access/escalation/audit mutation; permanent drift enforcement | Original `boundary-02`, `permissions-03`, foundation60; corrected `invariant-02` and current checks | Original cases remain valid but did not prove event-only commit prevention; R1 corrects that gap. Foundation remains checkpoint60 only |
 | H15 | Both formats export all selected results at fixed watermark | `exports-03`, `browser-08`, `pdf-inspection-02` | PASS: global XLSX 1,004 events/105 groups; global filtered PDF 75 events/42 groups; contextual and empty outputs |
 | H16 | Literal safe values, no renderer fetch, accurate RTL and bounds | `exports-03` renderer fixtures and `pdf-inspection-02` | PASS: 25-page synthetic PDF, escaped payloads, no URI annotations, fonts and actual pages visually inspected |
 | H17 | Revocation/audit failure releases no artifact; concurrency/retry semantics exact | `exports-03` fault/barrier/concurrency proofs | PASS: zero receipts on refusals; double-submit 200/409 with one event; generated fact is not client receipt |
 | H18 | Viewing and refusals cause no persistent writes | `core-03`, `exports-03`, `relationships-01`, `browser-08` full-state comparisons | PASS after genuine fixture login/setup; all tables/sequences/catalogs compared |
 | H19 | Clear/Back/Forward/cursor/drafts stay synchronized; stale replies ignored | `browser-08` | PASS desktop/mobile production browser |
-| H20 | Labelled drawer, keyboard/focus/Escape, scroll safety, visible focus and reflow | `browser-08`, axe and computed focus proof | PASS 320px and actual 200% Chrome zoom; speech excluded, no conformance claim |
+| H20 | Labelled drawer, keyboard/focus/Escape, scroll safety, visible focus and reflow | Original `browser-08`; corrected `browser-03` | Original shared interactions passed, but seven entry families were missed. R3 supplies the complete explicit mapping and fresh320px/200% proof; speech excluded |
 | H21 | Upgrade/canonical replay preserve existing evidence with bounded migration deltas | `upgrade-preservation-02`, `canonical-04`, `boundary-02` | PASS full-data upgrade; 73 canonical migrations and 130 checks; no old migration changed |
 | H22 | Required project/build/permission/auth/account/database checks | Report command map and exact result files | PASS build-06, check-09, permissions-03, auth-01, user-management-01, account-ui-02, db-final-01 (148 checks) |
 | H23 | One clean child; frozen authorities/migrations/86 lines; remote unmoved | final Git observation, patch and source inventory in delivered package | Delivery gate: independently recomputed by standalone verifier; no push |

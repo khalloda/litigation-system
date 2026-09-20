@@ -429,6 +429,8 @@ export function AuditHistoryButton({ subject }: { subject: AuditSubject }) {
         type="button"
         className={styles.button}
         aria-haspopup="dialog"
+        data-audit-table={subject.table}
+        data-audit-id={subject.id}
         onClick={() => {
           pushed.current = true;
           navigate(auditSearchParams(AUDIT_FILTER_DEFAULTS, subject));

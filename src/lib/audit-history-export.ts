@@ -17,6 +17,7 @@ import {
   auditLabel,
   auditValue,
   auditRecordedValue,
+  auditOriginalValue,
 } from './audit-history-projection';
 import { AuditHistoryError, type AuditResult } from './audit-history-types';
 import { auditErrorResponse, auditResponseHeaders } from './audit-history-response';
@@ -35,11 +36,11 @@ const escape = (value: string) =>
       ["'", '&#39;'],
     ]).get(c)!,
   );
-function chunks(value: string) {
+function chunks(value: string, limit = 12000) {
   const out: string[] = [];
   let part = '';
   for (const char of value) {
-    if (part.length + char.length > 12000) {
+    if (part.length + char.length > limit) {
       out.push(part);
       part = '';
     }
@@ -116,8 +117,13 @@ export async function generateAuditExcel(result: AuditResult, generatedAt: strin
     side: string,
     kind: string,
     value: string,
+    original = auditOriginalValue({ kind: 'string', text: value }),
   ) {
-    for (const [index, part] of chunks(value).entries()) {
+    // 6,000 UTF-16 units keep even three-byte UTF-8 characters below Excel's
+    // 32,767-character cell limit after Base64 expansion; never split a scalar.
+    const readable = chunks(value),
+      raw = chunks(original, 6000);
+    for (let index = 0; index < Math.max(readable.length, raw.length); index++) {
       if (sheet.rowCount >= 300000) throw new AuditHistoryError('too-large');
       const row = sheet.addRow([
         group,
@@ -127,8 +133,8 @@ export async function generateAuditExcel(result: AuditResult, generatedAt: strin
         side,
         kind,
         String(index + 1),
-        visibleXml(part),
-        Buffer.from(part, 'utf8').toString('base64'),
+        visibleXml(readable.at(index) ?? ''),
+        Buffer.from(raw.at(index) ?? '', 'utf8').toString('base64'),
       ]);
       row.eachCell((cell) => {
         cell.numFmt = '@';
@@ -152,6 +158,7 @@ export async function generateAuditExcel(result: AuditResult, generatedAt: strin
             side === 'before' ? s.before : s.after,
             value?.kind ?? 'absent',
             auditValue(value),
+            auditOriginalValue(value),
           );
         }
     }

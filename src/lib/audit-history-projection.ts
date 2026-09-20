@@ -11,10 +11,31 @@ export function auditErrorText(code: string) {
 export function auditRecordedValue(values: Record<string, AuditValue>, field: string) {
   return Object.entries(values).find(([name]) => name === field)?.[1];
 }
+/** Lossless recorded representation; never parse numbers or translate evidence.
+ * Absence is not JSON null. `text` is the exact PostgreSQL typed projection,
+ * including JSON object/array syntax and redaction/truncation metadata. */
+export function auditOriginalValue(value: AuditValue | undefined): string {
+  return JSON.stringify(
+    value === undefined
+      ? { present: false }
+      : { present: true, kind: value.kind, text: value.text },
+  );
+}
 export function auditValue(value: AuditValue | undefined): string {
   if (!value) return s.absent;
   if (value.kind === 'null') return s.null;
   if (value.kind === 'string' && value.text === '') return s.emptyString;
+  if (value.kind === 'string') {
+    if (/^\s+$/u.test(value.text)) return `${s.whitespaceString}: ${JSON.stringify(value.text)}`;
+    // A literal marker-looking string stays visibly text, not a special state.
+    const readable = value.text
+      .replace(/\\/gu, '\\\\')
+      .replace(
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/gu,
+        (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`,
+      );
+    return `${s.string}: «${readable}»`;
+  }
   if (value.kind === 'boolean') return value.text === 'true' ? s.true : s.false;
   if (value.kind === 'object') {
     try {

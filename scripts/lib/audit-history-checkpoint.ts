@@ -231,6 +231,27 @@ export async function auditHistoryFailures(db: ClientBase) {
       ).rows;
       assert.deepEqual(privileges, []);
     }
+    const eventGuard = (
+      await db.query(
+        "SELECT tgname,tgenabled,tgdeferrable,tginitdeferred,tgtype,tgfoid::regprocedure::text function,tgqual IS NULL unqualified,tgnargs FROM pg_trigger WHERE tgrelid='public.audit_events'::regclass AND tgname='audit_export_event_consistency' AND NOT tgisinternal",
+      )
+    ).rows;
+    assert.deepEqual(
+      eventGuard,
+      [
+        {
+          tgname: 'audit_export_event_consistency',
+          tgenabled: 'O',
+          tgdeferrable: true,
+          tginitdeferred: true,
+          tgtype: 5,
+          function: '_migration.audit_export_assert_event()',
+          unqualified: true,
+          tgnargs: 0,
+        },
+      ],
+      'Event-side completion/capability correspondence is deferred and unavoidable',
+    );
     assert.equal(
       (await db.query('SELECT _migration.audit_export_state_valid() valid')).rows[0].valid,
       true,

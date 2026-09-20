@@ -472,13 +472,17 @@ async function main() {
           );
         });
         assert.equal(
-          recovered.get(t.auditHistory.fields.notes + ' (notes)|' + t.auditHistory.before),
+          JSON.parse(
+            recovered.get(t.auditHistory.fields.notes + ' (notes)|' + t.auditHistory.before)!,
+          ).text,
           long,
         );
         assert.equal(
-          recovered.get(
-            t.auditHistory.fields.page_count + ' (page_count)|' + t.auditHistory.before,
-          ),
+          JSON.parse(
+            recovered.get(
+              t.auditHistory.fields.page_count + ' (page_count)|' + t.auditHistory.before,
+            )!,
+          ).text,
           '9007199254740993.00000001',
         );
         // A bounded multi-page visual sample; the long lossless Excel sample is separately decoded above.

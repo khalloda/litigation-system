@@ -15,6 +15,10 @@ import {
   staffFocusProof,
 } from './lib/staff-accessibility-browser.mjs';
 import { t } from '../src/strings.ts';
+import {
+  browserSurfaceOracle,
+  requiredEntryTables,
+} from './lib/audit-history-browser-surfaces.mjs';
 const require = createRequire(import.meta.url),
   { chromium } = require('playwright');
 const output = process.env.TASK49_TEST_OUTPUT,
@@ -22,7 +26,7 @@ const output = process.env.TASK49_TEST_OUTPUT,
 assert.ok(output && privateRoot && process.env.TASK49_LOGINS);
 mkdirSync(output, { recursive: true });
 copyFileSync(process.argv[1], join(output, 'executed-browser.mjs'));
-const mirror = resolve('test-results/task49-20260920/build-work'),
+const mirror = resolve(process.env.TASK49_BUILD_ROOT ?? 'test-results/task49-20260920/build-work'),
   s = t.auditHistory;
 const logins = JSON.parse(readFileSync(process.env.TASK49_LOGINS, 'utf8'));
 const focusTrace = [];
@@ -291,59 +295,65 @@ async function main() {
       }),
       405,
     );
-  const routes = await withApprovedMigrationClient(
-    async (db) => {
-      const list = [];
-      for (const [table, route] of [
-        ['clients', 'clients'],
-        ['matters', 'matters'],
-        ['hearings', 'hearings'],
-        ['admin_tasks', 'admin-works'],
-        ['powers_of_attorney', 'powers-of-attorney'],
-        ['documents', 'documents'],
-        ['fee_letters', 'fee-letters'],
-        ['people', 'staff'],
-        ['invoices', 'billing/invoices'],
-        ['payments', 'billing/payments'],
-      ]) {
-        const id = (
-          await db.query(
-            `SELECT id FROM public.${table} ${table === 'people' ? 'WHERE is_staff' : ''} ORDER BY id LIMIT 1`,
-          )
-        ).rows[0].id;
-        list.push({ table, route: `/${route}/${id}`, id });
-      }
-      return list;
-    },
-    { databaseUrl: process.env.MIGRATION_DATABASE_URL },
-  );
-  routes.push({ table: 'user_accounts', route: '/users' });
+  const oracle = await withApprovedMigrationClient(browserSurfaceOracle, {
+    databaseUrl: process.env.MIGRATION_DATABASE_URL,
+  });
+  put('required-surface-oracle', oracle);
   const entries = [];
-  for (const record of routes) {
+  for (const record of oracle.routes) {
     await page.bringToFront();
     await page.goto(base + record.route);
-    const buttons = page.getByRole('button', { name: s.open, exact: true });
+    const buttons = page.locator(
+      `button[data-audit-table="${record.table}"][data-audit-id="${record.id}"]`,
+    );
     await buttons.first().waitFor({ timeout: 20000 });
     assert.ok((await buttons.count()) > 0, 'entry ' + record.route);
-    const seen = new Set();
     for (let i = 0; i < (await buttons.count()); i++) {
+      const responsePromise = page.waitForResponse(
+        (r) => r.url().includes('/audit-history/read?') && r.request().method() === 'GET',
+      );
       await buttons.nth(i).click();
+      let response = await (await responsePromise).json();
       const dialog = page.getByRole('dialog');
       await loaded(dialog);
+      assert.equal(
+        await dialog
+          .getByRole('button', { name: s.close, exact: true })
+          .evaluate((e) => e === document.activeElement),
+        true,
+        'Initial drawer focus',
+      );
       const params = new URLSearchParams(
         decodeURIComponent(new URL(page.url()).hash.split('=').slice(1).join('=')),
       );
       const table = params.get('table');
-      if (!seen.has(table)) {
-        seen.add(table);
-        entries.push({
-          route: record.route,
-          table,
-          id: params.get('id'),
-          status: await dialog.getByRole('status').first().textContent(),
-        });
-        await audit('drawer-' + record.table + '-' + table);
+      assert.equal(table, record.table);
+      assert.equal(params.get('id'), record.id);
+      const actual = response.groups.flatMap((g) => g.events.map((e) => e.id));
+      while (response.next) {
+        const nextReply = page.waitForResponse(
+          (r) => r.url().includes('/audit-history/read?') && r.request().method() === 'GET',
+        );
+        await dialog.getByRole('button', { name: s.more, exact: true }).click();
+        response = await (await nextReply).json();
+        await loaded(dialog);
+        actual.push(...response.groups.flatMap((g) => g.events.map((e) => e.id)));
       }
+      assert.deepEqual(actual.sort(), record.expected, record.surface);
+      entries.push({
+        surface: record.surface,
+        expected: record.expected,
+        actual,
+        route: record.route,
+        table,
+        id: params.get('id'),
+        status: await dialog.getByRole('status').first().textContent(),
+      });
+      await audit('drawer-' + record.surface + '-' + i);
+      await screenshot('drawer-' + record.surface + '-' + i);
+      // Initial close focus is asserted before pagination, which deliberately
+      // moves focus to result status. Restore close for the keyboard cycle.
+      await dialog.getByRole('button', { name: s.close, exact: true }).focus();
       assert.equal(
         await dialog
           .getByRole('button', { name: s.close, exact: true })
@@ -370,10 +380,24 @@ async function main() {
       await page.keyboard.press('Escape');
       await dialog.waitFor({ state: 'detached' });
       assert.equal(await buttons.nth(i).evaluate((e) => e === document.activeElement), true);
-      if (seen.size >= 5) break;
+      entries.at(-1).keyboard = {
+        initialCloseFocus: true,
+        tabSteps: 14,
+        escapeClosed: true,
+        focusReturnedToExactTrigger: true,
+      };
     }
   }
+  assert.deepEqual(
+    [...new Set(entries.map((e) => e.table))].sort(),
+    [...requiredEntryTables].sort(),
+  );
+  assert.deepEqual(
+    [...new Set(entries.map((e) => e.surface))].sort(),
+    oracle.routes.map((r) => r.surface).sort(),
+  );
   put('record-entry-mapping', entries);
+  put('successful-focus-trace', focusTrace);
   const doc = await withApprovedMigrationClient(
     async (db) =>
       (
@@ -444,6 +468,47 @@ async function main() {
   }
   assert.deepEqual(errors, []);
   assert.deepEqual(requests, []);
+  // Explicitly synthetic response exercises the actual production viewer,
+  // not authentication/query evidence or invented historical database facts.
+  if (process.env.TASK49_VALUE_FIXTURE) {
+    const typed = JSON.parse(readFileSync(process.env.TASK49_VALUE_FIXTURE, 'utf8'));
+    await page.keyboard.press('Escape');
+    await page.route('**/audit-history/read?**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(typed) }),
+    );
+    await page.getByRole('button', { name: s.open, exact: true }).click();
+    await loaded(page.getByRole('dialog'));
+    const texts = await page.getByRole('dialog').textContent();
+    assert.ok(texts.includes(s.emptyString));
+    assert.ok(texts.includes(`${s.string}: «نص فارغ مسجل»`));
+    assert.ok(texts.includes(`${s.string}: «${s.null}»`));
+    assert.ok(texts.includes(`${s.string}: «${s.false}»`));
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page
+      .getByRole('dialog')
+      .getByText('empty (empty)', { exact: true })
+      .scrollIntoViewIfNeeded();
+    await screenshot('typed-state-collisions');
+    await page
+      .getByRole('dialog')
+      .getByText('literal-marker-3 (literal-marker-3)', { exact: true })
+      .scrollIntoViewIfNeeded();
+    await screenshot('typed-state-literals');
+    await page
+      .getByRole('dialog')
+      .getByText('redacted (redacted)', { exact: true })
+      .scrollIntoViewIfNeeded();
+    await screenshot('typed-state-metadata');
+    put('typed-viewer', {
+      syntheticRendererOnly: true,
+      texts,
+      emptyVsLiteralDistinct: true,
+      nullVsLiteralDistinct: true,
+      falseVsLiteralDistinct: true,
+    });
+    await page.keyboard.press('Escape');
+    await page.unroute('**/audit-history/read?**');
+  }
   put('result', {
     at: new Date().toISOString(),
     status: 'PASS',
@@ -481,7 +546,9 @@ try {
   put('cleanup', {
     at: new Date().toISOString(),
     serverPid: server?.pid,
-    serverExited: server?.exitCode !== null,
+    serverExited: Boolean(server && (server.exitCode !== null || server.signalCode !== null)),
+    exitCode: server?.exitCode,
+    signalCode: server?.signalCode,
     taskContextsClosed: true,
     ownerProcessUntouched: true,
   });

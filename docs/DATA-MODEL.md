@@ -15,6 +15,13 @@ exact columns are classified by `scripts/lib/audit-history-checkpoint.ts`; they
 are not ordinary Prisma business models and have no raw runtime table grants.
 No new sequence is needed. Candidate migration 73 is not applied to the owner.
 
+Correction 1 separates displayed values from exact XLSX evidence. The Base64
+column concatenates UTF-8 chunks of a JSON envelope: `{present:false}` for an
+absent field, otherwise `{present:true,kind,text}` with the exact typed projected
+text. Numbers are never parsed through JavaScript Number; JSON object/array and
+redaction/truncation metadata remain intact. Descriptive event-metadata rows
+encode their displayed text, not a claimed raw database-row serialization.
+
 “17 tables in scope” means the Dashboard-traced **Access business-source
 scope** in D1, not the complete PostgreSQL physical schema. Gate 1 names that
 extraction scope as 15 migration-source tables plus two reference-only tables.

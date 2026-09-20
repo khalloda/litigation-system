@@ -18,6 +18,12 @@ full sequence vector are preserved. The owner's actual state remains migration
 72. See the [candidate report](task-reports/2026-09-20-task-4-9-audit-history-candidate.md)
 for fresh versus reused evidence and the independent-review stop.
 
+Correction 1 revises only the still-unaccepted migration 73 under explicit owner
+authorization. The original `fe4452d` migration and original executed evidence
+remain unchanged in history and the retained first delivery. Revised rehearsal
+starts from a fresh protected migration-72 dump, never by changing a completed
+migration's checksum or ledger. No migration 74 or owner migration is introduced.
+
 ## Current Task 4.8 actual acceptance boundary — 20 September 2026
 
 The owner accepted `90d0219aeffdd8e32b51ff60380e4edcc7e404b9` and authorized

@@ -16,6 +16,12 @@ Candidate `db:check` distinguishes completed migration 73 from actual migration
 grant boundaries, constraints/indexes/triggers and bidirectional capability and
 export-receipt correspondence. No old protected baseline is regenerated.
 
+Correction 1 adds an exact deferred constraint trigger on `audit_events`
+insertion as well as the private-state triggers. Event-only reserved completion
+and grant/revoke facts must correspond at commit. The reserved prefix is the
+literal `audit_history:` (not SQL LIKE's underscore wildcard). Ordinary resource
+auditing remains unchanged. Missing/disabled event guards fail permanent checks.
+
 ## Current actual migration 72 — 20 September 2026
 
 `20260918100000_billing_arabic_labels` was applied once through the guarded
