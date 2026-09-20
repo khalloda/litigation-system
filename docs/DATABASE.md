@@ -1,5 +1,27 @@
 # The database — running it, checking it, fixing it
 
+## Current actual migration 72 — 20 September 2026
+
+`20260918100000_billing_arabic_labels` was applied once through the guarded
+migration command at 09:58:47–09:58:54 UTC, after exact fresh-dump rehearsal.
+The actual checkpoint is 72 completed migrations (73 ledger records, preserving
+the legitimate older rolled-back entry), 138 non-system tables and 48 sequences.
+All 148 historical checks and 15 setup checks passed. Eleven lookup labels and
+their update timestamps changed; eleven successful label-only audit events were
+added, the audit counter advanced by 11, and one successful ledger row was added.
+Every prior audit/ledger row, all business/source data and links, all complete
+sequence vectors, catalog/grant definitions and account/credential state stayed
+exact. Actual post-activation/read-only owner-session captures also compare equal.
+
+Recovery remains protected locally at
+`D:\Projects\LitigationData\DB-Backup\migration63\pre-migration 72-20260920T091457Z-0e0368fb`.
+The runtime remains the restricted `litigation_runtime` principal with unchanged
+inherited SQL grants; application read-only is not an all-table SQL privilege
+revocation. D59's existing accepted risk is unchanged, not technically remediated.
+See the [operational report](task-reports/2026-09-20-task-4-8-acceptance-activation.md).
+Earlier candidate/not-applied/migration-71 and old runtime statements below are
+dated historical checkpoints superseded here. Do not repeat migration 72.
+
 ## Task 4.8 candidate migration 72 — not applied to the owner
 
 `20260918100000_billing_arabic_labels` requires the exact migration-71 prestate

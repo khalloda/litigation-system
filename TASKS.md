@@ -1,5 +1,22 @@
 # Build order
 
+## Current Task 4.8 acceptance — 20 September 2026
+
+Khaled accepted `90d0219aeffdd8e32b51ff60380e4edcc7e404b9` following the
+[independent PASS](docs/reviews/2026-09-20-task-4-8-90d0219-independent-review.md).
+Migration 72 alone is applied; 148 historical and 15 setup checks passed.
+The accepted read-only billing app is active locally, build `l02XdOB10LpyGNufC8_Fs`.
+Fresh four-role isolated checks and actual existing-session navigation passed;
+full owner-state comparisons preserve all data except the exact authorized label,
+audit/counter and ledger delta. Only the existing Task 4.8 checkbox changes here;
+the other 85 checkbox lines remain exact. Task 4.9 and Stage 5 are unstarted.
+See the [operational report](docs/task-reports/2026-09-20-task-4-8-acceptance-activation.md)
+and [matrix supplement](docs/testing/task-4-8-acceptance-matrix.md).
+Independent operational delivery review is pending; the one acceptance child's
+SHA/publication outcome belongs to external receipts. Earlier dated current,
+pending/unstarted, migration-71 and old runtime claims below remain historical
+and are superseded by this checkpoint.
+
 ## Current Task 4.5 A1 correction and local closure — 16 September 2026
 
 T45-A1 is corrected and locally verified at `b7fc7c7a6afc412ad5a8dc42d72ef2109380b1fb`.
@@ -2350,8 +2367,15 @@ than assuming one rule for every workflow. Test with real volumes.
       recorded on 18 September 2026. See the
       [approval](docs/approvals/2026-09-17-task-4-7a-arabic-billing-labels.md) and
       [closure report](docs/task-reports/2026-09-17-task-4-7a-approval-closure.md).
-      Task 4.8 remains unstarted; no lookup/application deployment is included.
-- [ ] **4.8 Billing** — read-only list of invoices and payments
+      At that 18 September terminology-only checkpoint, Task 4.8 was unstarted;
+      no lookup/application deployment was included in Task 4.7a.
+- [x] **4.8 Billing** — read-only list of invoices and payments
+      Accepted by Khaled on 20 September 2026 after the independent PASS for
+      `90d0219aeffdd8e32b51ff60380e4edcc7e404b9`. Actual migration 72 and local
+      activation passed; see the [report](docs/task-reports/2026-09-20-task-4-8-acceptance-activation.md)
+      and [review](docs/reviews/2026-09-20-task-4-8-90d0219-independent-review.md).
+      Final commit/publication and independent operational review are external
+      receipt/review checkpoints, not permission to begin 4.9.
 - [ ] **4.9 Audit history UI** — deferred owner-approved direction (**D31**,
       **D34**), to be implemented only under a later explicit prompt. Provide a
       contextual Arabic/RTL entity-history drawer and a global Administrator

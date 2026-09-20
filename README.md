@@ -1,5 +1,28 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Current Task 4.8 acceptance and activation — 20 September 2026
+
+Khaled accepted `90d0219aeffdd8e32b51ff60380e4edcc7e404b9` after the
+[independent PASS](docs/reviews/2026-09-20-task-4-8-90d0219-independent-review.md).
+Task 4.8 is now locally accepted and checked. Only migration 72 was applied,
+after fresh protected recovery and isolated rehearsal: 148 historical and 15
+setup checks passed. The exact change is eleven D67 labels, eleven truthful
+audit events, audit counter +11 and one successful ledger entry. Existing
+business data, accounts, credentials, all 48 sequences and 54 logos are preserved.
+
+The accepted source runs at `http://127.0.0.1:3000`, build
+`l02XdOB10LpyGNufC8_Fs`, PID 52576 at the activation observation, from
+`D:\Projects\LitigationData\accepted-task48-90d0219-20260920T091457Z-0e0368fb`.
+Fresh existing-owner-session read-only checks passed with complete database
+equality. See the [operational report](docs/task-reports/2026-09-20-task-4-8-acceptance-activation.md)
+and appended [matrix](docs/testing/task-4-8-acceptance-matrix.md).
+The documentation child's identity and publication outcome are external receipts,
+not prospective claims in this commit. Independent operational review is pending.
+Task 4.9 and Stage 5 remain unstarted.
+
+All earlier dated candidate, pending, unstarted, owner-migration-71 and old
+running-artifact statements below are historical checkpoints superseded here.
+
 ## Task 4.8 local candidate — 18 September 2026
 
 The candidate adds read-only `/billing/invoices` and `/billing/payments`, with

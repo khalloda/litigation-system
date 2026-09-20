@@ -26,3 +26,31 @@ is named and source-bound in the report; fresh results and material failed
 attempts are retained in the external evidence namespace. The final envelope
 verifier recomputes archive/Git/source/patch, preservation, migration and oracle
 relationships; private-state body collection remains explicitly receipt-limited.
+
+## Operational acceptance supplement — 20 September 2026
+
+This append-only supplement supersedes the candidate-only status above without
+changing its exact 4,836-byte original body. Khaled accepted `90d0219` after the
+[independent PASS](../reviews/2026-09-20-task-4-8-90d0219-independent-review.md).
+See the [operational report](../task-reports/2026-09-20-task-4-8-acceptance-activation.md).
+
+| ID | Fresh operational evidence | Result |
+| --- | --- | --- |
+| O01 | Separate handoff manifest, all 38 members, inspected supplied verifier and original implementation envelope | PASS; complete source/input bindings retained |
+| O02 | Full migration-71 prestate, 147 historical + 15 setup gates; frozen protected file/ACL/link set | PASS; 138 tables, 48 sequences; 37,831 existing files inventoried |
+| O03 | Fresh protected recovery, all members and 54 logos verified; restore exact dump to identified separate PG17 cluster | PASS; raw/default ACL, physical column/cast, WAL log-count and fixture credential differences explicitly recorded only across restore |
+| O04 | Unchanged migration 72 rehearsal and candidate gates | PASS; exact eleven-label/event/counter delta; 148 + 15 gates in rehearsal-03 reused within this run; final rehearsal-06 fresh restore/deploy/browser/cleanup |
+| O05 | Stable exact-source production build and fresh four-role same-compiled-output browser/read windows | PASS; build `l02XdOB10LpyGNufC8_Fs`; no recompilation of mirror; complete per-role state equality |
+| O06 | Actual guarded deployment, 71→72, exact before/after delta and old-row preservation | PASS; 09:58:47–09:58:54 UTC; 869 old audit rows exact, eleven added; counter +11; all 48 full sequences exact; 148 + 15 actual checks |
+| O07 | Actual activation and anonymous route/login smoke | PASS; stable artifact, loopback only, PID 52576 at start; restricted runtime; old artifact preserved |
+| O08 | Existing legitimate owner Administrator read-only navigation | PASS within bounded scope; both digit forms, controls/results/Clear/history, paging/detail return, genuine links, missing type and 7.5%; no login/account/business mutation; full state equality |
+| O09 | Exact eight-document child, only 4.8 marker, original matrix prefix, verbatim review, full/shared patch reconstruction and publication | Commit, fresh live remote outcome, reconstruction and final runtime/database/file verification are bound in external receipts after this document is committed |
+
+The original exhaustive oracle, 448 permission decisions, 130-check replay,
+late rollback, 53 accessibility observations and earlier backend/concurrency
+proof remain dated, verified reuse—not fresh execution. No screen-reader speech,
+JavaScript-disabled, exhaustive actual payload or full accessibility certification
+is claimed. Private recovery/database bodies stay local; supplied digests and
+capture code are verifiable but do not independently witness collection.
+Only Task 4.8 is newly checked. Independent operational review is pending;
+Task 4.9, Stage 5 and Ubuntu deployment remain outside scope.

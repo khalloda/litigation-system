@@ -1,5 +1,20 @@
 # Product Requirements — Litigation Management System
 
+## Current Task 4.8 accepted behavior — 20 September 2026
+
+The owner accepted candidate `90d0219aeffdd8e32b51ff60380e4edcc7e404b9` after
+the [independent PASS](reviews/2026-09-20-task-4-8-90d0219-independent-review.md).
+The read-only invoice/payment registers and exact eleven D67 display labels
+are active locally after migration 72. All four roles remain application readers;
+no billing mutation, lifecycle action, export, inferred matter relationship,
+balance, collection policy or automatic status change was added.
+Fresh four-role isolated same-build checks and bounded actual owner-session
+navigation passed. Task 4.8 alone is newly checked; 4.9 and Stage 5 are unstarted.
+See the [operational report](task-reports/2026-09-20-task-4-8-acceptance-activation.md).
+Earlier dated pending/unstarted/candidate and old operational summaries below
+remain history and are superseded by this acceptance. Independent operational
+delivery review remains pending; final publication is bound externally.
+
 ## Task 4.8 candidate behavior — 18 September 2026
 
 Billing has separate invoice and payment registers, each with bounded pages,

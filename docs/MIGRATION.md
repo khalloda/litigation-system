@@ -1,5 +1,31 @@
 # Data migration
 
+## Current Task 4.8 actual acceptance boundary — 20 September 2026
+
+The owner accepted `90d0219aeffdd8e32b51ff60380e4edcc7e404b9` and authorized
+fresh protected recovery, exact-dump rehearsal, actual migration 72, activation
+and the ordinary publication chain. Only unchanged migration
+`20260918100000_billing_arabic_labels` was applied to the owner, once;
+SHA-256 `ff0c27c0102d7c8f72cb756277efe2c0b12fe83bce23425aa77f95767b0e2d95`.
+The actual completed ledger boundary is 71→72. All 138 tables and 48 complete
+sequence vectors remain; only eleven approved labels/update timestamps, eleven
+successful label-only audit additions, counter +11 and the successful ledger
+addition changed. The 869 prior audit rows and all prior ledger rows were frozen
+by ID/full-row digest and preserved. Financial rows remain 543 invoices,
+597 payments and 47 allocations with exact original values and relationships.
+Actual 148 historical and 15 setup checks and full post-activation/read-window
+equality passed. No old migration, baseline, code, grant or credential changed.
+
+Recovery is the fresh restricted local
+`D:\Projects\LitigationData\DB-Backup\migration63\pre-migration 72-20260920T091457Z-0e0368fb`.
+Dump/restore-only physical representation differences were explicitly recorded;
+none was normalized away within actual migration or read windows.
+See the [operational report](task-reports/2026-09-20-task-4-8-acceptance-activation.md)
+and [independent implementation PASS](reviews/2026-09-20-task-4-8-90d0219-independent-review.md).
+Earlier dated candidate/no-authorization/owner71 statements below are historical,
+superseded by this later mandate and completed operation. Operational delivery
+review remains pending. Task 4.9 and later work remain outside scope.
+
 ## Task 4.8 candidate D67 integration — 18 September 2026
 
 Candidate migration 72 updates only the eleven approved billing lookup labels,
