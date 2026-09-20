@@ -1,5 +1,17 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Task 4.8 local candidate — 18 September 2026
+
+The candidate adds read-only `/billing/invoices` and `/billing/payments`, with
+list/detail search, combined filters, pagination, genuine parent links and
+recorded allocations. All four roles are readers only. Candidate migration 72
+sets the eleven D67-approved lookup labels; it does not change financial data.
+This is not owner activation or acceptance. Migration 71 and the retained
+accepted artifact remain the actual owner boundary. Task 4.8 remains unchecked.
+See the [implementation report](docs/task-reports/2026-09-18-task-4-8-implementation.md)
+and [acceptance matrix](docs/testing/task-4-8-acceptance-matrix.md). Earlier dated
+“unstarted” statements below describe the prior documentation checkpoint.
+
 ## Current Task 4.7a approval and closure — 17 September 2026
 
 Khaled approved all 11 Arabic billing labels, explicitly including `Later` →
@@ -453,9 +465,9 @@ are in `docs/DATABASE.md`.
 npm run check
 ```
 
-That runs ten checks in one sequence: TypeScript, ESLint, formatting,
-Arabic/RTL rules, authorization inventory, audit structure, user-management
-structure, staff structure, Git-ignore/storage rules and file encoding. All ten must pass.
+That runs TypeScript, ESLint, formatting, Arabic/RTL rules, authorization and
+audit inventories, user-management and module-boundary checks (including
+billing), Git-ignore/storage rules and file encoding. All gates must pass.
 `npm run format` fixes formatting automatically; `npm run lint:fix` fixes what
 ESLint can fix.
 

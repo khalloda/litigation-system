@@ -48,6 +48,11 @@ export default async function Page({
         {r.archived ? <p>{t.feeLettersModule.recordArchived}</p> : null}
         {r.clientArchived ? <p>{t.feeLettersModule.parentArchived}</p> : null}
         <FeeLetterFields record={r} full />
+        <p>
+          <Link className={styles.link} href={'/billing/invoices?fee=' + r.id}>
+            {t.feeLettersModule.invoices} · {r.invoiceCount}
+          </Link>
+        </p>
         <p>{t.feeLettersModule.relationshipHelp}</p>
         <div className={styles.actions}>
           {canEdit ? (

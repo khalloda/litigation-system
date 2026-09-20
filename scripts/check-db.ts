@@ -80,6 +80,7 @@ import { reconcileFeeLetters } from './lib/fee-letter-reconciliation';
 import { feeLetterStructureFailures } from './lib/fee-letter-structure';
 import { reconcileBillingHistory } from './lib/billing-reconciliation';
 import { billingStructureFailures } from './lib/billing-structure';
+import { billingLabelsMatch } from './lib/billing-labels';
 import { BILLING_CANONICAL_BASELINE, billingCanonicalState } from './lib/billing-baseline';
 import { reconcileAttendance } from './lib/attendance-reconciliation';
 import { attendanceStructureFailures } from './lib/attendance-structure';
@@ -1240,6 +1241,18 @@ async function main() {
       ? '11 present, none translated'
       : `missing ${missingCodes.join(', ') || '(none)'}, ${actualBillingCodes.size} rows in total`,
     missingCodes.length === 0 && actualBillingCodes.size === 11,
+  );
+
+  const billingLabels = await db.$queryRaw<{ list: string; code: string; label: string | null }[]>`
+    SELECT 'invoice_status' AS list,code,label_ar label FROM lookup_invoice_status
+    UNION ALL SELECT 'invoice_type',code,label_ar FROM lookup_invoice_type
+    UNION ALL SELECT 'lawyer_share_role',code,label_ar FROM lookup_lawyer_share_role`;
+  const labelsExact = billingLabelsMatch(billingLabels);
+  record(
+    'D67 exact approved billing labels',
+    '11 exact code-label mappings',
+    labelsExact ? '11 exact code-label mappings' : 'Missing, extra or changed billing labels',
+    labelsExact,
   );
 
   // 10. Arabic search — task 1.6.

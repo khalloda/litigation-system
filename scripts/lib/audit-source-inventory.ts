@@ -131,6 +131,51 @@ const LOW_LEVEL_PATTERN =
 
 const REVIEWED_RAW_SQL_CALLS = [
   [
+    'src/lib/billing-query.ts',
+    'snapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/billing-query.ts',
+    'snapshot',
+    'bc3e197542de16afb154310da2809dde3f977ba1ced2828bfbc1b73d9ae1be5b',
+  ],
+  [
+    'src/lib/billing-query.ts',
+    'options',
+    'dffa1ccc8c7875382880438cc75645ca9cf00bc090965002e16bb072e2897a97',
+  ],
+  [
+    'src/lib/billing-query.ts',
+    'readBilling',
+    '5c8fd68ffaaf160a3da6438da154131018c708796047daef1889d468cd9b2253',
+  ],
+  [
+    'src/lib/billing-query.ts',
+    'readBilling',
+    'a1da76329c4cd6dfd84ee05622c120f3b7590dc1443a5dedc9f25b0babecdcb7',
+  ],
+  [
+    'src/lib/billing-query.ts',
+    'readBillingRecord',
+    'bd591b6875dd678f461658322f224e37af21d35f7d0b0770fcc64d70d095b907',
+  ],
+  [
+    'src/lib/billing-query.ts',
+    'readBillingRecord',
+    '1fd4c1e143cc0540b637013d838368de5df9e56169979a20c21890608d91cc1f',
+  ],
+  [
+    'src/lib/billing-query.ts',
+    'readBillingRecord',
+    'ee7055fbfc8d866746e05fde93e939f663465110080fdb73d71f1bf8d63b83be',
+  ],
+  [
+    'src/lib/billing-query.ts',
+    'readBillingRecord',
+    '16e3801dfdf98383ba64637868f01fe37fc67907891a36f86d6cb871c81efbd8',
+  ],
+  [
     'src/lib/document-query.ts',
     'snapshot',
     '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
@@ -2215,6 +2260,13 @@ export function auditRuntimeSourceFailures(
     const isPoaReadService = source.path === POA_READ_SERVICE;
     const isDocumentReadService = source.path === DOCUMENT_READ_SERVICE;
     const isFeeLetterReadService = source.path === FEE_LETTER_READ_SERVICE;
+    const isBillingReadService = source.path === 'src/lib/billing-query.ts';
+    if (
+      isBillingReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        '51dd8f9931c416366ef9c477728198b059764b505fd283181d79b47a1dbbf2d5'
+    )
+      failures.add('Billing read closure differs from reviewed inventory');
     if (
       isDocumentReadService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -2580,7 +2632,8 @@ export function auditRuntimeSourceFailures(
               isAdminReadService ||
               isPoaReadService ||
               isDocumentReadService ||
-              isFeeLetterReadService
+              isFeeLetterReadService ||
+              isBillingReadService
             ) ||
             !reviewedSql
           ) {

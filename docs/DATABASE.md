@@ -1,5 +1,25 @@
 # The database — running it, checking it, fixing it
 
+## Task 4.8 candidate migration 72 — not applied to the owner
+
+`20260918100000_billing_arabic_labels` requires the exact migration-71 prestate
+and eleven original codes with NULL labels. In one transaction it sets only
+D67's approved `label_ar` values and required lookup update attribution/times.
+The existing audit machinery appends eleven truthful events and advances its
+transactional `_migration.matter_lifecycle_audit_counter`; no sequence, grant,
+financial row or new schema object is needed. The migration ledger adds one
+successful migration. The original migrations 1–71 and historical billing
+digests remain unchanged. DB-094 permanently checks exact code-label mappings
+in both historical and canonical profiles, in addition to the prior checks.
+
+The runtime principal's inherited billing SELECT/INSERT/UPDATE and sequence
+SELECT/USAGE grants are unchanged; they are not an all-table SQL read-only role.
+Imported rows retain database immutability and null-safe provenance guards.
+Native billing is read-only at the application boundary: no mutation gateway
+or endpoint, five guarded pages, explicit DTOs and fresh current-user checks
+inside repeatable-read read-only transactions. DELETE/TRUNCATE, sequence
+`setval`, private migration data and migration-context access remain denied.
+
 ## Current Tasks 4.6–4.7 local acceptance and activation — 17 September 2026
 
 Accepted migration `20260916180000_documents_fee_letters_boundary` is now the

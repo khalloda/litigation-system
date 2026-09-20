@@ -2267,9 +2267,9 @@ model MatterFeeLetterReference {
 //  mean the crosswalk had to match a translation.
 //
 //  So each has a `code` — the exact Access value — and a NULLABLE `label_ar`
-//  for the Arabic word shown on screen. **The Arabic labels are not supplied
-//  and are NOT invented here.** They are financial terms; rule 5 says ask.
-//  They are needed before task 4.8, not before Stage 2.
+//  for the Arabic word shown on screen. D67 approved all eleven exact labels;
+//  Task 4.8 candidate migration 72 populates them without changing the codes.
+//  The original Stage 2 NULL-label seed remains historical evidence.
 //
 //  Seed and counts: sql/billing-lookups.sql.
 // ===========================================================================
@@ -2280,7 +2280,7 @@ model LookupInvoiceStatus {
   id        Int     @id @default(autoincrement()) @db.SmallInt
   /// The exact Access value. Never translated.
   code      String  @unique
-  /// The Arabic word to show. NOT YET SUPPLIED — see the block above.
+  /// D67-approved Arabic display label, populated by candidate migration 72.
   labelAr   String? @map("label_ar")
   sortOrder Int     @default(100) @map("sort_order") @db.SmallInt
   isActive  Boolean @default(true) @map("is_active")

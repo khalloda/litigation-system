@@ -1,5 +1,21 @@
 # Data migration
 
+## Task 4.8 candidate D67 integration — 18 September 2026
+
+Candidate migration 72 updates only the eleven approved billing lookup labels,
+using the existing migration actor/event context. It retains IDs, exact codes,
+sort order, active flags and all invoice/payment/allocation source values.
+The historical NULL-label seed assertion is preserved in its original migration;
+the new permanent DB-094 check verifies D67's exact map after migration 72.
+No baseline digest is regenerated and no original migration is edited.
+
+This round uses isolated full-data copies and a separate canonical replay.
+Actual owner migration, activation, task closure and publication are not
+authorized here. The implementation review package records all-schema/all-column
+and full-sequence comparisons, the precise eleven-event/counter/lookup/ledger
+delta, rollback proof, source-bound test results and protected-file receipts.
+See the [Task 4.8 report](task-reports/2026-09-18-task-4-8-implementation.md).
+
 ## Current Tasks 4.6–4.7 local acceptance and migration 71 — 17 September 2026
 
 The owner accepted source `3f0c6c6fc7d41296c8b55f7454cc9c82ec6fcdfb`

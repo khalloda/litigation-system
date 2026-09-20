@@ -8,6 +8,17 @@ import type { StaffProfile } from './staff-roster-checkpoint';
  * operational-readiness check; passwordless migration state is checked first. */
 export const PERMANENT_INVARIANTS = [
   {
+    id: 'DB-094',
+    description: 'D67 exact approved billing labels',
+    scope: 'both',
+    historicalArtifact: null,
+    command:
+      'tsx scripts/check-db.ts --profile=<historical-full-state-upgrade|canonical-clean-replay>',
+    expected60:
+      'Not applicable before candidate migration 72; original historical seed remains unchanged.',
+    expected61: 'After migration 72: exactly eleven D67 code-label mappings in both profiles.',
+  },
+  {
     id: 'DB-001',
     description: 'Task 3.5B current release and protected historical partition',
     scope: 'both',

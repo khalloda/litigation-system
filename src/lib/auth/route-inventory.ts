@@ -49,6 +49,36 @@ export type RouteInventoryEntry = {
 export const ROUTE_INVENTORY = [
   {
     kind: 'page',
+    source: 'src/app/billing/page.tsx',
+    route: '/billing',
+    classification: { access: 'permission', area: 'billing', action: 'view' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/billing/invoices/page.tsx',
+    route: '/billing/invoices',
+    classification: { access: 'permission', area: 'billing', action: 'view' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/billing/payments/page.tsx',
+    route: '/billing/payments',
+    classification: { access: 'permission', area: 'billing', action: 'view' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/billing/invoices/[id]/page.tsx',
+    route: '/billing/invoices/[id]',
+    classification: { access: 'permission', area: 'billing', action: 'view' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/billing/payments/[id]/page.tsx',
+    route: '/billing/payments/[id]',
+    classification: { access: 'permission', area: 'billing', action: 'view' },
+  },
+  {
+    kind: 'page',
     source: 'src/app/admin-works/page.tsx',
     route: '/admin-works',
     classification: { access: 'permission', area: 'administrativeWorks', action: 'view' },

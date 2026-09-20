@@ -922,8 +922,11 @@ against Access and that comparison only means anything if both sides add up
 exactly. `currency` is kept on both tables because Gate 4 reconciles **per
 currency** — a total across mixed currencies is a meaningless number.
 
-`invoices.client_id` and `payments.invoice_id` are nullable: a row whose
-parent cannot be resolved loads with a null link and goes to the review queue.
+`invoices.fee_letter_id` and `payments.invoice_id` are nullable. An invoice
+reaches its client through `fee_letters.client_id`; there is no invoice
+`client_id` column. Imported unresolved rows retain their original evidence in
+the migration's quarantine/review path. A native row may have a NULL parent;
+the read-only billing register keeps it visible without inventing a link.
 
 ## Arabic search — `ar_normalise()`
 

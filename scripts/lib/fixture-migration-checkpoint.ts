@@ -78,7 +78,11 @@ function reviewedRepository(
   repository: Awaited<ReturnType<typeof readGate4RepositoryMigrationInventory>>,
 ) {
   assert.deepEqual(repository.defects, []);
-  assert.ok([61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71].includes(repository.migrations.length));
+  assert.ok(
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72].includes(repository.migrations.length),
+  );
+  if (repository.migrations.length >= 72)
+    assert.equal(repository.migrations[71]?.name, '20260918100000_billing_arabic_labels');
   assert.equal(repository.migrations[60]?.name, '20260906180000_staff_roster_database_boundary');
   if (repository.migrations.length >= 70)
     assert.equal(repository.migrations[69]?.name, '20260915180000_poa_editing_lifecycle_boundary');

@@ -1,5 +1,23 @@
 # Product Requirements — Litigation Management System
 
+## Task 4.8 candidate behavior — 18 September 2026
+
+Billing has separate invoice and payment registers, each with bounded pages,
+search, missing-value/date/currency/parent filters and full permitted details.
+Invoices show exact stored amount, status and type; payments show separate
+stored Credit and Debit fields under their source names, not a derived balance.
+An invoice reaches its client only through its fee letter. Archived parents
+and inactive allocation people remain visible. Recorded fractional shares are
+displayed as exact percentages, including 21819's 7.5% co-lead allocation.
+No invoice-to-matter relationship is inferred.
+
+All four roles, including Administrator, remain read-only. There are no billing
+write endpoints, lifecycle controls or exports. VAT/report/receipt fields,
+legacy payloads and excluded Pay-Date are not public projections. D67 supplies
+the exact eleven labels, without creating collection or overdue policies.
+The candidate is awaiting independent implementation review; Task 4.8 is not
+closed and the owner app/database are not upgraded by this work.
+
 ## Task 4.7a terminology approval — 17 September 2026
 
 D28's prerequisite is satisfied: Khaled approved all 11 Arabic billing display

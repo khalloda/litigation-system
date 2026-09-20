@@ -1,0 +1,56 @@
+.page a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: 1rem;
+}
+.fields dd {
+  margin-inline-start: 0;
+  overflow-wrap: anywhere;
+}
+.fields dt {
+  font-weight: 700;
+}
+.card {
+  border-block-start: 1px solid var(--colour-border);
+  padding-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.longText {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 1rem;
+}
+.filters input,
+.filters select {
+  max-inline-size: 100%;
+  min-inline-size: 0;
+}
+.tableRegion {
+  overflow-x: auto;
+  max-inline-size: 100%;
+}
+.table {
+  border-collapse: collapse;
+  inline-size: 100%;
+  min-inline-size: 36rem;
+}
+.table th,
+.table td {
+  text-align: start;
+  padding: 0.75rem;
+  border-block-end: 1px solid var(--colour-border);
+  overflow-wrap: anywhere;
+}
