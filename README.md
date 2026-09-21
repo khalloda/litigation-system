@@ -539,3 +539,23 @@ is the gate.
 
 Node.js 22 or newer (see `.nvmrc`). Docker Desktop on Windows, Docker Engine
 on the Ubuntu server.
+
+## Current Task 5.1 operational checkpoint — 21 September 2026
+
+This accepted activation checkpoint supersedes the earlier Task 5.1 candidate
+checkpoint retained above as history. The owner accepted independently reviewed
+`d55df30225f60df8e583777fb5501fb3326057b0` and authorized bounded activation and publication.
+Today's hearings is active at `http://127.0.0.1:3000`, build
+`0hYFhlJjQ4s-qbt8wD5LY` (observed PID 54168). **No migration or provisioning
+was needed: migration 73 remains unchanged.** The actual owner session showed the
+SQL-matched two hearings for Cairo date 2026-09-21 and passed read-only navigation,
+keyboard refresh and RTL/font checks. Full owner state remained identical.
+
+The fresh stable build/full check, isolated and owner 148+15 database gates,
+recovery rehearsal and protected-file comparison passed. Task 5.1 is accepted;
+independent operational review of the sealed delivery remains pending. Task 5.2
+has not started. The documentation child and authorized normal origin/main push
+are bound by the external operational receipt rather than a self-referential
+commit claim. See the [acceptance/activation report](docs/task-reports/2026-09-21-task-5-1-acceptance-activation.md),
+[implementation PASS review](docs/reviews/2026-09-21-task-5-1-independent-implementation-review.md) and
+[appended operational matrix](docs/testing/task-5-1-acceptance-matrix.md).

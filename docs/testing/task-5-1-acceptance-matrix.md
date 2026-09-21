@@ -43,3 +43,24 @@ proofs, not owner acceptance. `pre-execution-matrix.md` retains the original byt
 
 The [candidate report](../task-reports/2026-09-21-task-5-1-implementation.md)
 explains scope, failed attempts, private-evidence limits and the review stop.
+
+## Operational acceptance results — 21 September 2026
+
+The entire candidate matrix above is preserved as an immutable prefix. These
+results follow the owner's accepted PASS review and operational authorization.
+Evidence paths below are relative to `test-results/task51-acceptance-20260921`.
+
+| Operational gate | Fresh evidence and outcome |
+| --- | --- |
+| Authority/source | PASS `input-verification.json`, receipt-inclusive implementation rerun, `source-authority-verification.json`; exact d55df302 candidate and original five-file bindings. |
+| Recovery/restore | PASS protected fresh migration-73 dump, roles/configuration and 54 logos; `restore-equality-02.json` proves 141 tables/48 logical sequences with only enumerated physical restore differences. Owner comparisons apply no restore exceptions. |
+| Stable production artifact | PASS `build/result.json`, `check/result.json`, `artifact-before.json`, `artifact-final.json`; 834 supplied accepted bodies exact, independently copied locked dependencies and six internal build junctions. Additive owned image-cache output explicitly bound. |
+| Fresh isolated runtime | PASS `browser/results.json`: real Cairo date, four genuine roles, exact 29/25 population, detail/back/list/parents/refresh, two zero-violation axe scans and eight focus observations. Complete read-window equality. |
+| Reused implementation proof | Exact unchanged implementation delivery supplies 480 permissions, 12 dates × four host zones, 0/1/25/26/84 and mixed cases, DST/midnight/fault/denial/volume, seven axe and 16 focus observations. These were not rerun or added to operational counts. |
+| Activation/actual owner | PASS `activation-ready.json`, `app-stop.json`, `accepted-launch.json`, `actual-browser.json`; real clock, restricted runtime credentials, existing legitimate owner session, actual 2/2 SQL IDs 1707/12780, dated navigation, matter link, keyboard refresh, Arabic font/RTL and two focus observations. No new owner login, logout, exports or account writes. |
+| Fresh database gates | PASS pristine isolated `gates/result.json` and actual owner `commands/owner-gates.json`: each 148 historical plus 15 setup checks. Approved historical-live migration provenance passes; no migration/provisioning. |
+| Preservation/cleanup | PASS `owner-final-equality.json`, `files-final-comparison.json`, `resource-reconciliation.json`; full owner rows/columns/catalogs/ledger/sequences exact; existing files/static metadata or verified append-only prefixes, root ACLs and junctions preserved. Exact fixture resources removed, live artifact/recovery retained. |
+| Acceptance/publication boundary | Only the five authorized documentation paths; single 5.1 checkbox, other 85 unchanged, verbatim PASS import and this matrix prefix. One child of d55df302; actual child/push/final clean 0/0 state is sealed in external evidence and receipt. Independent operational review pending. |
+
+See the [operational report](../task-reports/2026-09-21-task-5-1-acceptance-activation.md)
+for exact identities, recovery limits, failed attempts and private-evidence limits.
