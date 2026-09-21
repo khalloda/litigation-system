@@ -120,3 +120,39 @@ error-prevention-recovery and focus-attention-design skills for test planning,
 persistent labels, actionable errors and user-controlled focus. Existing
 project decisions prevail. Actual screen-reader speech testing is excluded by
 the owner; no full accessibility-conformance claim will be made.
+
+## Operational acceptance supplement — 20–21 September 2026
+
+The entire preceding 12,021-byte matrix is preserved. Khaled accepted corrected
+`64b5a191e7b9e0d2776c53df69ee6350ca154a67` after the
+[independent PASS](../reviews/2026-09-20-task49-correction1-independent-review.md).
+This supplement records actual activation, not another implementation candidate.
+
+| Gate | Observed operational evidence |
+| --- | --- |
+| Exact source and build | 826 accepted source identities; exact 29,961-byte migration 73; new stable build `lrLMgtVrMuIaje6eDCMFe`, PID 58056, loopback 3000 |
+| Recovery and rehearsal | Fresh protected migration-72 dump, roles/configuration and 54 logos; exact restore on separate PostgreSQL 17 cluster; exact migration and named catalog delta passed |
+| Actual migration | Guarded deployment of 73 only; 138→141 tables, 72→73 completed / 74 ledger rows; prior rows and all 48 full sequence vectors exact |
+| Initial capability | Only account 2 / person 139 / actor 1002 enabled; one immutable change linked to event 881, actor 1 system migration; zero receipts before smoke |
+| Fresh database gates | 148 historical and 15 setup checks at recovery, pristine rehearsal and actual migration; permanent capability/receipt invariants passed |
+| Fresh stable-artifact isolation | Core/reader/roles, ordinary Administrator export refusal, actual XLSX/PDF; 23 families / 26 surfaces / 29 openings, four nonempty and 25 honest empties; 34 axe scans without violations; narrow/zoom/focus proof |
+| Owner read-only viewer | Existing genuine session; global and account drawer, empty client/contact drawers, actual parent/child link; actor/date/action/field/value and Arabic/Western search, Clear/drafts, history and focus recovery; full state equality |
+| Actual original exports | Events 882 XLSX and 883 PDF committed with one receipt/counter increment each; in-app browser saved files unavailable, so independent client-byte inspection is not claimed for them |
+| Actual bounded recovery | Owner supplied genuine regular-browser XLSX event 884 (10,828 bytes) and PDF event 885 (334,722 bytes); each file exactly matches its server receipt digest and each full-state window has only the expected event/receipt/counter delta |
+| Independent outputs | XLSX ZIP/XML/Base64/JSON decoder: 22 typed envelopes, one selected event 881, exact boolean false/true, correct filters/watermark, two RTL sheets, no formulas; actual two-page Chromium PDF visually inspected with connected Arabic, logo, scope/count/date/watermark and no clipping |
+| Reused accepted proof | 480 permission decisions, 23 typed corner cases, 130 canonical checks, reader/relationship/invariant/export/race proof; original four auth/account/foundation results remain reused, foundation checkpoint 60 only |
+| Preservation and cleanup | Frozen 191,406 old files, 100 root/credential ACL observations and 29 junctions; exact prior audit/ledger rows and 48 sequence vectors; all owned disposable processes/cluster cleaned; new temporary profile grants retired; one new task-generated cache retained privately and removed from borrowed dependencies |
+| Scope and stop | Only Task 4.9 checkbox closes; 85 other checkbox lines and reviewed source/migrations unchanged. One eight-document child; exact publication proof supplied externally. Stop for independent operational review, no Stage 5 |
+
+Watermarks are truthful snapshots: original exports 881, recovered XLSX 883,
+recovered PDF 884; each selected the same one-event account-2 grant scope. Total
+actual audit rows/counter are 885: original 880 + grant + four genuine completions.
+No login bookkeeping or unrelated owner mutation occurred. Saved-file recovery
+does not rewrite the first two outcomes. Full actual export bodies remain local
+in the protected task area; sanitized receipts/inspection records are reviewable.
+
+Meaningful harness failures, platform limitations and the task-created cache
+reconciliation are retained separately from passing results. No screen-reader
+speech, Excel-app visual review, complete accessibility certification or
+off-machine backup protection is claimed. See the
+[operational report](../task-reports/2026-09-20-task-4-9-acceptance-activation.md).

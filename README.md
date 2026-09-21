@@ -1,5 +1,28 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Current Task 4.9 acceptance and activation — 21 September 2026
+
+Khaled accepted corrected implementation `64b5a191e7b9e0d2776c53df69ee6350ca154a67`
+after the [independent PASS](docs/reviews/2026-09-20-task49-correction1-independent-review.md).
+The complete Administrator audit viewer and separately authorized XLSX/PDF exports
+are accepted and active at `http://127.0.0.1:3000`, build `lrLMgtVrMuIaje6eDCMFe`,
+observed PID 58056. Exact migration 73 was applied once after fresh protected
+recovery and isolated rehearsal; its sole initial grant is account 2 / person 139 /
+actor 1002. The owner database has 73 completed migrations and 141 non-system tables.
+
+Fresh owner navigation was read-only. Four genuine export completions are retained:
+two original in-app-browser generations whose saved files were unavailable, then
+one bounded owner-assisted recovery per format whose downloaded bytes and Arabic
+PDF were independently inspected. Audit rows/counter changed 880 to 885: grant 881
+and exports 882–885 only. Existing data, credentials, all 48 sequences and prior
+evidence are preserved. Only Task 4.9 is newly checked; Stage 5 remains unstarted.
+See the [operational report](docs/task-reports/2026-09-20-task-4-9-acceptance-activation.md)
+and [matrix supplement](docs/testing/task-4-9-acceptance-matrix.md).
+The documentation child's identity and publication result are external receipts.
+Independent operational review is the next stop. Earlier dated candidate-only,
+unstarted, migration-72 and old-runtime statements below are historical and
+superseded by this checkpoint, not rewritten evidence.
+
 ## Current Task 4.8 acceptance and activation — 20 September 2026
 
 Khaled accepted `90d0219aeffdd8e32b51ff60380e4edcc7e404b9` after the

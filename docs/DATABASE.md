@@ -1,5 +1,27 @@
 # The database — running it, checking it, fixing it
 
+## Current Task 4.9 owner checkpoint — 21 September 2026
+
+Exact reviewed migration 73 is applied, after a new protected migration-72 dump
+was restored and rehearsed on a separately identified PostgreSQL 17 cluster.
+The actual cluster remains `7676117521894273062`; owner container, storage,
+credentials and restricted runtime principal were preserved. There are 73
+completed migrations, 74 ledger rows including the unchanged historical rollback,
+141 non-system tables and the same 48 sequences with exact complete state vectors.
+
+Only the three reviewed private capability/change/receipt tables and exact named
+catalog delta were added. Initial account 2 / person 139 / actor 1002 grant event
+881 is linked to one enabled capability and one immutable change; no other account
+was granted export. Actual 148 historical and 15 setup checks and permanent
+capability/receipt invariants passed. Prior 880 audit rows and all prior ledger
+rows remain exact. Four genuine export completions 882–885 each added one receipt
+and counter increment, including one bounded downloaded-file recovery per format.
+Final observed audit rows/counter are 885; business, account, credential and all
+unrelated state remain unchanged. No migration 74 or manual regrant was performed.
+See the [operational report](task-reports/2026-09-20-task-4-9-acceptance-activation.md).
+Earlier candidate-only/no-owner-migration passages below remain historical and
+are superseded only by this accepted operational checkpoint.
+
 ## Task 4.9 candidate only — actual checkpoint stays 72
 
 Forward candidate `20260920140000_audit_history_capability` adds three private

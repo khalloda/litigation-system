@@ -1,5 +1,27 @@
 # Product Requirements — Litigation Management System
 
+## Current Task 4.9 accepted behavior — 21 September 2026
+
+The owner accepted corrected `64b5a191e7b9e0d2776c53df69ee6350ca154a67` after
+the [independent PASS](reviews/2026-09-20-task49-correction1-independent-review.md).
+The full Administrator-only global viewer and record drawers cover all 23
+reviewed families, including genuine parent/child and retained relationship IDs.
+Recorded groups, snapshots/differences, normalized search and combined filters,
+complete-result exports, truthful empty states, keyboard/focus and Arabic/RTL
+behavior remain the reviewed source, not a reduced operational subset.
+
+XLSX/PDF export is a separate persisted account capability, initially granted
+only to verified account 2 / person 139 / actor 1002 by exact migration 73. An
+Administrator role alone is insufficient. Typed originals stay distinct from
+readable states; generation, committed audit/receipt and byte release remain
+ordered. History remains immutable and indefinite; no audit editing or deletion
+is introduced. All four actual completion events, including two saved-file
+recovery exports, are genuine retained history. Only Task 4.9 is newly checked;
+Stage 5 remains unstarted. The [operational report](task-reports/2026-09-20-task-4-9-acceptance-activation.md)
+and [matrix supplement](testing/task-4-9-acceptance-matrix.md) distinguish fresh,
+reused, isolated and owner proof. Earlier dated candidate/unstarted summaries
+below are historical and superseded for this operational checkpoint.
+
 ## Current Task 4.8 accepted behavior — 20 September 2026
 
 The owner accepted candidate `90d0219aeffdd8e32b51ff60380e4edcc7e404b9` after

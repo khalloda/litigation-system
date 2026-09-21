@@ -1,5 +1,34 @@
 # Data migration
 
+## Current Task 4.9 migration 73 acceptance — 21 September 2026
+
+The owner accepted `64b5a191e7b9e0d2776c53df69ee6350ca154a67` and explicitly
+authorized exact migration 73 and its initial verified account 2 / person 139 /
+actor 1002 capability grant. The 29,961-byte SQL SHA-256 is
+`91dc1189cbde3d57cc4d7c99755498f16cffe69373add6d1e3c15b3b5e6e7431`.
+Migrations 1–73 and accepted source were not edited. The guarded deployment ran
+once against the actual owner after exact fresh recovery equality and successful
+restore/rehearsal on a distinct owned cluster. No checksum repair, resolve/reset,
+manual regrant, owner database restart or destructive restore was used.
+
+The new protected local recovery child is
+`D:\Projects\LitigationData\DB-Backup\migration63\pre-migration73-20260920T205957Z-4736562a`.
+Its exact custom dump is 22,530,264 bytes, SHA-256
+`80b8a342e555f1d3728586c357a4b3a813ce12cfceffb918dddca50738f86f61`,
+with roles/configuration recovery material, all 54 logos and ACL/member records.
+This is the approved local-development exception, not off-machine protection.
+All earlier backups and evidence remain intact.
+
+Actual migration changed only the reviewed 138→141 table/catalog boundary, one
+successful ledger row, one capability/change/grant and audit counter +1. Every
+prior row and all 48 full sequence vectors passed exact comparison. Later actual
+exports are separately measured genuine writes, not migration deltas: events
+882–885 and four matching immutable receipts, including two bounded file-download
+recovery exports. See the [operational report](task-reports/2026-09-20-task-4-9-acceptance-activation.md)
+and [matrix](testing/task-4-9-acceptance-matrix.md). Earlier candidate-only
+authorization statements below are preserved history and do not describe this
+owner-authorized operational checkpoint. Stage 5 remains unstarted.
+
 ## Task 4.9 implementation candidate — no actual migration authorized
 
 `20260920140000_audit_history_capability` is the next forward candidate after

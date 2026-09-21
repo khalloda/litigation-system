@@ -1,5 +1,21 @@
 # Build order
 
+## Current Task 4.9 acceptance — 21 September 2026
+
+The owner accepted corrected `64b5a191e7b9e0d2776c53df69ee6350ca154a67` after
+the [independent PASS](docs/reviews/2026-09-20-task49-correction1-independent-review.md).
+Exact migration 73 and its single account 2 / person 139 / actor 1002 grant are
+verified; the complete viewer and persisted-capability XLSX/PDF feature are active.
+Fresh recovery, isolated rehearsal, actual 148 historical / 15 setup checks,
+read-only owner navigation and receipt-bound owner download recovery passed.
+Only the existing Task 4.9 marker is newly checked; its scope and the other 85
+checkbox lines remain unchanged. Stage 5 stays unstarted. See the
+[operational report](docs/task-reports/2026-09-20-task-4-9-acceptance-activation.md)
+and [matrix](docs/testing/task-4-9-acceptance-matrix.md). Earlier dated candidate,
+unstarted and old-runtime summaries are historical; this checkpoint supersedes
+them. Independent operational review follows the authorized publication, whose
+actual identity/outcome is recorded externally rather than predicted here.
+
 ## Current Task 4.8 acceptance — 20 September 2026
 
 Khaled accepted `90d0219aeffdd8e32b51ff60380e4edcc7e404b9` following the
@@ -2376,7 +2392,7 @@ than assuming one rule for every workflow. Test with real volumes.
       and [review](docs/reviews/2026-09-20-task-4-8-90d0219-independent-review.md).
       Final commit/publication and independent operational review are external
       receipt/review checkpoints, not permission to begin 4.9.
-- [ ] **4.9 Audit history UI** — deferred owner-approved direction (**D31**,
+- [x] **4.9 Audit history UI** — deferred owner-approved direction (**D31**,
       **D34**), to be implemented only under a later explicit prompt. Provide a
       contextual Arabic/RTL entity-history drawer and a global Administrator
       audit page; group changes by save event; show before/after differences and
