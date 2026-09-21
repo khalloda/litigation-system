@@ -59,6 +59,7 @@
   outline-offset: 3px;
 }
 .panel {
+  min-inline-size: 0;
   background: var(--colour-surface);
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
@@ -145,6 +146,7 @@
     padding: var(--space-3);
   }
   .panel {
+    min-inline-size: 0;
     padding: var(--space-4);
   }
   .facts {
@@ -189,4 +191,43 @@
   display: block;
   font-size: var(--text-sm);
   font-weight: normal;
+}
+
+.outcomeChart {
+  margin-block: var(--space-4);
+}
+.chartBucket {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: var(--space-3);
+  border-block-end: 1px solid var(--hairline);
+  padding-block: var(--space-2);
+}
+.chartSeries {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+.barTrack {
+  display: block;
+  background: var(--panel-inset);
+  block-size: 0.75rem;
+}
+.favourBar,
+.againstBar {
+  display: block;
+  block-size: 100%;
+}
+.favourBar {
+  background: var(--text-positive);
+}
+.againstBar {
+  background: var(--text-attention);
+}
+@media (max-width: 30rem) {
+  .chartBucket {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
 }

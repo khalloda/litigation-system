@@ -46,6 +46,7 @@ const AUDIT_HISTORY_CLOSURES = new Map([
   ],
 ]);
 const DASHBOARD_READ_CLOSURES = new Map([
+  ['src/lib/outcome-query.ts', '6a563622f80be0015a59fda3a2733e0b428867b65641717d0eee7cb3d3f161de'],
   [
     'src/lib/top-clients-query.ts',
     '6668c552181f8c18404fea8ad2dd02276dbe37a608294b10d4641ce79e09197b',
@@ -171,6 +172,16 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/outcome-query.ts',
+    'readCurrentOutcomes',
+    '36429879ff48a26b6f464d44129ad8f923f81f59ce317f8566d034fad922273b',
+  ],
+  [
+    'src/lib/outcome-query.ts',
+    'readCurrentOutcomes',
+    '014a93fede65c1b99c0117560fb08ee7539eb6ae861546ed78e8ebf60aba6c04',
+  ],
   [
     'src/lib/top-clients-query.ts',
     'readTopClients',

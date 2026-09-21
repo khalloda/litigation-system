@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { signOut } from '@/auth';
 import { Suspense } from 'react';
 import { TodayHearings } from '@/app/_components/today-hearings';
+import { CurrentOutcomes } from '@/app/_components/current-outcomes';
 import { TopClients } from '@/app/_components/top-clients';
 import { LawyerWorkload } from '@/app/_components/lawyer-workload';
 import { OpenDecisions } from '@/app/_components/open-decisions';
@@ -105,6 +106,13 @@ export default async function HomePage() {
           </button>
         </form>
       </nav>
+      <nav className={styles.navigation} aria-label={t.dashboardMetrics.sections}>
+        <a href="#today-panel">{t.dashboard.today}</a>
+        <a href="#open-title">{t.dashboardMetrics.open}</a>
+        <a href="#workload-title">{t.dashboardMetrics.workload}</a>
+        <a href="#top-clients-title">{t.dashboardMetrics.topClients}</a>
+        <a href="#outcomes-current-title">{t.dashboardMetrics.currentOutcomes}</a>
+      </nav>
       <div id="today-panel">
         {hasPermission(session.user.role, 'hearings', 'view') ? (
           <Suspense fallback={<p role="status">{t.common.loading}</p>}>
@@ -121,6 +129,9 @@ export default async function HomePage() {
         </Suspense>
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
           <TopClients session={session} />
+        </Suspense>
+        <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+          <CurrentOutcomes session={session} instant={instant} />
         </Suspense>
       </div>
     </main>
