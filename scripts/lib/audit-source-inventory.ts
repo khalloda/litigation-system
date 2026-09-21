@@ -47,6 +47,10 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 ]);
 const DASHBOARD_READ_CLOSURES = new Map([
   [
+    'src/lib/top-clients-query.ts',
+    '6668c552181f8c18404fea8ad2dd02276dbe37a608294b10d4641ce79e09197b',
+  ],
+  [
     'src/lib/lawyer-workload-query.ts',
     '4a3bb6c921a9867cb93f732dad28f92369c5438622c65b89bc9fc0f1685e28a7',
   ],
@@ -167,6 +171,16 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/top-clients-query.ts',
+    'readTopClients',
+    'd9e81ce1c7f94bf0fcc65897b0842b06766bc42898e52e53396046a6747bfb7f',
+  ],
+  [
+    'src/lib/top-clients-query.ts',
+    'readTopClients',
+    '463e6a8adde4a99182c7f11a6f08567fd84d176b2aad6e1fb23ab8d70ca44b4c',
+  ],
   [
     'src/lib/lawyer-workload-query.ts',
     'readLawyerWorkload',

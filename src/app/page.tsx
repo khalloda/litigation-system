@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { signOut } from '@/auth';
 import { Suspense } from 'react';
 import { TodayHearings } from '@/app/_components/today-hearings';
+import { TopClients } from '@/app/_components/top-clients';
 import { LawyerWorkload } from '@/app/_components/lawyer-workload';
 import { OpenDecisions } from '@/app/_components/open-decisions';
 import { requireAuthenticatedPage } from '@/lib/auth/authorization';
@@ -117,6 +118,9 @@ export default async function HomePage() {
         </Suspense>
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
           <LawyerWorkload session={session} />
+        </Suspense>
+        <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+          <TopClients session={session} />
         </Suspense>
       </div>
     </main>
