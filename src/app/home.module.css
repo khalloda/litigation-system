@@ -155,3 +155,38 @@
     font-size: var(--text-lg);
   }
 }
+
+.tableScroll {
+  overflow-x: auto;
+  max-inline-size: 100%;
+}
+.tableScroll:focus-visible {
+  outline: 3px solid var(--colour-primary);
+  outline-offset: 3px;
+}
+.metricTable {
+  border-collapse: collapse;
+  inline-size: 100%;
+  min-inline-size: 32rem;
+}
+.metricTable caption {
+  text-align: start;
+  padding-block: var(--space-3);
+}
+.metricTable th,
+.metricTable td {
+  text-align: start;
+  padding: var(--space-3);
+  border-block-end: 1px solid var(--hairline);
+  vertical-align: top;
+}
+.metricTable th[scope='row'] {
+  max-inline-size: 18rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.metricNote {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: normal;
+}
