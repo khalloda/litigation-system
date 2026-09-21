@@ -111,9 +111,15 @@ build/source output files were rehashed after use; all 826 source bindings passe
 
 Fresh same-artifact isolation passed core/reader checks, four-role access,
 ordinary Administrator export refusal, both actual formats and exact per-export
-state deltas. Browser proof covers 23 families, 26 surfaces and 29 openings,
-four nonempty and 25 honest empties, 34 axe scans without violations, narrow
-viewport, zoom and exact focus recovery. Independent isolated XLSX decoding
+state deltas. Fresh browser proof covers 23 families, 24 surfaces and 27 openings,
+one nonempty and 26 honest empties, 32 axe scans without violations, narrow
+viewport, zoom and exact focus recovery. All six optional retired-parent
+populations were empty in this restored fixture; no retired-parent opening is
+claimed as fresh. The earlier correction run's 26 surfaces, 29 openings, four
+nonempty and 25 empty openings, and 34 axe scans remain reused evidence for the
+unchanged accepted source, including its populated retired relationship cases.
+These distinct records resolve the T49-O1 operational reporting correction.
+Independent isolated XLSX decoding
 checked 160 envelopes; actual Chromium PDF pages were visually inspected.
 
 Accepted unchanged proof is transparently reused: 480 permission decisions,
