@@ -45,6 +45,17 @@ const AUDIT_HISTORY_CLOSURES = new Map([
     'eff8a54debf9322430fd0192d0afbf49e0646f31433056e7067cdca31abb83e2',
   ],
 ]);
+const DASHBOARD_READ_CLOSURES = new Map([
+  ['src/lib/dashboard-read.ts', 'ce22de56ca8370d7b7c99ca114e4a118bf40cb6748ac293a31cc1742bfdfba05'],
+  [
+    'src/lib/open-decisions-query.ts',
+    '8f18b34071248d1fabf7cbba498ef7a0577dcf474bc8b9d64df307f8d9d8af28',
+  ],
+  [
+    'src/lib/open-decision-predicate.ts',
+    'a8d68d22fdf26517070fb5c78cb916b40b3b387c2a5570087e5fbaebd69c033f',
+  ],
+]);
 const STAFF_READ_SERVICE = 'src/lib/staff-roster-query.ts';
 const CLIENT_READ_SERVICE = 'src/lib/client-query.ts';
 const HEARING_LIFECYCLE_SERVICE = 'src/lib/hearing-lifecycle.ts';
@@ -62,7 +73,7 @@ const ADMIN_READ_SERVICE_SHA256 =
   '4353b5dd43f864c36718d3f57d9dad2b0859896cdc178a22a018a0d063e668d3';
 const HEARING_READ_SERVICE = 'src/lib/hearing-query.ts';
 const HEARING_READ_SERVICE_SHA256 =
-  'd17177a7d3d2e28de2d45d0b97f83afe8f1ed4397dc94d68888a2dc8bdf2a7a8';
+  '7b2c7df159b024ced5b2ec8cabdef2a9dcd399c0f2498a4e93f94291042f7731';
 const MATTER_READ_SERVICE = 'src/lib/matter-query.ts';
 const MATTER_LIFECYCLE_SERVICE = 'src/lib/matter-lifecycle.ts';
 const MATTER_LIFECYCLE_SHA256 = '86b767287c5cca470ac16b0d69927625f6ff483204d21e1fc19351843ccba5cf';
@@ -152,6 +163,27 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/dashboard-read.ts',
+    'dashboardRead',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/dashboard-read.ts',
+    'dashboardRead',
+    '0ac43f4e194ed721cee31abbf63c419dd8cfd118bbb91820bceb19a06c3ce008',
+  ],
+  [
+    'src/lib/open-decisions-query.ts',
+    'readOpenDecisions',
+    'd706cdb11801c95739464566cb1fe5c7e15cdc655ea844959a8d81976b916ef5',
+  ],
+  [
+    'src/lib/open-decisions-query.ts',
+    'readOpenDecisions',
+    '20c5ba2fd7f13345f0796be4c6743216498c8d9644b70d15f2fc16d464446a5a',
+  ],
+
   [
     'src/lib/today-hearings-query.ts',
     'readTodayHearings',
@@ -2358,6 +2390,14 @@ export function auditRuntimeSourceFailures(
     const isDocumentReadService = source.path === DOCUMENT_READ_SERVICE;
     const isFeeLetterReadService = source.path === FEE_LETTER_READ_SERVICE;
     const isBillingReadService = source.path === 'src/lib/billing-query.ts';
+    const dashboardClosure = DASHBOARD_READ_CLOSURES.get(source.path);
+    const isDashboardReadService = dashboardClosure !== undefined;
+    if (
+      dashboardClosure &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        dashboardClosure
+    )
+      failures.add('Dashboard read closure differs from reviewed inventory');
     const isTodayHearingReadService = source.path === 'src/lib/today-hearings-query.ts';
     if (
       isTodayHearingReadService &&
@@ -2740,7 +2780,8 @@ export function auditRuntimeSourceFailures(
               isDocumentReadService ||
               isFeeLetterReadService ||
               isBillingReadService ||
-              isTodayHearingReadService
+              isTodayHearingReadService ||
+              isDashboardReadService
             ) ||
             !reviewedSql
           ) {

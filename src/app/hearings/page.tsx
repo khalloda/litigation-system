@@ -48,6 +48,7 @@ export default async function HearingsPage({
     ['attendee', t.hearings.filters.attendee, filters.attendee],
   ] as const;
   const filtered =
+    filters.openBefore ||
     filters.archive !== 'current' ||
     filters.q ||
     filters.from ||
@@ -68,6 +69,7 @@ export default async function HearingsPage({
             </Link>
           ) : null}
           <p>{t.hearings.subtitle}</p>
+          {filters.openBefore ? <p>{t.dashboardMetrics.openScope}</p> : null}
         </div>
         <Link className={styles.link} href="/">
           {t.nav.dashboard}
@@ -98,6 +100,15 @@ export default async function HearingsPage({
             </p>
           </div>
           <div className={local.filters}>
+            <div className={styles.field}>
+              <label htmlFor="open-before">{t.dashboardMetrics.openBefore}</label>
+              <input
+                id="open-before"
+                name="openBefore"
+                type="date"
+                defaultValue={filters.openBefore}
+              />
+            </div>
             <div className={styles.field}>
               <label htmlFor="hearing-archive">{t.hearings.lifecycle.archiveFilter}</label>
               <select id="hearing-archive" name="archive" defaultValue={filters.archive}>

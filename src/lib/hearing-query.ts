@@ -7,6 +7,7 @@ import {
 } from './auth/authorization-core';
 import { clientId, type ClientSearchParams } from './client-query';
 import { matterReturnHref } from './matter-query';
+import { openDecisionPredicate } from './open-decision-predicate';
 
 export const HEARING_PAGE_SIZE = 25;
 export const HEARING_SEARCH_LIMIT = 160;
@@ -20,6 +21,7 @@ export type HearingFilters = Record<HearingFilterKey, string> & {
   from: string;
   to: string;
   fromMatter: string;
+  openBefore: string;
 };
 export class HearingFilterError extends Error {}
 
@@ -42,6 +44,7 @@ export function parseHearingFilters(params: ClientSearchParams): HearingFilters 
     'to',
     'fromMatter',
     'archive',
+    'openBefore',
   ];
   for (const key of Object.keys(params))
     if (!allowed.includes(key)) throw new HearingFilterError('unknown filter');
@@ -63,6 +66,9 @@ export function parseHearingFilters(params: ClientSearchParams): HearingFilters 
     throw new HearingFilterError('invalid archive filter');
   const from = date(one('from', '')),
     to = date(one('to', ''));
+  const openBefore = date(one('openBefore', ''));
+  if (openBefore && archive !== 'current')
+    throw new HearingFilterError('open decisions require current hearings');
   if (from && to && from > to) throw new HearingFilterError('reversed date range');
   const values = HEARING_FILTER_KEYS.map((key) => {
     const value = one(key, 'all');
@@ -85,6 +91,7 @@ export function parseHearingFilters(params: ClientSearchParams): HearingFilters 
     from,
     to,
     fromMatter,
+    openBefore,
   } as HearingFilters;
 }
 export function hearingListHref(f: HearingFilters, page = f.page): string {
@@ -92,7 +99,8 @@ export function hearingListHref(f: HearingFilters, page = f.page): string {
   for (const [key, value] of Object.entries(f)) {
     if ((HEARING_FILTER_KEYS as readonly string[]).includes(key) && value !== 'all')
       p.set(key, String(value));
-    if (['q', 'from', 'to', 'fromMatter'].includes(key) && value) p.set(key, String(value));
+    if (['q', 'from', 'to', 'fromMatter', 'openBefore'].includes(key) && value)
+      p.set(key, String(value));
   }
   if (f.archive !== 'current') p.set('archive', f.archive);
   if (f.dateField !== 'hearing') p.set('dateField', f.dateField);
@@ -175,6 +183,7 @@ const pattern = (q: string) =>
   Prisma.sql`('%' || public.ar_normalise(${q.replace(/[\\%_]/gu, '\\$&')}) || '%')`;
 function where(f: HearingFilters) {
   const conditions = [Prisma.sql`true`];
+  if (f.openBefore) conditions.push(openDecisionPredicate(f.openBefore));
   if (f.archive !== 'all') conditions.push(Prisma.sql`h.is_archived=${f.archive === 'archived'}`);
   for (const [column, value] of [
     [Prisma.sql`h.matter_id`, f.matter],
@@ -212,7 +221,10 @@ export function hearingHistoricalCountQuery(f: HearingFilters) {
   return hearingCountQuery({ ...f, archive: 'all' });
 }
 export function hearingRowsQuery(f: HearingFilters, page: number) {
-  return Prisma.sql`SELECT ${projection} ${joins} WHERE ${where(f)} ORDER BY h.hearing_date DESC NULLS LAST,h.id DESC LIMIT ${HEARING_PAGE_SIZE} OFFSET ${(page - 1) * HEARING_PAGE_SIZE}`;
+  const order = f.openBefore
+    ? Prisma.sql`h.next_hearing_date,h.id`
+    : Prisma.sql`h.hearing_date DESC NULLS LAST,h.id DESC`;
+  return Prisma.sql`SELECT ${projection} ${joins} WHERE ${where(f)} ORDER BY ${order} LIMIT ${HEARING_PAGE_SIZE} OFFSET ${(page - 1) * HEARING_PAGE_SIZE}`;
 }
 export function hearingDetailQuery(id: number) {
   return Prisma.sql`SELECT ${projection},ds.label_ar AS destination,h.circuit,h.notes,h.outcome ${joins}

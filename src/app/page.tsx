@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { signOut } from '@/auth';
 import { Suspense } from 'react';
 import { TodayHearings } from '@/app/_components/today-hearings';
+import { OpenDecisions } from '@/app/_components/open-decisions';
 import { requireAuthenticatedPage } from '@/lib/auth/authorization';
 import { hasPermission } from '@/lib/auth/permissions';
 import { t } from '@/strings';
@@ -11,6 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const session = await requireAuthenticatedPage();
+  const instant = new Date();
   const roleLabel = Object.entries(t.auth.roles).find(([role]) => role === session.user.role)?.[1];
   const canViewUsers = hasPermission(session.user.role, 'usersAndRoles', 'view');
 
@@ -107,6 +109,11 @@ export default async function HomePage() {
             <TodayHearings session={session} />
           </Suspense>
         ) : null}
+      </div>
+      <div className={styles.metrics}>
+        <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+          <OpenDecisions session={session} instant={instant} />
+        </Suspense>
       </div>
     </main>
   );
