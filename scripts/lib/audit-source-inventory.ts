@@ -153,6 +153,26 @@ const LOW_LEVEL_PATTERN =
 
 const REVIEWED_RAW_SQL_CALLS = [
   [
+    'src/lib/today-hearings-query.ts',
+    'readTodayHearings',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/today-hearings-query.ts',
+    'readTodayHearings',
+    '2831174dec8f5094cf920f6d3a944d2c1c1491c17fc7015f533ba481fa12edf0',
+  ],
+  [
+    'src/lib/today-hearings-query.ts',
+    'readTodayHearings',
+    '32417ad2674382cf1cc6fbe9ab8606a71cc1e07e9ae40c5db7e56143a81dfa81',
+  ],
+  [
+    'src/lib/today-hearings-query.ts',
+    'readTodayHearings',
+    '7f0f7380412456f94685d87df88b86f27e1febbe80fbc44ffbe168c0778b5fa8',
+  ],
+  [
     'src/lib/audit-history-query.ts',
     'requireAuditAuthority',
     '7dcb1a2453567d70cd142ccfd8cb061400a4c3fd4780d6d00a5a4ccf0cdb5421',
@@ -2338,6 +2358,13 @@ export function auditRuntimeSourceFailures(
     const isDocumentReadService = source.path === DOCUMENT_READ_SERVICE;
     const isFeeLetterReadService = source.path === FEE_LETTER_READ_SERVICE;
     const isBillingReadService = source.path === 'src/lib/billing-query.ts';
+    const isTodayHearingReadService = source.path === 'src/lib/today-hearings-query.ts';
+    if (
+      isTodayHearingReadService &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
+        'aed89bd6e19c0b817a8eed47297483623c3e3ab57163278922fcf7e0d8a013a7'
+    )
+      failures.add('Today hearing read closure differs from reviewed inventory');
     if (
       isBillingReadService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
@@ -2712,7 +2739,8 @@ export function auditRuntimeSourceFailures(
               isPoaReadService ||
               isDocumentReadService ||
               isFeeLetterReadService ||
-              isBillingReadService
+              isBillingReadService ||
+              isTodayHearingReadService
             ) ||
             !reviewedSql
           ) {

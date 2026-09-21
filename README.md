@@ -1,5 +1,14 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Task 5.1 local candidate — 21 September 2026
+
+The local candidate adds an Arabic **جلسات اليوم** panel to authenticated home:
+the represented Cairo date, exact count, up to 25 hearings and dated links to the
+existing list. It is awaiting independent implementation review; Task 5.1 remains
+unchecked and the accepted Task 4.9 runtime is unchanged. See the
+[candidate report](docs/task-reports/2026-09-21-task-5-1-implementation.md) and
+[acceptance matrix](docs/testing/task-5-1-acceptance-matrix.md).
+
 ## Current Task 4.9 acceptance and activation — 21 September 2026
 
 Khaled accepted corrected implementation `64b5a191e7b9e0d2776c53df69ee6350ca154a67`

@@ -408,7 +408,7 @@ export const ROUTE_INVENTORY = [
     route: '/',
     classification: {
       access: 'authenticated',
-      reason: 'Task 3.1 signed-in landing page; available to all four roles.',
+      reason: 'Authenticated home; Task 5.1 hearing reads independently revalidate hearings/view.',
       enforcement: {
         pattern: 'first-awaited-assignment',
         module: '@/lib/auth/authorization',

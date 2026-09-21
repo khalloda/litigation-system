@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import { signOut } from '@/auth';
-import { AuthShell } from '@/app/_components/auth-shell';
+import { Suspense } from 'react';
+import { TodayHearings } from '@/app/_components/today-hearings';
 import { requireAuthenticatedPage } from '@/lib/auth/authorization';
 import { hasPermission } from '@/lib/auth/permissions';
 import { t } from '@/strings';
-import styles from './auth.module.css';
+import styles from './home.module.css';
+
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const session = await requireAuthenticatedPage();
@@ -17,89 +20,94 @@ export default async function HomePage() {
   }
 
   return (
-    <AuthShell title={t.auth.signedInTitle} subtitle={t.app.name}>
-      <div className={styles.accountSummary}>
-        <p>
-          <strong>{t.auth.signedInAs}:</strong> {session.user.name}
-        </p>
-        <p>
-          <strong>{t.auth.role}:</strong> {roleLabel}
-        </p>
-      </div>
-      <div className={styles.accountActions}>
+    <main className={styles.page}>
+      <a className={styles.skip} href="#today-panel">
+        {t.dashboard.skip}
+      </a>
+      <header className={styles.header}>
+        <div className={styles.brand}>
+          <p>{t.app.name}</p>
+          <h1>{t.nav.dashboard}</h1>
+          <p>{t.app.system}</p>
+        </div>
+        <div className={styles.account}>
+          <p>
+            <strong>{t.auth.signedInAs}:</strong> {session.user.name}
+          </p>
+          <p>
+            <strong>{t.auth.role}:</strong> {roleLabel}
+          </p>
+        </div>
+      </header>
+      <nav className={styles.navigation} aria-label={t.dashboard.navigation}>
         {hasPermission(session.user.role, 'auditHistory', 'view') ? (
-          <Link
-            className={`${styles.secondaryButton} ${styles.navigationLink}`}
-            href="/audit-history"
-          >
+          <Link className={styles.link} href="/audit-history">
             {t.auditHistory.global}
           </Link>
         ) : null}
         {hasPermission(session.user.role, 'billing', 'view') ? (
-          <Link className={`${styles.secondaryButton} ${styles.navigationLink}`} href="/billing">
+          <Link className={styles.link} href="/billing">
             {t.nav.billing}
           </Link>
         ) : null}
         {hasPermission(session.user.role, 'documents', 'view') ? (
-          <Link className={`${styles.secondaryButton} ${styles.navigationLink}`} href="/documents">
+          <Link className={styles.link} href="/documents">
             {t.nav.documents}
           </Link>
         ) : null}
         {hasPermission(session.user.role, 'feeLetters', 'view') ? (
-          <Link
-            className={`${styles.secondaryButton} ${styles.navigationLink}`}
-            href="/fee-letters"
-          >
+          <Link className={styles.link} href="/fee-letters">
             {t.nav.feeLetters}
           </Link>
         ) : null}
         {hasPermission(session.user.role, 'powersOfAttorney', 'view') ? (
-          <Link
-            className={`${styles.secondaryButton} ${styles.navigationLink}`}
-            href="/powers-of-attorney"
-          >
+          <Link className={styles.link} href="/powers-of-attorney">
             {t.poa.title}
           </Link>
         ) : null}
         {hasPermission(session.user.role, 'administrativeWorks', 'view') ? (
-          <Link
-            className={`${styles.secondaryButton} ${styles.navigationLink}`}
-            href="/admin-works"
-          >
+          <Link className={styles.link} href="/admin-works">
             {t.nav.adminWorks}
           </Link>
         ) : null}
         {hasPermission(session.user.role, 'hearings', 'view') ? (
-          <Link className={`${styles.secondaryButton} ${styles.navigationLink}`} href="/hearings">
+          <Link className={styles.link} href="/hearings">
             {t.nav.hearings}
           </Link>
         ) : null}
         {hasPermission(session.user.role, 'matters', 'view') ? (
-          <Link className={`${styles.secondaryButton} ${styles.navigationLink}`} href="/matters">
+          <Link className={styles.link} href="/matters">
             {t.nav.matters}
           </Link>
         ) : null}
         {hasPermission(session.user.role, 'clients', 'view') ? (
-          <Link className={`${styles.secondaryButton} ${styles.navigationLink}`} href="/clients">
+          <Link className={styles.link} href="/clients">
             {t.nav.clients}
           </Link>
         ) : null}
         {hasPermission(session.user.role, 'staff', 'view') ? (
-          <Link className={`${styles.secondaryButton} ${styles.navigationLink}`} href="/staff">
+          <Link className={styles.link} href="/staff">
             {t.nav.staff}
           </Link>
         ) : null}
         {canViewUsers ? (
-          <Link className={`${styles.secondaryButton} ${styles.navigationLink}`} href="/users">
+          <Link className={styles.link} href="/users">
             {t.nav.users}
           </Link>
         ) : null}
         <form action={logoutAction}>
-          <button className={styles.secondaryButton} type="submit">
+          <button className={styles.button} type="submit">
             {t.auth.logout}
           </button>
         </form>
+      </nav>
+      <div id="today-panel">
+        {hasPermission(session.user.role, 'hearings', 'view') ? (
+          <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+            <TodayHearings session={session} />
+          </Suspense>
+        ) : null}
       </div>
-    </AuthShell>
+    </main>
   );
 }
