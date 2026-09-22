@@ -1,7 +1,7 @@
 import 'server-only';
 import type { Session } from 'next-auth';
 import { db } from './db';
-import { readCurrentOutcomes } from './outcome-query';
+import { readCurrentOutcomes, readFiveYearOutcomes } from './outcome-query';
 import { readTopClients } from './top-clients-query';
 import { readLawyerWorkload } from './lawyer-workload-query';
 import { readOpenDecisions } from './open-decisions-query';
@@ -15,3 +15,6 @@ export const getTopClients = (session: Session) => readTopClients(session, db);
 
 export const getCurrentOutcomes = (session: Session, instant: Date) =>
   readCurrentOutcomes(session, db, () => instant);
+
+export const getFiveYearOutcomes = (session: Session, instant: Date) =>
+  readFiveYearOutcomes(session, db, () => instant);

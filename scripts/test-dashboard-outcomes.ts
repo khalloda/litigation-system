@@ -3,7 +3,9 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createDatabaseClient } from '../src/lib/db';
 import {
   readCurrentOutcomes,
+  readFiveYearOutcomes,
   currentOutcomeWindow,
+  fiveYearOutcomeWindow,
   outcomeBucketsQuery,
   outcomeCoverageQuery,
 } from '../src/lib/outcome-query';
@@ -78,6 +80,53 @@ async function main() {
           undated,
           outside: baseline.length - inside - undated,
         });
+        const annualExpected = Array.from({ length: 5 }, (_, i) => {
+          const period = String(year - 4 + i),
+            annualRows = baseline.filter((h) => h.date?.startsWith(period + '-'));
+          return {
+            period,
+            favour: annualRows.filter((h) => h.outcome === 'صالح').length,
+            against: annualRows.filter((h) => h.outcome === 'ضد').length,
+            missing: annualRows.filter((h) => h.outcome === null).length,
+            empty: annualRows.filter((h) => h.outcome !== null && /^ *$/.test(h.outcome)).length,
+            other: annualRows.filter(
+              (h) =>
+                h.outcome !== null &&
+                !/^ *$/.test(h.outcome) &&
+                !['صالح', 'ضد'].includes(h.outcome),
+            ).length,
+            total: annualRows.length,
+          };
+        });
+        let annualClockCalls = 0;
+        const annual = await readFiveYearOutcomes(session, runtime, () => {
+          annualClockCalls++;
+          return new Date(instant);
+        });
+        assert.equal(annualClockCalls, 1);
+        assert.deepEqual(annual.window, {
+          anchor: date,
+          start: `${year - 4}-01-01`,
+          end: `${year + 1}-01-01`,
+          periods: annualExpected.map((r) => r.period),
+          granularity: 'year',
+        });
+        assert.deepEqual(annual.rows, annualExpected);
+        const annualInside = annualExpected.reduce((sum, row) => sum + row.total, 0);
+        assert.deepEqual(annual.coverage, {
+          total: baseline.length,
+          inside: annualInside,
+          undated,
+          outside: baseline.length - annualInside - undated,
+        });
+        assert.equal(
+          annual.sums.favour,
+          annualExpected.reduce((sum, row) => sum + row.favour, 0),
+        );
+        assert.equal(
+          annual.sums.against,
+          annualExpected.reduce((sum, row) => sum + row.against, 0),
+        );
       }
       results.push({ instant, date, year, expectedRows, inside, undated });
     }
@@ -110,8 +159,58 @@ async function main() {
         assert.deepEqual(await run(outcomeBucketsQuery(w)), [
           { period: '2024-01', favour: 1, against: 0, missing: 0, empty: 0, other: 0, total: 1 },
         ]);
+        // All rows in this session-local table were created above by this test.
+        await db.query('TRUNCATE pg_temp.hearings');
+        await db.query(`INSERT INTO pg_temp.hearings VALUES
+          (1,'2021-12-31','صالح',1,false),(2,'2022-01-01','صالح',1,true),
+          (3,'2022-01-01','صالح',1,false),(4,'2024-02-29','ضد',NULL,true),
+          (5,'2026-12-31','ضد',NULL,false),(6,'2027-01-01','صالح',NULL,false),
+          (7,NULL,'ضد',NULL,false),(8,'2025-01-01',NULL,NULL,false),
+          (9,'2025-01-01','',NULL,false),(10,'2025-01-01',' ',NULL,false),
+          (11,'2025-01-01','TEST ONLY OTHER',NULL,false)`);
+        const annualWindow = fiveYearOutcomeWindow(new Date('2026-12-31T21:59:59Z'));
+        assert.deepEqual(annualWindow, {
+          anchor: '2026-12-31',
+          start: '2022-01-01',
+          end: '2027-01-01',
+          periods: ['2022', '2023', '2024', '2025', '2026'],
+          granularity: 'year',
+        });
+        const annualExpected = [
+          { period: '2022', favour: 2, against: 0, missing: 0, empty: 0, other: 0, total: 2 },
+          { period: '2024', favour: 0, against: 1, missing: 0, empty: 0, other: 0, total: 1 },
+          { period: '2025', favour: 0, against: 0, missing: 1, empty: 2, other: 1, total: 4 },
+          { period: '2026', favour: 0, against: 1, missing: 0, empty: 0, other: 0, total: 1 },
+        ];
+        assert.deepEqual(await run(outcomeBucketsQuery(annualWindow)), annualExpected);
+        assert.deepEqual(await run(outcomeCoverageQuery(annualWindow)), [
+          { total: 11, inside: 8, outside: 2, undated: 1 },
+        ]);
+        const rolloverWindow = fiveYearOutcomeWindow(new Date('2026-12-31T22:00:00Z'));
+        assert.deepEqual(rolloverWindow, {
+          anchor: '2027-01-01',
+          start: '2023-01-01',
+          end: '2028-01-01',
+          periods: ['2023', '2024', '2025', '2026', '2027'],
+          granularity: 'year',
+        });
+        assert.deepEqual(await run(outcomeBucketsQuery(rolloverWindow)), [
+          ...annualExpected.slice(1),
+          { period: '2027', favour: 1, against: 0, missing: 0, empty: 0, other: 0, total: 1 },
+        ]);
+        assert.deepEqual(await run(outcomeCoverageQuery(rolloverWindow)), [
+          { total: 11, inside: 7, outside: 3, undated: 1 },
+        ]);
+        await db.query('DELETE FROM pg_temp.hearings WHERE id<>2');
+        assert.deepEqual(await run(outcomeBucketsQuery(annualWindow)), [
+          { period: '2022', favour: 1, against: 0, missing: 0, empty: 0, other: 0, total: 1 },
+        ]);
+        assert.deepEqual(await run(outcomeBucketsQuery(rolloverWindow)), []);
         return {
           expected,
+          annualExpected,
+          annualWindow,
+          rolloverWindow,
           coverage: { total: 12, undated: 1, outside: 2, inside: 9 },
           mode: 'Session-local semantic SQL unit fixture; only explicit hearing table qualifier rebound; public schema/services independently tested',
         };
@@ -124,6 +223,8 @@ async function main() {
           [
             outcomeBucketsQuery(currentOutcomeWindow(new Date('2026-09-22T12:00:00Z'))),
             outcomeCoverageQuery(currentOutcomeWindow(new Date('2026-09-22T12:00:00Z'))),
+            outcomeBucketsQuery(fiveYearOutcomeWindow(new Date('2026-09-22T12:00:00Z'))),
+            outcomeCoverageQuery(fiveYearOutcomeWindow(new Date('2026-09-22T12:00:00Z'))),
           ].map(async (q) => ({
             sql: q.text,
             values: q.values,
@@ -141,7 +242,7 @@ async function main() {
       JSON.stringify(
         {
           status: 'PASS',
-          view: 'current-year only; five-year window decision pending',
+          view: 'current-year and owner-approved current Cairo year plus four preceding calendar years',
           cluster: f.clusterId,
           results,
           edge,
@@ -152,7 +253,7 @@ async function main() {
       ),
     );
     console.log(
-      'PASS current-year full-volume and literal date/bucket/outcome edge oracles for all roles',
+      'PASS both outcome views: full-volume, literal boundaries, five annual buckets and Cairo rollover for all roles',
     );
   } finally {
     await runtime.$disconnect();

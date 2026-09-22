@@ -1,28 +1,33 @@
 import type { Session } from 'next-auth';
-import { getCurrentOutcomes } from '@/lib/dashboard';
+import { getCurrentOutcomes, getFiveYearOutcomes } from '@/lib/dashboard';
 import { t } from '@/strings';
 import { DashboardError } from './dashboard-error';
 import styles from '../home.module.css';
-export async function CurrentOutcomes({ session, instant }: { session: Session; instant: Date }) {
+type Props = { session: Session; instant: Date };
+export function CurrentOutcomes(props: Props) {
+  return <OutcomePanel {...props} fiveYear={false} />;
+}
+export function FiveYearOutcomes(props: Props) {
+  return <OutcomePanel {...props} fiveYear={true} />;
+}
+async function OutcomePanel({ session, instant, fiveYear }: Props & { fiveYear: boolean }) {
+  const title = fiveYear ? t.dashboardMetrics.fiveYearOutcomes : t.dashboardMetrics.currentOutcomes,
+    id = fiveYear ? 'outcomes-five-year-title' : 'outcomes-current-title';
   let snapshot;
   try {
-    snapshot = await getCurrentOutcomes(session, instant);
+    snapshot = fiveYear
+      ? await getFiveYearOutcomes(session, instant)
+      : await getCurrentOutcomes(session, instant);
   } catch (error) {
-    return (
-      <DashboardError
-        error={error}
-        title={t.dashboardMetrics.currentOutcomes}
-        id="outcomes-current-title"
-      />
-    );
+    return <DashboardError error={error} title={title} id={id} />;
   }
   const { window, rows, sums, coverage } = snapshot,
     max = Math.max(1, ...rows.flatMap((r) => [r.favour, r.against]));
   return (
-    <section className={styles.panel} aria-labelledby="outcomes-current-title">
-      <h2 id="outcomes-current-title">{t.dashboardMetrics.currentOutcomes}</h2>
+    <section className={styles.panel} aria-labelledby={id}>
+      <h2 id={id}>{title}</h2>
       <p>{t.dashboardMetrics.outcomeScope}</p>
-      <p>{t.dashboardMetrics.fullYearNote}</p>
+      <p>{fiveYear ? t.dashboardMetrics.fiveYearNote : t.dashboardMetrics.fullYearNote}</p>
       <p>
         {t.dashboardMetrics.windowLabel}
         <time dateTime={window.start} dir="ltr">
@@ -82,12 +87,7 @@ export async function CurrentOutcomes({ session, instant }: { session: Session; 
           </div>
         ))}
       </div>
-      <div
-        className={styles.tableScroll}
-        role="region"
-        aria-label={t.dashboardMetrics.currentOutcomes}
-        tabIndex={0}
-      >
+      <div className={styles.tableScroll} role="region" aria-label={title} tabIndex={0}>
         <table className={styles.metricTable}>
           <caption>{t.dashboardMetrics.outcomeTable}</caption>
           <thead>
@@ -103,9 +103,9 @@ export async function CurrentOutcomes({ session, instant }: { session: Session; 
               <tr key={r.period} data-outcome-row={r.period}>
                 <th scope="row">
                   <bdi>{r.period}</bdi>
-                  {r.period >= window.anchor.slice(0, 7) ? (
+                  {r.period >= window.anchor.slice(0, fiveYear ? 4 : 7) ? (
                     <span className={styles.metricNote}>
-                      {r.period === window.anchor.slice(0, 7)
+                      {r.period === window.anchor.slice(0, fiveYear ? 4 : 7)
                         ? t.dashboardMetrics.incompletePeriod
                         : t.dashboardMetrics.futurePeriod}
                     </span>

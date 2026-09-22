@@ -30,6 +30,18 @@ export function currentOutcomeWindow(instant: Date): OutcomeWindow {
     granularity: 'month',
   };
 }
+/** Owner decision: current Cairo calendar year and four preceding years. */
+export function fiveYearOutcomeWindow(instant: Date): OutcomeWindow {
+  const anchor = cairoDate(instant),
+    year = Number(anchor.slice(0, 4));
+  return {
+    anchor,
+    start: `${year - 4}-01-01`,
+    end: `${year + 1}-01-01`,
+    periods: Array.from({ length: 5 }, (_, i) => String(year - 4 + i)),
+    granularity: 'year',
+  };
+}
 export function outcomeBucketsQuery(window: OutcomeWindow) {
   const format = window.granularity === 'month' ? 'YYYY-MM' : 'YYYY';
   return Prisma.sql`SELECT to_char(h.hearing_date,${format}) period,
@@ -49,12 +61,21 @@ export function outcomeCoverageQuery(window: OutcomeWindow) {
   count(*) FILTER(WHERE hearing_date>=${window.start}::date AND hearing_date<${window.end}::date)::int inside
   FROM public.hearings`;
 }
-export async function readCurrentOutcomes(
+export function readCurrentOutcomes(
   session: Session | null,
   db: PrismaClient,
   clock: () => Date = () => new Date(),
 ) {
-  const window = currentOutcomeWindow(clock());
+  return readOutcomeWindow(session, db, currentOutcomeWindow(clock()));
+}
+export function readFiveYearOutcomes(
+  session: Session | null,
+  db: PrismaClient,
+  clock: () => Date = () => new Date(),
+) {
+  return readOutcomeWindow(session, db, fiveYearOutcomeWindow(clock()));
+}
+async function readOutcomeWindow(session: Session | null, db: PrismaClient, window: OutcomeWindow) {
   return dashboardRead(session, db, ['hearings'], async (tx) => {
     const raw = await tx.$queryRaw<OutcomeBucket[]>(Prisma.sql`${outcomeBucketsQuery(window)}`);
     const coverage = await tx.$queryRaw<

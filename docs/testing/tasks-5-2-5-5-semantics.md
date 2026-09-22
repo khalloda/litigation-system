@@ -26,7 +26,7 @@ No macro/VBA code was executed. No import or migration was rerun.
 | Lawyer workload | `Dashboard` embeds BOTH `إحصائية أعداد الدعاوى لكل محامي أ` and `إحصائية أعداد الدعاوى لكل محامي ب`. Their queries use active matters, separate lawyerA/lawyerB substring membership, and LawyerID order. They count non-null matterAR; no employment/login predicate. | Replace obsolete name/team joins under D5/D6 with current, non-retired person-ID membership and distinct active matter IDs. Display separate lead/co-lead/support counts, keeping co-lead visibly distinct under the approved role mapping, and the union per person. All positive person groups, including inactive/external/non-login references, remain. Current person ID order preserves identity ordering. Report unique eligible matters and unassigned matters separately; person totals overlap. Archive-independent statistics; NULL/closed status excluded. Missing case-number text never discards a real current matter identity. |
 | Top clients | `Dashboard` → `اكبر 5 عملاء` → same-named query: TOP 5, active matters, count matterAR descending, grouped by client name; no client-status predicate. Access TOP count-only ordering includes ties at fifth place. | Count distinct active matter IDs per current client ID, not names or branches. Preserve all fifth-place ties, ordered score descending then client ID; title/help disclose ties. No zero/filler clients. Missing-client count is separate. Archived/disabled clients remain; missing case-number text retains the real identity. These ID-based translations follow the adopted scope and D56. |
 | Current-year outcomes | `Dashboard صالح-ضد السنة الحالية` has inline hearing SQL: `Year(التاريخ)=Year(Now()) AND [صالح/ضد] Is Not Null`. Pivot measure is `Count of صالح/ضد`. | Count recorded hearing IDs by hearing date in the complete Cairo calendar year, separate exact صالح/ضد and NULL/empty/other coverage. Multiple outcomes per matter remain distinct. No parent/status/archive filter. Months are presentation buckets; future months describe stored records, not forecasts or completed performance. |
-| Five-year outcomes | Both `Dashboard- win-lose last 5y` forms reference the same crosstab. It filters only non-null outcome, groups by hearing date and counts non-null legacy case-number text. Neither saved query nor pivot table/chart defines a five-year endpoint; the title alone says last five years. | **Pending one material owner window decision.** Do not implement its date predicate until resolved. The adopted current-ID counting requirement replaces the obsolete nullable case-text count; disclose exact recognized, unknown and undated coverage. No claim that this repair is byte-for-byte Access chart parity. |
+| Five-year outcomes | Both `Dashboard- win-lose last 5y` forms reference the same crosstab. It filters only non-null outcome, groups by hearing date and counts non-null legacy case-number text. Neither saved query nor pivot table/chart defines a five-year endpoint; the title alone says last five years. | **Owner decision, 22 September 2026:** current Africa/Cairo calendar year Y plus four preceding calendar years, five annual buckets, from 1 January Y−4 inclusive to 1 January Y+1 exclusive. Thus 2026 displays 2022–2026, dynamically. The current year is explicitly incomplete; counts are not annualized. The adopted current-ID counting requirement replaces obsolete nullable case-text counting. Recognized outcomes, unknowns, undated/outside coverage and hearing-date field match the current-year view. No claim of byte-for-byte Access chart parity. |
 
 The retained Dashboard closure names the first three metrics directly; the two
 outcome forms are retained separately and explicitly named in Task 5.5's adopted
@@ -56,3 +56,16 @@ Fresh authorization precedes every aggregate inside a repeatable-read/read-only
 transaction. Ordinary query failure is local; authorization errors propagate.
 Each panel has its own snapshot; one captured server instant anchors the new
 date-dependent panels. No page-wide atomic database snapshot is claimed.
+
+## Explicit resolution of the missing legacy date restriction
+
+After source investigation, Khaled approved the current Cairo year and four
+preceding calendar years in this same implementation chat. His instruction
+specified five annual buckets, inclusive 1 January Y−4 and exclusive 1 January
+Y+1, dynamic Cairo Y, an incomplete-current-year label and no annualization.
+He also required preserving the established hearing-date field, hearing-ID
+counting unit, exact outcome definitions and unknown/undated treatment, with
+matching chart/table values. This is a new explicit business decision resolving
+the missing legacy filter, not an inferred historical rule. The source evidence
+and D51 limitations above remain unchanged. The exact decision is retained in
+the task evidence and will accompany the implementation review package.

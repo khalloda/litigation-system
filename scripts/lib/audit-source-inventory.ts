@@ -46,7 +46,7 @@ const AUDIT_HISTORY_CLOSURES = new Map([
   ],
 ]);
 const DASHBOARD_READ_CLOSURES = new Map([
-  ['src/lib/outcome-query.ts', '6a563622f80be0015a59fda3a2733e0b428867b65641717d0eee7cb3d3f161de'],
+  ['src/lib/outcome-query.ts', 'ceb3685ccbc35b342314cb7d0cc8eec467f2849f645477255cd572001c8b27c2'],
   [
     'src/lib/top-clients-query.ts',
     '6668c552181f8c18404fea8ad2dd02276dbe37a608294b10d4641ce79e09197b',
@@ -174,12 +174,12 @@ const LOW_LEVEL_PATTERN =
 const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/outcome-query.ts',
-    'readCurrentOutcomes',
+    'readOutcomeWindow',
     '36429879ff48a26b6f464d44129ad8f923f81f59ce317f8566d034fad922273b',
   ],
   [
     'src/lib/outcome-query.ts',
-    'readCurrentOutcomes',
+    'readOutcomeWindow',
     '014a93fede65c1b99c0117560fb08ee7539eb6ae861546ed78e8ebf60aba6c04',
   ],
   [

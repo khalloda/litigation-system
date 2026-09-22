@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { signOut } from '@/auth';
 import { Suspense } from 'react';
 import { TodayHearings } from '@/app/_components/today-hearings';
-import { CurrentOutcomes } from '@/app/_components/current-outcomes';
+import { CurrentOutcomes, FiveYearOutcomes } from '@/app/_components/current-outcomes';
 import { TopClients } from '@/app/_components/top-clients';
 import { LawyerWorkload } from '@/app/_components/lawyer-workload';
 import { OpenDecisions } from '@/app/_components/open-decisions';
@@ -112,6 +112,7 @@ export default async function HomePage() {
         <a href="#workload-title">{t.dashboardMetrics.workload}</a>
         <a href="#top-clients-title">{t.dashboardMetrics.topClients}</a>
         <a href="#outcomes-current-title">{t.dashboardMetrics.currentOutcomes}</a>
+        <a href="#outcomes-five-year-title">{t.dashboardMetrics.fiveYearOutcomes}</a>
       </nav>
       <div id="today-panel">
         {hasPermission(session.user.role, 'hearings', 'view') ? (
@@ -132,6 +133,9 @@ export default async function HomePage() {
         </Suspense>
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
           <CurrentOutcomes session={session} instant={instant} />
+        </Suspense>
+        <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+          <FiveYearOutcomes session={session} instant={instant} />
         </Suspense>
       </div>
     </main>
