@@ -82,3 +82,11 @@ Never include credentials, passwords, tokens, connection strings, private keys,
 raw operational records, workbook contents, database exports, ignored source
 artifacts, client documents, logos or other runtime binaries. Record safe
 identities, counts and digests and link to tracked evidence instead.
+
+
+## Tasks 5.2-5.5 candidate evidence
+
+[22 September 2026 combined implementation candidate](2026-09-22-tasks-5-2-5-5-implementation.md)
+records the one-time batching authorization, source meanings, explicit five-year
+window decision and isolated verification. It is awaiting independent
+implementation review; it is not an acceptance record.

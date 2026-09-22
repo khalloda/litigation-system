@@ -559,3 +559,15 @@ are bound by the external operational receipt rather than a self-referential
 commit claim. See the [acceptance/activation report](docs/task-reports/2026-09-21-task-5-1-acceptance-activation.md),
 [implementation PASS review](docs/reviews/2026-09-21-task-5-1-independent-implementation-review.md) and
 [appended operational matrix](docs/testing/task-5-1-acceptance-matrix.md).
+
+
+## Tasks 5.2-5.5 local candidate - 22 September 2026
+
+The combined candidate adds Open decisions, current lawyer workload, Top 5 clients
+with fifth-place ties, and current-year/five-year hearing-outcome charts. The
+five-year window follows the explicit owner decision: current Cairo calendar
+year plus four preceding years; the current year is incomplete. This is local
+implementation only, with no owner activation or publication and no TASKS change.
+See the [candidate report](docs/task-reports/2026-09-22-tasks-5-2-5-5-implementation.md)
+and [combined matrix](docs/testing/tasks-5-2-5-5-acceptance-matrix.md). Independent
+implementation review is the next gate.
