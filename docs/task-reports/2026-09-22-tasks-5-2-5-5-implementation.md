@@ -122,9 +122,19 @@ accessibility.
 
 ## Preservation and retained failures
 
-Owner database and app access was read-only. The accepted artifact remains
+Owner database access and runtime observations were read-only. The protected
+accepted artifact is
 `D:/Projects/LitigationData/accepted-task51-d55df302-20260921T114102Z-f9add0c3`,
-build `0hYFhlJjQ4s-qbt8wD5LY`, observed PID 54168 on loopback port 3000.
+build `0hYFhlJjQ4s-qbt8wD5LY`. PID 54168 on loopback port 3000 belongs to
+Task 5.1's 21 September operational evidence; it was not observed by this run.
+The successful baseline at 21 September 21:32:01 UTC, final observation at
+22 September 07:22:59 UTC and post-seal observation at 07:33:54 UTC all contain
+empty listener and process arrays. Their equality does not prove a running app
+or continuous runtime health. The initial permission failure and the helper's
+suppressed listener-query errors remain recorded; these observations do not
+establish the cause of the empty results. Artifact/build preservation and
+healthy database-container observations are separate from app availability.
+Later runtime observations cannot establish this run's historical uptime.
 Migration 73, 73 completed migrations, all 141 tables/48 sequences, 74 ledger
 rows and 885 audit rows remain the protected owner boundary. Full comparisons
 include credentials/capabilities, table content and catalogs, with no fixture
