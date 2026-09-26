@@ -571,3 +571,25 @@ implementation only, with no owner activation or publication and no TASKS change
 See the [candidate report](docs/task-reports/2026-09-22-tasks-5-2-5-5-implementation.md)
 and [combined matrix](docs/testing/tasks-5-2-5-5-acceptance-matrix.md). Independent
 implementation review is the next gate.
+
+
+## 26 September 2026 — Tasks 5.2–5.5 accepted and activated locally
+
+The owner accepted independently reviewed candidate `3cf48f1252cb173bcb4c24bed477d35a0b4b60a3` and authorized one
+shared recovery, activation and publication cycle. Tasks 5.2–5.5 are now accepted. The earlier
+pending acceptance and absent-runtime statements above remain dated history and are superseded
+by this checkpoint; T5255-R1 is resolved by the imported independent PASS review.
+
+The exact reviewed application is running from its new stable artifact on `127.0.0.1:3000`,
+build `JO3kxiRRVIBhBqcP4LIdL`. Migration 73 and the full ledger remain unchanged; no migration or
+provisioning was performed. Fresh recovery/restore, 148 historical plus 15 setup gates on both
+the pristine isolated copy and owner database, build/full check, four-role browser smoke and
+actual-owner browser comparisons passed. Normal owner sign-in bookkeeping is precisely reconciled;
+the subsequent complete read-only database window is unchanged. Prior evidence and recovery are
+preserved. This checkpoint records the completed local gates, not a future publication result.
+
+See the [acceptance and activation report](docs/task-reports/2026-09-22-tasks-5-2-5-5-acceptance-activation.md),
+[independent implementation PASS](docs/reviews/2026-09-22-tasks-5-2-5-5-independent-implementation-review.md)
+and [updated acceptance matrix](docs/testing/tasks-5-2-5-5-acceptance-matrix.md). The external operational
+receipt records the eventual documentation-child and publication identities. Independent operational
+review remains pending. Stage 6, Ubuntu deployment and Access cutover have not started.

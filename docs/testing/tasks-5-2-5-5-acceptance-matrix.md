@@ -68,3 +68,37 @@ original failure remains. Its bounded retry preserves the existing control
 checker and additionally proves visible, unobscured scroll-region focus plus
 keyboard access to every column. Narrow table captures show actual viewport
 clipping and scrolling, not an assertion that every column fits simultaneously.
+
+
+## Operational supplement — 26 September 2026
+
+The owner accepted `3cf48f1252cb173bcb4c24bed477d35a0b4b60a3` and the independent T5255-R1 PASS. This supplement supersedes
+earlier pending acceptance/runtime statements as of the dated observations; their complete text is
+retained above. The authorized documentation child does not change application code.
+
+| Operational gate | Observed result |
+| --- | --- |
+| Owner baseline | No listener and refused HTTP before activation; historical PID54168 was never a stop target. |
+| Recovery | New protected local migration73 recovery; exact owner before/after equality; all 54 registered logo versions retained. |
+| Pristine isolated restore | 141 table and 48 sequence vectors; only enumerated physical restore differences with logical equivalence; fresh 148 historical and 15 setup passes. |
+| Stable artifact | Exact reviewed source; 857 shared bodies and two protected identity-only configurations; build `JO3kxiRRVIBhBqcP4LIdL`; fresh build/full project check pass. |
+| Fresh isolated browser | Four genuine roles, six services, real Cairo date; exact SQL/row expectations; 3 axe scans, 12 control-focus and 3 table-focus observations; no browser errors. |
+| Actual owner | Administrator's genuine sign-in; all six panels and 12 monthly/5 annual buckets match SQL; Today 1 and Open 30, with complete dated lists/detail/back and real staff/client/parent links. |
+| Authentication accounting | Account 2: only last-login/update timestamps; audit events 886–887 and audit counter +2; accepted account-update locking trigger advances roster mutex +1, proven by exact row/column hashes. No credential/role/capability/session-version change. |
+| Owner read window | Exact 141-table/48-sequence/catalog, ledger, billing, authentication, audit/counter and receipt equality after sign-in through navigation/final checks; no restore exceptions. |
+| Owner database gates | Fresh 148 historical plus 15 setup passes; migration 73 unchanged, no provisioning. |
+| Preservation | 344,476 prior files exact in bytes/size/mtime; 49 junctions and 114 named root ACLs exact; no additions or log growth. New private/recovery descendant ACLs pass. |
+| Runtime/cleanup | Positive new PID/artifact/build and sole loopback listener; exact disposable fixture/test app removed; owner database, active artifact, recovery and prior evidence retained. |
+
+Unchanged implementation permission decisions (480), denial cases (66), literal date/year rollover,
+boundary/group/full-volume/tie and prior accessibility tests are reused with exact source/package
+identities; they are not described as fresh runs. New artifact-owned cache additions are enumerated
+separately; all pre-existing compiled/source/dependency identities are exact. Detailed attempts,
+proof locations and limits are in the
+[operational report](../task-reports/2026-09-22-tasks-5-2-5-5-acceptance-activation.md).
+
+Local recovery does not protect against laptop/disk loss. Prior root ACL coverage does not prove all
+old descendant ACLs. Private raw recovery/auth/database bodies remain excluded from shared delivery;
+axe incomplete rules and the absence of screen-reader speech testing remain explicit. The final
+external receipt binds publication and post-seal observations. Independent operational review is
+still required; Stage 6 remains unstarted.

@@ -2413,10 +2413,10 @@ than assuming one rule for every workflow. Test with real volumes.
 ## Stage 5 — Dashboard
 
 - [x] **5.1 Today's hearings**
-- [ ] **5.2 Open decisions**
-- [ ] **5.3 Matter counts per lawyer**
-- [ ] **5.4 Top 5 clients**
-- [ ] **5.5 For/against charts** (صالح/ضد), current year and five-year
+- [x] **5.2 Open decisions**
+- [x] **5.3 Matter counts per lawyer**
+- [x] **5.4 Top 5 clients**
+- [x] **5.5 For/against charts** (صالح/ضد), current year and five-year
 
 ---
 
