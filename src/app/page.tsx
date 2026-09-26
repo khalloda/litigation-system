@@ -45,6 +45,11 @@ export default async function HomePage() {
         </div>
       </header>
       <nav className={styles.navigation} aria-label={t.dashboard.navigation}>
+        {hasPermission(session.user.role, 'reports', 'run') ? (
+          <Link className={styles.link} href="/reports">
+            {t.nav.reports}
+          </Link>
+        ) : null}
         {hasPermission(session.user.role, 'auditHistory', 'view') ? (
           <Link className={styles.link} href="/audit-history">
             {t.auditHistory.global}

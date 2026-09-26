@@ -1,0 +1,104 @@
+.page {
+  max-inline-size: 90rem;
+  margin-inline: auto;
+  padding: var(--space-5);
+  overflow-wrap: anywhere;
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  border: 1px solid var(--colour-border);
+  padding: var(--space-4);
+  min-inline-size: 0;
+}
+.field {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+.field label {
+  font-weight: 700;
+}
+.field input,
+.field select {
+  font: inherit;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--colour-border);
+  background: var(--colour-surface);
+  color: var(--colour-text);
+}
+.field p {
+  margin: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+.actions button {
+  font: inherit;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-4);
+  background: var(--colour-primary);
+  color: var(--colour-on-primary);
+  border: 1px solid var(--colour-primary);
+  cursor: pointer;
+}
+.actions button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+.page :focus-visible {
+  outline: 3px solid var(--colour-primary);
+  outline-offset: 3px;
+}
+.summary:focus,
+.result:focus {
+  outline: 3px solid var(--colour-primary);
+  outline-offset: 3px;
+}
+.summary {
+  margin-block: var(--space-3);
+}
+.error {
+  color: var(--colour-danger);
+  font-weight: 700;
+}
+.result {
+  margin-block: var(--space-5);
+}
+.scroll {
+  overflow: auto;
+  max-inline-size: 100%;
+  border: 1px solid var(--colour-border);
+  padding: var(--space-1);
+}
+.scroll table {
+  border-collapse: collapse;
+  inline-size: 100%;
+  min-inline-size: 40rem;
+}
+.scroll th,
+.scroll td {
+  border: 1px solid var(--colour-border);
+  padding: var(--space-2);
+  vertical-align: top;
+  text-align: start;
+  white-space: pre-wrap;
+}
+.scroll bdi {
+  unicode-bidi: plaintext;
+  white-space: pre-wrap;
+}
+@media (max-width: 42rem) {
+  .page {
+    padding: var(--space-3);
+  }
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -50,6 +50,32 @@ export type RouteInventoryEntry = {
 export const ROUTE_INVENTORY = [
   {
     kind: 'page',
+    source: 'src/app/reports/page.tsx',
+    route: '/reports',
+    classification: { access: 'permission', area: 'reports', action: 'run' },
+  },
+  {
+    kind: 'page',
+    source: 'src/app/reports/[id]/page.tsx',
+    route: '/reports/[id]',
+    classification: { access: 'permission', area: 'reports', action: 'run' },
+  },
+  {
+    kind: 'route',
+    source: 'src/app/reports/[id]/run/route.ts',
+    route: '/reports/[id]/run',
+    exportName: 'POST',
+    classification: { access: 'permission', area: 'reports', action: 'run' },
+  },
+  {
+    kind: 'route',
+    source: 'src/app/reports/[id]/export/route.ts',
+    route: '/reports/[id]/export',
+    exportName: 'POST',
+    classification: { access: 'permission', area: 'reports', action: 'export' },
+  },
+  {
+    kind: 'page',
     source: 'src/app/audit-history/page.tsx',
     route: '/audit-history',
     classification: { access: 'permission', area: 'auditHistory', action: 'view' },

@@ -45,6 +45,19 @@ const AUDIT_HISTORY_CLOSURES = new Map([
     'eff8a54debf9322430fd0192d0afbf49e0646f31433056e7067cdca31abb83e2',
   ],
 ]);
+// Reporting adds ordinary observed events, not a new actor/context capability.
+// These complete guarded closures supplement the exact raw-call inventory.
+const REPORT_ENGINE_CLOSURES = new Map([
+  [
+    'src/lib/reports/authority.ts',
+    '684edd30ecb4f881caebd3e349252d253da99e203a7d6823b471506e18ff39ec',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'f0372ce7a2ea7a65b8226b4bd7cfd5b9f8a1b561ccc3ce0f2d01dcc6e71548b7',
+  ],
+  ['src/lib/reports/engine.ts', '61922dc7ca931d23d7c43f9bb8f01851ed95378efee2de52c41ce5529f6178c9'],
+]);
 const DASHBOARD_READ_CLOSURES = new Map([
   ['src/lib/outcome-query.ts', 'ceb3685ccbc35b342314cb7d0cc8eec467f2849f645477255cd572001c8b27c2'],
   [
@@ -152,6 +165,7 @@ const CONTROLLED_LOCAL_ADMINISTRATION = 'setApprovedAccountPassword';
 const MIGRATION_DATABASE_ENV = 'MIGRATION_DATABASE_URL';
 const ALTERNATE_DATABASE_FACTORY = 'createDatabaseClient';
 const REVIEWED_RUNTIME_ENVIRONMENT_KEYS = new Set([
+  'REPORT_ASSET_ROOT',
   'AUDIT_PDF_CHROMIUM',
   'AUDIT_TRUST_PROXY',
   'AUTH_SECRET',
@@ -172,6 +186,31 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/reports/authority.ts',
+    'verifyReportAccount',
+    '29d8cb4129955814a05849ca0353b8bef10d4883401b615c64db5f55d0816496',
+  ],
+  [
+    'src/lib/reports/authority.ts',
+    'reportSnapshot',
+    '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '2b1d1f16e998bda5c0f91fd0a570d8eb17eb68caea5f775d7d1a3dbe5ff6e76c',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '2ca943aa3c24733ea0c54c2f263d0d06ea97296f465a816fad8e8229fd47b98a',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '858c7bf64ff2da16df2caa6f3e240b8332aec8f8a3a584eb348a7a886a90967e',
+  ],
   [
     'src/lib/outcome-query.ts',
     'readOutcomeWindow',
@@ -2286,6 +2325,16 @@ export function auditRuntimeSourceFailures(
       continue;
     }
     const isGateway = absolute === gatewayAbsolute;
+    const reportHash = REPORT_ENGINE_CLOSURES.get(source.path);
+    if (
+      reportHash &&
+      createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !== reportHash
+    )
+      failures.add('Report guarded closure differs from reviewed inventory: ' + source.path);
+    const isReportReadService =
+      source.path === 'src/lib/reports/authority.ts' ||
+      source.path === 'src/lib/reports/options.ts';
+    const isReportEngine = source.path === 'src/lib/reports/engine.ts';
     const isAuthService = absolute === serviceAbsolute;
     const isAuditExportService = source.path === 'src/lib/audit-history-export.ts';
     const isAuditHistoryReadService = source.path === 'src/lib/audit-history-query.ts';
@@ -2573,7 +2622,21 @@ export function auditRuntimeSourceFailures(
       }
 
       if (target === gatewayAbsolute) {
-        if (request.kind !== 'static') {
+        if (
+          isReportEngine &&
+          request.kind === 'static' &&
+          ts.isImportDeclaration(request.node) &&
+          request.node.importClause?.namedBindings &&
+          ts.isNamedImports(request.node.importClause.namedBindings) &&
+          request.node.importClause.namedBindings.elements.length === 1 &&
+          request.node.importClause.namedBindings.elements.every(
+            (element) =>
+              !element.propertyName && element.name.text === 'recordObservedExternalEvent',
+          )
+        ) {
+          // Only the observed-phase API; no context setter or mutation helper.
+          // Full engine identity above protects ordering, authority and evidence.
+        } else if (request.kind !== 'static') {
           add(request.node, 'audit gateway access must use the reviewed static named import');
         } else if (!isReviewedAuthService) {
           add(request.node, 'audit context imports are allowed only in the reviewed auth service');
@@ -2820,6 +2883,7 @@ export function auditRuntimeSourceFailures(
               isFeeLetterReadService ||
               isBillingReadService ||
               isTodayHearingReadService ||
+              isReportReadService ||
               isDashboardReadService
             ) ||
             !reviewedSql
