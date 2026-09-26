@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { t } from '@/strings';
 import { referenceRule, referenceOptions, reportFieldLabel } from '@/lib/reports/fields';
 import { cellText } from '@/lib/reports/result';
@@ -28,6 +28,21 @@ export function ReportForm({
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
+  const [reset, setReset] = useState(0);
+  useEffect(() => () => abort.current?.abort(), []);
+  useEffect(
+    () => () => {
+      if (download) URL.revokeObjectURL(download.url);
+    },
+    [download],
+  );
+  function invalidate() {
+    if (result || download) setMessage(t.reports.changed);
+    else setMessage('');
+    setResult(null);
+    setDownload(null);
+    setErrors([]);
+  }
   async function execute(format: ReportFormat) {
     if (busy || !form.current) return;
     const body = new URLSearchParams();
@@ -99,6 +114,15 @@ export function ReportForm({
       <form
         ref={form}
         noValidate
+        onChange={(event) => {
+          // Searching option labels changes no submitted parameter.
+          const target = event.target;
+          if (
+            (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) &&
+            target.name
+          )
+            invalidate();
+        }}
         onSubmit={(event) => {
           event.preventDefault();
           void execute('preview');
@@ -126,7 +150,7 @@ export function ReportForm({
             </>
           ) : null}
         </div>
-        <fieldset disabled={busy} className={styles.fields}>
+        <fieldset key={reset} disabled={busy} className={styles.fields}>
           <legend>{t.reports.filters}</legend>
           {descriptor.date
             ? (['from', 'to'] as const).map((key) => (
@@ -191,6 +215,7 @@ export function ReportForm({
               <select
                 id={`report-${rule.key}`}
                 name={rule.key}
+                defaultValue={rule.defaultValue ?? ''}
                 aria-required={rule.required}
                 aria-invalid={errors.includes(rule.key)}
                 aria-describedby={help(rule.key)}
@@ -223,6 +248,16 @@ export function ReportForm({
           <button type="button" disabled={busy} onClick={() => void execute('pdf')}>
             {t.reports.pdf}
           </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              invalidate();
+              setReset((value) => value + 1);
+            }}
+          >
+            {t.reports.clear}
+          </button>
           {busy ? (
             <button type="button" onClick={() => abort.current?.abort()}>
               {t.reports.cancel}
@@ -242,7 +277,7 @@ export function ReportForm({
             <>
               <h2>{t.reports.result}</h2>
               <p>
-                {t.reports.count}: <bdi>{result.rowCount}</bdi>
+                {descriptor.countLabel ?? t.reports.count}: <bdi>{result.rowCount}</bdi>
               </p>
               <p>
                 {t.reports.generatedAt}:{' '}
@@ -257,10 +292,10 @@ export function ReportForm({
               <p>{t.reports.previewHelp}</p>
               {result.data.sections.map((section) => (
                 <section key={section.id}>
-                  <h3>{section.title}</h3>
+                  {section.title ? <h3>{section.title}</h3> : null}
                   {section.groups.map((group) => (
                     <div key={group.id}>
-                      <h4>{group.title}</h4>
+                      {group.title ? <h4>{group.title}</h4> : null}
                       <div
                         className={styles.scroll}
                         role="region"

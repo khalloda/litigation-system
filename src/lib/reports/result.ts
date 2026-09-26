@@ -82,6 +82,7 @@ export function validateDefinition(definition: ReportDefinition) {
     !['grouped', 'date-grouped', 'flat', 'card'].includes(d.layout) ||
     d.columns.length < 1 ||
     d.columns.length > REPORT_LIMITS.columns ||
+    (d.countLabel !== undefined && (!d.countLabel || d.countLabel.length > 256)) ||
     new Set(d.columns.map((x) => x.key)).size !== d.columns.length ||
     typeof definition.query !== 'function'
   )
@@ -110,6 +111,7 @@ export function validateDefinition(definition: ReportDefinition) {
       extraKeys.has(e.key) ||
       !e.choices.length ||
       e.choices.length > 30 ||
+      (e.defaultValue !== undefined && !e.choices.some((x) => x.value === e.defaultValue)) ||
       new Set(e.choices.map((x) => x.value)).size !== e.choices.length ||
       e.choices.some((x) => !/^[a-z0-9-]{1,64}$/u.test(x.value))
     )

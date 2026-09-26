@@ -81,6 +81,47 @@ check('Cairo 25-hour autumn day', () =>
 check('missing optional means all', () =>
   assert.deepEqual(parse('format=preview').parameters.branch, { kind: 'all' }),
 );
+const withDefault: ReportDescriptor = {
+  ...descriptor,
+  extra: [
+    {
+      key: 'extra_status',
+      label: 'Status',
+      required: true,
+      defaultValue: 'active',
+      choices: [
+        { value: 'active', label: 'Active' },
+        { value: 'all', label: 'All' },
+      ],
+    },
+  ],
+};
+check('trusted enum default applies to omitted parameter', () =>
+  assert.equal(parse('format=preview', withDefault).parameters.extra['extra_status'], 'active'),
+);
+check('explicit all overrides enum default', () =>
+  assert.equal(
+    parse('format=preview&extra_status=all', withDefault).parameters.extra['extra_status'],
+    'all',
+  ),
+);
+for (const value of ['', 'unknown', 'ACTIVE'])
+  check('explicit invalid enum never silently becomes default: ' + value, () =>
+    assert.throws(() => parse('format=preview&extra_status=' + value, withDefault), ReportError),
+  );
+check('descriptor default must belong to trusted choices', () =>
+  assert.throws(
+    () =>
+      validateDefinition({
+        descriptor: {
+          ...withDefault,
+          extra: [{ ...withDefault.extra![0]!, defaultValue: 'unknown' }],
+        },
+        query: async () => data,
+      }),
+    ReportError,
+  ),
+);
 check('unassigned distinct from all', () =>
   assert.deepEqual(parse('format=preview&branch=unassigned').parameters.branch, {
     kind: 'unassigned',

@@ -52,7 +52,7 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
         hour12: false,
       }).format(new Date(result.generatedAt)),
     ],
-    [t.reports.count, result.rowCount],
+    [result.descriptor.countLabel ?? t.reports.count, result.rowCount],
     [t.reports.exactHelp],
     [t.reports.controlsHelp],
     ...result.filterLabels.map((x) => [x.label, x.value]),
@@ -114,7 +114,7 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
     }
   }
   for (const total of result.data.totals) add(sheet, [total.label, excelCell(total.value)]);
-  const count = add(sheet, [t.reports.count, result.rowCount]);
+  const count = add(sheet, [result.descriptor.countLabel ?? t.reports.count, result.rowCount]);
   count.font = { bold: true };
   if (result.descriptor.manual) {
     add(sheet, [result.descriptor.manual.heading]);

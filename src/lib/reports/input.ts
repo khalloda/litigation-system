@@ -118,7 +118,7 @@ export function parseReportInput(descriptor: ReportDescriptor, pairs: URLSearchP
   }
   const extra = new Map<string, string>();
   for (const rule of descriptor.extra ?? []) {
-    const value = values.get(rule.key) ?? '';
+    const value = values.get(rule.key) ?? rule.defaultValue ?? '';
     if ((!value && rule.required) || (value && !rule.choices.some((c) => c.value === value)))
       fields.push(rule.key);
     else if (value) extra.set(rule.key, value);

@@ -613,3 +613,11 @@ unchanged; no migration/provisioning or owner export was needed. See the
 [independent implementation PASS](docs/reviews/2026-09-26-task61-implementation-independent-review.md).
 Publication/receipt identities are external; independent operational review is
 pending. Task 6.2 has not started.
+
+### Task 6.2 candidate checkpoint (26 September 2026)
+
+Task 6.2 and T61-N1 are being implemented locally from the accepted Task 6.1
+checkpoint. The Cairo-time Excel correction and two source-mapped client reports
+have initial full-data and browser/export evidence. Seven report definitions await
+the owner decisions documented in [the implementation checkpoint](docs/testing/task-6-2-implementation-report.md).
+This is incomplete candidate work, with no owner activation, acceptance or push.

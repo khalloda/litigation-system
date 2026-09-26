@@ -186,6 +186,28 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  // Task 6.2: fixed SELECT adapters inside the engine's read-only snapshot.
+  // IDs/date endpoints are bound values; no request-provided SQL or writes.
+  [
+    'src/lib/reports/client-contacts.ts',
+    'readActiveClientContacts',
+    '211b0cf88b2939838cb68e02a66f0c1e6751d5f0d9c08b043eddc4797671b166',
+  ],
+  [
+    'src/lib/reports/client-judgments.ts',
+    'readClientJudgments',
+    '193f597797cef44626aa6764c5275d5001f192e84112a15ce0980b06ab5ecf8f',
+  ],
+  [
+    'src/lib/reports/client-report-data.ts',
+    'reportClientName',
+    '1e0ca59faaa30cdab9c17ce16c73e0fa679f05b8c1cd36b7204636defa5763f2',
+  ],
+  [
+    'src/lib/reports/client-report-data.ts',
+    'reportParties',
+    '6f400d7b6b320dbcb789e3be9f4a2922fbf4df40467dc146dad7133e1e14520e',
+  ],
   [
     'src/lib/reports/authority.ts',
     'verifyReportAccount',
@@ -2333,7 +2355,10 @@ export function auditRuntimeSourceFailures(
       failures.add('Report guarded closure differs from reviewed inventory: ' + source.path);
     const isReportReadService =
       source.path === 'src/lib/reports/authority.ts' ||
-      source.path === 'src/lib/reports/options.ts';
+      source.path === 'src/lib/reports/options.ts' ||
+      source.path === 'src/lib/reports/client-contacts.ts' ||
+      source.path === 'src/lib/reports/client-judgments.ts' ||
+      source.path === 'src/lib/reports/client-report-data.ts';
     const isReportEngine = source.path === 'src/lib/reports/engine.ts';
     const isAuthService = absolute === serviceAbsolute;
     const isAuditExportService = source.path === 'src/lib/audit-history-export.ts';

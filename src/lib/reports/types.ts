@@ -61,11 +61,14 @@ export type ReportDescriptor = Readonly<{
     key: string;
     label: string;
     required: boolean;
+    defaultValue?: string;
     choices: readonly Readonly<{ value: string; label: string }>[];
   }>[];
   columns: readonly ReportColumn[];
   layout: ReportLayout;
   clientFacing: boolean;
+  /** Trusted label for this definition's logical row grain. */
+  countLabel?: string;
   manual?: Readonly<{ heading: string; labels: readonly string[]; lines: number }>;
   permissions: readonly PermissionRequest[];
 }>;

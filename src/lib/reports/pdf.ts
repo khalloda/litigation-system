@@ -41,30 +41,34 @@ export async function reportHtml(result: ReportResult, session: Session) {
     ? `<aside><h2>${text(manual.heading)}</h2><table><thead><tr>${manual.labels.map((x) => `<th>${text(x)}</th>`).join('')}</tr></thead><tbody>${Array.from({ length: manual.lines }, () => `<tr>${manual.labels.map(() => '<td class="blank">................................</td>').join('')}</tr>`).join('')}</tbody></table></aside>`
     : '';
   let cardNumber = 0;
-  const body = result.data.sections
-    .map(
-      (section) =>
-        `<section><h2>${text(section.title)}</h2>${section.groups
-          .map((group) => {
-            const day = group.date
-              ? new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(
-                  new Date(`${group.date}T12:00:00Z`),
-                )
-              : '';
-            const groupTitle =
-              result.descriptor.layout === 'date-grouped' ? `${day} ${group.date}` : group.title;
-            if (result.descriptor.layout === 'card')
-              return group.rows
-                .map(
-                  (r, i) =>
-                    `<article class="card${cardNumber++ ? ' next-card' : ''}"><strong class="record">${text(r.id)}</strong><table>${width}<thead>${cols}</thead><tbody>${row(r, i + 1)}</tbody></table>${blanks}</article>`,
-                )
-                .join('');
-            return `<table>${width}<thead>${result.descriptor.layout !== 'flat' ? `<tr><th colspan="${result.descriptor.columns.length + 1}">${text(groupTitle)}</th></tr>` : ''}${cols}</thead><tbody>${group.rows.map((r, i) => row(r, i + 1)).join('') || `<tr><td colspan="${result.descriptor.columns.length + 1}">${text(t.reports.noRows)}</td></tr>`}</tbody></table>`;
-          })
-          .join('')}</section>`,
-    )
-    .join('');
+  const body =
+    result.data.sections
+      .map(
+        (section) =>
+          `<section><h2>${text(section.title)}</h2>${section.groups
+            .map((group) => {
+              const day = group.date
+                ? new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(
+                    new Date(`${group.date}T12:00:00Z`),
+                  )
+                : '';
+              const groupTitle =
+                result.descriptor.layout === 'date-grouped' ? `${day} ${group.date}` : group.title;
+              if (result.descriptor.layout === 'card')
+                return group.rows
+                  .map(
+                    (r, i) =>
+                      `<article class="card${cardNumber++ ? ' next-card' : ''}"><strong class="record">${text(r.id)}</strong><table>${width}<thead>${cols}</thead><tbody>${row(r, i + 1)}</tbody></table>${blanks}</article>`,
+                  )
+                  .join('');
+              return `<table>${width}<thead>${result.descriptor.layout !== 'flat' ? `<tr><th colspan="${result.descriptor.columns.length + 1}">${text(groupTitle)}</th></tr>` : ''}${cols}</thead><tbody>${group.rows.map((r, i) => row(r, i + 1)).join('') || `<tr><td colspan="${result.descriptor.columns.length + 1}">${text(t.reports.noRows)}</td></tr>`}</tbody></table>`;
+            })
+            .join('')}</section>`,
+      )
+      .join('') +
+    (result.data.sections.every((section) => section.groups.length === 0)
+      ? `<p>${text(t.reports.noRows)}</p>`
+      : '');
   const generated = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Africa/Cairo',
     dateStyle: 'short',
@@ -74,7 +78,7 @@ export async function reportHtml(result: ReportResult, session: Session) {
   const footer = `<div style="font-family:Report0,Report1,Report2;font-size:9px;width:100%;direction:rtl;text-align:center"><style>${fonts}</style>${text(generated)} — ${text(result.descriptor.title)} — ${text(t.reports.page)} <span class="pageNumber"></span> ${text(t.reports.of)} <span class="totalPages"></span></div>`;
   const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"><style>${fonts}
     @page{size:A4 ${result.descriptor.layout === 'card' ? 'portrait' : 'landscape'}}
-    body{font-family:Report0,Report1,Report2;font-size:9pt;line-height:1.5;color:#000}h1,h2{color:#214B4B;break-after:avoid}h1{font-size:17pt;margin:2px;line-height:1.3}h2{font-size:11pt;margin:2px;line-height:1.3}header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #214B4B;padding-bottom:6px}header:after{content:'';position:absolute;inset-inline:0;inset-block-end:2px;border-bottom:2px solid #B6AA92}header>div{width:30%;text-align:center}header img{max-width:100%;max-height:55px;object-fit:contain}.watermark{position:fixed;inset-block-start:0;inset-inline-end:0;width:85px;opacity:.05;z-index:-1}.watermark img{width:100%}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}th,td{border:1px solid #ccc;padding:3px;text-align:start;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}th{background:#eee}thead{display:table-header-group}tr{break-inside:auto}bdi{unicode-bidi:plaintext;white-space:pre-wrap}.attention td{background:#ffff00}.count{font-weight:bold}.next-card{break-before:page}.record{display:inline-block;border:3px solid #000;padding:5px}.blank{height:20px}aside{break-inside:auto;border-top:2px solid #B6AA92}aside h2{break-after:avoid}</style></head><body><div class="watermark">${image(assets.emblem, 'image/png', '')}</div>${heading}<p>${result.filterLabels.map((x) => `${text(x.label)}: <bdi>${text(x.value)}</bdi>`).join(' · ')}</p><p>${text(t.reports.generatedAt)}: <bdi>${text(generated)}</bdi></p>${body}${result.descriptor.layout !== 'card' ? `<table><tbody>${result.data.totals.map((x) => `<tr><th>${text(x.label)}</th><td>${text(cellText(x.value))}</td></tr>`).join('')}<tr class="count"><th>${text(t.reports.count)}</th><td>${result.rowCount}</td></tr></tbody></table>${blanks}` : ''}</body></html>`;
+    body{font-family:Report0,Report1,Report2;font-size:9pt;line-height:1.5;color:#000}h1,h2{color:#214B4B;break-after:avoid}h1{font-size:17pt;margin:2px;line-height:1.3}h2{font-size:11pt;margin:2px;line-height:1.3}header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #214B4B;padding-bottom:6px}header:after{content:'';position:absolute;inset-inline:0;inset-block-end:2px;border-bottom:2px solid #B6AA92}header>div{width:30%;text-align:center}header img{max-width:100%;max-height:55px;object-fit:contain}.watermark{position:fixed;inset-block-start:0;inset-inline-end:0;width:85px;opacity:.05;z-index:-1}.watermark img{width:100%}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}th,td{border:1px solid #ccc;padding:3px;text-align:start;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}th{background:#eee}thead{display:table-header-group}tr{break-inside:auto}bdi{unicode-bidi:plaintext;white-space:pre-wrap}.attention td{background:#ffff00}.count{font-weight:bold}.next-card{break-before:page}.record{display:inline-block;border:3px solid #000;padding:5px}.blank{height:20px}aside{break-inside:auto;border-top:2px solid #B6AA92}aside h2{break-after:avoid}</style></head><body><div class="watermark">${image(assets.emblem, 'image/png', '')}</div>${heading}<p>${result.filterLabels.map((x) => `${text(x.label)}: <bdi>${text(x.value)}</bdi>`).join(' · ')}</p><p>${text(t.reports.generatedAt)}: <bdi>${text(generated)}</bdi></p>${body}${result.descriptor.layout !== 'card' ? `<table><tbody>${result.data.totals.map((x) => `<tr><th>${text(x.label)}</th><td>${text(cellText(x.value))}</td></tr>`).join('')}<tr class="count"><th>${text(result.descriptor.countLabel ?? t.reports.count)}</th><td>${result.rowCount}</td></tr></tbody></table>${blanks}` : ''}</body></html>`;
   if (Buffer.byteLength(html) > REPORT_LIMITS.resultBytes) throw new ReportError('too-large');
   return { html, footer };
 }
