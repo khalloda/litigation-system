@@ -1,34 +1,30 @@
-# Task 6.2 / T61-N1 acceptance matrix
+# Task 6.2 / T61-N1 implementation-review matrix
 
-Created before implementation, 26 September 2026, at base
-`0f67c55c342bee896a8c32ab991b8de1f6112689`. This matrix records implementation
-proof only; Task 6.2 stays unchecked. No owner activation/publication is authorized.
+Base `0f67c55c342bee896a8c32ab991b8de1f6112689`. All TASKS.md bytes and 86
+checkbox lines remain unchanged. This is implementation proof, not acceptance.
+Evidence root: `test-results/task62-20260926T145000Z/`. Private credentials/state
+bodies remain local. Earlier matrix and failed attempts are retained there.
 
-Evidence root: `test-results/task62-20260926T145000Z/`. Private state stays in the
-separate protected task directory; raw credentials and dumps are never delivered.
-The [semantics map](task-6-2-report-semantics.md) records each of nine identities,
-source findings and pending material decisions before dependent implementation.
-
-| Gate | Planned independent evidence | Current result |
+| Gate | Evidence | Result / required delivery gate |
 |---|---|---|
-| Handoff/source | Offline verifier, raw commit/tree/source and TASKS/73 migration identities | PASS: `handoff-verification.json`, `source-intake.json`; 914 package members, 892 identities/890 shareable source bodies. |
-| Prior Task 6.1 review | Verbatim supplied operational PASS, with T61-N1 open until fresh correction | Imported verbatim into `docs/reviews/2026-09-26-task61-operational-independent-review.md`. No old evidence rewritten. |
-| Nine source meanings | Direct exports, fallback metadata, saved queries, calling actions, current decisions and original sample | `source-probe.json`, `source-samples.json`; original sample visually inspected. Two owner decisions pending. |
-| Preservation | Fresh full read-only owner before/final; protected file hashes, junctions, named-root ACLs; exact new-root ACL coverage | Baseline: 523,462 files/80 junctions; fresh intermediate full owner equality at `two-reports-state.json`. Final cycle outstanding. No owner mutation/login/export. |
-| Isolated recovery | Owner-matching retained recovery or fresh protected backup; new cluster/storage/port/principal/logos; pristine equality | PASS `recovery-reuse.json`, `pristine-equality.json`; new cluster `7689861188731662375`, exact pristine read window checked before fixture password setup. |
-| Nine adapters | Registry identity/version, all ordered typed rows/groups/counts against independent SQL/source oracle | Two registered v1: contact and judgment. Independent normalized-relation oracle: 100 contacts/55 groups and 322 judgment runs across 318 clients/13,382 hearings. Seven entries await decisions. |
-| Edge semantics | Native/released/null/unassigned/duplicates, relationships, dates/latest, long text, financial exactness | Pending fixture/query proof. |
-| Archive integration | Actual fixture gateways before/after; complete result/XLSX/PDF equality; negative exclusion mutant | Pending. Client/matter/hearing independently covered. |
-| Outputs | Real saved XLSX/PDF for all nine; complete decoded contents and representative page visuals | Two entries: 16 genuine saved downloads; all 8 XLSX files fully decoded against independent oracle. Eight PDFs inspected for bounds/embedded glyphs; selected first/middle/last pages visually checked. Remaining family/edge output proof pending. |
-| T61-N1 | Actual decoded files for fixed winter/summer/rollover; preserved machine/audit/DATE values | PASS `n1-clock-current-files/proof.json`; local commit `89ec396`. Current combined-source recheck recorded separately. Existing workbook core-property second precision is unchanged. |
-| Four roles/denials | Genuine fixture login; nine discover/describe/run/export paths; affected security cases | Contact/judgment ordinary-browser sign-in/discovery/run/saved XLSX/PDF PASS for all four roles. Remaining seven/denial suite outstanding. |
-| Audit/read separation | Full DB equality for reads; exact report/export/lifecycle/accounting windows and saved byte hashes | PASS pristine read window plus `two-reports-exact-accounting.json`: 68 exact new events (24 auth/44 report), four reconstructed account rows, mutex +12, counter +68; 137 other tables/48 sequences unchanged. |
-| Browser/accessibility | Ordinary candidate, nine entries; filters/errors/stale/clear/back/retry/search; keyboard/RTL/320/390/desktop/native200%; axe | Two-entry validation/stale/clear/empty flow and 320/390/1280 width overflow checks PASS. Full keyboard/zoom/axe and nine-entry proof pending. Speech excluded. |
-| Build/check/gates | Fresh ordinary build/full npm check, relevant tests; pristine/final fixture148+15 and owner read-only gates | N1/full two-report build and source checks passed; 62 contract checks. Pristine fixture148+15 and owner read-only148+15 PASS. Final combined gates outstanding; no migration candidate. |
-| Performance | Bounded set-based query counts/plans/timings at full volume; largest relevant client outputs | Pending. Old 973-page generic PDF need not be regenerated unchanged. |
-| Cleanup/final source | Exact task fixture/resource identities; final owner and files comparisons; local commit chain/frozen TASKS | Pending. Prior evidence and recovery retained. |
-| Five-file delivery | Safe complete ZIP/manifest, standalone offline verifier, core verification and acyclic receipt; negatives and reopen | Pending. Stop for independent implementation review. |
+| Handoff/source | handoff-verification.json; source-intake.json | PASS: 914 members, 892 identities/890 source bodies; protected D59 bodies omitted. |
+| Nine meanings/decisions | source-probe.json; source-samples.json; business-decision-provenance.json | All nine mapped; direct owner decisions settle latest-overall period and six manual-selection replacements. No live Access equivalence claim. |
+| Recovery | recovery-reuse.json; pristine-equality.json | PASS full owner-matching restore; new cluster 7689861188731662375. Recovery retained. |
+| All nine adapters | seven-oracle-03; native-full-oracle; native-contact-judgment-oracle | PASS full ordered typed rows/groups/totals across every client, before and after native fixtures; six per-ID legacy/adopted comparisons. |
+| Edges/current relationships | native-edges-02; native-retirement-01 | PASS native, dates/latest/blank/ties/no-hearing, all/null status, raw finance, lawyer roles, retired relationships/no fallback, no multiplication. |
+| Archives | native-archive-01; archive-file-inspection.json | PASS all nine full results and 36 actual before/archived files; client/matter/hearing gateways; exclusion mutant detected; restored. |
+| Four roles/actual files | nine-family-browser-01; nine-browser-exact-accounting.json; nine-file-inspection.json | 72 completed browser downloads, 36 complete typed XLSX comparisons and 36 whole-PDF inspections. Late harness failures retained and completed outcomes independently reconciled. |
+| T61-N1 | checkpoint-n1-files/proof.json; final-n1-files/proof.json | Corrected separately in 89ec396; winter/summer/rollover decoded files, UTC/DATE unchanged. Final focused recheck required in seal. |
+| Denials/read equality | family-boundaries-02; permissions-480-current; reuse-bindings.json | 100 denial requests with no adapter work; complete catalog/form/option state equality; 480 current static checks plus exactly bound unchanged runtime defenses. |
+| UI/accessibility | nine-accessibility-02; nine-browser-exact-accounting.json | 15 axe scans: zero violations, incomplete rules retained; keyboard, RTL, 320/390/1280, genuine 200% zoom, errors/search/stale/clear/back. No speech testing. |
+| Audit/accounting | final-fixture-exact-accounting.json | PASS 322 exact contiguous new events, 4 reconstructed account rows, 19 native rows, 7 sequence increments; all pre-existing business rows unchanged. |
+| Performance | family-boundaries-02; largest-file-inspection.json; largest-header-inspection.json | Complete 378-row/47-page and 235-row/48-page exports, 29/28 total engine queries, actual plans/timings. Old 973-page generic PDF reused by identity. |
+| Final check/build/contracts | final-combined-check; final-combined-build; final-contract; final-source.json | Fresh final source/build gates and 62 contracts; complete bindings. Sealing requires exit 0, not this matrix alone. |
+| Database gates | final-fixture-gates; commands/owner-final-readonly-gates.json | PASS 148 historical + 15 setup on final fixture and explicit read-only owner; pristine gates retained. No migration. |
+| Preservation/cleanup | files-final-comparison.json; owner-final.json; cleanup.json; final-source.json | Mandatory final full-state/file/junction/root-ACL/new-root-ACL/source equality and exact owned-resource cleanup, independently validated before sealing. |
+| Five-file delivery | REVIEW-INDEX.json; manifest; verifier; verification; receipt | Offline raw Git/source/forward-reverse reconstruction, mandatory evidence and meaningful negative cases; acyclic receipt-inclusive reopen. Independent review follows. |
 
-No unperformed or partial check is passed. Failed attempts remain in the new
-evidence root and are distinguished from bounded successful retries. Historical
-source equality can support reuse; it does not make old runtime evidence fresh.
+The prior Task 6.1 operational review is imported verbatim. Freshness and exact
+reuse limits are in the [implementation report](task-6-2-implementation-report.md).
+Final external preservation, cleanup and delivery identities belong in the sealed
+evidence and post-seal receipt; unperformed checks cannot pass by documentation.

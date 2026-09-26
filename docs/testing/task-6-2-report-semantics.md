@@ -1,4 +1,4 @@
-# Task 6.2 client-report semantics — investigation checkpoint
+# Task 6.2 client-report semantics — adopted implementation contract
 
 Base: `0f67c55c342bee896a8c32ab991b8de1f6112689`. The owner adopted the
 Task 6.2 implementation mandate on 26 September 2026. This is an implementation
@@ -30,21 +30,20 @@ production catalog. No live Access equivalence is claimed by this investigation.
 
 ## Required catalog and source findings
 
-The contact and judgment definitions are registered as version `1` in the local
-candidate. The other seven IDs remain reserved pending the two decisions below.
-This intermediate catalog is not a complete Task 6.2 delivery.
+All nine definitions are registered as version `1` in the local candidate.
+Implementation verification remains in progress; catalog presence is not acceptance.
 
 | Legacy entry | Planned ID | Proven source contract / layout | Unresolved or approved difference |
 |---|---|---|---|
 | Contact list for active clients | `client-active-contacts` | Saved `Contact list`: contacts joined to clients; client Status="active" AND Cash/probono="cash"; eight contact columns; grouped by Client_en. One contact identity per row. | Use current client IDs, Arabic-first name and retained English name; preserve duplicate/unnamed contacts and all archive states. Main-contact selection is not a predicate. |
-| rptClientBranches | `client-branches` | Client required; matterSelect=Yes and hearing report=Yes; no status or nonblank-decision predicate. Branch header, opponent ordering. Matter court/circuit; hearing date/decision. | Manual-selection replacement awaits owner decision. Null branch must remain an unassigned group under D19/D39. |
-| rptClientMatters1 | `client-matters` | Client required; active matter; both selection flags; decision<>empty; flat list, hearing court/circuit/date/decision. | Manual-selection/latest-record decision pending. |
-| rptClientMatters1ByBranch | `client-branch-matters` | Client and branch parameters; both selection flags; nonempty decision; no status restriction. Flat branch-specific list; matter court/circuit. | Unassigned is a valid branch choice. Manual-selection/latest-record decision pending. |
-| rptClientMatters1ByBranch&Finance | `client-branch-finance` | Same branch-specific predicates; hearing court/circuit, date/decision and raw financial-provision text. No numeric sum control. | Provision remains exact text, including null/empty; no invented currency or total. Manual-selection/latest-record decision pending. |
+| rptClientBranches | `client-branches` | Client required; matterSelect=Yes and hearing report=Yes; no status or nonblank-decision predicate. Branch header, opponent ordering. Matter court/circuit; hearing date/decision. | Approved replacement: current criteria and latest hearing overall, selected before other hearing qualifications. Null branch must remain an unassigned group under D19/D39. |
+| rptClientMatters1 | `client-matters` | Client required; active matter; both selection flags; decision<>empty; flat list, hearing court/circuit/date/decision. | Approved replacement: current criteria and latest hearing overall, selected before other hearing qualifications. |
+| rptClientMatters1ByBranch | `client-branch-matters` | Client and branch parameters; both selection flags; nonempty decision; no status restriction. Flat branch-specific list; matter court/circuit. | Unassigned is a valid branch choice. Approved replacement: current criteria and latest hearing overall, selected before other hearing qualifications. |
+| rptClientMatters1ByBranch&Finance | `client-branch-finance` | Same branch-specific predicates; hearing court/circuit, date/decision and raw financial-provision text. No numeric sum control. | Provision remains exact text, including null/empty; no invented currency or total. Approved replacement: current criteria and latest hearing overall, selected before other hearing qualifications. |
 | rptClientMattersWithEvaluation | `client-evaluation` | Active matters, both flags, nonempty decision; branch header then opponent order. Menu promises evaluation without finance, but actual query omits matteEvaluation and control named تقييم reads المخصص المالي beneath ملاحظات. | Resolved by adopted prompt entry 6: current evaluation, not financial provision; conflicting legacy binding is retained as a source-evidence limitation. |
-| rptClients-Branches-Evaluation-Finance | `client-branch-evaluation-finance` | Client required; both flags, nonempty decision; all statuses; branch grouping. Separate matteEvaluation and المخصص المالي controls, hearing court/circuit/date/decision. No sum control. | Exact current evaluation and retained provision text; no financial aggregation. Manual-selection/latest-record decision pending. |
+| rptClients-Branches-Evaluation-Finance | `client-branch-evaluation-finance` | Client required; both flags, nonempty decision; all statuses; branch grouping. Separate matteEvaluation and المخصص المالي controls, hearing court/circuit/date/decision. No sum control. | Exact current evaluation and retained provision text; no financial aggregation. Approved replacement: current criteria and latest hearing overall, selected before other hearing qualifications. |
 | rptJudgmentPerClient | `client-judgments` | Client and both hearing dates required; hearing outcome<>empty; one qualifying hearing per row; date ascending. Court/circuit, parties, subject, dated decision. Menu explicitly says بدون مبالغ; amounts/lawyer selected in SQL are not displayed controls. | Preserve all nonempty outcome values, not just dashboard for/against; do not sum repeated matter amounts or add them to this report. Stable hearing ID resolves equal dates. |
-| تقرير عملاء 2 | `client-status` | D17 merges 2/6/8/all-status copies. D18/Type 4 require client, optional period/lawyer, active default or all, one matter once, latest hearing overall and descending activity date. | Query/calling form has no period predicate or lawyer-role rule. Period decision requested. Lawyer selection uses current matter-assignment IDs; no name matching or retired links. |
+| تقرير عملاء 2 | `client-status` | D17 merges 2/6/8/all-status copies. D18/Type 4 require client, optional period/lawyer, active default or all, one matter once, latest hearing overall and descending activity date. | Query/calling form has no period predicate or lawyer-role rule. Approved period filters the selected latest-overall date, inclusive supplied bounds. Lawyer selection uses current matter-assignment IDs; no name matching or retired links. |
 
 ## Safe current semantics
 
@@ -65,27 +64,54 @@ This intermediate catalog is not a complete Task 6.2 delivery.
 - Type 4 retains a truly latest record even when its decision is blank. Dated
   hearings precede undated hearings; equal dates use stable hearing ID. A matter
   with no hearing and one with only undated hearings remain distinguishable.
-  No-hearing/undated behavior under the optional period awaits the period choice.
+  No-hearing/undated matters may appear unbounded; any supplied bound excludes them.
 - Count rows count logical rows, never continuation lines or multiplied child
   joins. A judgment is a hearing; a contact is a contact. Matter report counts
-  will follow the owner-resolved selection/grain rule.
+  count one qualified matter once.
 - All four roles may read/run/export within existing server resource permissions.
   Report catalog/options are read-only; run/export events remain truthful and
   distinct from actual browser receipt. Audit export capability is unrelated.
 
-## Pending material decisions
+## Owner-adopted continuation — 26 September 2026
 
-Three numbered questions were initially sent in this same chat after inspecting direct
-exports, fallback metadata, saved queries, dashboard actions and current schema:
-(1) latest-overall action in period versus any action in period; (2) replacing
-immutable legacy manual selections in six variants with current criteria/latest
-hearing versus preserving the old flagged rows; (3) actual evaluation versus the
-misbound provision-as-notes control. No answer is inferred from elapsed time.
-On rereading the adopted mandate, entry 6 explicitly requires actual evaluation
-fields. That newer explicit instruction resolves question 3 without another owner
-decision: use current `matters.evaluation`, retain null/empty distinctions, and
-document the old financial-control mismatch. Questions 1 and 2 remain pending;
-their dependent code must wait. The T61-N1 fix and contact/judgment work proceed.
+The owner directly adopted `task62-business-decisions-continuation.md` in this
+same chat. Its exact body and SHA-256 are preserved in the evidence root as
+`adopted-business-decisions.md` and `business-decision-provenance.json`. The
+document's preparatory wording did not establish approval; the direct adoption did.
+
+1. Type 4's period filters the latest hearing/action OVERALL, selected first.
+   A January hearing followed by September is excluded in January and eligible
+   in September. No older in-period/nonblank fallback. This current-position
+   meaning appears beside inputs and in export parameter summaries. Both bounds
+   are inclusive civil dates; missing dates cannot satisfy either supplied bound.
+   Unbounded periods include no-hearing and undated matters otherwise eligible.
+2. The six legacy manual-selection reports use current client/status/branch
+   criteria and one latest hearing per matter. Both old flags cease to be
+   inclusion requirements. All six retain their original hearing requirement.
+   Only client-branches allows a null/empty latest decision; the other five
+   require a nonempty decision AFTER latest selection. client-matters and
+   client-evaluation retain fixed active status. Native/old-unselected records
+   qualify by these same criteria. No flag editor or migration is introduced.
+3. Actual evaluation was already required by original mandate entry 6; the
+   legacy evaluation control's provision binding is documented, not copied.
+
+The Type 4 legacy date restriction remains unsupported by the retained exports;
+the explicit owner decision supplies that missing business rule. No live Access
+equivalence is claimed. Per-definition legacy/adopted membership and reasons
+are separately tested. Judgment keeps every qualifying hearing, contacts every
+qualifying contact; neither adopts the one-matter grain.
+
+Latest means greatest hearing DATE (dated before undated), then greatest hearing
+ID. All-undated sets choose greatest ID. Type 4 orders selected date descending,
+hearing ID descending, then matter ID ascending, with no-hearing last. Other
+reports use current branch labels in UTF-8 byte order (null last), stable branch
+IDs, and evidenced opponent order for branches/evaluation, then stable matter ID.
+Ungrouped legacy definitions with no evidenced ordering use stable matter ID.
+Branch-matters preserves distinct court AND circuit columns; other definitions
+combine the evidenced matter/hearing court and circuit without duplication.
+Finance/evaluation columns follow latest decision in the traced RTL order.
+Totals count logical matters; raw provision is never summed. All seven use
+verified current client branding with the established fallback.
 
 ## T61-N1
 
@@ -131,5 +157,6 @@ Enum defaults are server validated; explicit invalid values do not become defaul
 The optional trusted count label supports Type 4's required matter total across
 preview/XLSX/PDF without changing the generic engine's logical row count.
 
-Native/edge fixtures, archive mutation proof, the final nine-report browser and
-accessibility matrix, performance proof and final packaging remain outstanding.
+The intermediate proof above is retained. Completed nine-report native/archive,
+browser/accessibility and performance proof is mapped in the final acceptance
+matrix and implementation report; final packaging identities are in the receipt.

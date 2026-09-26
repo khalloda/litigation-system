@@ -621,3 +621,14 @@ checkpoint. The Cairo-time Excel correction and two source-mapped client reports
 have initial full-data and browser/export evidence. Seven report definitions await
 the owner decisions documented in [the implementation checkpoint](docs/testing/task-6-2-implementation-report.md).
 This is incomplete candidate work, with no owner activation, acceptance or push.
+
+
+### Task 6.2 implementation candidate (26 September 2026)
+
+All nine client reports and T61-N1 Cairo Excel display correction are implemented
+locally under the adopted business continuation. Full-data, four-role browser,
+export, archive and accessibility proof is recorded in
+[the implementation report](docs/task-reports/2026-09-26-task-6-2-implementation.md).
+This supersedes the earlier pending-decision checkpoint only as implementation
+progress. Independent review remains required; TASKS.md, migration 73 and the
+accepted owner app remain unchanged. Nothing is pushed or activated.

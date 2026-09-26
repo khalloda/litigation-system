@@ -140,8 +140,8 @@ async function main() {
       return route.abort();
     });
     const page = await login(context, base, user);
-    assert.equal(await page.getByText(t.reports.emptyCatalog, { exact: true }).count(), 1);
-    assert.equal(await page.locator('a[href^="/reports/"]').count(), 0);
+    assert.equal(await page.getByText(t.reports.emptyCatalog, { exact: true }).count(), 0);
+    assert.equal(await page.locator('a[href^="/reports/"]').count(), 9);
     const unknown = await page.evaluate(async () => {
       const response = await fetch('/reports/probe-volume/run', {
         method: 'POST',
@@ -192,9 +192,12 @@ async function main() {
         sha256: createHash('sha256').update(bytes).digest('hex'),
       });
     }
-    pass('ordinary empty registry / actual shared harness form / navigation without audit noise', {
-      role: user.role,
-    });
+    pass(
+      'ordinary nine-report registry / separate shared harness form / navigation without audit noise',
+      {
+        role: user.role,
+      },
+    );
     await context.close();
   }
   const profile = join(priv, 'browser-profile-' + out.split(/[\\/]/).at(-1));

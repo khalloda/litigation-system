@@ -186,6 +186,11 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/reports/client-matter-reports.ts',
+    'readClientMatterReport',
+    'f11639ae9cc077ce8f25534a9227bc9872f312b5b91c60582c584947abad94ca',
+  ],
   // Task 6.2: fixed SELECT adapters inside the engine's read-only snapshot.
   // IDs/date endpoints are bound values; no request-provided SQL or writes.
   [
@@ -2358,6 +2363,7 @@ export function auditRuntimeSourceFailures(
       source.path === 'src/lib/reports/options.ts' ||
       source.path === 'src/lib/reports/client-contacts.ts' ||
       source.path === 'src/lib/reports/client-judgments.ts' ||
+      source.path === 'src/lib/reports/client-matter-reports.ts' ||
       source.path === 'src/lib/reports/client-report-data.ts';
     const isReportEngine = source.path === 'src/lib/reports/engine.ts';
     const isAuthService = absolute === serviceAbsolute;
