@@ -43,7 +43,15 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
   info.columns = [{ width: 32 }, { width: 110 }];
   info.addRows([
     [t.reports.title, result.descriptor.title],
-    [t.reports.generatedAt, result.generatedAt],
+    [
+      t.reports.generatedAt,
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Africa/Cairo',
+        dateStyle: 'short',
+        timeStyle: 'medium',
+        hour12: false,
+      }).format(new Date(result.generatedAt)),
+    ],
     [t.reports.count, result.rowCount],
     [t.reports.exactHelp],
     [t.reports.controlsHelp],
