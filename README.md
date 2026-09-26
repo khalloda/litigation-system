@@ -1,5 +1,14 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Task 6.1 shared reporting engine candidate - 26 September 2026
+
+The local candidate adds the reusable reporting form, guarded execution and Excel/PDF
+renderers. The production catalog is empty pending later approved report definitions.
+It is not activated or accepted; TASKS and migration 73 remain unchanged. See the
+[implementation report](docs/task-reports/2026-09-26-task-6-1-reporting-engine-implementation.md)
+and [acceptance matrix](docs/testing/task-6-1-acceptance-matrix.md).
+
+
 ## Task 5.1 local candidate — 21 September 2026
 
 The local candidate adds an Arabic **جلسات اليوم** panel to authenticated home:
