@@ -2422,7 +2422,7 @@ than assuming one rule for every workflow. Test with real volumes.
 
 ## Stage 6 — Reports
 
-- [ ] **6.1 Reporting engine** — one shared parameter form (date range, client,
+- [x] **6.1 Reporting engine** — one shared parameter form (date range, client,
       branch, lawyer), Excel via ExcelJS with `rightToLeft`, PDF via Playwright
       with bundled fonts and the firm letterhead.
 - [ ] **6.2 Client reports**

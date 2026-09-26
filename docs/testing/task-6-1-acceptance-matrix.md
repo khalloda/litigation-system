@@ -60,3 +60,16 @@ not universal conformance. Private raw state remains local; shared summaries
 cannot independently reproduce those withheld bodies. Local seed recovery does
 not protect against disk/laptop loss. Prior-root ACL scope is not every prior
 descendant ACL.
+
+
+## Operational supplement — 26 September 2026
+
+Fresh recovery/restore, 148+15 fixture and owner gates, ordinary build/full check,
+four genuine fixture roles, actual small XLSX/PDF inspection, separate harness,
+responsive/zoom/keyboard and six axe scans, exact authentication/read windows,
+activation and preservation are recorded in the
+[operational report](../task-reports/2026-09-26-task-6-1-acceptance-activation.md).
+Earlier source-bound implementation tests remain valid reused evidence, with
+failed attempts and accessibility/PDF limits retained. Production catalog empty;
+migration/provisioning not applicable; migration73 preserved. Independent
+operational review remains pending; Task 6.2 is not started.

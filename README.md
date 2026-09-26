@@ -602,3 +602,14 @@ See the [acceptance and activation report](docs/task-reports/2026-09-22-tasks-5-
 and [updated acceptance matrix](docs/testing/tasks-5-2-5-5-acceptance-matrix.md). The external operational
 receipt records the eventual documentation-child and publication identities. Independent operational
 review remains pending. Stage 6, Ubuntu deployment and Access cutover have not started.
+
+
+### Task 6.1 acceptance and local activation — 26 September 2026
+
+The independently reviewed reporting foundation at `7da48b65` is accepted and
+locally active with an honestly empty production report catalog. Migration73 is
+unchanged; no migration/provisioning or owner export was needed. See the
+[operational record](docs/task-reports/2026-09-26-task-6-1-acceptance-activation.md) and
+[independent implementation PASS](docs/reviews/2026-09-26-task61-implementation-independent-review.md).
+Publication/receipt identities are external; independent operational review is
+pending. Task 6.2 has not started.
