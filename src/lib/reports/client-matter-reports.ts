@@ -68,7 +68,8 @@ const configurations: readonly Configuration[] = [
     evaluation: true,
     finance: true,
   },
-  { variant: 'status', title: t.clientReports.statusTitle, matterCourt: true },
+  // Type4 court and circuit belong to the same selected latest hearing/action.
+  { variant: 'status', title: t.clientReports.statusTitle },
 ];
 
 function definition(config: Configuration): ReportDefinition {

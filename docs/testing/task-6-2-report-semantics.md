@@ -6,6 +6,17 @@ contract in progress, not acceptance or an assertion that the reports pass.
 
 ## Authorities and evidence
 
+**27 September correction (T62-O1):** `client-status` uses court and circuit
+from the same selected latest hearing/action. All four retained Type 4 query
+definitions select these hearing fields. The initial implementation and its
+source oracle incorrectly selected the matter fields; the correction is
+recorded openly in the new correction report. There is no fallback to the
+matter, an older populated hearing or legacy raw text. A latest hearing with
+missing values remains missing; no-hearing matters remain included without
+invented court values. The other eight definitions retain their existing
+sources and qualifications. Historical reviews and acceptance records remain
+unchanged; independent correction review is pending.
+
 The retained `D:/chatGPT/Litigation-Database/analysis/catalogs/` contains
 `reports.csv`, `queries.csv`, `live_queries.csv`, `actions.csv`,
 `direct_object_export.csv` and `direct_fallback_metadata.csv`. The corresponding

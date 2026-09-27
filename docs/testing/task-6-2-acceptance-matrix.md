@@ -49,3 +49,21 @@ records full fresh/reused boundaries, failures, actual files, preservation, clea
 and limitations. External receipts bind the documentation child and actual push.
 This entry does not claim independent operational review PASS or universal
 accessibility conformance. Task 6.3 and UI redesign remain outside scope.
+
+## Correction 1 — 27 September 2026 (independent review pending)
+
+The preceding matrix is preserved as historical evidence. T62-O1 exposed a
+court-source assumption shared by the adapter and its oracle; the earlier PASS
+did not detect it. The new operational HOLD review is imported verbatim.
+
+| Finding / boundary | Correction evidence and status |
+|---|---|
+| T62-O1 court/circuit | Status uses the selected latest hearing pair. Original-defect failure and six independent literal passing cases retained; full-volume seven-adapter oracle passes 3,864 runs. Four-role saved-output results are in the correction delivery. |
+| T62-O2 selection | 38 stable-ID rows traced; retained selected/report flags yield the ten Access-sample matters. Adopted web criteria remain unchanged. |
+| T62-O2 missing parties | All 29 absent cells correspond to preserved unresolved role quarantines: 21 opponent, eight client. No automatic raw fallback or owner repair. |
+| T62-O2 dates | 933/2025 is explained by latest-overall versus marked-hearing selection. Two other PDF dates are absent from retained source and remain unresolved pending the exact generating records. |
+| Owner / task boundary | Read-only owner observations; separate full-data fixture/build; migration 73 and TASKS bytes unchanged; no activation, acceptance closure or push. |
+| Next step | Independent correction review, then separately authorized UI design/refinement; Task 6.3 follows the UI phase. |
+
+See [the correction report](../task-reports/2026-09-27-task-6-2-correction1.md)
+and [the independent operational HOLD](../reviews/2026-09-27-task62-operational-independent-review.md).
