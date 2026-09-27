@@ -604,6 +604,30 @@ export async function setMigrationAuditContext(tx: any) {}`,
       label + ' alteration must fail the exact closure',
     );
   }
+  for (const [label, from, to] of [
+    [
+      'selection matter authority',
+      "requireAuthorizedDecision(decideAuthorization(actor, 'matters', 'update'));",
+      '',
+    ],
+    [
+      'selection hearing authority',
+      "requireAuthorizedDecision(decideAuthorization(actor, 'hearings', 'update'));",
+      '',
+    ],
+    ['selection current identity', 'actor.user.sessionVersion', '1'],
+    ['selection gateway', 'public.client_report_selection_save', 'public.matter_edit_save'],
+  ]) {
+    const altered = legitimateRuntime.map((s) =>
+      s.path === 'src/lib/reports/selection.ts' ? { ...s, text: s.text.replaceAll(from!, to!) } : s,
+    );
+    assert.ok(
+      auditRuntimeSourceFailures(altered).some(
+        (f) => f.includes('Report guarded closure differs') && f.includes('selection.ts'),
+      ),
+      label + ' alteration must fail the exact guarded closure',
+    );
+  }
   const service: AuditRuntimeSource = {
     path: 'src/lib/auth/service.ts',
     text: `import { setAdministrationAuditContext, setAuthenticationAuditContext, setHumanAuditContext } from '@/lib/audit';

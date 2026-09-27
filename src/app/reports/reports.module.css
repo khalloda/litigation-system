@@ -4,6 +4,11 @@
   padding: var(--space-5);
   overflow-wrap: anywhere;
 }
+.choice {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-block: var(--space-3);
+}
 .fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

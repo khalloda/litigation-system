@@ -99,7 +99,13 @@ export const REPORT_LIMITS = Object.freeze({
   milliseconds: 120000,
 });
 export type ReportErrorCode =
-  'invalid' | 'unknown' | 'too-large' | 'busy' | 'generation' | 'cancelled';
+  | 'invalid'
+  | 'unknown'
+  | 'too-large'
+  | 'busy'
+  | 'generation'
+  | 'cancelled'
+  | 'selection-incomplete';
 export class ReportError extends Error {
   constructor(
     readonly code: ReportErrorCode,

@@ -1,3 +1,4 @@
+import { reportSelectionApplied } from './report-selection-checkpoint';
 import { poaEditApplied, POA_EDIT_GATEWAYS, POA_EDIT_TABLES } from './poa-edit-checkpoint';
 import { auditHistoryApplied, AUDIT_HISTORY_GATEWAYS } from './audit-history-checkpoint';
 import { tasks46_47Applied, TASKS46_47_GATEWAYS, TASKS46_47_TABLES } from './tasks46-47-checkpoint';
@@ -361,6 +362,10 @@ export async function runtimeRoleBoundaryFailures(
   roleName = RUNTIME_DATABASE_ROLE,
 ): Promise<string[]> {
   const failures: string[] = [];
+  const reportSelection = await reportSelectionApplied(db);
+  const runtimeTables: readonly string[] = reportSelection
+    ? [...AUDITED_TABLES, 'client_report_selections']
+    : AUDITED_TABLES;
   const auditHistory = await auditHistoryApplied(db);
   const staffBoundary = await staffBoundaryApplied(db);
   const clientBoundary = await clientContactBoundaryApplied(db);
@@ -374,6 +379,7 @@ export async function runtimeRoleBoundaryFailures(
   const matterBoundary = await matterEditApplied(db);
   const lifecycle = await matterLifecycleApplied(db);
   const rosterLocked = (table: string) =>
+    (reportSelection && table === 'client_report_selections') ||
     (staffBoundary && STAFF_ROSTER_TABLES.includes(table)) ||
     (clientBoundary && ['clients', 'contacts'].includes(table)) ||
     (logoBoundary && table === 'client_logos') ||
@@ -384,6 +390,11 @@ export async function runtimeRoleBoundaryFailures(
     (tasks46_47Boundary && TASKS46_47_TABLES.includes(table as never));
   const approvedDefiners: readonly string[] = [
     ...(auditHistory ? AUDIT_HISTORY_GATEWAYS : []),
+    ...(reportSelection
+      ? [
+          'public.client_report_selection_save(p_account integer, p_person integer, p_session integer, p_role text, p_expires timestamp with time zone, p_request jsonb)',
+        ]
+      : []),
     ...APPROVED_RUNTIME_SECURITY_DEFINERS,
     ...(poaBoundary ? POA_EDIT_GATEWAYS : []),
     ...(tasks46_47Boundary ? TASKS46_47_GATEWAYS : []),
@@ -636,8 +647,7 @@ export async function runtimeRoleBoundaryFailures(
     [roleName, PROJECT_DATABASE_SCHEMAS],
   );
   for (const row of relations.rows) {
-    const approved =
-      row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never);
+    const approved = row.schema_name === 'public' && runtimeTables.includes(row.relation_name);
     const insertApproved =
       approved && row.relation_name !== 'user_accounts' && !rosterLocked(row.relation_name);
     if (
@@ -654,10 +664,12 @@ export async function runtimeRoleBoundaryFailures(
     }
   }
   const approvedRelationCount = relations.rows.filter(
-    (row) => row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never),
+    (row) => row.schema_name === 'public' && runtimeTables.includes(row.relation_name),
   ).length;
-  if (approvedRelationCount !== AUDITED_TABLES.length)
-    failures.push(`runtime approved relation inventory is ${approvedRelationCount}/38`);
+  if (approvedRelationCount !== runtimeTables.length)
+    failures.push(
+      `runtime approved relation inventory is ${approvedRelationCount}/${runtimeTables.length}`,
+    );
 
   const relationAcls = await db.query<{
     schema_name: string;
@@ -697,7 +709,7 @@ export async function runtimeRoleBoundaryFailures(
   }
   for (const relation of relations.rows) {
     const approved =
-      relation.schema_name === 'public' && AUDITED_TABLES.includes(relation.relation_name as never);
+      relation.schema_name === 'public' && runtimeTables.includes(relation.relation_name);
     const direct = relationAcls.rows
       .filter(
         (acl) =>
@@ -740,8 +752,7 @@ export async function runtimeRoleBoundaryFailures(
     [roleName, PROJECT_DATABASE_SCHEMAS],
   );
   for (const row of columnPrivileges.rows) {
-    const approved =
-      row.schema_name === 'public' && AUDITED_TABLES.includes(row.relation_name as never);
+    const approved = row.schema_name === 'public' && runtimeTables.includes(row.relation_name);
     const insertApproved =
       approved && row.relation_name !== 'user_accounts' && !rosterLocked(row.relation_name);
     if (

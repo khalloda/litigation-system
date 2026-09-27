@@ -216,7 +216,7 @@ export function createReportEngine(
               ? error.status
               : code === 'unknown'
                 ? 404
-                : code === 'invalid'
+                : code === 'invalid' || code === 'selection-incomplete'
                   ? 400
                   : code === 'too-large'
                     ? 413

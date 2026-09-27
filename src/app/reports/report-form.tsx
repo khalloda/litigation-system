@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { t } from '@/strings';
 import { referenceRule, referenceOptions, reportFieldLabel } from '@/lib/reports/fields';
 import { cellText } from '@/lib/reports/result';
@@ -28,6 +29,7 @@ export function ReportForm({
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
+  const [selectionClient, setSelectionClient] = useState('');
   const [reset, setReset] = useState(0);
   useEffect(() => () => abort.current?.abort(), []);
   useEffect(
@@ -111,6 +113,14 @@ export function ReportForm({
       : (descriptor.extra?.find((x) => x.key === key)?.label ?? t.reports.validation);
   return (
     <>
+      {descriptor.extra?.some((x) => x.key === 'extra_mode') &&
+      /^[1-9]\d*$/u.test(selectionClient) ? (
+        <p>
+          <Link href={`/reports/selection?client=${selectionClient}`}>
+            {t.reportSelection.edit}
+          </Link>
+        </p>
+      ) : null}
       <form
         ref={form}
         noValidate
@@ -120,8 +130,10 @@ export function ReportForm({
           if (
             (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) &&
             target.name
-          )
+          ) {
             invalidate();
+            setSelectionClient(String(new FormData(event.currentTarget).get('client') ?? ''));
+          }
         }}
         onSubmit={(event) => {
           event.preventDefault();
@@ -253,6 +265,7 @@ export function ReportForm({
             disabled={busy}
             onClick={() => {
               invalidate();
+              setSelectionClient('');
               setReset((value) => value + 1);
             }}
           >

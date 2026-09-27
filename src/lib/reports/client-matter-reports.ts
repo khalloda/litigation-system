@@ -74,6 +74,7 @@ const configurations: readonly Configuration[] = [
 
 function definition(config: Configuration): ReportDefinition {
   const status = config.variant === 'status';
+  const selectable = status || config.variant === 'matters';
   const columns: ReportColumn[] = [
     { key: 'caseNumber', label: t.fields.caseNumber, width: 25 },
     { key: 'court', label: t.fields.court, width: 25 },
@@ -81,7 +82,11 @@ function definition(config: Configuration): ReportDefinition {
     { key: 'clientParty', label: t.clientReports.clientParty, width: 35 },
     { key: 'opponentParty', label: t.clientReports.opponentParty, width: 35 },
     { key: 'subject', label: t.fields.subject, width: 45 },
-    { key: 'latest', label: t.clientReports.latestDecision, width: 40 },
+    {
+      key: 'latest',
+      label: selectable ? t.reportSelection.decision : t.clientReports.latestDecision,
+      width: 40,
+    },
     ...(config.evaluation
       ? [{ key: 'evaluation', label: t.clientReports.evaluation, width: 20 }]
       : []),
@@ -90,7 +95,7 @@ function definition(config: Configuration): ReportDefinition {
   return {
     descriptor: {
       id: `client-${config.variant}`,
-      version: '1',
+      version: selectable ? '2' : '1',
       title: config.title,
       description: config.active
         ? t.clientReports.activeDescription
@@ -104,25 +109,39 @@ function definition(config: Configuration): ReportDefinition {
           : {}),
         ...(status ? { lawyer: { required: false, help: t.clientReports.lawyerHelp } } : {}),
       },
-      ...(status
+      ...(selectable
         ? {
             date: {
               required: false,
               allowOpen: true,
               source: 'date' as const,
-              fieldMeaning: t.clientReports.latestPeriod,
+              fieldMeaning: t.reportSelection.period,
             },
             extra: [
               {
-                key: 'extra_status',
-                label: t.fields.status,
+                key: 'extra_mode',
+                label: t.reportSelection.mode,
                 required: true,
-                defaultValue: 'active',
+                defaultValue: 'all',
                 choices: [
-                  { value: 'active', label: t.values.active },
-                  { value: 'all', label: t.reports.all },
+                  { value: 'all', label: t.reportSelection.all },
+                  { value: 'selected', label: t.reportSelection.selected },
                 ],
               },
+              ...(status
+                ? [
+                    {
+                      key: 'extra_status',
+                      label: t.fields.status,
+                      required: true,
+                      defaultValue: 'active',
+                      choices: [
+                        { value: 'active', label: t.values.active },
+                        { value: 'all', label: t.reports.all },
+                      ],
+                    },
+                  ]
+                : []),
             ],
           }
         : {}),
@@ -176,6 +195,11 @@ async function readClientMatterReport(
     throw new ReportError('invalid', ['branch']);
   if (status && !['active', 'all'].includes(parameters.extra['extra_status'] ?? ''))
     throw new ReportError('invalid', ['extra_status']);
+  const selectable = status || config.variant === 'matters';
+  const mode = parameters.extra['extra_mode'] ?? 'all';
+  if (selectable && !['all', 'selected'].includes(mode))
+    throw new ReportError('invalid', ['extra_mode']);
+  const selected = selectable && mode === 'selected';
   const bounds = reportDateBounds(parameters, 'date');
   const active =
     config.active === true || (status && parameters.extra['extra_status'] === 'active');
@@ -183,6 +207,17 @@ async function readClientMatterReport(
   const lawyerId = parameters.lawyer.kind === 'id' ? parameters.lawyer.id : null;
   const needsDecision = !status && config.variant !== 'branches';
   const name = await reportClientName(tx, clientId);
+  let saved = 0;
+  if (selected) {
+    const counts = await tx.$queryRaw<{ saved: number; invalid: number }[]>(Prisma.sql`
+      SELECT count(*)::int saved,count(*) FILTER(WHERE h.id IS NULL OR h.matter_id<>m.id
+      OR (${needsDecision} AND (h.decision IS NULL OR h.decision=''))
+      OR (${config.active === true} AND m.status IS DISTINCT FROM ${t.values.active}))::int invalid
+      FROM public.client_report_selections s JOIN public.matters m ON m.id=s.id
+      LEFT JOIN public.hearings h ON h.id=s.hearing_id WHERE m.client_id=${clientId} AND s.is_selected`);
+    saved = counts[0]!.saved;
+    if (counts[0]!.invalid) throw new ReportError('selection-incomplete', ['extra_mode']);
+  }
   const rows = await tx.$queryRaw<MatterRow[]>(Prisma.sql`
     WITH latest AS (
       SELECT h.*,row_number() OVER (PARTITION BY h.matter_id ORDER BY h.hearing_date DESC NULLS LAST,h.id DESC) rank
@@ -190,10 +225,13 @@ async function readClientMatterReport(
     ) SELECT m.id,m.case_number_ar AS "caseNumber",m.subject,m.branch_id AS "branchId",b.label_ar AS branch,
       mc.label_ar AS "matterCourt",m.circuit AS "matterCircuit",hc.label_ar AS "hearingCourt",h.circuit AS "hearingCircuit",
       h.id AS "hearingId",h.hearing_date::text AS date,h.decision,m.evaluation,m.legacy_financial_allocation_raw AS provision
-    FROM public.matters m LEFT JOIN latest h ON h.matter_id=m.id AND h.rank=1
+    FROM public.matters m
+    ${selected ? Prisma.sql`LEFT JOIN public.client_report_selections selection ON selection.id=m.id` : Prisma.sql`LEFT JOIN (SELECT NULL::int id,NULL::int hearing_id,false is_selected) selection ON false`}
+    LEFT JOIN latest h ON h.matter_id=m.id AND
+      ((${selected} AND h.id=selection.hearing_id) OR (NOT ${selected} AND h.rank=1))
     LEFT JOIN public.lookup_client_branch b ON b.id=m.branch_id
     LEFT JOIN public.lookup_court mc ON mc.id=m.court_id LEFT JOIN public.lookup_court hc ON hc.id=h.court_id
-    WHERE m.client_id=${clientId} AND (NOT ${active} OR m.status=${t.values.active})
+    WHERE m.client_id=${clientId} AND (NOT ${selected} OR selection.is_selected) AND (NOT ${active} OR m.status=${t.values.active})
       AND (${status} OR h.id IS NOT NULL)
       AND (NOT ${needsDecision} OR (h.decision IS NOT NULL AND h.decision<>''))
       AND (NOT ${config.branch === true} OR m.branch_id IS NOT DISTINCT FROM ${branchId}::smallint)
@@ -286,7 +324,19 @@ async function readClientMatterReport(
   return {
     subtitle: branchName === null ? name : `${name}\n(${branchName})`,
     clientBrand: { name, logo: logos[0] ?? null },
-    totals: [],
+    totals: selected
+      ? [
+          { label: t.reportSelection.savedCount, value: { type: 'integer', value: String(saved) } },
+          {
+            label: t.reportSelection.includedCount,
+            value: { type: 'integer', value: String(rows.length) },
+          },
+          {
+            label: t.reportSelection.excludedCount,
+            value: { type: 'integer', value: String(saved - rows.length) },
+          },
+        ]
+      : [],
     sections: [{ id: 'matters', title: '', groups }],
   };
 }

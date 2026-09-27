@@ -1,3 +1,8 @@
+import {
+  reportSelectionApplied,
+  reportSelectionFailures,
+  REPORT_SELECTION_FIELDS,
+} from './report-selection-checkpoint';
 import { poaEditApplied, POA_EDIT_FIELDS } from './poa-edit-checkpoint';
 import { auditHistoryApplied, auditHistoryFailures } from './audit-history-checkpoint';
 import { tasks46_47Applied, TASKS46_47_FIELDS } from './tasks46-47-checkpoint';
@@ -156,6 +161,11 @@ export async function auditEventStructureFailures(
   runtimeRole = RUNTIME_DATABASE_ROLE,
 ): Promise<string[]> {
   const failures: string[] = [];
+  const reportSelection = await reportSelectionApplied(db);
+  failures.push(...(await reportSelectionFailures(db)));
+  const eventTables = reportSelection
+    ? [...AUDITED_TABLES, 'client_report_selections'].sort()
+    : AUDITED_TABLES;
   const auditHistory = await auditHistoryApplied(db);
   failures.push(...(await auditHistoryFailures(db)));
   const staffBoundary = await staffBoundaryApplied(db);
@@ -170,6 +180,7 @@ export async function auditEventStructureFailures(
   const matterBoundary = await matterEditApplied(db);
   const lifecycle = await matterLifecycleApplied(db);
   const currentFieldRules = [
+    ...(reportSelection ? REPORT_SELECTION_FIELDS : []),
     ...(poaBoundary ? POA_EDIT_FIELDS : []),
     ...(tasks46_47Boundary ? TASKS46_47_FIELDS : []),
     ...(staffBoundary ? STAFF_FIELD_RULES : []),
@@ -205,7 +216,10 @@ export async function auditEventStructureFailures(
         entity_table,
         field_name,
         max_text_characters,
-        capture_mode: 'value',
+        capture_mode:
+          entity_table === 'client_report_selections' && field_name === 'id'
+            ? 'entity_key'
+            : 'value',
         classification_reason,
       }))
       .sort((a, b) =>
@@ -361,10 +375,10 @@ export async function auditEventStructureFailures(
   if (
     !same(
       ruleRows.rows.map((row) => row.entity_table),
-      AUDITED_TABLES,
+      eventTables,
     )
   ) {
-    failures.push('audit-event exact 38-table rule inventory differs');
+    failures.push('audit-event exact checkpoint table inventory differs');
   }
   const unsafeFields = await db.query<{ count: string }>(`
     SELECT count(*)::text count FROM audit_event_fields f
@@ -455,7 +469,7 @@ export async function auditEventStructureFailures(
   if (
     !same(
       captureTriggers.rows.map((row) => row.table_name),
-      AUDITED_TABLES,
+      eventTables,
     )
   ) {
     failures.push('enabled audit-event row trigger inventory differs');

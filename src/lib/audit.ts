@@ -7,6 +7,7 @@ export const AUDITED_ENTITY_TABLES = [
   'admin_tasks',
   'attendance',
   'client_logos',
+  'client_report_selections',
   'clients',
   'contacts',
   'documents',

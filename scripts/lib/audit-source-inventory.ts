@@ -47,7 +47,12 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 ]);
 // Reporting adds ordinary observed events, not a new actor/context capability.
 // These complete guarded closures supplement the exact raw-call inventory.
+// The selection editor also uses the existing trusted human context, bounded below.
 const REPORT_ENGINE_CLOSURES = new Map([
+  [
+    'src/lib/reports/selection.ts',
+    '7da0af4445b11af79bd060ea16a71fff5806a3589665d543a41702e2c24d6de0',
+  ],
   [
     'src/lib/reports/authority.ts',
     '684edd30ecb4f881caebd3e349252d253da99e203a7d6823b471506e18ff39ec',
@@ -56,7 +61,7 @@ const REPORT_ENGINE_CLOSURES = new Map([
     'src/lib/reports/options.ts',
     'f0372ce7a2ea7a65b8226b4bd7cfd5b9f8a1b561ccc3ce0f2d01dcc6e71548b7',
   ],
-  ['src/lib/reports/engine.ts', '61922dc7ca931d23d7c43f9bb8f01851ed95378efee2de52c41ce5529f6178c9'],
+  ['src/lib/reports/engine.ts', '2e43765c66a2d0daa083fcca5f9eacc76ce61ec1501ea136dec5c96d088ebd55'],
 ]);
 const DASHBOARD_READ_CLOSURES = new Map([
   ['src/lib/outcome-query.ts', 'ceb3685ccbc35b342314cb7d0cc8eec467f2849f645477255cd572001c8b27c2'],
@@ -187,9 +192,40 @@ const LOW_LEVEL_PATTERN =
 
 const REVIEWED_RAW_SQL_CALLS = [
   [
+    'src/lib/reports/selection.ts',
+    'readReportSelection',
+    '331d87c20fd34192772129da04c06bcbd89c50cf0aaabaf9cdae5bda3d301824',
+  ],
+  [
+    'src/lib/reports/selection.ts',
+    'readReportSelection',
+    '4bf57c382dd7f6e7e2c869e9f3499556e15153502180598746e12fbb9dcac9b3',
+  ],
+  [
+    'src/lib/reports/selection.ts',
+    'readReportSelection',
+    'e0bb5092aafc1320759630ad33cd12bd6de0bcbae4a8cdb328fb61fa49d646f0',
+  ],
+  [
+    'src/lib/reports/selection.ts',
+    'readReportSelection',
+    '7ca476dafb51331008550d5250b51602f66153fc0e64353d09091a262d0baf6b',
+  ],
+  [
+    'src/lib/reports/selection.ts',
+    'saveReportSelection',
+    '858367e13f90b80fa2ad15ed85331caff7e44779751b224ff3ce0ebab199dccd',
+  ],
+
+  [
     'src/lib/reports/client-matter-reports.ts',
     'readClientMatterReport',
-    'f11639ae9cc077ce8f25534a9227bc9872f312b5b91c60582c584947abad94ca',
+    '887e24cd64b4e9679379c2b0a6da0115ea41490621c0b6dfd38486103f8d6924',
+  ],
+  [
+    'src/lib/reports/client-matter-reports.ts',
+    'readClientMatterReport',
+    'cd70bea68c8b6f50418628531cfd6c21c94303b9f5204692b87df10d2c1e6845',
   ],
   // Task 6.2: fixed SELECT adapters inside the engine's read-only snapshot.
   // IDs/date endpoints are bound values; no request-provided SQL or writes.
@@ -2485,7 +2521,9 @@ export function auditRuntimeSourceFailures(
         LOGO_MUTATION_SERVICE_SHA256
     )
       failures.add('Logo mutation closure differs from reviewed inventory');
+    const isReportSelectionService = source.path === 'src/lib/reports/selection.ts';
     const isReviewedAuthService =
+      isReportSelectionService ||
       isAuditExportService ||
       isAuthService ||
       isUserManagementService ||
@@ -2682,7 +2720,8 @@ export function auditRuntimeSourceFailures(
             const imported = element.propertyName?.text ?? element.name.text;
             const approvedHelpers = isAuthService
               ? AUTH_SERVICE_HELPERS
-              : isAuditExportService ||
+              : isReportSelectionService ||
+                  isAuditExportService ||
                   isStaffMutationService ||
                   isClientMutationService ||
                   isLogoMutationService ||
@@ -3040,6 +3079,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'saveReportSelection',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'handleAuditExport',
