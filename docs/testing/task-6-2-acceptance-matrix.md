@@ -28,3 +28,24 @@ The prior Task 6.1 operational review is imported verbatim. Freshness and exact
 reuse limits are in the [implementation report](task-6-2-implementation-report.md).
 Final external preservation, cleanup and delivery identities belong in the sealed
 evidence and post-seal receipt; unperformed checks cannot pass by documentation.
+
+
+## Owner-authorized operational acceptance — 27 September 2026
+
+Candidate `3fcc1ce95f12335682d7b943d3c291acd60a5e45` accepted after independent PASS.
+All nine production definitions and T61-N1 are active from that exact artifact.
+Fresh protected recovery/restore, pristine and final fixture 148+15 checks, ordinary
+build/full check, four genuine fixture roles, 24 saved XLSX/PDF files, 15 targeted
+axe scans (zero violations, one incomplete result), real 200% zoom and current owner
+148+15 checks passed. Unchanged exhaustive implementation evidence is reused by
+exact source/dependency identity. The genuine existing owner session needed no
+new sign-in; nine previews and two actual saved status exports produced exactly
+13 reconciled agent report events, plus five separately accounted owner-check
+events, with all unrelated owner state preserved. Migration
+and provisioning are not applicable; migration 73 is unchanged.
+
+The [operational record](../task-reports/2026-09-27-task-6-2-acceptance-activation.md)
+records full fresh/reused boundaries, failures, actual files, preservation, cleanup
+and limitations. External receipts bind the documentation child and actual push.
+This entry does not claim independent operational review PASS or universal
+accessibility conformance. Task 6.3 and UI redesign remain outside scope.

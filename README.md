@@ -632,3 +632,16 @@ export, archive and accessibility proof is recorded in
 This supersedes the earlier pending-decision checkpoint only as implementation
 progress. Independent review remains required; TASKS.md, migration 73 and the
 accepted owner app remain unchanged. Nothing is pushed or activated.
+
+
+## Task 6.2 / T61-N1 accepted and activated — 27 September 2026
+
+Khaled accepted reviewed candidate `3fcc1ce95f12335682d7b943d3c291acd60a5e45`.
+The nine client reports and Cairo-time display correction are active in the new
+ordinary local artifact. No migration or provisioning was needed; migration 73
+remains unchanged. Fresh recovery/isolated tests, actual owner previews/exports,
+exact bookkeeping and subsequent owner equality passed. This child documents
+acceptance; external receipts record its identity and actual normal push result.
+See the [operational record](docs/task-reports/2026-09-27-task-6-2-acceptance-activation.md)
+and [independent implementation PASS](docs/reviews/2026-09-26-task62-implementation-independent-review.md).
+Independent operational review remains pending. Task 6.3 and UI redesign have not started.

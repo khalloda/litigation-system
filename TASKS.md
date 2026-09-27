@@ -2425,7 +2425,7 @@ than assuming one rule for every workflow. Test with real volumes.
 - [x] **6.1 Reporting engine** — one shared parameter form (date range, client,
       branch, lawyer), Excel via ExcelJS with `rightToLeft`, PDF via Playwright
       with bundled fonts and the firm letterhead.
-- [ ] **6.2 Client reports**
+- [x] **6.2 Client reports**
       Integrate D52's archive-independent inclusion without changing ordinary
       matter-status/date criteria. Task 4.1 Phase 4 protects the existing nonempty
       query contract; future report screens and Excel/PDF delivery require their
