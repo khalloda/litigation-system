@@ -1391,3 +1391,25 @@ and request identity. `poa_edit_submission` owns each successful version by acto
 UUID and exact payload. One shared aggregate version covers edits and lifecycle.
 An immutable boundary anchors original rows to the already accepted release.
 The canonical empty profile is explicit. Actual owner migration remains 69.
+
+
+## Task 6.2 correction2 candidate selection storage (not activated)
+
+Candidate migration `20260927130000_client_report_selection` is migration 74.
+The owner remains at 73. `client_report_selections` has one immutable matter ID
+as its primary/foreign key, an optional chosen hearing ID, a selection boolean
+and a positive monotonic row version. No rows are seeded by the migration.
+A null hearing on a selected matter is a visible unfinished choice, not a
+request to find a replacement. The client is derived from the matter.
+
+Two private append-only tables retain complete before/after changes and owned
+submission UUIDs. A successful changed submission has one version, matching audit
+event, history row and receipt; no-op saves retain only their owned receipt.
+Exact retries return the original result. Deferred constraints validate the
+complete chain, receipt/event correspondence and hearing parent at commit.
+Runtime has SELECT on current choices and execution of one narrowly guarded
+save gateway, with no direct writes to current/private storage and no sequence.
+The existing matter/hearing/import data and all historical migration SQL remain
+unchanged. Generic schema does not contain the separately proposed source repair
+receipt table, capacity additions, party release, source hearings or initial seed.
+See the correction2 report for the review boundary.

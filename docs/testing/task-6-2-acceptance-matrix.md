@@ -67,3 +67,24 @@ did not detect it. The new operational HOLD review is imported verbatim.
 
 See [the correction report](../task-reports/2026-09-27-task-6-2-correction1.md)
 and [the independent operational HOLD](../reviews/2026-09-27-task62-operational-independent-review.md).
+
+
+## Correction 2 — 27 September 2026 (implementation/proposal review pending)
+
+The entire preceding matrix remains historical. Correction1 independently passed
+T62-O1 code at `6550a6bc0605b916c3f60daa9b797fba056f8882`; functional T62-O2
+closure remains held. The imported independent review is preserved verbatim.
+
+| Boundary | Candidate proof / review status |
+|---|---|
+| Actual Access target | Fresh corrected-button metadata traces the report subform's Command55 to rptClientMatters1; no WhereCondition or branch/date restriction. Independent read-only query evaluation gives ten complete choices in this supplied copy. This maps to client-matters, distinct from client-status. |
+| Two modes | Both identified definitions gain explicit All active/default and Selected for report modes. Latest-overall remains unchanged in All active; chosen hearing supplies selected date/court/circuit/decision consistently. No hard-coded count/ID selection. |
+| Saved choice | Shared per-matter selection, optional hearing draft, exact versions, atomic audited history/owned retry, all-role read and two-role write. Mandatory source qualifications block unfinished selections before optional filtering. |
+| Source reconciliation | Fresh bounded source has the same 38 matters, three changed old hearing records and two new hearings. Two previously missing dates now have exact source records. Original PDF-generating snapshot equivalence is not claimed. |
+| Repair proposals | All 29 party sides and nine spellings are accounted for. Eight new capacity forms and one alias remain proposed pending exact-value approval. Two current source-backed hearings and separate provenance receipts are rehearsed only. |
+| Initial seed | Thirteen saved source flags comprise ten complete choices and three drafts. Generic candidate migration seeds nothing. A separate faithful seed proposal exposes drafts; a complete-only ten-choice test is explicitly a different fixture scenario. |
+| Schema | Empty candidate migration 74, isolated quiet upgrade, old catalog preservation, 148 historical and 15 setup gates; owner stays at 73. |
+| Verification | Complete independent real-volume oracle, selection concurrency/identity/rollback and native/archive/date edge proofs, full project check and production build. Browser/download/content and final preservation identities are bound in the five-file correction2 delivery. |
+| Withheld work | No owner repair/seed/migration/provisioning, owner sign-in or reports, activation/restart, acceptance closure or push. Independent implementation/proposal review precedes a separately authorized operational run; UI refinement and Task 6.3 follow later. |
+
+See [the correction2 follow-up](../task-reports/2026-09-27-task-6-2-correction2.md).

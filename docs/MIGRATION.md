@@ -3929,3 +3929,33 @@ This candidate does not run migration 71 on the owner database, activate a build
 change either task checkbox, push, or begin Task 4.7a/4.8. See the combined
 [implementation report](reviews/2026-09-16-tasks-4-6-4-7-combined-implementation.md)
 and its external verified review envelope for exact evidence and Git identities.
+
+
+## Task 6.2 correction2 — candidate 74 and separate repair proposals
+
+Migration 74 (`20260927130000_client_report_selection`) creates empty current
+selection, retained change and owned submission tables. It registers four fields
+and one current audit entity without altering the frozen imported field policy.
+It adds explicit constraints, indexes, deferred correspondence/parent checks and
+a fresh-identity save gateway. The permanent checker verifies exact function
+bodies/settings/owners, table/column/constraint/index/trigger/privilege inventories,
+ledger checksum and every current/history/receipt/audit correspondence.
+
+The quiet full-state rehearsal starts from migration 73: 141 tables, 48 sequences,
+73 completed migrations. Candidate 74 yields 144 tables and the same 48 sequences.
+All prior catalog entries remain exact; 138 unaffected table contents are exact.
+Only the ledger and two audit-registration tables gain expected rows. The three
+new tables start empty. The 148 historical checks and 15 setup checks pass; new
+selection invariants run inside the audit gate rather than changing that headline
+historical count. Historical SQL 1–73 and owner schema remain unchanged.
+
+Source updates and quarantine release are separate review-only proposals, not
+migration 74 seeds. The bounded rehearsal adds current rows through existing
+mutation gateways and records independent append-only external-source receipts.
+New hearings carry NULL original import IDs; their later Access provenance is
+retained separately, never forged into the frozen import boundary. Proposed
+receipt SQL, exact source payloads, preconditions and capacity after-values stay
+in the protected review delivery. They are not an approved executable owner repair.
+The rehearsal rolls back all rows/catalog changes and records sequence reservations
+without resetting them. Any later application requires independent proposal review,
+resolved exact legal values and a separate bounded operational mandate.

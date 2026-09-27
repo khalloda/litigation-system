@@ -1,5 +1,51 @@
 # Task 6.2 client-report semantics — adopted implementation contract
 
+## Correction2 current candidate contract — pending independent review
+
+The owner-approved correction2 workflow supersedes only earlier statements that
+manual selection is absent. All nine report IDs and their distinct grains remain.
+The actual fresh Access button is the reports subform's Command55, whose embedded
+OpenReport targets `rptClientMatters1` with empty filter/WhereCondition. It maps to
+`client-matters`, not the merged Type4 `client-status`. The relevant fresh definition
+requires the selected client, active matters, matter and hearing report flags, and
+a nonempty decision. Blank visible branch/date controls add no hidden period.
+Read-only metadata plus independent source-query evaluation establish this trace;
+the button itself was not executed. No linked tables were present.
+
+Only `client-status` and `client-matters` gain a mode. All active remains default:
+latest hearing overall (date descending, ID descending, undated last), followed
+by optional period filtering. Status retains its all-status and lawyer options.
+Selected mode reads the shared current saved choices. It uses exactly one chosen
+hearing for date, decision, court and circuit, including deliberately older court
+hearings. Optional period uses that chosen business DATE. Selection never changes
+automatically when a later hearing is created. Other seven definitions keep their
+existing behavior. Report versions for these two definitions advance to 2.
+
+Missing chosen hearings block selected generation before optional filters. The
+client-matters variant also blocks selected inactive matters or empty/null decisions;
+status preserves its own optional status behavior and null/empty decisions. Undated
+chosen hearings appear without a period and are excluded by a date bound. Explicit
+saved/included/excluded counts explain filter narrowing. No selection excludes
+archived data from reporting. Current non-retired party roles remain authoritative;
+there is no raw-text fallback for unrepaired parties.
+
+The editor pages matters and hearings in groups of 25, keeps the saved out-of-page
+hearing visible, and separates the matter checkbox from hearing radio choices.
+It labels unfinished choices and disables unauthorized/archived edits. A required
+source-qualification draft indicator is conservative across the two report variants;
+status may accept an empty decision while client-matters cannot. Mode/client/filter
+changes clear stale preview/download readiness. Preview and both exports include
+mode/date meaning, with exact ordered typed content bound by isolated tests.
+
+Source flag seeding is a separate review-only proposal. The fresh copy contains
+13 selected matters but only ten qualified hearing choices; three drafts cannot be
+silently discarded. The two new source hearings and 29 party-side proposals remain
+separate from candidate schema and do not imply approved owner application.
+Byte stability of the supplied copy does not prove transactional consistency of
+its departmental copy operation or identity with the original PDF-generating data.
+
+The following sections retain the earlier implementation/correction1 history.
+
 Base: `0f67c55c342bee896a8c32ab991b8de1f6112689`. The owner adopted the
 Task 6.2 implementation mandate on 26 September 2026. This is an implementation
 contract in progress, not acceptance or an assertion that the reports pass.

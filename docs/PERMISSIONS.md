@@ -381,3 +381,22 @@ step writes require active work and matter, work writes require active matter,
 and an archived client does not add a prerequisite. No runtime table/sequence,
 private helper or PUBLIC gateway grant is added. See the
 [candidate report](task-reports/2026-09-15-task-4-4-phase-3-archive-restore.md) for executed direct refusal evidence.
+
+
+## Task 6.2 correction2 candidate — saved client-report selection
+
+All four existing roles may read and run/export a saved selection through existing
+report/read permissions. Administrator and Litigation Assistant may save choices
+only with both matter-update and hearing-update authority. Lawyer and Paralegal
+receive a disabled editor and retain read/run/export access. This is not a new role
+or expansion of report-run into business editing.
+
+The page, server action, service and committing database gateway enforce their
+respective boundaries. The gateway rechecks account/person/role/session version,
+absolute expiry, enabled/password state and active staff/login eligibility, locks
+identity/parent rows, requires the matching trusted human audit actor, and validates
+exact client/matter/hearing membership plus current versions. Archived matters or
+chosen hearings cannot be edited through it. Reporting remains independent of
+operational archive filters. Direct runtime writes, altered/cross-user submission
+retries and competing stale edits are refused. Exact retry and no-op do not create
+false changes. Candidate deployment remains subject to independent review.
