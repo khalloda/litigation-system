@@ -12,6 +12,7 @@ export function ReportReferenceSelect({
   options,
   invalid,
   describedBy,
+  initialValue = '',
 }: {
   id: string;
   name: string;
@@ -20,9 +21,10 @@ export function ReportReferenceSelect({
   options: readonly ReportOption[];
   invalid: boolean;
   describedBy: string;
+  initialValue?: string;
 }) {
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(initialValue);
   const matches = options.filter(
     (x) =>
       String(x.id) === selected || reportSearchText(x.label).includes(reportSearchText(search)),

@@ -11,6 +11,7 @@ import {
   type MatterLawyerInput,
 } from '@/lib/matter-mutation-input';
 import { t } from '@/strings';
+import { useDirtyNavigation } from '../_components/use-dirty-navigation';
 import { createMatterAction, updateMatterAction, type MatterActionResult } from './actions';
 import styles from '../staff/staff.module.css';
 import local from './matter-editor.module.css';
@@ -78,6 +79,13 @@ export function MatterEditor(props: {
   const [parties, setParties] = useState<MatterPartyInput[]>(() => copy(snapshot.parties));
   const [lawyers, setLawyers] = useState<MatterLawyerInput[]>(() => copy(snapshot.lawyers));
   const [result, setResult] = useState<MatterActionResult | null>(null);
+  const dirty =
+    result?.kind !== 'success' &&
+    (JSON.stringify(values) !==
+      JSON.stringify(snapshot.record?.values ?? { matter_type_id: snapshot.defaultType }) ||
+      JSON.stringify(parties) !== JSON.stringify(snapshot.parties) ||
+      JSON.stringify(lawyers) !== JSON.stringify(snapshot.lawyers));
+  useDirtyNavigation(dirty);
   const [pending, startTransition] = useTransition();
   const feedback = useRef<HTMLDivElement>(null);
   const form = useRef<HTMLFormElement>(null);

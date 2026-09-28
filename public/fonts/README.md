@@ -1,5 +1,28 @@
 # Bundled fonts
 
+## UI Implementation 01 candidate — 28 September 2026
+
+The owner adopted Noto Sans Arabic 2.012 for the UI and all PDF paths, including
+audit exports. This supersedes the earlier Naskh choice only for this candidate.
+The typography change is not activated or accepted. **PDF Unicode search/copy
+verification remains unresolved; visual shaping alone is not a passed gate.**
+
+The complete official variable TTF supplies UI weights 100–900. The PDF renderer
+uses genuine static instances at 400/600/700, avoiding Chromium's Type3 embedding
+of the variable source. FontTools 4.63.0 instantiated the supplied official font
+with `wdth=100`, each `wght`, and `updateFontNames=True`. Source commit, original
+and derived byte identities, coverage and font timestamps are recorded in
+`noto-sans-arabic-provenance.json`. The SIL licence is `OFL-NotoSansArabic.txt`.
+No runtime dependency or external font service was added. The existing approved
+logo/emblem pixels remain unchanged.
+
+UI CSS/preload and both Chromium PDF paths load local assets. Report assets require
+an absolute deployment-owned `REPORT_ASSET_ROOT`, regular non-symlink files,
+size/signature checks, exact derived-font SHA256 and decoded logos. Loaded faces
+are checked before generating a PDF. Body/table text remains text.
+
+## Retained historical font assets
+
 **Noto Naskh Arabic** (variable, weights 400–700), served from this folder.
 
 Bundled deliberately, never from a CDN. Two reasons, both from

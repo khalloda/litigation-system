@@ -1,5 +1,19 @@
 # Brand, language and layout
 
+
+> UI Implementation 01 candidate, 28 September 2026: the owner approved direction 2
+> and Noto Sans Arabic 2.012 in the UI, ordinary PDFs and audit PDFs. This overrides
+> earlier Noto Naskh typography below for this candidate; older dated descriptions
+> remain historical evidence. Source/licence/derived hashes are in
+> `public/fonts/noto-sans-arabic-provenance.json`. PDF search/copy fidelity is an
+> unresolved implementation gate. No activation or acceptance is claimed.
+>
+> The UI02 derived selection surface `--surface-selected` (`#E9F1EF`) dilutes emerald
+> into white. `--control-border` aliases the established dark gold. Six type roles
+> use Noto Sans Arabic, real 400/600/700 weights, 13/14/16/20/28px sizes and explicit
+> line heights. Logical spacing/focus tokens include the formerly missing 20px
+> `--space-5`; no component-level raw-colour exception was added.
+
 ## Colours — two layers
 
 The palette has **two layers**, and they are governed differently. Collapsing

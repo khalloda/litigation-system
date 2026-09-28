@@ -52,6 +52,52 @@
   margin-block: var(--space-3);
   overflow-wrap: anywhere;
 }
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) minmax(0, 1.8fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+.resultPane,
+.readingPane {
+  min-inline-size: 0;
+}
+.resultPane li {
+  grid-template-columns: minmax(0, 1fr);
+}
+.readingPane {
+  background: var(--colour-surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+}
+.readingPane > section {
+  padding: 0;
+}
+.selected {
+  background: var(--surface-selected);
+  box-shadow: inset 0 0 0 2px var(--colour-primary);
+}
+.returnList {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  margin-block-end: var(--space-3);
+}
+@media (max-width: 60rem) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .readingPane {
+    display: none;
+  }
+  .hasSelection .readingPane {
+    display: block;
+  }
+  .hasSelection .resultPane {
+    display: none;
+  }
+}
 @media (max-width: 42rem) {
   .filters {
     grid-template-columns: minmax(0, 1fr);

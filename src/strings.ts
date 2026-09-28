@@ -15,6 +15,25 @@
  */
 
 export const t = {
+  ui: {
+    skip: 'انتقل إلى المحتوى',
+    more: 'المزيد',
+    menu: 'القائمة',
+    analytics: 'تفاصيل التحليلات',
+    overview: 'لوحة العمل',
+    activeMatters: 'الدعاوى السارية',
+    unassignedMatters: 'دعاوى بلا محامٍ حالي',
+    expand: 'توسيع المعاينة (حتى 25)',
+    fullDetails: 'عرض التفاصيل كاملة',
+    clientReports: 'تقارير هذا العميل',
+    savedChoice: 'الاختيار المحفوظ',
+    latestAvailable: 'أحدث جلسة أو إجراء',
+    latestFirstPage: 'عرض الأحدث في الصفحة الأولى',
+    latestDoesNotSave: 'معروض للمراجعة فقط؛ لا يغيّر الاختيار المحفوظ تلقائياً.',
+    draft: 'تغييرات غير محفوظة',
+    discard: 'توجد تغييرات غير محفوظة. هل تريد مغادرة الصفحة وتجاهلها؟',
+    chooseMatter: 'اختر دعوى من نتائج البحث لعرض تفاصيلها',
+  },
   reportSelection: {
     decision: 'قرار الجلسة أو الإجراء',
     mode: 'نطاق التقرير',

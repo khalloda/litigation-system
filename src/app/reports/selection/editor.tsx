@@ -4,6 +4,7 @@ import type { SelectionMatter, SelectionHearing, SelectionInput } from '@/lib/re
 import { t } from '@/strings';
 import styles from '../reports.module.css';
 import { saveSelectionAction } from './actions';
+import { useDirtyNavigation } from '@/app/_components/use-dirty-navigation';
 
 export function SelectionEditor({
   client,
@@ -19,6 +20,9 @@ export function SelectionEditor({
   const [selected, setSelected] = useState(matter.selected);
   const [hearing, setHearing] = useState<number | null>(matter.hearingId);
   const [version, setVersion] = useState(matter.version);
+  const [saved, setSaved] = useState({ selected: matter.selected, hearing: matter.hearingId });
+  const dirty = selected !== saved.selected || hearing !== saved.hearing;
+  useDirtyNavigation(dirty);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const pending = useRef<SelectionInput | null>(null);
@@ -63,6 +67,7 @@ export function SelectionEditor({
       setMessage(result.message);
       if (result.ok) {
         setVersion(result.version);
+        setSaved({ selected, hearing });
         pending.current = null;
       }
     } catch {
@@ -84,6 +89,11 @@ export function SelectionEditor({
         {message}
       </div>
       <p id="selection-help">{t.reportSelection.help}</p>
+      <p>
+        {t.ui.savedChoice}: {saved.selected ? t.reports.trueValue : t.reports.falseValue} ·{' '}
+        {saved.hearing ?? t.reportSelection.none}
+      </p>
+      {dirty ? <p role="status">{t.ui.draft}</p> : null}
       {!canEdit ? <p>{t.reportSelection.readOnly}</p> : null}
       {matter.archived || matter.hearingArchived ? <p>{t.reportSelection.archive}</p> : null}
       <fieldset disabled={disabled || busy} aria-describedby="selection-help">
@@ -132,7 +142,8 @@ export function SelectionEditor({
                   }}
                 />
                 <span dir="auto">
-                  ({h.id}) {h.date ?? t.clientReports.undated}
+                  {saved.hearing === h.id ? `${t.ui.savedChoice}\n` : ''}({h.id}){' '}
+                  {h.date ?? t.clientReports.undated}
                   {'\n'}
                   {h.action ?? ''}
                   {'\n'}

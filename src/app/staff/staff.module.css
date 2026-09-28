@@ -325,3 +325,25 @@
     flex-direction: column;
   }
 }
+
+/* Direction 2 shared editor/list presentation; all field and action structures retained. */
+.field input,
+.field textarea,
+.field select,
+.link {
+  border-color: var(--control-border);
+}
+.field label {
+  font-weight: 600;
+}
+.row:nth-child(even) {
+  background: var(--colour-surface);
+}
+.row:hover {
+  background: var(--surface-selected);
+}
+@media (max-width: 40rem) {
+  .panel {
+    padding: var(--space-4);
+  }
+}

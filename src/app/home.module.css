@@ -231,3 +231,125 @@
     gap: var(--space-1);
   }
 }
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-4);
+}
+.compact .panel {
+  padding: var(--space-4);
+}
+.panel summary {
+  min-block-size: 44px;
+  padding: var(--space-2);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  color: var(--colour-primary);
+}
+.detailed .metrics {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 60rem) {
+  .metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.summaryCards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-block: var(--space-6);
+}
+.summaryCards > div {
+  padding: var(--space-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--colour-surface);
+}
+.summaryCards dt {
+  font-weight: 600;
+  color: var(--colour-primary);
+}
+.summaryCards dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--colour-primary);
+}
+.sectionNavigation {
+  font-size: var(--text-sm);
+}
+.recognized {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--colour-primary);
+}
+.compactPreview {
+  margin-block: var(--space-3);
+}
+.compactPreview table {
+  min-inline-size: 0;
+}
+.panel:has(details[open]) .compactPreview {
+  display: none;
+}
+.annualChart {
+  display: flex;
+  gap: var(--space-2);
+  align-items: end;
+  flex-wrap: wrap;
+}
+.annualChart > p {
+  flex-basis: 100%;
+  font-size: var(--text-sm);
+}
+.annualChart .chartBucket {
+  display: flex;
+  flex: 1;
+  flex-direction: column-reverse;
+  min-inline-size: 3rem;
+  padding: 0;
+  border: 0;
+}
+.annualChart .chartBucket > div {
+  display: flex;
+  gap: var(--space-1);
+}
+.annualChart .chartSeries {
+  display: flex;
+  flex: 1;
+  flex-direction: column-reverse;
+  gap: var(--space-1);
+}
+.annualChart .chartSeries > span:first-child {
+  font-size: var(--text-caption);
+}
+.annualChart .barTrack {
+  display: flex;
+  align-items: end;
+  block-size: 6rem;
+  inline-size: 100%;
+  background: var(--colour-surface);
+}
+.annualChart .barTrack > span {
+  inline-size: 100%;
+}
+.annualChart .favourBar {
+  background: var(--colour-primary);
+}
+.annualChart .againstBar {
+  background: var(--colour-accent-warm-dark);
+}
+@media (max-width: 60rem) {
+  .summaryCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 22rem) {
+  .summaryCards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

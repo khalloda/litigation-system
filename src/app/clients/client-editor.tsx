@@ -10,6 +10,7 @@ import {
 } from '@/lib/client-mutation-input';
 import { clientOperationTitle } from '@/lib/client-mutation-copy';
 import { t } from '@/strings';
+import { useDirtyNavigation } from '../_components/use-dirty-navigation';
 import {
   createClientAction,
   updateClientAction,
@@ -107,6 +108,13 @@ export function ClientEditor({
       new Map(fields.map((field) => [field, display(field, clientValue(record?.values, field))])),
   );
   const [result, setResult] = useState<ClientActionResult | null>(null);
+  const dirty =
+    !lifecycle &&
+    result?.kind !== 'success' &&
+    fields.some(
+      (field) => values.get(field) !== display(field, clientValue(record?.values, field)),
+    );
+  useDirtyNavigation(dirty);
   const [pending, startTransition] = useTransition();
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);

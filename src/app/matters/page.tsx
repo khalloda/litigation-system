@@ -16,6 +16,9 @@ import { Field } from '../clients/client-fields';
 import { ClientAlert } from '../clients/client-alert';
 import styles from '../staff/staff.module.css';
 import local from './matters.module.css';
+import { MatterDetail } from './matter-detail';
+import { MatterWorkspace } from './matter-workspace';
+import { reportClientContext } from '@/lib/reports/client-context';
 
 export const metadata: Metadata = { title: t.matters.title };
 export default async function MattersPage({
@@ -42,6 +45,8 @@ export default async function MattersPage({
     );
   }
   const { rows, total, pages, filters, options } = snapshot;
+  const selected = reportClientContext((await searchParams).selected);
+  const listHref = matterListHref(filters);
   const primaryFilters = [
     ['client', t.matters.filters.client, filters.client],
     ['status', t.matters.filters.status, filters.status],
@@ -146,107 +151,141 @@ export default async function MattersPage({
           </div>
         </form>
       </section>
-      <section
-        id="matter-results"
-        tabIndex={-1}
-        className={`${styles.panel} ${styles.focusTarget}`}
-        aria-label={t.matters.title}
+      <MatterWorkspace
+        selected={selected}
+        listHref={listHref}
+        detail={
+          selected ? (
+            <>
+              <Link className={styles.link} href={matterDetailHref(selected, filters)}>
+                {t.ui.fullDetails}
+              </Link>
+              <MatterDetail
+                session={session}
+                params={Promise.resolve({ id: String(selected) })}
+                searchParams={searchParams}
+                embedded
+              />
+            </>
+          ) : (
+            <p>{t.ui.chooseMatter}</p>
+          )
+        }
       >
-        <div className={styles.resultsHeading}>
-          <h2>{t.matters.title}</h2>
-          <p role="status" aria-live="polite" aria-atomic="true">
-            {t.matters.results(total)}
-          </p>
-        </div>
-        {rows.length ? (
-          <ul className={styles.list}>
-            {rows.map((row) => (
-              <li className={styles.row} key={row.id} data-matter-id={row.id}>
-                <div>
-                  <h3>
-                    <Link className={styles.nameLink} href={matterDetailHref(row.id, filters)}>
-                      <bdi className={local.multiline}>
-                        {row.caseNumber?.trim() ? row.caseNumber : t.common.notRecorded}
-                      </bdi>
-                    </Link>
-                  </h3>
-                  <p className={local.multiline} dir="auto">
-                    {row.subject}
-                  </p>
-                  {row.matches.length ? (
-                    <div className={local.matches}>
-                      <span>{t.matters.searchIncludes}</span>
-                      <ul>
-                        {row.matches.map((match, i) => (
-                          <li key={i} className={local.multiline} dir="auto">
-                            {match}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-                <dl>
-                  <Field
-                    label={t.fields.client}
-                    value={
-                      row.clientId ? (
-                        <Link
-                          className={styles.nameLink}
-                          href={`/clients/${row.clientId}?matterReturn=${encodeURIComponent(matterListHref(filters))}`}
-                        >
-                          {row.clientName}
-                        </Link>
-                      ) : null
-                    }
-                  />
-                  {row.clientArchived ? (
-                    <Field label={t.clients.archive} value={t.clients.archived} />
-                  ) : null}
-                  <Field label={t.matters.filters.branch} value={row.branch} />
-                </dl>
-                <dl>
-                  {row.archived ? (
-                    <Field
-                      label={t.matters.lifecycle.archiveFilter}
-                      value={t.matters.lifecycle.archivedFilter}
-                    />
-                  ) : null}
-                  <Field label={t.matters.filters.status} value={row.status} />
-                  <Field label={t.matters.filters.type} value={row.type} />
-                  <Field label={t.matters.filters.degree} value={row.degree} />
-                </dl>
-                <div>
-                  <p className={row.lawyerCount ? undefined : local.unassigned}>
-                    {row.lawyerCount ? t.matters.lawyerCount(row.lawyerCount) : t.matters.noLawyer}
-                  </p>
-                  <dl>
-                    <Field label={t.clients.systemId} value={row.id} />
-                  </dl>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className={styles.empty}>
-            <h3>{t.common.noResults}</h3>
-            <p>{t.matters.empty}</p>
+        <section
+          id="matter-results"
+          tabIndex={-1}
+          className={`${styles.panel} ${styles.focusTarget}`}
+          aria-label={t.matters.title}
+        >
+          <div className={styles.resultsHeading}>
+            <h2>{t.matters.title}</h2>
+            <p role="status" aria-live="polite" aria-atomic="true">
+              {t.matters.results(total)}
+            </p>
           </div>
-        )}
-        <nav className={styles.pagination} aria-label={t.matters.pagination}>
-          {filters.page > 1 ? (
-            <Link className={styles.link} href={matterListHref(filters, filters.page - 1)}>
-              {t.clients.previous}
-            </Link>
-          ) : null}
-          <p>{t.clients.page(filters.page, pages)}</p>
-          {filters.page < pages ? (
-            <Link className={styles.link} href={matterListHref(filters, filters.page + 1)}>
-              {t.clients.next}
-            </Link>
-          ) : null}
-        </nav>
-      </section>
+          {rows.length ? (
+            <ul className={styles.list}>
+              {rows.map((row) => (
+                <li
+                  className={`${styles.row} ${selected === row.id ? local.selected : ''}`}
+                  key={row.id}
+                  data-matter-id={row.id}
+                >
+                  <div>
+                    <h3>
+                      <Link
+                        className={styles.nameLink}
+                        id={`matter-select-${row.id}`}
+                        aria-current={selected === row.id ? 'true' : undefined}
+                        scroll={false}
+                        href={`${listHref}${listHref.includes('?') ? '&' : '?'}selected=${row.id}`}
+                      >
+                        <bdi className={local.multiline}>
+                          {row.caseNumber?.trim() ? row.caseNumber : t.common.notRecorded}
+                        </bdi>
+                      </Link>
+                    </h3>
+                    <p className={local.multiline} dir="auto">
+                      {row.subject}
+                    </p>
+                    {row.matches.length ? (
+                      <div className={local.matches}>
+                        <span>{t.matters.searchIncludes}</span>
+                        <ul>
+                          {row.matches.map((match, i) => (
+                            <li key={i} className={local.multiline} dir="auto">
+                              {match}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                  <dl>
+                    <Field
+                      label={t.fields.client}
+                      value={
+                        row.clientId ? (
+                          <Link
+                            className={styles.nameLink}
+                            href={`/clients/${row.clientId}?matterReturn=${encodeURIComponent(matterListHref(filters))}`}
+                          >
+                            {row.clientName}
+                          </Link>
+                        ) : null
+                      }
+                    />
+                    {row.clientArchived ? (
+                      <Field label={t.clients.archive} value={t.clients.archived} />
+                    ) : null}
+                    <Field label={t.matters.filters.branch} value={row.branch} />
+                  </dl>
+                  <dl>
+                    {row.archived ? (
+                      <Field
+                        label={t.matters.lifecycle.archiveFilter}
+                        value={t.matters.lifecycle.archivedFilter}
+                      />
+                    ) : null}
+                    <Field label={t.matters.filters.status} value={row.status} />
+                    <Field label={t.matters.filters.type} value={row.type} />
+                    <Field label={t.matters.filters.degree} value={row.degree} />
+                  </dl>
+                  <div>
+                    <p className={row.lawyerCount ? undefined : local.unassigned}>
+                      {row.lawyerCount
+                        ? t.matters.lawyerCount(row.lawyerCount)
+                        : t.matters.noLawyer}
+                    </p>
+                    <dl>
+                      <Field label={t.clients.systemId} value={row.id} />
+                    </dl>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className={styles.empty}>
+              <h3>{t.common.noResults}</h3>
+              <p>{t.matters.empty}</p>
+            </div>
+          )}
+          <nav className={styles.pagination} aria-label={t.matters.pagination}>
+            {filters.page > 1 ? (
+              <Link className={styles.link} href={matterListHref(filters, filters.page - 1)}>
+                {t.clients.previous}
+              </Link>
+            ) : null}
+            <p>{t.clients.page(filters.page, pages)}</p>
+            {filters.page < pages ? (
+              <Link className={styles.link} href={matterListHref(filters, filters.page + 1)}>
+                {t.clients.next}
+              </Link>
+            ) : null}
+          </nav>
+        </section>
+      </MatterWorkspace>
     </main>
   );
 }

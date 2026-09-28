@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { signOut } from '@/auth';
 import { Suspense } from 'react';
 import { TodayHearings } from '@/app/_components/today-hearings';
+import { DashboardSummary } from '@/app/_components/dashboard-summary';
 import { CurrentOutcomes, FiveYearOutcomes } from '@/app/_components/current-outcomes';
 import { TopClients } from '@/app/_components/top-clients';
 import { LawyerWorkload } from '@/app/_components/lawyer-workload';
@@ -13,105 +13,37 @@ import styles from './home.module.css';
 
 export const dynamic = 'force-dynamic';
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
   const session = await requireAuthenticatedPage();
   const instant = new Date();
-  const roleLabel = Object.entries(t.auth.roles).find(([role]) => role === session.user.role)?.[1];
-  const canViewUsers = hasPermission(session.user.role, 'usersAndRoles', 'view');
-
-  async function logoutAction() {
-    'use server';
-    await signOut({ redirectTo: '/login' });
-  }
-
+  const detailed = (await searchParams).view === 'analytics';
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${detailed ? styles.detailed : styles.compact}`}>
       <a className={styles.skip} href="#today-panel">
         {t.dashboard.skip}
       </a>
       <header className={styles.header}>
-        <div className={styles.brand}>
-          <p>{t.app.name}</p>
-          <h1>{t.nav.dashboard}</h1>
-          <p>{t.app.system}</p>
+        <div>
+          <h1>{detailed ? t.ui.analytics : t.ui.overview}</h1>
+          <p>{t.dashboard.cairo}</p>
         </div>
-        <div className={styles.account}>
-          <p>
-            <strong>{t.auth.signedInAs}:</strong> {session.user.name}
-          </p>
-          <p>
-            <strong>{t.auth.role}:</strong> {roleLabel}
-          </p>
-        </div>
+        <Link className={styles.button} href={detailed ? '/' : '/?view=analytics'}>
+          {detailed ? t.ui.overview : t.ui.analytics}
+        </Link>
       </header>
-      <nav className={styles.navigation} aria-label={t.dashboard.navigation}>
-        {hasPermission(session.user.role, 'reports', 'run') ? (
-          <Link className={styles.link} href="/reports">
-            {t.nav.reports}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'auditHistory', 'view') ? (
-          <Link className={styles.link} href="/audit-history">
-            {t.auditHistory.global}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'billing', 'view') ? (
-          <Link className={styles.link} href="/billing">
-            {t.nav.billing}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'documents', 'view') ? (
-          <Link className={styles.link} href="/documents">
-            {t.nav.documents}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'feeLetters', 'view') ? (
-          <Link className={styles.link} href="/fee-letters">
-            {t.nav.feeLetters}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'powersOfAttorney', 'view') ? (
-          <Link className={styles.link} href="/powers-of-attorney">
-            {t.poa.title}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'administrativeWorks', 'view') ? (
-          <Link className={styles.link} href="/admin-works">
-            {t.nav.adminWorks}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'hearings', 'view') ? (
-          <Link className={styles.link} href="/hearings">
-            {t.nav.hearings}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'matters', 'view') ? (
-          <Link className={styles.link} href="/matters">
-            {t.nav.matters}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'clients', 'view') ? (
-          <Link className={styles.link} href="/clients">
-            {t.nav.clients}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'staff', 'view') ? (
-          <Link className={styles.link} href="/staff">
-            {t.nav.staff}
-          </Link>
-        ) : null}
-        {canViewUsers ? (
-          <Link className={styles.link} href="/users">
-            {t.nav.users}
-          </Link>
-        ) : null}
-        <form action={logoutAction}>
-          <button className={styles.button} type="submit">
-            {t.auth.logout}
-          </button>
-        </form>
-      </nav>
-      <nav className={styles.navigation} aria-label={t.dashboardMetrics.sections}>
+      {!detailed ? (
+        <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+          <DashboardSummary session={session} instant={instant} />
+        </Suspense>
+      ) : null}
+      <nav
+        className={`${styles.navigation} ${detailed ? '' : styles.sectionNavigation}`}
+        aria-label={t.dashboardMetrics.sections}
+      >
         <a href="#today-panel">{t.dashboard.today}</a>
         <a href="#open-title">{t.dashboardMetrics.open}</a>
         <a href="#workload-title">{t.dashboardMetrics.workload}</a>
@@ -119,28 +51,28 @@ export default async function HomePage() {
         <a href="#outcomes-current-title">{t.dashboardMetrics.currentOutcomes}</a>
         <a href="#outcomes-five-year-title">{t.dashboardMetrics.fiveYearOutcomes}</a>
       </nav>
-      <div id="today-panel">
-        {hasPermission(session.user.role, 'hearings', 'view') ? (
-          <Suspense fallback={<p role="status">{t.common.loading}</p>}>
-            <TodayHearings session={session} />
-          </Suspense>
-        ) : null}
-      </div>
       <div className={styles.metrics}>
+        <div id="today-panel">
+          {hasPermission(session.user.role, 'hearings', 'view') ? (
+            <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+              <TodayHearings session={session} compact={!detailed} />
+            </Suspense>
+          ) : null}
+        </div>
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
-          <OpenDecisions session={session} instant={instant} />
+          <OpenDecisions session={session} compact={!detailed} instant={instant} />
         </Suspense>
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
-          <LawyerWorkload session={session} />
+          <LawyerWorkload session={session} compact={!detailed} />
         </Suspense>
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
-          <TopClients session={session} />
+          <TopClients session={session} compact={!detailed} />
         </Suspense>
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
-          <CurrentOutcomes session={session} instant={instant} />
+          <CurrentOutcomes session={session} compact={!detailed} instant={instant} />
         </Suspense>
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
-          <FiveYearOutcomes session={session} instant={instant} />
+          <FiveYearOutcomes session={session} compact={!detailed} instant={instant} />
         </Suspense>
       </div>
     </main>

@@ -158,3 +158,31 @@
     margin-block-end: var(--space-2);
   }
 }
+
+/* The existing drawer and global viewer share the approved notice/field surfaces. */
+.label {
+  font-weight: 600;
+}
+.label input,
+.label select {
+  border-color: var(--control-border);
+  border-radius: var(--radius);
+  font-weight: 400;
+}
+.group,
+.difference {
+  border-radius: var(--radius);
+  border-color: var(--hairline);
+}
+.sheetHeader {
+  border-block-end: 1px solid var(--hairline);
+  padding-block-end: var(--space-3);
+}
+.sheetContent {
+  padding: var(--space-6);
+}
+@media (max-width: 40rem) {
+  .sheetContent {
+    padding: var(--space-3);
+  }
+}

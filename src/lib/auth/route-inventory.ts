@@ -496,7 +496,7 @@ export const ROUTE_INVENTORY = [
   },
   {
     kind: 'server-action',
-    source: 'src/app/page.tsx',
+    source: 'src/app/_components/logout.ts',
     exportName: 'logoutAction',
     classification: {
       access: 'authenticated',

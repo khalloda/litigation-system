@@ -1,0 +1,56 @@
+{
+  "status": "candidate; PDF Unicode search/copy gate unresolved",
+  "family": "Noto Sans Arabic",
+  "version": "2.012",
+  "sourceCommit": "6c8320740db19efbb3127c3697b0ee5d0fa62319",
+  "source": "https://github.com/google/fonts/tree/6c8320740db19efbb3127c3697b0ee5d0fa62319/ofl/notosansarabic",
+  "licence": "OFL-NotoSansArabic.txt",
+  "derivation": {
+    "tool": "FontTools 4.63.0",
+    "function": "fontTools.varLib.instancer.instantiateVariableFont",
+    "axisLimits": {
+      "wdth": 100,
+      "wght": [
+        400,
+        600,
+        700
+      ]
+    },
+    "updateFontNames": true,
+    "note": "Head timestamps differ from the supplied static design proof; full candidate byte hashes are recorded here and enforced in reportAssets."
+  },
+  "files": [
+    {
+      "file": "NotoSansArabic-Bold.ttf",
+      "bytes": 194520,
+      "sha256": "8d78c144858feea35755198b2ab3de1ab99c15eecfd7c784eaf78c775aedab88",
+      "headModified": 3873468473,
+      "weight": 700,
+      "codepoints": 1561
+    },
+    {
+      "file": "NotoSansArabic-Regular.ttf",
+      "bytes": 194336,
+      "sha256": "d266231e48dccbcd141f0bdcbf6160a4c7081b9978b0699b75038022267c7f9b",
+      "headModified": 3873468471,
+      "weight": 400,
+      "codepoints": 1561
+    },
+    {
+      "file": "NotoSansArabic-SemiBold.ttf",
+      "bytes": 194656,
+      "sha256": "2ad2e893bcafa0a92e85787085746128816d84d8d79cc108b92db3d6c6e43632",
+      "headModified": 3873468472,
+      "weight": 600,
+      "codepoints": 1561
+    },
+    {
+      "file": "NotoSansArabic-variable.ttf",
+      "bytes": 844676,
+      "sha256": "63111b5b2e074dd48cc67692e0a2726d86ee94c1c37fe8598257b7b4e87e869e",
+      "headModified": 3782194246,
+      "weight": 400,
+      "codepoints": 1561
+    }
+  ]
+}

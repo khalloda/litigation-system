@@ -1,0 +1,153 @@
+.shell {
+  min-block-size: 100dvh;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  background: var(--colour-surface);
+  border-block-end: 1px solid var(--hairline);
+}
+.logo {
+  inline-size: 15rem;
+  max-inline-size: 100%;
+  block-size: auto;
+}
+.account {
+  position: relative;
+  max-inline-size: 50%;
+  overflow-wrap: anywhere;
+}
+.account form {
+  position: absolute;
+  inset-inline-end: 0;
+  z-index: 4;
+  background: var(--colour-surface);
+  padding: var(--space-3);
+  border: 1px solid var(--control-border);
+}
+.rail {
+  position: fixed;
+  inset-block: 6rem 0;
+  inset-inline-start: 0;
+  inline-size: 6.5rem;
+  background: var(--colour-surface);
+  padding: var(--space-2);
+  overflow-y: auto;
+  z-index: 3;
+}
+.rail a,
+.rail summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-block-size: 4rem;
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+  text-align: center;
+  text-decoration: none;
+  color: var(--colour-primary);
+  border-radius: var(--radius);
+}
+.rail a[aria-current] {
+  background: var(--colour-primary);
+  color: var(--colour-on-primary);
+  font-weight: 700;
+}
+.rail a:hover {
+  box-shadow: inset 0 0 0 2px var(--colour-accent-warm-dark);
+}
+.more {
+  border-block: 1px solid var(--hairline);
+}
+.content {
+  margin-inline-start: 6.5rem;
+  min-inline-size: 0;
+}
+.location {
+  padding: var(--space-3) var(--space-6) 0;
+  color: var(--colour-text-muted);
+  font-size: var(--text-sm);
+}
+.mobile {
+  display: none;
+}
+.skip {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 20;
+  padding: var(--space-3);
+  background: var(--colour-surface);
+}
+.skip:not(:focus) {
+  clip-path: inset(50%);
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+}
+.shell summary {
+  min-block-size: 44px;
+  cursor: pointer;
+  align-content: center;
+}
+.shell :is(a, button, summary):focus-visible {
+  outline: var(--focus-width) solid var(--colour-primary);
+  outline-offset: 3px;
+}
+@media (max-width: 60rem) {
+  .rail {
+    display: none;
+  }
+  .content {
+    margin-inline-start: 0;
+  }
+  .header {
+    padding: var(--space-3);
+    align-items: start;
+    flex-wrap: wrap;
+  }
+  .logo {
+    inline-size: 12rem;
+  }
+  .account {
+    max-inline-size: 100%;
+  }
+  .mobile {
+    display: block;
+    background: var(--colour-surface);
+    padding-inline: var(--space-3);
+    border-block-end: 1px solid var(--hairline);
+  }
+  .mobile nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    padding-block: var(--space-3);
+  }
+  .mobile a {
+    min-block-size: 44px;
+    display: flex;
+    align-items: center;
+    padding: var(--space-2);
+  }
+  .mobile a[aria-current] {
+    background: var(--surface-selected);
+    font-weight: 700;
+  }
+}
+
+.mobile a {
+  gap: var(--space-2);
+}
+.mobile summary svg {
+  vertical-align: middle;
+}
+.rail svg,
+.mobile svg {
+  flex-shrink: 0;
+}

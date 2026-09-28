@@ -34,7 +34,7 @@ export default async function SelectionPage({
     `/reports/selection?client=${client}${id === null ? '' : `&id=${id}`}&page=${p}`;
   return (
     <main className={styles.page}>
-      <Link href="/reports">{t.reports.back}</Link>
+      <Link href={`/reports?client=${client}`}>{t.reports.back}</Link>
       <h1>{t.reportSelection.title}</h1>
       <h2>
         {model.name} ({client})
@@ -70,6 +70,26 @@ export default async function SelectionPage({
           <h3 dir="auto" className={styles.choice}>
             {model.matters[0]!.caseNumber ?? model.matters[0]!.subject}
           </h3>
+          <aside className={styles.choice}>
+            <h3>{t.ui.latestAvailable}</h3>
+            {page === 1 ? (
+              model.hearings[0] ? (
+                <p className={styles.wrap} dir="auto">
+                  ({model.hearings[0].id}) {model.hearings[0].date ?? t.clientReports.undated}
+                  {'\n'}
+                  {model.hearings[0].decision ?? t.reports.nullValue}
+                  {model.hearings[0].archived ? '\n' + t.reportSelection.archive : ''}
+                </p>
+              ) : (
+                <p>{t.reportSelection.none}</p>
+              )
+            ) : (
+              <Link href={`/reports/selection?client=${client}&id=${id}`}>
+                {t.ui.latestFirstPage}
+              </Link>
+            )}
+            <p>{t.ui.latestDoesNotSave}</p>
+          </aside>
           <SelectionEditor
             key={`${id}:${page}`}
             client={client}

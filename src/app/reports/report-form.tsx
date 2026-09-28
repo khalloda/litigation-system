@@ -16,9 +16,11 @@ import { ReportReferenceSelect } from './reference-select';
 export function ReportForm({
   descriptor,
   options,
+  initialClient = '',
 }: {
   descriptor: ReportDescriptor;
   options: ReportOptions;
+  initialClient?: string;
 }) {
   const form = useRef<HTMLFormElement>(null);
   const summary = useRef<HTMLDivElement>(null);
@@ -29,7 +31,7 @@ export function ReportForm({
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
-  const [selectionClient, setSelectionClient] = useState('');
+  const [selectionClient, setSelectionClient] = useState(initialClient);
   const [reset, setReset] = useState(0);
   useEffect(() => () => abort.current?.abort(), []);
   useEffect(
@@ -207,6 +209,7 @@ export function ReportForm({
                   label={reportFieldLabel(key)}
                   rule={rule}
                   options={referenceOptions(options, key)}
+                  initialValue={key === 'client' && reset === 0 ? initialClient : ''}
                   invalid={errors.includes(key)}
                   describedBy={help(key)}
                 />

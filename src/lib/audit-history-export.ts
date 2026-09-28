@@ -1,6 +1,5 @@
 import type { Session } from 'next-auth';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import ExcelJS from 'exceljs';
 import { chromium } from 'playwright';
@@ -22,6 +21,7 @@ import {
 import { AuditHistoryError, type AuditResult } from './audit-history-types';
 import { auditErrorResponse, auditResponseHeaders } from './audit-history-response';
 import { t } from '@/strings';
+import { reportAssets } from './reports/assets';
 const s = t.auditHistory;
 const MAX_BYTES = 20 * 1024 * 1024;
 let activeExports = 0;
@@ -180,16 +180,14 @@ export async function generateAuditPdf(
   signal?: AbortSignal,
 ) {
   if (result.totalEvents > 2000) throw new AuditHistoryError('too-large');
-  const [arabic, latin, latinExt, logo] = await Promise.all([
-    readFile(path.resolve('public/fonts/noto-naskh-arabic-arabic-wght-normal.woff2')),
-    readFile(path.resolve('public/fonts/noto-naskh-arabic-latin-wght-normal.woff2')),
-    readFile(path.resolve('public/fonts/noto-naskh-arabic-latin-ext-wght-normal.woff2')),
-    readFile(path.resolve('assets/logo.png')),
-  ]);
-  const fonts = [arabic, latin, latinExt]
+  const assets = await reportAssets().catch(() => {
+    throw new AuditHistoryError('generation');
+  });
+  const logo = assets.logo;
+  const fonts = assets.fonts
     .map(
       (font, index) =>
-        `@font-face{font-family:Noto${index};src:url(data:font/woff2;base64,${font.toString('base64')}) format('woff2');font-weight:400 700;}`,
+        `@font-face{font-family:Noto0;src:url(data:font/ttf;base64,${font.toString('base64')}) format('truetype');font-weight:${[400, 600, 700][index]};}`,
     )
     .join('');
   const details = (items: [string, string][]) =>
@@ -202,7 +200,7 @@ export async function generateAuditPdf(
         `<section><h2>${escape(group.occurredAt.slice(0, 10))} — ${escape(auditGroupTitle(group))}</h2><p>${escape(s.groupId)}: ${escape(group.key)}</p>${group.events.map((event) => `<article><h3>${escape(auditLabel('actions', event.action))} — ${escape(event.id)}</h3><table><thead><tr><th>${escape(s.field)}</th><th>${escape(s.details)}</th></tr></thead><tbody>${details(auditDetails(event))}</tbody></table>${event.fields.map((field) => `<h4>${escape(auditLabel('fields', field))} (${escape(field)})</h4><table><thead><tr><th>${escape(s.before)}</th><th>${escape(s.after)}</th></tr></thead><tbody><tr><td><bdi>${escape(auditValue(auditRecordedValue(event.before, field)))}</bdi></td><td><bdi>${escape(auditValue(auditRecordedValue(event.after, field)))}</bdi></td></tr></tbody></table>`).join('')}</article>`).join('')}</section>`,
     )
     .join('');
-  const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:"><style>${fonts}body{font-family:Noto0,Noto1,Noto2;font-size:12px;line-height:1.7;color:rgb(30,30,30)}h1,h2,h3{color:rgb(33,75,75);break-after:avoid}table{inline-size:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}td,th{border:1px solid rgb(199,199,199);padding:6px;text-align:start;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}thead{display:table-header-group}bdi{unicode-bidi:plaintext;white-space:pre-wrap}tr{break-inside:auto}img{inline-size:180px}article{margin-block:16px}</style></head><body><img alt="${escape(t.app.name)}" src="data:image/png;base64,${logo.toString('base64')}"><h1>${escape(s.title)}</h1><table><tbody>${details(auditExportSummary(result, generatedAt))}</tbody></table>${body || `<p>${escape(s.empty)}</p>`}</body></html>`;
+  const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:"><style>${fonts}body{font-family:Noto0;font-size:12px;line-height:1.7;color:rgb(30,30,30)}h1,h2,h3{color:rgb(33,75,75);break-after:avoid}table{inline-size:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}td,th{border:1px solid rgb(199,199,199);padding:6px;text-align:start;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}thead{display:table-header-group}bdi{unicode-bidi:plaintext;white-space:pre-wrap}tr{break-inside:auto}img{inline-size:180px}article{margin-block:16px}</style></head><body><img alt="${escape(t.app.name)}" src="data:image/png;base64,${logo.toString('base64')}"><h1>${escape(s.title)}</h1><table><tbody>${details(auditExportSummary(result, generatedAt))}</tbody></table>${body || `<p>${escape(s.empty)}</p>`}</body></html>`;
   if (Buffer.byteLength(html) > MAX_BYTES) throw new AuditHistoryError('too-large');
   signal?.throwIfAborted();
   const executablePath = process.env['AUDIT_PDF_CHROMIUM'];
@@ -223,7 +221,20 @@ export async function generateAuditPdf(
     await context.route('**/*', (route) => route.abort());
     const page = await context.newPage();
     await page.setContent(html, { waitUntil: 'load', timeout: 20000 });
-    await page.evaluate(() => document.fonts.ready);
+    const ready = await page.evaluate(async () => {
+      await Promise.all(
+        [400, 600, 700].map((weight) =>
+          document.fonts.load(`${weight} 12px Noto0`, 'أَإِؤُئْ العربية ABC012'),
+        ),
+      );
+      await document.fonts.ready;
+      await Promise.all([...document.images].map((image) => image.decode()));
+      return (
+        [...document.fonts].length === 3 &&
+        [...document.fonts].every((face) => face.status === 'loaded')
+      );
+    });
+    if (!ready) throw new AuditHistoryError('generation');
     const bytes = await page.pdf({
       format: 'A4',
       printBackground: true,
