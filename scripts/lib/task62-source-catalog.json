@@ -1,0 +1,292 @@
+{
+  "columns": [
+    {
+      "attname": "kind",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "source_identity",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "source_lineage",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "source_sha256",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "approved_plan_text",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "operation_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "actor_id",
+      "type": "integer",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "audit_session_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "matter_id",
+      "type": "integer",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "target_id",
+      "type": "integer",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "audit_event_id",
+      "type": "bigint",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "role_audit_event_id",
+      "type": "bigint",
+      "attnotnull": false,
+      "default_value": null
+    },
+    {
+      "attname": "source_values",
+      "type": "jsonb",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "before_values",
+      "type": "jsonb",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "after_values",
+      "type": "jsonb",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "operation_manifest",
+      "type": "jsonb",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "attname": "created_at",
+      "type": "timestamp with time zone",
+      "attnotnull": true,
+      "default_value": "statement_timestamp()"
+    }
+  ],
+  "constraints": [
+    {
+      "conname": "task62_source_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "conname": "task62_source_receipt_actor_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (actor_id) REFERENCES audit_actors(id)"
+    },
+    {
+      "conname": "task62_source_receipt_after_values_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(after_values) = 'object'::text)"
+    },
+    {
+      "conname": "task62_source_receipt_approved_plan_text_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (encode(sha256(convert_to(approved_plan_text, 'UTF8'::name)), 'hex'::text) = 'c0b0590c693b139b57bb78a4a8d24640af2ee6ab73e4e0ee1f9aa89d12b1be6e'::text)"
+    },
+    {
+      "conname": "task62_source_receipt_audit_event_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (audit_event_id) REFERENCES audit_events(id)"
+    },
+    {
+      "conname": "task62_source_receipt_audit_event_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (audit_event_id)"
+    },
+    {
+      "conname": "task62_source_receipt_before_values_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (before_values = '{}'::jsonb)"
+    },
+    {
+      "conname": "task62_source_receipt_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (kind = 'party_release'::text AND role_audit_event_id IS NOT NULL AND source_identity ~ '^quarantine:[1-9][0-9]*$'::text OR kind = 'hearing_source'::text AND role_audit_event_id IS NULL AND source_identity ~ '^hearing:[1-9][0-9]*$'::text)"
+    },
+    {
+      "conname": "task62_source_receipt_kind_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (kind = ANY (ARRAY['party_release'::text, 'hearing_source'::text]))"
+    },
+    {
+      "conname": "task62_source_receipt_kind_target_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (kind, target_id)"
+    },
+    {
+      "conname": "task62_source_receipt_matter_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (matter_id) REFERENCES matters(id)"
+    },
+    {
+      "conname": "task62_source_receipt_operation_id_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (operation_id::text ~ '^62620075-[a-f0-9]{4}-5[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$'::text)"
+    },
+    {
+      "conname": "task62_source_receipt_operation_manifest_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(operation_manifest) = 'object'::text)"
+    },
+    {
+      "conname": "task62_source_receipt_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (kind, source_identity)"
+    },
+    {
+      "conname": "task62_source_receipt_role_audit_event_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (role_audit_event_id) REFERENCES audit_events(id)"
+    },
+    {
+      "conname": "task62_source_receipt_role_audit_event_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (role_audit_event_id)"
+    },
+    {
+      "conname": "task62_source_receipt_source_lineage_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (source_lineage = 'litigation-department-access'::text)"
+    },
+    {
+      "conname": "task62_source_receipt_source_sha256_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (source_sha256 = '5b0ee4419e81b8f8f1c66834d0a24e2c023912acb1efd2617b58a435332b7dfd'::text)"
+    },
+    {
+      "conname": "task62_source_receipt_source_values_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(source_values) = 'object'::text)"
+    },
+    {
+      "conname": "task62_source_receipt_target_id_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (target_id > 0)"
+    }
+  ],
+  "indexes": [
+    {
+      "definition": "CREATE UNIQUE INDEX task62_source_receipt_audit_event_id_key ON _migration.task62_source_receipt USING btree (audit_event_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX task62_source_receipt_kind_target_id_key ON _migration.task62_source_receipt USING btree (kind, target_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX task62_source_receipt_pkey ON _migration.task62_source_receipt USING btree (kind, source_identity)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "definition": "CREATE UNIQUE INDEX task62_source_receipt_role_audit_event_id_key ON _migration.task62_source_receipt USING btree (role_audit_event_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "triggers": [
+    {
+      "tgname": "task62_source_atomic_audit",
+      "relation": "audit_events",
+      "tgtype": 5,
+      "tgenabled": "O",
+      "tgdeferrable": true,
+      "tginitdeferred": true,
+      "function": "_migration.task62_source_require_complete()",
+      "tgnargs": 0,
+      "attributes": "",
+      "definition": "CREATE CONSTRAINT TRIGGER task62_source_atomic_audit AFTER INSERT ON audit_events DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (new.request_id::text ~ '^62620075-[a-f0-9]{4}-5[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$'::text) EXECUTE FUNCTION _migration.task62_source_require_complete()"
+    },
+    {
+      "tgname": "task62_source_complete",
+      "relation": "_migration.task62_source_receipt",
+      "tgtype": 5,
+      "tgenabled": "O",
+      "tgdeferrable": true,
+      "tginitdeferred": true,
+      "function": "_migration.task62_source_require_complete()",
+      "tgnargs": 0,
+      "attributes": "",
+      "definition": "CREATE CONSTRAINT TRIGGER task62_source_complete AFTER INSERT ON _migration.task62_source_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task62_source_require_complete()"
+    },
+    {
+      "tgname": "task62_source_immutable",
+      "relation": "_migration.task62_source_receipt",
+      "tgtype": 58,
+      "tgenabled": "O",
+      "tgdeferrable": false,
+      "tginitdeferred": false,
+      "function": "refuse_audit_event_change()",
+      "tgnargs": 0,
+      "attributes": "",
+      "definition": "CREATE TRIGGER task62_source_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task62_source_receipt FOR EACH STATEMENT EXECUTE FUNCTION refuse_audit_event_change()"
+    }
+  ]
+}

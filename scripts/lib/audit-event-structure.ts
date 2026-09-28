@@ -1,3 +1,4 @@
+import { task62SourceFailures } from './task62-source-checkpoint';
 import {
   reportSelectionApplied,
   reportSelectionFailures,
@@ -161,6 +162,7 @@ export async function auditEventStructureFailures(
   runtimeRole = RUNTIME_DATABASE_ROLE,
 ): Promise<string[]> {
   const failures: string[] = [];
+  failures.push(...(await task62SourceFailures(db)));
   const reportSelection = await reportSelectionApplied(db);
   failures.push(...(await reportSelectionFailures(db)));
   const eventTables = reportSelection

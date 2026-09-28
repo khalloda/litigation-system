@@ -4,6 +4,10 @@ import { assertAdminLifecycleBoundary } from './lib/admin-lifecycle-checkpoint';
 import { assertAdminEditBoundary, historicalAdminClient } from './lib/admin-edit-checkpoint';
 import { assertHearingLifecycleBoundary } from './lib/hearing-lifecycle-checkpoint';
 import { assertHearingEditBoundary, historicalHearingClient } from './lib/hearing-edit-checkpoint';
+import {
+  task62ApprovedCapacityIds,
+  historicalTask62CapacityClient,
+} from './lib/task62-source-checkpoint';
 /*
  * Proves the application can actually reach the database and that the
  * database is in the state the application expects.
@@ -215,6 +219,7 @@ async function main() {
     return verified.state;
   });
   const appliedBranches = highImpactState === null ? [] : D39_BRANCHES.map((row) => row.label);
+  const approvedTask62Capacities = await withApprovedMigrationClient(task62ApprovedCapacityIds);
   if (highImpactState !== null)
     console.log(
       'Task 3.5B current additions are verified above. Stage 2 matter/relationship/hearing counts below describe the frozen historical partition, not current totals.',
@@ -278,7 +283,7 @@ async function main() {
     ['degree', () => db.lookupDegree.count(), 12],
     ['venue', () => db.lookupVenue.count(), 7],
     ['importance', () => db.lookupImportance.count(), 3],
-    ['party_role', () => db.lookupPartyRole.count(), 11],
+    ['party_role', () => db.lookupPartyRole.count(), 11 + approvedTask62Capacities.length],
     ['hearing_action', () => db.lookupHearingAction.count(), 20],
     //  27 + 4: the firm ruled that four of the seven "not a court" values are
     //  destinations. See sql/court-wrong-destinations.sql.
@@ -295,9 +300,10 @@ async function main() {
   }
   record(
     'Lookup lists (9)',
-    `${135 + appliedBranches.length} rows`,
+    `${135 + appliedBranches.length + approvedTask62Capacities.length} rows`,
     wrong.length === 0 ? `${lookupTotal} rows` : wrong.join(', '),
-    wrong.length === 0 && lookupTotal === 135 + appliedBranches.length,
+    wrong.length === 0 &&
+      lookupTotal === 135 + appliedBranches.length + approvedTask62Capacities.length,
   );
 
   // The default matter type is what a matter falls back to. Exactly one.
@@ -2192,7 +2198,10 @@ async function main() {
       ),
       highImpactState,
     );
-    const historicalRosterDb = historicalStaffClient(relationshipDb, staffBoundary);
+    const historicalRosterDb = historicalTask62CapacityClient(
+      historicalStaffClient(relationshipDb, staffBoundary),
+      approvedTask62Capacities,
+    );
     if (historical) {
       const relationshipResult = await reconcileMatterRelationships(historicalRosterDb);
       record(
