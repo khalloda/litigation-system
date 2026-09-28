@@ -111,3 +111,36 @@ bounded runner are separate readiness candidates, not owner activation.
 See [the bounded readiness report](../task-reports/2026-09-28-task-6-2-bounded-readiness.md).
 TASKS bytes/all86 checkbox lines remain unchanged. No owner migration, repair/seed,
 app activation, acceptance closure, publication, UI refinement or Task6.3 is included.
+
+
+## Bounded actual operation — 28 September 2026
+
+Independent readiness PASS for `878144c647f63d1585291413f51fcdbdc0a25a9c`
+was adopted by the owner. Actual migration 74/75, exact D1–D3 repairs and ten
+selections, corrected stable-artifact activation and the following gates passed:
+
+| Gate | Actual result |
+|---|---|
+| Protected recovery and sequential pristine restores | Full table/column/catalog/ledger/48-sequence comparison with only documented physical restore exceptions; refreshed recovery includes one owner-confirmed preview |
+| Repaired fixture and launched artifact | Four genuine roles, four previews/eight saved exports, complete repair oracle and 148+15 final checks |
+| Owner repair | All 145 tables compared; 130 unchanged, 15 exact authorized deltas; 31 receipts, 102 audits; four sequence allocations only |
+| Owner editor | Ten chosen hearing pairs, three exclusions, read-only; no draft selection or save |
+| Owner previews | Selected/all: client-matters 10/36; client-status 10/38; every visible ordered cell matched independent SQL-derived oracle |
+| Owner saved exports | Exactly two selected XLSX and two selected PDF files; 120 ordered workbook data cells, four PDF pages, Cairo time, full glyph/content/bounds and visual checks |
+| Owner events and quiet window | One genuine sign-in reconciled separately; confirmed concurrent preview retained; exactly 12 actual report events; final 1045 audit rows; 148+15 and complete subsequent read-only equality |
+| Cleanup/preservation | Exact two sequential fixtures and task app processes removed; task session copies removed; credentials, source/raw data, prior artifacts and recoveries preserved |
+
+Earlier correction2 40-output evidence and readiness provenance/conflict/retry
+evidence are explicitly reused under exact source/dependency bindings. No broad
+adversarial rerun or fabricated owner data was needed. The original browser command
+failed only at its last generic heading selector after all four exports were saved;
+a read-only navigation supplement completed that check, without repeated reports.
+Some tool-displayed PDF headers were suppressed although saved header pixels match
+on every page; independent PDFium and preserved conflicting images document this
+inspection limitation. No universal reader or accessibility certification is claimed.
+
+T62-O1 and the approved bounded T62-O2/selection/source-provenance scope are live.
+Full Access synchronization remains outside scope. This operational disposition
+does not close the independent operational review. TASKS bytes and 86 checkbox
+lines are unchanged. Next: independent bounded operational review, then separately
+authorized UI refinement, then Task 6.3. See the [dated report](../task-reports/2026-09-28-task-6-2-bounded-repair-activation.md).

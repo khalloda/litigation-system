@@ -645,3 +645,21 @@ acceptance; external receipts record its identity and actual normal push result.
 See the [operational record](docs/task-reports/2026-09-27-task-6-2-acceptance-activation.md)
 and [independent implementation PASS](docs/reviews/2026-09-26-task62-implementation-independent-review.md).
 Independent operational review remains pending. Task 6.3 and UI redesign have not started.
+
+
+## Task 6.2 bounded corrections activated — 28 September 2026
+
+The owner adopted the independent readiness PASS at `878144c647f63d1585291413f51fcdbdc0a25a9c`
+and authorized the exact D1–D3 operation. Migrations 74 and 75 and the bounded
+repair are now applied locally; the corrected app is active on loopback port 3000,
+build `0KBeszrDL7ryCzaLpmGlb` (observed PID 38844). The 29 party sides, two
+source-backed hearings and ten complete report selections passed exact state,
+history, audit and provenance comparisons. All active remains the default.
+
+Fresh recovery/restore, isolated rehearsal, actual-owner four previews and four
+saved exports, and final 148+15 database gates passed. TASKS and governance stay
+unchanged. See the [operational report](docs/task-reports/2026-09-28-task-6-2-bounded-repair-activation.md) and
+[independent readiness PASS](docs/reviews/2026-09-28-task62-bounded-readiness-independent-review.md). The documentation child's actual identity
+and normal publication outcome belong to external receipts. Independent bounded
+operational review is pending. UI refinement and Task 6.3 have not started; no full
+Access synchronization was performed. Prior dated pending-operation records remain history.

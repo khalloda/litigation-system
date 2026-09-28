@@ -3994,3 +3994,35 @@ changes remain intact. Original SQL1–74 and migration0033 provenance are uncha
 The final source/row/audit/sequence/rollback evidence and future owner runbook are
 review-bound external deliverables. Owner migration73 remains unchanged; no data
 repair, seed, restoration or acceptance closure has occurred on the owner database.
+
+
+## Actual bounded Task 6.2 operation — 28 September 2026
+
+Under the owner's separately adopted actual-operation mandate and independent
+readiness PASS for `878144c647f63d1585291413f51fcdbdc0a25a9c`, migration 74
+(`20260927130000_client_report_selection`) and then 75
+(`20260928070000_task62_bounded_source_provenance`) were applied once to the
+identified local owner cluster. Actual Windows SQL SHA256 values are respectively
+`e4bda1b04e41c163903c635c5dbd645a512b33f4dcaaa2ceefdf18187eecaec3` and
+`b7181e7414316bb4e25b302bec8e78f1fc15b4944a68e562df8ef850ef89147b`.
+Separate comparisons proved 141→144→145 tables, 73→75 completed migrations,
+74→76 ledger rows including the historical rolled-back row, and no schema-stage
+business or sequence changes. No provisioning or historical checksum rewrite occurred.
+
+The exact reviewed runner committed one bounded transaction: eight capacities,
+29 textual parties and role links, 24 matter bookkeeping advances, two hearings,
+31 immutable source receipts and ten selections. Source hearings 15802 and 15813
+map to current IDs 39493 and 39494. There are 39 owned submissions, 36 history
+changes and 102 truthful audit events. Only four sequences advance (8/29/29/2);
+the other 44 and all raw/quarantine/import data remain exact. The three exclusions
+remain absent/false/NULL. Deferred and permanent provenance/selection enforcement
+passed fresh 148 historical plus 15 setup checks.
+
+Protected recovery and full-state rehearsal preceded maintenance. A confirmed
+owner preview during rehearsal required a second retained recovery and sequential
+isolated restore; only its one audit/counter delta differed, so the successful
+business rehearsal remains source/state-bound. Both disposable clusters were
+removed through their normal guards. Owner Docker was not restarted in this run.
+All prior recovery, incident disk images and original evidence remain retained.
+Local recovery does not provide disk-loss protection. This is not full Access
+synchronization or final cutover. See the [operational report](task-reports/2026-09-28-task-6-2-bounded-repair-activation.md).
