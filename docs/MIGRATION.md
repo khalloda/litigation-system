@@ -3959,3 +3959,38 @@ in the protected review delivery. They are not an approved executable owner repa
 The rehearsal rolls back all rows/catalog changes and records sequence reservations
 without resetting them. Any later application requires independent proposal review,
 resolved exact legal values and a separate bounded operational mandate.
+
+## Task 6.2 approved values and bounded readiness — 28 September 2026
+
+The previous proposal records remain unchanged. The owner has now approved D1–D3
+exactly; see [the verbatim approval](approvals/2026-09-28-task62-d1-d2-d3.md).
+Approval covers preparation and isolated rehearsal of eight capacity definitions,
+29 party sides, two later-source hearings and ten complete report choices, with
+three incomplete choices left unselected. It is not full Access synchronization
+or present authority for an owner repair. See the [readiness report](task-reports/2026-09-28-task-6-2-bounded-readiness.md).
+
+Forward candidate75 `20260928070000_task62_bounded_source_provenance` supplies the
+separate private schema and permanent provenance checks outside unchanged74.
+Its generic migration is empty of business data. The separately reviewed runner
+uses genuine eligible session attribution and existing guarded gateways in one
+atomic repair/selection transaction. It retains original import/quarantine bodies
+and unresolved markers; release receipts explain their later bounded treatment.
+The new hearings have NULL original import identity fields, with exact later-source
+payloads and unmapped attendance markers in immutable provenance.
+
+For a future D43 differential reconciliation, look up fixed lineage plus receipt
+kind and stable source identity (`hearing:<source ID>` or `quarantine:<row ID>`)
+before proposing any addition. If found, use the recorded target and immutable
+creation evidence for reconciliation; a changed Access file SHA does not permit
+duplication or automatic overwrite of subsequent web edits. Missing receipts are
+not a general synchronization authorization. Source hearings15671/15759/15768
+remain outside this approved operation.
+
+The historical import oracle excludes only the eight capacity IDs proven by the
+complete valid operation while interpreting the original frozen import. Their
+later creation must not retroactively reclassify old quarantine evidence. Current
+lookups/product behavior and detection of unrelated additions or original lookup
+changes remain intact. Original SQL1–74 and migration0033 provenance are unchanged.
+The final source/row/audit/sequence/rollback evidence and future owner runbook are
+review-bound external deliverables. Owner migration73 remains unchanged; no data
+repair, seed, restoration or acceptance closure has occurred on the owner database.

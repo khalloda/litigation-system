@@ -1413,3 +1413,25 @@ The existing matter/hearing/import data and all historical migration SQL remain
 unchanged. Generic schema does not contain the separately proposed source repair
 receipt table, capacity additions, party release, source hearings or initial seed.
 See the correction2 report for the review boundary.
+
+## Candidate75: bounded external-source provenance — 28 September 2026
+
+`_migration.task62_source_receipt` is a private append-only relation added after
+candidate74, with no new sequence and no schema-time business seed. Its primary
+key is `(kind, source_identity)` within the fixed litigation Access lineage;
+`source_sha256` is evidence identity, not the duplicate-detection key. A distinct
+file SHA therefore cannot create a second target for the same source hearing.
+
+Each of the 29 party-release and two hearing-source receipts binds its exact
+approved source/mapping, original empty before image, creation after image,
+parent/target, actor/session/operation and original creation audit. Party releases
+also bind the role relationship audit. A common manifest binds the complete
+atomic 24-parent/29-party/eight-capacity/two-hearing/ten-selection operation and
+three false no-op submissions. Deferred checks require complete immutable gateway
+history and receipts. Original raw/import/quarantine rows remain untouched.
+
+These are creation-provenance invariants. Later valid current hearing edits,
+party retirement or capacity-label maintenance do not change or invalidate the
+recorded original evidence. The runtime receives no direct private-table access
+or execution grant to this administrative surface. Actual owner schema remains73;
+independent readiness review and separate operational adoption precede deployment.

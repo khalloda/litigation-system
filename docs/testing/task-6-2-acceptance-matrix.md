@@ -88,3 +88,26 @@ closure remains held. The imported independent review is preserved verbatim.
 | Withheld work | No owner repair/seed/migration/provisioning, owner sign-in or reports, activation/restart, acceptance closure or push. Independent implementation/proposal review precedes a separately authorized operational run; UI refinement and Task 6.3 follow later. |
 
 See [the correction2 follow-up](../task-reports/2026-09-27-task-6-2-correction2.md).
+
+## Bounded readiness — 28 September 2026 (independent review required)
+
+The complete previous matrix is retained. D1–D3 exact values are approved;
+correction2 application source and SQL1–74 are unchanged. Candidate75 and the
+bounded runner are separate readiness candidates, not owner activation.
+
+| Boundary | Readiness evidence |
+|---|---|
+| Recovery/schema | Fresh protected owner snapshot and isolated full-state restore; pristine73, empty74 and empty75 exact schema/data/sequence comparisons. |
+| Permanent provenance | One private table, no sequence, exact schema/ledger/security checks; stable source identity, complete immutable source/audit/history linkage and atomic receipts. Mutation, corruption, duplicate-SHA and future legitimate-edit probes are retained. |
+| Approved apply | Independent all-table oracle proves eight capacities, 29 parties/roles, 24 parent transitions, two source-backed hearings, ten choices, three no-op exclusions and 31 receipts; 102 exact repair audits. |
+| Retry/conflict | Ten relationship/hearing/selection/version/session/rollback cases; committed no-write retry, changed-input refusals and actual commit with simulated lost acknowledgement followed by observed no-write recovery. |
+| Reports | Seven fresh previews and fourteen saved inspected exports across four genuine roles; selected/comprehensive counts 10/36 and 10/38; all ten pairs/three exclusions read without editor saves. |
+| Accounting | 24 fixture authentication +102 repair +35 report events, ending at1,088; exact four-account replay, immutable old rows, all48 sequences and complete report-window equality. |
+| Evidence reuse | Unchanged correction2 complete40-file browser matrix, full-volume oracles, permissions and selection edge tests remain separately hash-bound historical proof. |
+| Infrastructure | Shared Docker storage failure retained; owner explicitly approved offline disk preservation/restart. Full owner equality after recovery passed at73/927 audits. This restart exception is disclosed, not misrepresented as no owner restart. |
+| Inspection limits | Underlying repeated header pixels match on every page across complete render sets; independent bundled PDFium evidence resolves misleading image-display observations. No PDF rewriting or universal-reader/speech-conformance claim. |
+| Final gates | External delivery binds final source check/build, quiet148+15 checks, commit/tree identities, final owner observation, protected retention and exact task cleanup. Independent readiness PASS and separate operational adoption remain required. |
+
+See [the bounded readiness report](../task-reports/2026-09-28-task-6-2-bounded-readiness.md).
+TASKS bytes/all86 checkbox lines remain unchanged. No owner migration, repair/seed,
+app activation, acceptance closure, publication, UI refinement or Task6.3 is included.

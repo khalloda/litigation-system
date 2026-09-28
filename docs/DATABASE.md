@@ -1387,3 +1387,29 @@ browser proof ran only against an isolated PostgreSQL 17.11 cluster and disposab
 build. The owner database remains at migration 70 and the accepted application
 remains active; review and explicit later acceptance are required before migration
 71 or a new build is activated.
+
+## Task 6.2 bounded readiness candidate — 28 September 2026
+
+The preceding dated records remain history. Owner migration73 remains the current
+boundary. Reviewed candidate74 and new private provenance candidate75 are rehearsed
+only in an isolated cluster. See the [readiness report](task-reports/2026-09-28-task-6-2-bounded-readiness.md).
+
+`scripts/task62-bounded-operation.ts` defaults to plan mode. Its exact approved
+plan, wrapper, journal and genuine eligible session must remain privately protected.
+Apply uses the existing direct administration-principal gateway and normal audited
+business gateways. Future owner apply additionally requires separately bound
+independent-readiness PASS and operational adoption. No password reset, forged
+session, runtime grant or database safety override is an owner execution method.
+
+Candidate75's permanent checker verifies the full private schema/ledger and immutable
+source/audit/history correspondence. Exact committed retry is read-only; a missing,
+partial or conflicting receipt set is a stop condition. Observe uncertain outcomes
+before retry and preserve rollback sequence reservations. D43 must consult stable
+source identities before considering a later Access row an unimported addition.
+
+An observed shared Docker storage failure required an explicitly owner-authorized
+infrastructure recovery during this readiness run. Protected offline disk copies
+were retained; subsequent complete owner database equality passed. This is a
+disclosed exception to the run's original restart prohibition, not authority for
+future restarts or data repairs. Check physical host storage headroom before each
+full-state test clone; test isolation does not isolate shared host disk capacity.
