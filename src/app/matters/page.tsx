@@ -16,7 +16,7 @@ import styles from '../staff/staff.module.css';
 import local from './matters.module.css';
 import { MatterDetail } from './matter-detail';
 import { MatterWorkspace } from './matter-workspace';
-import { MatterFilterPanel } from './filter-panel';
+import { MatterFilterClear, MatterFilterPanel } from './filter-panel';
 import { Icon } from '../_components/icon';
 import { reportClientContext } from '@/lib/reports/client-context';
 
@@ -92,6 +92,7 @@ export default async function MattersPage({
             {t.matters.searchLabel}
           </label>
           <input
+            key={listHref}
             id="matter-search"
             form="matter-filter-form"
             name="q"
@@ -146,9 +147,7 @@ export default async function MattersPage({
             <button className={styles.button} type="submit">
               {t.clients.apply}
             </button>
-            <Link className={styles.link} href="/matters">
-              {t.clients.clear}
-            </Link>
+            <MatterFilterClear className={styles.link} />
             <details
               className={local.more}
               open={moreFilters.some(([, , value]) => value !== 'all')}

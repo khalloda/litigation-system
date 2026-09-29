@@ -52,6 +52,7 @@ export const t = {
     chooseMatter: 'اختر دعوى من نتائج البحث لعرض تفاصيلها',
   },
   reportSelection: {
+    metadataNotLoaded: 'التفاصيل غير محمّلة في هذه الصفحة',
     decision: 'قرار الجلسة أو الإجراء',
     mode: 'نطاق التقرير',
     all: 'جميع الدعاوى — السارية افتراضياً',

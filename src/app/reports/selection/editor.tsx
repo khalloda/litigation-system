@@ -32,9 +32,10 @@ export function SelectionEditor({
   const summary = useRef<HTMLDivElement>(null);
   const disabled = !canEdit || matter.archived;
   // Preserve an out-of-page current choice; changing pages never silently chooses another hearing.
+  const loadedChoices = hearings.map((h) => ({ ...h, metadataLoaded: true }));
   const choices =
     hearings.some((h) => h.id === matter.hearingId) || matter.hearingId === null
-      ? hearings
+      ? loadedChoices
       : [
           {
             id: matter.hearingId,
@@ -45,9 +46,11 @@ export function SelectionEditor({
             circuit: null,
             action: null,
             archived: matter.hearingArchived ?? false,
+            metadataLoaded: false,
           },
-          ...hearings,
+          ...loadedChoices,
         ];
+  const savedChoice = choices.find((h) => h.id === saved.hearing);
   function changed() {
     pending.current = null;
     setMessage('');
@@ -136,7 +139,9 @@ export function SelectionEditor({
                 {choices.find((h) => h.id === saved.hearing)?.date ?? t.clientReports.undated}
               </bdi>
               {' · '}
-              {choices.find((h) => h.id === saved.hearing)?.court ?? t.common.notRecorded}
+              {savedChoice?.metadataLoaded
+                ? (savedChoice.court ?? t.common.notRecorded)
+                : t.reportSelection.metadataNotLoaded}
             </>
           ) : null}
         </p>
@@ -181,11 +186,17 @@ export function SelectionEditor({
                 </span>
               </label>
               <div className={styles.choiceBody}>
-                <p dir="auto">{h.action ?? t.common.notRecorded}</p>
-                <p dir="auto">
-                  {h.court ?? t.common.notRecorded}
-                  {h.circuit ? ` · ${h.circuit}` : ''}
-                </p>
+                {h.metadataLoaded ? (
+                  <>
+                    <p dir="auto">{h.action ?? t.common.notRecorded}</p>
+                    <p dir="auto">
+                      {h.court ?? t.common.notRecorded}
+                      {h.circuit ? ` · ${h.circuit}` : ''}
+                    </p>
+                  </>
+                ) : (
+                  <p className={styles.hint}>{t.reportSelection.metadataNotLoaded}</p>
+                )}
                 <p className={styles.hint}>{t.reportSelection.decision}</p>
                 <p dir="auto">{h.decision ?? t.reports.nullValue}</p>
               </div>
