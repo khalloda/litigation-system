@@ -380,3 +380,30 @@ The implementation report records desktop/390px/320px, keyboard, axe and genuine
 
 Stop for independent Phase 2 review; Phase 3 is the next development phase.
 See the [implementation and verification report](task-reports/2026-09-09-task-4-1-phase-2-read-only-clients.md).
+
+
+### UI Implementation 01 acceptance supplement — 29 September 2026
+
+The owner-approved Figma adaptations and bundled **Noto Sans Arabic** are now the
+accepted UI01 direction for the scoped screens and PDF reports, including audit
+exports. This dated supplement supersedes the historical mockup-font note above
+for UI01 while preserving that note as history. The reviewed application source
+is `e6f20754b538b424993605c1e5f694e4be72c903`; no design or font changes were made
+during resumed activation.
+
+R1–R3/R5 and demonstrated N1 Clear/Back behavior remain retained. O1 visible audit
+timestamp ordering passed independent review and fresh saved fixture/owner PDFs.
+R4 is an **owner-accepted non-blocking PDF-copying limitation, NOT FIXED**; PDF
+search is not certified. Correct visible Arabic, marks, complete content, exact
+values and spreadsheet fidelity remain required. No copying/search diagnosis was
+performed.
+
+Fresh bounded owner UI checks confirm the approved RTL layout and actual Noto
+glyphs; both ordinary PDF pages and all three audit PDF pages were inspected.
+The prior broad role/selection/report campaign and32-value O1 matrix are reused
+with exact source/dependency/evidence bindings. True browser back-forward-cache
+restoration, screen-reader speech and all possible mixed-direction values/viewers
+are not certified. See the [operational report](task-reports/2026-09-29-ui-implementation-01-acceptance-activation.md),
+[independent O1 review](reviews/2026-09-29-ui-implementation-01-o1-independent-review.md)
+and [owner decision](approvals/2026-09-29-ui-implementation-01-pdf-visual-acceptance.md).
+Stop for independent resumed operational review. No Task6.3 or further redesign.

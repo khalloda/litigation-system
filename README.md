@@ -663,3 +663,24 @@ unchanged. See the [operational report](docs/task-reports/2026-09-28-task-6-2-bo
 and normal publication outcome belong to external receipts. Independent bounded
 operational review is pending. UI refinement and Task 6.3 have not started; no full
 Access synchronization was performed. Prior dated pending-operation records remain history.
+
+
+## UI Implementation 01 activated — 29 September 2026
+
+The reviewed `e6f2075` UI and bundled Noto Sans Arabic are active locally as build
+`2-dDrWX_l1nyzkhyF3Q6Y` (PID84028 at19:25:02UTC). O1 visible timestamp ordering
+passed independent review and fresh isolated/owner audit exports. R1–R3/R5 and
+demonstrated N1 behavior remain retained. R4 PDF copying is an accepted limitation,
+**not fixed**; PDF search is not certified.
+
+Fresh full checks/build, isolated and owner148+15 database gates, eight-check UI
+smokes and all four saved owner exports passed. Exact accounting records nine
+legitimate sign-in/report audit additions; business data, saved selections,
+credentials,48sequences,migration75 and all TASKS bytes remain preserved. No
+migration or provisioning was performed. The prior dated checkpoints above remain
+history. See the [operational report](docs/task-reports/2026-09-29-ui-implementation-01-acceptance-activation.md),
+[independent O1 PASS](docs/reviews/2026-09-29-ui-implementation-01-o1-independent-review.md)
+and [owner PDF decision](docs/approvals/2026-09-29-ui-implementation-01-pdf-visual-acceptance.md).
+The external resumed operational receipt records this documentation child's actual
+identity and normal publication outcome. Independent resumed operational review
+remains pending; Task6.3 has not started.
