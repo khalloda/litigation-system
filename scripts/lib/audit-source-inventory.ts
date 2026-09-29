@@ -34,7 +34,7 @@ const AUDIT_HISTORY_CLOSURES = new Map([
   ],
   [
     'src/lib/audit-history-export.ts',
-    '171920a5b9269293606c66b1202d2865ea0a5a5f68defae50d4bba39c656e6ac',
+    'af06573474e161a13cd7471bbaae43e5464d1d5fe4bf96469a621ae9473f5c8b',
   ],
   [
     'src/app/audit-history/record-entry.tsx',

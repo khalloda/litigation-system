@@ -18,7 +18,7 @@ import {
   auditRecordedValue,
   auditOriginalValue,
 } from './audit-history-projection';
-import { AuditHistoryError, type AuditResult } from './audit-history-types';
+import { AuditHistoryError, type AuditResult, type AuditValue } from './audit-history-types';
 import { auditErrorResponse, auditResponseHeaders } from './audit-history-response';
 import { t } from '@/strings';
 import { reportAssets } from './reports/assets';
@@ -174,6 +174,42 @@ export async function generateAuditExcel(result: AuditResult, generatedAt: strin
   if (bytes.length > MAX_BYTES) throw new AuditHistoryError('too-large');
   return bytes;
 }
+/** PDF-only markup: the translated type marker must not determine the literal's direction. */
+export function auditPdfValue(value: AuditValue | undefined): string {
+  const literal = (text: string, direction: 'auto' | 'ltr' = 'auto') =>
+    `<bdi class="audit-literal" dir="${direction}">${escape(text)}</bdi>`;
+  if (value?.kind === 'string' && value.text !== '') {
+    if (/^\s+$/u.test(value.text))
+      return `<bdi>${escape(s.whitespaceString)}: ${literal(JSON.stringify(value.text), 'ltr')}</bdi>`;
+    // Match the existing recorded-string display escaping, without parsing or normalizing data.
+    const readable = visibleXml(value.text.replace(/\\/gu, '\\\\'));
+    return `<bdi>${escape(s.string)}: «${literal(readable)}»</bdi>`;
+  }
+  if (value?.kind === 'number') return literal(value.text, 'ltr');
+  if (value?.kind === 'object' || value?.kind === 'array') {
+    let marker = '';
+    if (value.kind === 'object') {
+      try {
+        const recorded = JSON.parse(value.text) as Record<string, unknown>;
+        marker = recorded['$redacted'] ? s.redacted : recorded['$truncated'] ? s.truncated : '';
+      } catch {
+        /* Display the recorded representation without reinterpretation. */
+      }
+    }
+    // Isolate each recorded JSON string token as well: an Arabic key/value must
+    // not reorder a neighboring timestamp. Keep every original token/separator;
+    // do not parse and serialize the evidence or interpret escape sequences.
+    let json = '';
+    let offset = 0;
+    for (const token of value.text.matchAll(/"(?:[^"\\]|\\.)*"/gu)) {
+      json += escape(value.text.slice(offset, token.index)) + literal(token[0]);
+      offset = token.index + token[0].length;
+    }
+    json += escape(value.text.slice(offset));
+    return `${marker ? `<bdi>${escape(marker)}</bdi><br>` : ''}<bdi class="audit-literal" dir="ltr">${json}</bdi>`;
+  }
+  return `<bdi>${escape(auditValue(value))}</bdi>`;
+}
 export async function generateAuditPdf(
   result: AuditResult,
   generatedAt: string,
@@ -197,10 +233,10 @@ export async function generateAuditPdf(
   const body = result.groups
     .map(
       (group) =>
-        `<section><h2>${escape(group.occurredAt.slice(0, 10))} — ${escape(auditGroupTitle(group))}</h2><p>${escape(s.groupId)}: ${escape(group.key)}</p>${group.events.map((event) => `<article><h3>${escape(auditLabel('actions', event.action))} — ${escape(event.id)}</h3><table><thead><tr><th>${escape(s.field)}</th><th>${escape(s.details)}</th></tr></thead><tbody>${details(auditDetails(event))}</tbody></table>${event.fields.map((field) => `<h4>${escape(auditLabel('fields', field))} (${escape(field)})</h4><table><thead><tr><th>${escape(s.before)}</th><th>${escape(s.after)}</th></tr></thead><tbody><tr><td><bdi>${escape(auditValue(auditRecordedValue(event.before, field)))}</bdi></td><td><bdi>${escape(auditValue(auditRecordedValue(event.after, field)))}</bdi></td></tr></tbody></table>`).join('')}</article>`).join('')}</section>`,
+        `<section><h2>${escape(group.occurredAt.slice(0, 10))} — ${escape(auditGroupTitle(group))}</h2><p>${escape(s.groupId)}: ${escape(group.key)}</p>${group.events.map((event) => `<article><h3>${escape(auditLabel('actions', event.action))} — ${escape(event.id)}</h3><table><thead><tr><th>${escape(s.field)}</th><th>${escape(s.details)}</th></tr></thead><tbody>${details(auditDetails(event))}</tbody></table>${event.fields.map((field) => `<h4>${escape(auditLabel('fields', field))} (${escape(field)})</h4><table><thead><tr><th>${escape(s.before)}</th><th>${escape(s.after)}</th></tr></thead><tbody><tr><td>${auditPdfValue(auditRecordedValue(event.before, field))}</td><td>${auditPdfValue(auditRecordedValue(event.after, field))}</td></tr></tbody></table>`).join('')}</article>`).join('')}</section>`,
     )
     .join('');
-  const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:"><style>${fonts}body{font-family:Noto0;font-size:12px;line-height:1.7;color:rgb(30,30,30)}h1,h2,h3{color:rgb(33,75,75);break-after:avoid}table{inline-size:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}td,th{border:1px solid rgb(199,199,199);padding:6px;text-align:start;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}thead{display:table-header-group}bdi{unicode-bidi:plaintext;white-space:pre-wrap}tr{break-inside:auto}img{inline-size:180px}article{margin-block:16px}</style></head><body><img alt="${escape(t.app.name)}" src="data:image/png;base64,${logo.toString('base64')}"><h1>${escape(s.title)}</h1><table><tbody>${details(auditExportSummary(result, generatedAt))}</tbody></table>${body || `<p>${escape(s.empty)}</p>`}</body></html>`;
+  const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:"><style>${fonts}body{font-family:Noto0;font-size:12px;line-height:1.7;color:rgb(30,30,30)}h1,h2,h3{color:rgb(33,75,75);break-after:avoid}h4{break-after:avoid}table{inline-size:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}td,th{border:1px solid rgb(199,199,199);padding:6px;text-align:start;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}thead{display:table-header-group}bdi{unicode-bidi:plaintext;white-space:pre-wrap}.audit-literal{unicode-bidi:isolate}tr{break-inside:auto}img{inline-size:180px}article{margin-block:16px}</style></head><body><img alt="${escape(t.app.name)}" src="data:image/png;base64,${logo.toString('base64')}"><h1>${escape(s.title)}</h1><table><tbody>${details(auditExportSummary(result, generatedAt))}</tbody></table>${body || `<p>${escape(s.empty)}</p>`}</body></html>`;
   if (Buffer.byteLength(html) > MAX_BYTES) throw new AuditHistoryError('too-large');
   signal?.throwIfAborted();
   const executablePath = process.env['AUDIT_PDF_CHROMIUM'];

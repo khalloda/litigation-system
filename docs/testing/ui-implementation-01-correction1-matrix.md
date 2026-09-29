@@ -45,3 +45,9 @@ Overall: **BLOCKED_NOT_COMPLETE**. Package integrity is separate from feature ac
 | Z03 | PENDING_SEAL | final-git.json; package-result.json. Local ordered children only; final package verifier and receipt-inclusive reopen reported separately; integrity pass is not acceptance. |
 
 Original matrix and failures are retained unchanged. The separate final receipt/verifier resolves Z03 after the documentation commit; this table does not claim a precomputed package seal.
+
+## UI01-O1 bounded supplement — 29 September 2026
+
+The historical matrix above is retained. Under the adopted O1 correction mandate, O1 visible timestamp order passes the seven inspected final pages: four compact 32-value regression pages and three genuine isolated audit-download pages. Exact typed XLSX values, unchanged shared projection/viewer, fresh denied-capability 403/no-write, complete groups, ten-event fixture reconciliation, pristine 148+15 checks, full project check and production build are recorded in [the dated correction report](../task-reports/2026-09-29-ui-implementation-01-o1-correction.md). Earlier broader UI/report/permission/selection evidence is source-bound and reused.
+
+R4 is **OWNER-ACCEPTED NON-BLOCKING COPYING LIMITATION, NOT FIXED**; search remains uncertified. This supplement does not close acceptance or supersede the blocked operational package retrospectively. O1 is a local implementation candidate awaiting independent review. Owner state, migration75, TASKS and prior evidence are preserved; no activation or push. Final package/receipt verification follows the local commit and is not claimed as completed within this committed document.
