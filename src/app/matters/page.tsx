@@ -7,17 +7,17 @@ import {
   MATTER_SEARCH_LIMIT,
   MatterFilterError,
   matterListHref,
-  matterDetailHref,
   type MatterFilterKey,
 } from '@/lib/matter-query';
 import type { ClientSearchParams } from '@/lib/client-query';
 import { t } from '@/strings';
-import { Field } from '../clients/client-fields';
 import { ClientAlert } from '../clients/client-alert';
 import styles from '../staff/staff.module.css';
 import local from './matters.module.css';
 import { MatterDetail } from './matter-detail';
 import { MatterWorkspace } from './matter-workspace';
+import { MatterFilterPanel } from './filter-panel';
+import { Icon } from '../_components/icon';
 import { reportClientContext } from '@/lib/reports/client-context';
 
 export const metadata: Metadata = { title: t.matters.title };
@@ -33,7 +33,7 @@ export default async function MattersPage({
   } catch (error) {
     if (!(error instanceof MatterFilterError)) throw error;
     return (
-      <main className={styles.page}>
+      <main className={styles.page} data-workspace>
         <h1>{t.matters.title}</h1>
         <ClientAlert>
           <p>{t.clients.invalidFilters}</p>
@@ -80,11 +80,32 @@ export default async function MattersPage({
     </div>
   );
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-workspace>
       <a className={styles.skip} href="#matter-results">
         {t.matters.skip}
       </a>
-      <header className={styles.header}>
+      <header className={local.toolbarTitle}>
+        <h1>{t.matters.title}</h1>
+        <div className={local.search}>
+          <Icon name="Search" />
+          <label className={local.srOnly} htmlFor="matter-search">
+            {t.matters.searchLabel}
+          </label>
+          <input
+            id="matter-search"
+            form="matter-filter-form"
+            name="q"
+            type="search"
+            maxLength={MATTER_SEARCH_LIMIT}
+            defaultValue={filters.q}
+            placeholder={t.matters.searchLabel}
+            aria-describedby="matter-search-hint"
+          />
+          <details className={local.searchHelp}>
+            <summary>{t.ui.searchHelp}</summary>
+            <p id="matter-search-hint">{t.matters.searchHint}</p>
+          </details>
+        </div>
         {hasPermission(session.user.role, 'matters', 'create') ? (
           <Link
             className={styles.button}
@@ -93,39 +114,23 @@ export default async function MattersPage({
             {t.matters.manage.create}
           </Link>
         ) : null}
-        <div>
-          <p className={styles.eyebrow}>{t.app.system}</p>
-          <h1>{t.matters.title}</h1>
-          <p>{t.matters.subtitle}</p>
-        </div>
-        <Link className={styles.link} href="/">
-          {t.nav.dashboard}
-        </Link>
-        {filters.fromClient ? (
-          <Link className={styles.link} href={filters.fromClient}>
-            {t.clients.backClient}
-          </Link>
-        ) : null}
       </header>
-      <section className={styles.panel} aria-label={t.common.search}>
-        <form key={matterListHref(filters)} action="/matters" method="get">
+      {filters.fromClient ? (
+        <Link className={styles.link} href={filters.fromClient}>
+          {t.clients.backClient}
+        </Link>
+      ) : null}
+      <MatterFilterPanel>
+        <form
+          id="matter-filter-form"
+          key={matterListHref(filters)}
+          action="/matters"
+          method="get"
+          className={local.filterForm}
+        >
           {filters.fromClient ? (
             <input type="hidden" name="fromClient" value={filters.fromClient} />
           ) : null}
-          <div className={styles.field}>
-            <label htmlFor="matter-search">{t.matters.searchLabel}</label>
-            <input
-              id="matter-search"
-              name="q"
-              type="search"
-              maxLength={MATTER_SEARCH_LIMIT}
-              defaultValue={filters.q}
-              aria-describedby="matter-search-hint"
-            />
-            <p id="matter-search-hint" className={styles.hint}>
-              {t.matters.searchHint}
-            </p>
-          </div>
           <div className={local.filters}>
             {primaryFilters.map(select)}
             <div className={styles.field}>
@@ -137,29 +142,29 @@ export default async function MattersPage({
               </select>
             </div>
           </div>
-          <details className={local.more} open={moreFilters.some(([, , value]) => value !== 'all')}>
-            <summary>{t.matters.moreFilters}</summary>
-            <div className={local.filters}>{moreFilters.map(select)}</div>
-          </details>
-          <div className={styles.actions}>
+          <div className={local.filterActions}>
             <button className={styles.button} type="submit">
               {t.clients.apply}
             </button>
             <Link className={styles.link} href="/matters">
               {t.clients.clear}
             </Link>
+            <details
+              className={local.more}
+              open={moreFilters.some(([, , value]) => value !== 'all')}
+            >
+              <summary>{t.matters.moreFilters}</summary>
+              <div className={local.extraFilters}>{moreFilters.map(select)}</div>
+            </details>
           </div>
         </form>
-      </section>
+      </MatterFilterPanel>
       <MatterWorkspace
         selected={selected}
         listHref={listHref}
         detail={
           selected ? (
             <>
-              <Link className={styles.link} href={matterDetailHref(selected, filters)}>
-                {t.ui.fullDetails}
-              </Link>
               <MatterDetail
                 session={session}
                 params={Promise.resolve({ id: String(selected) })}
@@ -175,11 +180,11 @@ export default async function MattersPage({
         <section
           id="matter-results"
           tabIndex={-1}
-          className={`${styles.panel} ${styles.focusTarget}`}
+          className={`${local.results} ${styles.focusTarget}`}
           aria-label={t.matters.title}
         >
           <div className={styles.resultsHeading}>
-            <h2>{t.matters.title}</h2>
+            <h2>{t.ui.searchResults}</h2>
             <p role="status" aria-live="polite" aria-atomic="true">
               {t.matters.results(total)}
             </p>
@@ -210,8 +215,8 @@ export default async function MattersPage({
                       {row.subject}
                     </p>
                     {row.matches.length ? (
-                      <div className={local.matches}>
-                        <span>{t.matters.searchIncludes}</span>
+                      <details className={local.matches}>
+                        <summary>{t.matters.searchIncludes}</summary>
                         <ul>
                           {row.matches.map((match, i) => (
                             <li key={i} className={local.multiline} dir="auto">
@@ -219,49 +224,16 @@ export default async function MattersPage({
                             </li>
                           ))}
                         </ul>
-                      </div>
+                      </details>
                     ) : null}
                   </div>
-                  <dl>
-                    <Field
-                      label={t.fields.client}
-                      value={
-                        row.clientId ? (
-                          <Link
-                            className={styles.nameLink}
-                            href={`/clients/${row.clientId}?matterReturn=${encodeURIComponent(matterListHref(filters))}`}
-                          >
-                            {row.clientName}
-                          </Link>
-                        ) : null
-                      }
-                    />
-                    {row.clientArchived ? (
-                      <Field label={t.clients.archive} value={t.clients.archived} />
-                    ) : null}
-                    <Field label={t.matters.filters.branch} value={row.branch} />
-                  </dl>
-                  <dl>
-                    {row.archived ? (
-                      <Field
-                        label={t.matters.lifecycle.archiveFilter}
-                        value={t.matters.lifecycle.archivedFilter}
-                      />
-                    ) : null}
-                    <Field label={t.matters.filters.status} value={row.status} />
-                    <Field label={t.matters.filters.type} value={row.type} />
-                    <Field label={t.matters.filters.degree} value={row.degree} />
-                  </dl>
-                  <div>
-                    <p className={row.lawyerCount ? undefined : local.unassigned}>
-                      {row.lawyerCount
-                        ? t.matters.lawyerCount(row.lawyerCount)
-                        : t.matters.noLawyer}
-                    </p>
-                    <dl>
-                      <Field label={t.clients.systemId} value={row.id} />
-                    </dl>
-                  </div>
+                  <p className={local.resultMeta}>
+                    {row.archived
+                      ? t.matters.lifecycle.archivedFilter
+                      : (row.status ?? t.common.notRecorded)}
+                    {' · '}
+                    {t.matters.filters.branch}: {row.branch ?? t.common.notRecorded}
+                  </p>
                 </li>
               ))}
             </ul>

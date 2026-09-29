@@ -29,6 +29,7 @@ export async function TodayHearings({
         <h2 id="today-title">{t.dashboard.today}</h2>
         <p role="alert">{t.dashboard.error}</p>
         <form action="/" method="get">
+          {!compact ? <input type="hidden" name="view" value="analytics" /> : null}
           <button className={styles.button} type="submit">
             {t.dashboard.refresh}
           </button>
@@ -48,9 +49,13 @@ export async function TodayHearings({
             </time>{' '}
             · {t.dashboard.cairo}
           </p>
-          <p>{t.dashboard.snapshotHint}</p>
+          <details className={styles.definition}>
+            <summary>{t.ui.definitions}</summary>
+            <p>{t.dashboard.snapshotHint}</p>
+          </details>
         </div>
         <form action="/" method="get">
+          {!compact ? <input type="hidden" name="view" value="analytics" /> : null}
           <button className={styles.button} type="submit">
             {t.dashboard.refresh}
           </button>
@@ -64,7 +69,36 @@ export async function TodayHearings({
         </Link>
       </div>
       {rows.length ? (
-        <details open={!compact}>
+        <div className={styles.compactPreview}>
+          <table className={styles.metricTable}>
+            <thead>
+              <tr>
+                <th scope="col">{t.fields.decision}</th>
+                <th scope="col">{t.fields.court}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 2).map((row) => (
+                <tr key={row.id}>
+                  <th scope="row">
+                    <Link href={hearingDetailHref(row.id, filters)}>
+                      <bdi className={styles.previewText}>
+                        {row.caseNumber?.trim() ? row.caseNumber : t.common.notRecorded}
+                      </bdi>
+                    </Link>
+                    <p className={styles.previewText}>{row.decision ?? t.common.notRecorded}</p>
+                  </th>
+                  <td>
+                    <bdi>{row.court ?? t.common.notRecorded}</bdi>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {rows.length ? (
+        <details className={styles.previewExpansion}>
           <summary>{t.ui.expand}</summary>
           <ol className={styles.records}>
             {rows.map((row) => (

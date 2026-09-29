@@ -69,12 +69,14 @@ export default async function ClientPage({
   const detailHref = clientDetailHref(client.id, filters);
   const returnQuery = detailHref.slice(detailHref.indexOf('?')) + `&contactsPage=${contacts.page}`;
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-reviewed>
       <header className={styles.header}>
         <div className={local.multiline}>
-          <p className={styles.eyebrow}>{t.clients.details}</p>
           <h1 dir="auto">{client.nameAr}</h1>
-          <p>{t.clients.subtitle}</p>
+          <p className={styles.hint}>
+            {t.clients.systemId}: {client.id} · {t.clients.accessId}:{' '}
+            {client.legacyId ?? t.clients.native} · {statusLabel(client.status)}
+          </p>
           <Link className={styles.link} href={clientListHref(filters)}>
             {t.clients.back}
           </Link>
@@ -89,119 +91,172 @@ export default async function ClientPage({
             </Link>
           ) : null}
         </div>
-        <ClientLogo key={client.id} id={client.id} name={client.nameAr} version={randomUUID()} />
+        {hasPermission(session.user.role, 'reports', 'run') ? (
+          <Link className={styles.button} href={`/reports?client=${client.id}`}>
+            {t.ui.clientReports}
+          </Link>
+        ) : null}
       </header>
-      <AuditRecordEntry session={session} table="clients" id={client.id} />
-      <AuditLogoEntry session={session} clientId={client.id} />
       {client.isArchived ? (
         <p className={`${styles.panel} ${styles.state}`}>{t.clients.archivedNotice}</p>
       ) : null}
-      <div className={styles.actions}>
-        {hasPermission(session.user.role, 'reports', 'run') ? (
-          <>
-            <Link className={styles.button} href={`/reports?client=${client.id}`}>
-              {t.ui.clientReports}
+      <nav className={local.sections} aria-label={t.clients.details}>
+        <a className={styles.link} href="#client-basic">
+          {t.ui.basicData}
+        </a>
+        <a className={styles.link} href="#client-related">
+          {t.ui.relatedRecords}
+        </a>
+        <a className={styles.link} href="#client-contacts">
+          {t.clients.contacts}
+        </a>
+        <AuditRecordEntry session={session} table="clients" id={client.id} />
+        <AuditLogoEntry session={session} clientId={client.id} />
+      </nav>
+      <div className={local.clientLayout}>
+        <section id="client-basic" className={styles.panel} aria-label={t.ui.basicData}>
+          <h2>{t.ui.basicData}</h2>
+          <dl className={styles.facts}>
+            <Field label={t.clients.displayName} value={client.nameAr} />
+            <Field label={t.clients.englishName} value={client.nameEn} />
+            <Field label={t.clients.fullName} value={client.fullName} />
+            <Field label={t.clients.status} value={statusLabel(client.status)} />
+            <Field
+              label={t.clients.classification}
+              value={classificationLabel(client.classification)}
+            />
+            <Field
+              label={t.clients.archive}
+              value={client.isArchived ? t.clients.archived : t.clients.current}
+            />
+            <Field label={t.clients.poaLocation} value={client.poaLocation} />
+            <Field label={t.clients.documentsLocation} value={client.documentsLocation} />
+            <Field label={t.clients.startDate} value={client.startDate} />
+            <Field label={t.clients.endDate} value={client.endDate} />
+            <Field label={t.clients.matterCount} value={client.matterCount} />
+            <Field
+              label={t.clients.mainContact}
+              value={
+                client.mainContact ? (
+                  <Link
+                    className={styles.nameLink}
+                    href={`/clients/${client.id}/contacts/${client.mainContact.id}${detailHref.slice(detailHref.indexOf('?'))}&contactsPage=${contacts.page}`}
+                  >
+                    {client.mainContact.contactName?.trim()
+                      ? client.mainContact.contactName
+                      : t.clients.unnamed}
+                  </Link>
+                ) : (
+                  t.clients.noMainContact
+                )
+              }
+            />
+          </dl>
+        </section>
+        <aside className={local.actionColumn}>
+          <h2>{t.ui.clientActions}</h2>
+          <ClientLogo key={client.id} id={client.id} name={client.nameAr} version={randomUUID()} />
+          {hasPermission(session.user.role, 'reports', 'run') ? (
+            <>
+              <Link className={styles.button} href={`/reports?client=${client.id}`}>
+                {t.ui.clientReports}
+              </Link>
+              <Link className={styles.link} href={`/reports/selection?client=${client.id}`}>
+                {t.reportSelection.edit}
+              </Link>
+            </>
+          ) : null}
+          {hasPermission(session.user.role, 'billing', 'view') ? (
+            <Link className={styles.link} href={`/billing/invoices?client=${client.id}`}>
+              {t.billing.invoices}
             </Link>
-            <Link className={styles.link} href={`/reports/selection?client=${client.id}`}>
-              {t.reportSelection.edit}
+          ) : null}
+          {hasPermission(session.user.role, 'billing', 'view') ? (
+            <Link className={styles.link} href={`/billing/payments?client=${client.id}`}>
+              {t.billing.payments}
             </Link>
-          </>
-        ) : null}
-        {hasPermission(session.user.role, 'billing', 'view') ? (
-          <Link className={styles.link} href={`/billing/invoices?client=${client.id}`}>
-            {t.billing.invoices}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'billing', 'view') ? (
-          <Link className={styles.link} href={`/billing/payments?client=${client.id}`}>
-            {t.billing.payments}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'documents', 'view') ? (
-          <Link className={styles.link} href={`/documents?client=${client.id}&archive=all`}>
-            {t.nav.documents}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'feeLetters', 'view') ? (
-          <Link className={styles.link} href={`/fee-letters?client=${client.id}&archive=all`}>
-            {t.nav.feeLetters}
-          </Link>
-        ) : null}
-        <Link
-          className={styles.link}
-          href={matterListHref(
-            parseMatterFilters({
-              client: String(client.id),
-              fromClient: `/clients/${client.id}${returnQuery}`,
-            }),
-          )}
-        >
-          {t.matters.clientMatters}
-        </Link>
-        <Link className={styles.link} href={`/clients/${client.id}/logo/manage${returnQuery}`}>
-          {t.logos.title}
-        </Link>
-        {!client.isArchived && hasPermission(session.user.role, 'clients', 'update') ? (
-          <Link className={styles.link} href={`/clients/${client.id}/edit${returnQuery}`}>
-            {t.clients.manage.titles['client-update']}
-          </Link>
-        ) : null}
-        {!client.isArchived && hasPermission(session.user.role, 'contacts', 'create') ? (
-          <Link className={styles.link} href={`/clients/${client.id}/contacts/new${returnQuery}`}>
-            {t.clients.manage.titles['contact-create']}
-          </Link>
-        ) : null}
-        {hasPermission(session.user.role, 'clients', client.isArchived ? 'restore' : 'archive') ? (
+          ) : null}
+          {hasPermission(session.user.role, 'documents', 'view') ? (
+            <Link className={styles.link} href={`/documents?client=${client.id}&archive=all`}>
+              {t.nav.documents}
+            </Link>
+          ) : null}
+          {hasPermission(session.user.role, 'feeLetters', 'view') ? (
+            <Link className={styles.link} href={`/fee-letters?client=${client.id}&archive=all`}>
+              {t.nav.feeLetters}
+            </Link>
+          ) : null}
           <Link
             className={styles.link}
-            href={`/clients/${client.id}/${client.isArchived ? 'restore' : 'archive'}${returnQuery}`}
+            href={matterListHref(
+              parseMatterFilters({
+                client: String(client.id),
+                fromClient: `/clients/${client.id}${returnQuery}`,
+              }),
+            )}
           >
-            {client.isArchived
-              ? t.clients.manage.titles['client-restore']
-              : t.clients.manage.titles['client-archive']}
+            {t.matters.clientMatters}
           </Link>
-        ) : null}
+          <Link className={styles.link} href={`/clients/${client.id}/logo/manage${returnQuery}`}>
+            {t.logos.title}
+          </Link>
+          {!client.isArchived && hasPermission(session.user.role, 'clients', 'update') ? (
+            <Link className={styles.link} href={`/clients/${client.id}/edit${returnQuery}`}>
+              {t.clients.manage.titles['client-update']}
+            </Link>
+          ) : null}
+          {!client.isArchived && hasPermission(session.user.role, 'contacts', 'create') ? (
+            <Link className={styles.link} href={`/clients/${client.id}/contacts/new${returnQuery}`}>
+              {t.clients.manage.titles['contact-create']}
+            </Link>
+          ) : null}
+          {hasPermission(
+            session.user.role,
+            'clients',
+            client.isArchived ? 'restore' : 'archive',
+          ) ? (
+            <Link
+              className={styles.link}
+              href={`/clients/${client.id}/${client.isArchived ? 'restore' : 'archive'}${returnQuery}`}
+            >
+              {client.isArchived
+                ? t.clients.manage.titles['client-restore']
+                : t.clients.manage.titles['client-archive']}
+            </Link>
+          ) : null}
+        </aside>
       </div>
-      <section className={styles.panel} aria-label={t.clients.details}>
-        <h2>{t.clients.details}</h2>
-        <dl className={styles.facts}>
-          <Field label={t.clients.systemId} value={client.id} />
-          <Field label={t.clients.accessId} value={client.legacyId ?? t.clients.native} />
-          <Field label={t.clients.displayName} value={client.nameAr} />
-          <Field label={t.clients.englishName} value={client.nameEn} />
-          <Field label={t.clients.fullName} value={client.fullName} />
-          <Field label={t.clients.status} value={statusLabel(client.status)} />
-          <Field
-            label={t.clients.classification}
-            value={classificationLabel(client.classification)}
-          />
-          <Field
-            label={t.clients.archive}
-            value={client.isArchived ? t.clients.archived : t.clients.current}
-          />
-          <Field label={t.clients.poaLocation} value={client.poaLocation} />
-          <Field label={t.clients.documentsLocation} value={client.documentsLocation} />
-          <Field label={t.clients.startDate} value={client.startDate} />
-          <Field label={t.clients.endDate} value={client.endDate} />
-          <Field label={t.clients.matterCount} value={client.matterCount} />
-          <Field
-            label={t.clients.mainContact}
-            value={
-              client.mainContact ? (
-                <Link
-                  className={styles.nameLink}
-                  href={`/clients/${client.id}/contacts/${client.mainContact.id}${detailHref.slice(detailHref.indexOf('?'))}&contactsPage=${contacts.page}`}
-                >
-                  {client.mainContact.contactName?.trim()
-                    ? client.mainContact.contactName
-                    : t.clients.unnamed}
-                </Link>
-              ) : (
-                t.clients.noMainContact
-              )
-            }
-          />
-        </dl>
+      <section id="client-related" className={styles.panel} aria-label={t.ui.relatedRecords}>
+        <h2>{t.ui.relatedRecords}</h2>
+        <div className={local.relatedCards}>
+          <Link
+            href={matterListHref(
+              parseMatterFilters({
+                client: String(client.id),
+                fromClient: `/clients/${client.id}${returnQuery}`,
+              }),
+            )}
+          >
+            <span>{t.matters.clientMatters}</span>
+            <strong>{client.matterCount}</strong>
+          </Link>
+          <a href="#client-contacts">
+            <span>{t.clients.contacts}</span>
+            <strong>{contacts.total}</strong>
+          </a>
+          {hasPermission(session.user.role, 'reports', 'run') ? (
+            <Link href={`/reports?client=${client.id}`}>
+              <span>{t.ui.clientReports}</span>
+              <strong>{t.ui.prepareReport}</strong>
+            </Link>
+          ) : null}
+          {hasPermission(session.user.role, 'documents', 'view') ? (
+            <Link href={`/documents?client=${client.id}&archive=all`}>
+              <span>{t.nav.documents}</span>
+              <strong>{t.ui.fullDetails}</strong>
+            </Link>
+          ) : null}
+        </div>
       </section>
       <section className={styles.panel} aria-label={t.clients.historicalLawyer}>
         <h2>{t.clients.historicalLawyer}</h2>
@@ -210,7 +265,7 @@ export default async function ClientPage({
         </p>
         <p className={styles.hint}>{t.clients.historicalHint}</p>
       </section>
-      <section className={styles.panel} aria-label={t.clients.contacts}>
+      <section id="client-contacts" className={styles.panel} aria-label={t.clients.contacts}>
         <div className={styles.resultsHeading}>
           <h2>{t.clients.contacts}</h2>
           <p role="status">{t.clients.contactResults(contacts.total)}</p>

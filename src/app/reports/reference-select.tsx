@@ -31,17 +31,6 @@ export function ReportReferenceSelect({
   );
   return (
     <>
-      <label htmlFor={`${id}-search`}>
-        {t.reports.searchOptions} — {label}
-      </label>
-      <input
-        id={`${id}-search`}
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        aria-describedby={`${id}-search-help`}
-      />
-      <p id={`${id}-search-help`}>{t.reports.searchHelp}</p>
       <select
         id={id}
         name={name}
@@ -59,9 +48,25 @@ export function ReportReferenceSelect({
           </option>
         ))}
       </select>
-      <p aria-live="polite">
-        {t.reports.optionCount}: <bdi>{matches.length}</bdi>
-      </p>
+      <details>
+        <summary>
+          {t.reports.searchOptions} — {label}
+        </summary>
+        <label htmlFor={`${id}-search`}>
+          {t.reports.searchOptions} — {label}
+        </label>
+        <input
+          id={`${id}-search`}
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-describedby={`${id}-search-help`}
+        />
+        <p id={`${id}-search-help`}>{t.reports.searchHelp}</p>
+        <p aria-live="polite">
+          {t.reports.optionCount}: <bdi>{matches.length}</bdi>
+        </p>
+      </details>
     </>
   );
 }

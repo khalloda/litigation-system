@@ -73,6 +73,23 @@ export function AppShell({
             <button type="submit">{t.auth.logout}</button>
           </form>
         </details>
+        <details ref={mobile} className={styles.mobile} onKeyDown={close}>
+          <summary>
+            <Icon name="Menu" />
+            <span className={styles.mobileLabel}>
+              {t.ui.menu} — {current?.label ?? t.app.system}
+            </span>
+          </summary>
+          <div className={styles.mobilePanel}>
+            <p>
+              {name} — {role}
+            </p>
+            <nav aria-label={t.dashboard.navigation}>{items.map(link)}</nav>
+            <form action={logoutAction} data-leaves-editor>
+              <button type="submit">{t.auth.logout}</button>
+            </form>
+          </div>
+        </details>
       </header>
       <nav className={styles.rail} aria-label={t.dashboard.navigation}>
         {items.filter((item) => item.primary).map(link)}
@@ -84,12 +101,6 @@ export function AppShell({
           <div className={styles.more}>{items.filter((item) => !item.primary).map(link)}</div>
         </details>
       </nav>
-      <details ref={mobile} className={styles.mobile} onKeyDown={close}>
-        <summary>
-          <Icon name="Menu" /> {t.ui.menu} — {current?.label ?? t.app.system}
-        </summary>
-        <nav aria-label={t.dashboard.navigation}>{items.map(link)}</nav>
-      </details>
       <div id="application-content" tabIndex={-1} className={styles.content}>
         <div className={styles.location}>{current?.label ?? t.app.system}</div>
         {children}

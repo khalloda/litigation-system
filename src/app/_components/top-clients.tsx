@@ -16,13 +16,21 @@ export async function TopClients({
     snapshot = await getTopClients(session);
   } catch (error) {
     return (
-      <DashboardError error={error} title={t.dashboardMetrics.topClients} id="top-clients-title" />
+      <DashboardError
+        view={compact ? undefined : 'analytics'}
+        error={error}
+        title={t.dashboardMetrics.topClients}
+        id="top-clients-title"
+      />
     );
   }
   return (
     <section className={styles.panel} aria-labelledby="top-clients-title">
       <h2 id="top-clients-title">{t.dashboardMetrics.topClients}</h2>
-      <p>{t.dashboardMetrics.topScope}</p>
+      <details className={styles.definition}>
+        <summary>{t.ui.definitions}</summary>
+        <p>{t.dashboardMetrics.topScope}</p>
+      </details>
       <p>
         {t.dashboardMetrics.clientPopulation(snapshot.total, snapshot.unassigned, snapshot.clients)}
       </p>
@@ -53,19 +61,39 @@ export async function TopClients({
       {snapshot.rows.length ? (
         <details open={!compact}>
           <summary>{t.ui.fullDetails}</summary>
-          <ol className={styles.records}>
-            {snapshot.rows.map((r) => (
-              <li key={r.id} className={styles.record} data-top-client-id={r.id}>
-                <h3>
-                  <Link className={styles.link} href={`/clients/${r.id}`}>
-                    <bdi>{r.name.trim() ? r.name : t.common.notRecorded}</bdi>
-                  </Link>
-                </h3>
-                <p>{t.dashboardMetrics.rankCount(r.rank, r.total)}</p>
-                {r.archived ? <p className={styles.notice}>{t.clients.archivedNotice}</p> : null}
-              </li>
-            ))}
-          </ol>
+          <div
+            className={styles.tableScroll}
+            role="region"
+            aria-label={t.dashboardMetrics.topClients}
+            tabIndex={0}
+          >
+            <table className={styles.metricTable}>
+              <thead>
+                <tr>
+                  <th scope="col">{t.fields.client}</th>
+                  <th scope="col">{t.dashboardMetrics.distinctTotal}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshot.rows.map((r) => (
+                  <tr key={r.id} data-top-client-id={r.id}>
+                    <th scope="row">
+                      <Link href={`/clients/${r.id}`}>
+                        <bdi>{r.name.trim() ? r.name : t.common.notRecorded}</bdi>
+                      </Link>
+                      <span className={styles.metricNote}>
+                        {t.dashboardMetrics.rankCount(r.rank, r.total)}
+                      </span>
+                      {r.archived ? (
+                        <span className={styles.notice}>{t.clients.archivedNotice}</span>
+                      ) : null}
+                    </th>
+                    <td>{r.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </details>
       ) : (
         <p className={styles.empty}>{t.dashboardMetrics.topEmpty}</p>

@@ -161,7 +161,61 @@
 
 /* The existing drawer and global viewer share the approved notice/field surfaces. */
 .label {
-  font-weight: 600;
+  font: var(--type-label);
+}
+.button {
+  font: var(--type-label);
+  border-color: var(--control-border);
+}
+.toolbar button[type='submit'] {
+  background: var(--colour-primary);
+  color: var(--colour-on-primary);
+}
+.viewer form {
+  background: var(--colour-surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin-block: var(--space-4);
+}
+.viewer > p {
+  font: var(--type-caption);
+}
+.group h3 {
+  font: var(--type-section);
+}
+.event h4 {
+  font: var(--type-label);
+  margin-block: var(--space-2);
+}
+.tableScroll {
+  overflow: auto;
+  max-inline-size: 100%;
+}
+.changeTable {
+  border-collapse: collapse;
+  inline-size: 100%;
+  table-layout: fixed;
+}
+.changeTable th,
+.changeTable td {
+  text-align: start;
+  vertical-align: top;
+  padding: var(--space-3);
+  border-block-end: 1px solid var(--hairline);
+  overflow-wrap: anywhere;
+}
+.changeTable th {
+  font: var(--type-label);
+}
+.changeTable thead {
+  background: var(--panel-inset);
+}
+.changeTable tr:nth-child(even) {
+  background: var(--row-alt);
+}
+.changeTable td {
+  font: var(--type-body);
 }
 .label input,
 .label select {

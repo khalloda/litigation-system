@@ -1,5 +1,5 @@
 .page {
-  max-inline-size: 82rem;
+  max-inline-size: 90rem;
   margin-inline: auto;
   padding: var(--space-6);
 }
@@ -249,7 +249,7 @@
   color: var(--colour-primary);
 }
 .detailed .metrics {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 @media (max-width: 60rem) {
   .metrics {
@@ -293,8 +293,81 @@
 .compactPreview table {
   min-inline-size: 0;
 }
-.panel:has(details[open]) .compactPreview {
+.panel:has(> details[open]:not(.definition)) > .compactPreview {
   display: none;
+}
+.definition {
+  font: var(--type-caption);
+  color: var(--colour-text-muted);
+  margin-block: var(--space-2);
+}
+.panel .definition > summary {
+  padding: 0;
+  border: 0;
+  min-block-size: 2.75rem;
+  align-content: center;
+}
+.previewText {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font: var(--type-body);
+}
+.metricTable th {
+  font: var(--type-label);
+}
+.metricTable th[scope='row'] {
+  font: var(--type-body);
+}
+.metricTable thead {
+  background: var(--panel-inset);
+}
+.metricTable tbody tr:nth-child(even) {
+  background: var(--row-alt);
+}
+.metricTable {
+  min-inline-size: 0;
+}
+.detailed .outcomePanel {
+  grid-column: 1 / -1;
+}
+.detailed .outcomePanel .annualChart {
+  flex-wrap: nowrap;
+}
+.sectionLinks {
+  font: var(--type-caption);
+}
+.sectionLinks > summary {
+  cursor: pointer;
+  min-block-size: 2.75rem;
+}
+.summaryCards {
+  margin-block: var(--space-4);
+}
+.summaryCards dt {
+  font: var(--type-label);
+}
+.panelHeader p,
+.summary,
+.panel > p:not(.recognized) {
+  font: var(--type-caption);
+}
+.button,
+.panel > details > summary {
+  font: var(--type-label);
+  text-decoration: none;
+}
+.metrics {
+  margin-block-start: var(--space-4);
+}
+@media (max-width: 60rem) {
+  .detailed .metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .detailed .outcomePanel .annualChart {
+    flex-wrap: wrap;
+  }
 }
 .annualChart {
   display: flex;
@@ -352,4 +425,42 @@
   .summaryCards {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.header h1 {
+  margin: 0;
+}
+.header p {
+  margin-block: var(--space-1) 0;
+  font: var(--type-caption);
+}
+.header {
+  margin-block-end: var(--space-4);
+}
+.metrics {
+  gap: var(--space-4);
+  margin-block-start: var(--space-4);
+}
+.sectionLinks {
+  margin-block: var(--space-2);
+  font: var(--type-caption);
+}
+.panel {
+  padding: var(--space-4);
+}
+.button,
+.navigation a {
+  font: var(--type-label);
+  text-decoration: none;
+}
+.panel > h2,
+.panelHeader h2 {
+  margin-block: 0 var(--space-2);
+}
+.summary {
+  margin-block-start: var(--space-2);
+  padding-block: var(--space-1);
+}
+.summary p {
+  margin-block: var(--space-1);
 }

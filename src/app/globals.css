@@ -93,6 +93,12 @@
   --line-label: 1.625rem;
   --line-section: 2.125rem;
   --line-title: 2.75rem;
+  --type-title: 700 var(--text-xl)/var(--line-title) var(--font-body);
+  --type-section: 700 var(--text-lg)/var(--line-section) var(--font-body);
+  --type-body: 400 var(--text-base)/1.875rem var(--font-body);
+  --type-label: 600 var(--text-sm)/var(--line-label) var(--font-body);
+  --type-caption: 400 var(--text-caption)/var(--line-caption) var(--font-body);
+  --type-value: 600 var(--text-base)/1.875rem var(--font-body);
 
   --text-sm: 0.875rem;
   --text-base: 1rem;

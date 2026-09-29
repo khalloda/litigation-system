@@ -7,10 +7,12 @@ export function DashboardError({
   error,
   title,
   id,
+  view,
 }: {
   error: unknown;
   title: string;
   id: string;
+  view?: 'analytics';
 }) {
   if (error instanceof AuthorizationError) {
     if (error.reason === 'unauthenticated') redirect('/login');
@@ -22,6 +24,7 @@ export function DashboardError({
       <h2 id={id}>{title}</h2>
       <p role="alert">{t.dashboardMetrics.error}</p>
       <form action="/" method="get">
+        {view ? <input type="hidden" name="view" value={view} /> : null}
         <button className={styles.button} type="submit">
           {t.dashboard.refresh}
         </button>

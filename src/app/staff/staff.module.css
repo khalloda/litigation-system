@@ -1,8 +1,8 @@
 .page {
-  max-inline-size: 78rem;
+  max-inline-size: 90rem;
   margin-inline: auto;
-  padding-block: var(--space-8);
-  padding-inline: var(--space-4);
+  padding-block: var(--space-6);
+  padding-inline: var(--space-6);
 }
 
 .header {
@@ -11,9 +11,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-4);
-  border-block-end: 2px solid var(--colour-accent-warm);
-  margin-block-end: var(--space-6);
-  padding-block-end: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .header p {
@@ -47,7 +45,7 @@
   min-inline-size: 0;
 }
 .field label {
-  font-weight: 700;
+  font: var(--type-label);
 }
 .field input,
 .field textarea,
@@ -67,7 +65,7 @@
 .hint,
 .secondary {
   color: var(--colour-text-muted);
-  font-size: var(--text-sm);
+  font: var(--type-caption);
   margin: 0;
 }
 .actions {
@@ -94,13 +92,16 @@
   background: var(--colour-primary);
   color: var(--colour-on-primary);
   cursor: pointer;
-  font-weight: 700;
+  font: var(--type-label);
 }
 .button:hover {
   background: var(--colour-primary-mid);
 }
 .link {
   border: 1px solid var(--colour-primary-mid);
+  background: var(--colour-surface);
+  text-decoration: none;
+  font: var(--type-label);
 }
 .link:hover,
 .nameLink:hover {
@@ -172,7 +173,7 @@
 .nameLink {
   justify-content: start;
   padding-inline: 0;
-  font-weight: 700;
+  font: var(--type-value);
   overflow-wrap: anywhere;
 }
 .row dl {
@@ -181,7 +182,7 @@
 .row dt,
 .facts dt {
   color: var(--colour-text-muted);
-  font-size: var(--text-sm);
+  font: var(--type-label);
 }
 .row dd,
 .facts dd {
@@ -337,7 +338,7 @@
   font-weight: 600;
 }
 .row:nth-child(even) {
-  background: var(--colour-surface);
+  background: var(--row-alt);
 }
 .row:hover {
   background: var(--surface-selected);
@@ -346,4 +347,9 @@
   .panel {
     padding: var(--space-4);
   }
+}
+
+.button {
+  text-decoration: none;
+  font: var(--type-label);
 }

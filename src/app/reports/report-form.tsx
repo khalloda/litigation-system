@@ -33,6 +33,26 @@ export function ReportForm({
   const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
   const [selectionClient, setSelectionClient] = useState(initialClient);
   const [reset, setReset] = useState(0);
+  const defaults = Object.fromEntries(
+    (descriptor.extra ?? []).map((rule) => [rule.key, rule.defaultValue ?? '']),
+  );
+  const [parameters, setParameters] = useState<Record<string, string>>({
+    ...defaults,
+    client: initialClient,
+  });
+  const parameterText = (key: string, value: string) => {
+    if (['client', 'branch', 'lawyer'].includes(key))
+      return (
+        referenceOptions(options, key as 'client' | 'branch' | 'lawyer').find(
+          (option) => String(option.id) === value,
+        )?.label ?? (value === 'unassigned' ? t.reports.unassigned : t.common.notRecorded)
+      );
+    return (
+      descriptor.extra
+        ?.find((rule) => rule.key === key)
+        ?.choices.find((choice) => choice.value === value)?.label ?? value
+    );
+  };
   useEffect(() => () => abort.current?.abort(), []);
   useEffect(
     () => () => {
@@ -113,175 +133,225 @@ export function ReportForm({
     key in t.reports.fields
       ? reportFieldLabel(key)
       : (descriptor.extra?.find((x) => x.key === key)?.label ?? t.reports.validation);
+  const referenceField = (key: 'client' | 'branch' | 'lawyer') => {
+    const rule = referenceRule(descriptor, key);
+    return rule ? (
+      <div key={key} className={`${styles.field} ${key === 'lawyer' ? styles.fullField : ''}`}>
+        <label htmlFor={`report-${key}`}>
+          {reportFieldLabel(key)} — {rule.required ? t.reports.required : t.reports.optional}
+        </label>
+        <ReportReferenceSelect
+          id={`report-${key}`}
+          name={key}
+          label={reportFieldLabel(key)}
+          rule={rule}
+          options={referenceOptions(options, key)}
+          initialValue={key === 'client' && reset === 0 ? initialClient : ''}
+          invalid={errors.includes(key)}
+          describedBy={help(key)}
+        />
+        <details className={styles.hint}>
+          <summary>{t.ui.definitions}</summary>
+          <p id={`report-${key}-help`}>
+            {rule.help} · {t.reports.identityHelp}
+          </p>
+        </details>
+        {errors.includes(key) ? (
+          <p id={`report-${key}-error`} className={styles.error}>
+            {t.reports.invalidField}
+          </p>
+        ) : null}
+      </div>
+    ) : null;
+  };
   return (
     <>
-      {descriptor.extra?.some((x) => x.key === 'extra_mode') &&
-      /^[1-9]\d*$/u.test(selectionClient) ? (
-        <p>
-          <Link href={`/reports/selection?client=${selectionClient}`}>
-            {t.reportSelection.edit}
-          </Link>
-        </p>
-      ) : null}
-      <form
-        ref={form}
-        noValidate
-        onChange={(event) => {
-          // Searching option labels changes no submitted parameter.
-          const target = event.target;
-          if (
-            (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) &&
-            target.name
-          ) {
-            invalidate();
-            setSelectionClient(String(new FormData(event.currentTarget).get('client') ?? ''));
-          }
-        }}
-        onSubmit={(event) => {
-          event.preventDefault();
-          void execute('preview');
-        }}
-        aria-busy={busy}
-      >
-        <div
-          ref={summary}
-          tabIndex={-1}
-          className={styles.summary}
-          role="status"
-          aria-live="polite"
+      <div className={styles.setupLayout}>
+        <form
+          className={styles.setupForm}
+          ref={form}
+          noValidate
+          onChange={(event) => {
+            // Searching option labels changes no submitted parameter.
+            const target = event.target;
+            if (
+              (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) &&
+              target.name
+            ) {
+              invalidate();
+              const values = Object.fromEntries(
+                [...new FormData(event.currentTarget)].map(([key, value]) => [key, String(value)]),
+              );
+              setSelectionClient(values.client ?? '');
+              setParameters(values);
+            }
+          }}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void execute('preview');
+          }}
+          aria-busy={busy}
         >
-          <p>{message}</p>
-          {errors.length > 0 ? (
-            <>
-              <p>{t.reports.validation}</p>
-              <ul>
-                {errors.map((key) => (
-                  <li key={key}>
-                    <a href={`#report-${key}`}>{label(key)}</a>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
-        </div>
-        <fieldset key={reset} disabled={busy} className={styles.fields}>
-          <legend>{t.reports.filters}</legend>
-          {descriptor.date
-            ? (['from', 'to'] as const).map((key) => (
-                <div key={key} className={styles.field}>
-                  <label htmlFor={`report-${key}`}>
-                    {reportFieldLabel(key)} —{' '}
-                    {descriptor.date!.required ? t.reports.required : t.reports.optional}
-                  </label>
-                  <input
-                    type="date"
-                    id={`report-${key}`}
-                    name={key}
-                    min="0001-01-01"
-                    max="9998-12-31"
-                    dir="ltr"
-                    aria-required={descriptor.date!.required}
-                    aria-invalid={errors.includes(key)}
-                    aria-describedby={help(key)}
-                  />
-                  <p id={`report-${key}-help`}>
-                    {descriptor.date!.fieldMeaning} · {t.reports.datesHelp}
+          <div
+            ref={summary}
+            tabIndex={-1}
+            className={styles.summary}
+            role="status"
+            aria-live="polite"
+          >
+            <p>{message}</p>
+            {errors.length > 0 ? (
+              <>
+                <p>{t.reports.validation}</p>
+                <ul>
+                  {errors.map((key) => (
+                    <li key={key}>
+                      <a href={`#report-${key}`}>{label(key)}</a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </div>
+          <fieldset key={reset} disabled={busy} className={styles.fields}>
+            <legend>{t.ui.prepareReport}</legend>
+            {(['client', 'branch'] as const).map(referenceField)}
+            {[...(descriptor.extra ?? [])]
+              .sort((a, b) => (a.key === 'extra_mode' ? 1 : b.key === 'extra_mode' ? -1 : 0))
+              .map((rule) => (
+                <div
+                  key={rule.key}
+                  className={`${styles.field} ${rule.key === 'extra_mode' ? styles.fullField : ''}`}
+                >
+                  <label htmlFor={`report-${rule.key}`}>{rule.label}</label>
+                  <select
+                    id={`report-${rule.key}`}
+                    name={rule.key}
+                    defaultValue={rule.defaultValue ?? ''}
+                    aria-required={rule.required}
+                    aria-invalid={errors.includes(rule.key)}
+                    aria-describedby={help(rule.key)}
+                  >
+                    <option value="">{rule.required ? t.reports.required : t.reports.all}</option>
+                    {rule.choices.map((x) => (
+                      <option key={x.value} value={x.value}>
+                        {x.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p id={`report-${rule.key}-help`}>
+                    {rule.required ? t.reports.required : t.reports.optional}
                   </p>
-                  {errors.includes(key) ? (
-                    <p id={`report-${key}-error`} className={styles.error}>
+                  {errors.includes(rule.key) ? (
+                    <p id={`report-${rule.key}-error`} className={styles.error}>
                       {t.reports.invalidField}
                     </p>
                   ) : null}
                 </div>
-              ))
-            : null}
-          {(['client', 'branch', 'lawyer'] as const).map((key) => {
-            const rule = referenceRule(descriptor, key);
-            return rule ? (
-              <div key={key} className={styles.field}>
-                <label htmlFor={`report-${key}`}>
-                  {reportFieldLabel(key)} —{' '}
-                  {rule.required ? t.reports.required : t.reports.optional}
-                </label>
-                <ReportReferenceSelect
-                  id={`report-${key}`}
-                  name={key}
-                  label={reportFieldLabel(key)}
-                  rule={rule}
-                  options={referenceOptions(options, key)}
-                  initialValue={key === 'client' && reset === 0 ? initialClient : ''}
-                  invalid={errors.includes(key)}
-                  describedBy={help(key)}
-                />
-                <p id={`report-${key}-help`}>
-                  {rule.help} · {t.reports.identityHelp}
-                </p>
-                {errors.includes(key) ? (
-                  <p id={`report-${key}-error`} className={styles.error}>
-                    {t.reports.invalidField}
-                  </p>
-                ) : null}
-              </div>
-            ) : null;
-          })}
-          {(descriptor.extra ?? []).map((rule) => (
-            <div key={rule.key} className={styles.field}>
-              <label htmlFor={`report-${rule.key}`}>{rule.label}</label>
-              <select
-                id={`report-${rule.key}`}
-                name={rule.key}
-                defaultValue={rule.defaultValue ?? ''}
-                aria-required={rule.required}
-                aria-invalid={errors.includes(rule.key)}
-                aria-describedby={help(rule.key)}
-              >
-                <option value="">{rule.required ? t.reports.required : t.reports.all}</option>
-                {rule.choices.map((x) => (
-                  <option key={x.value} value={x.value}>
-                    {x.label}
-                  </option>
-                ))}
-              </select>
-              <p id={`report-${rule.key}-help`}>
-                {rule.required ? t.reports.required : t.reports.optional}
-              </p>
-              {errors.includes(rule.key) ? (
-                <p id={`report-${rule.key}-error`} className={styles.error}>
-                  {t.reports.invalidField}
-                </p>
-              ) : null}
-            </div>
-          ))}
-        </fieldset>
-        <div className={styles.actions}>
-          <button type="submit" disabled={busy}>
-            {t.reports.run}
-          </button>
-          <button type="button" disabled={busy} onClick={() => void execute('xlsx')}>
-            {t.reports.xlsx}
-          </button>
-          <button type="button" disabled={busy} onClick={() => void execute('pdf')}>
-            {t.reports.pdf}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              invalidate();
-              setSelectionClient('');
-              setReset((value) => value + 1);
-            }}
-          >
-            {t.reports.clear}
-          </button>
-          {busy ? (
-            <button type="button" onClick={() => abort.current?.abort()}>
-              {t.reports.cancel}
+              ))}
+            {descriptor.date
+              ? (['from', 'to'] as const).map((key) => (
+                  <div key={key} className={styles.field}>
+                    <label htmlFor={`report-${key}`}>
+                      {reportFieldLabel(key)} —{' '}
+                      {descriptor.date!.required ? t.reports.required : t.reports.optional}
+                    </label>
+                    <input
+                      type="date"
+                      id={`report-${key}`}
+                      name={key}
+                      min="0001-01-01"
+                      max="9998-12-31"
+                      dir="ltr"
+                      aria-required={descriptor.date!.required}
+                      aria-invalid={errors.includes(key)}
+                      aria-describedby={help(key)}
+                    />
+                    <details className={styles.hint}>
+                      <summary>{t.ui.definitions}</summary>
+                      <p id={`report-${key}-help`}>
+                        {descriptor.date!.fieldMeaning} · {t.reports.datesHelp}
+                      </p>
+                    </details>
+                    {errors.includes(key) ? (
+                      <p id={`report-${key}-error`} className={styles.error}>
+                        {t.reports.invalidField}
+                      </p>
+                    ) : null}
+                  </div>
+                ))
+              : null}
+            {referenceField('lawyer')}
+          </fieldset>
+          <div className={styles.actions}>
+            <button type="submit" disabled={busy}>
+              {t.reports.run}
             </button>
+            <button type="button" disabled={busy} onClick={() => void execute('xlsx')}>
+              {t.reports.xlsx}
+            </button>
+            <button type="button" disabled={busy} onClick={() => void execute('pdf')}>
+              {t.reports.pdf}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                invalidate();
+                setSelectionClient('');
+                setParameters(defaults);
+                setReset((value) => value + 1);
+              }}
+            >
+              {t.reports.clear}
+            </button>
+            {busy ? (
+              <button type="button" onClick={() => abort.current?.abort()}>
+                {t.reports.cancel}
+              </button>
+            ) : null}
+          </div>
+          <p className={styles.hint}>{t.ui.noRunOnOpen}</p>
+        </form>
+        <aside className={styles.setupSummary} aria-label={t.ui.beforeReport}>
+          <h2>{t.ui.beforeReport}</h2>
+          <dl>
+            {Object.entries(parameters)
+              .sort(([a], [b]) => (a === 'client' ? -1 : b === 'client' ? 1 : 0))
+              .filter(([, value]) => value)
+              .map(([key, value]) => (
+                <div key={key}>
+                  <dt>{label(key)}</dt>
+                  <dd dir="auto">{parameterText(key, value)}</dd>
+                </div>
+              ))}
+          </dl>
+          {!parameters.client && descriptor.parameters.client ? (
+            <p>
+              {t.reports.required} — {t.fields.client}
+            </p>
           ) : null}
-        </div>
-        <p>{t.reports.retryHelp}</p>
-      </form>
+          {descriptor.extra?.some((rule) => rule.key === 'extra_mode') ? (
+            <>
+              <p>{t.reportSelection.period}</p>
+              {/^[1-9]\d*$/u.test(selectionClient) ? (
+                <Link
+                  className={styles.secondaryAction}
+                  href={`/reports/selection?client=${selectionClient}`}
+                >
+                  {t.reportSelection.edit}
+                </Link>
+              ) : null}
+            </>
+          ) : null}
+          {descriptor.date ? (
+            <p>
+              {descriptor.date.fieldMeaning} · {t.reports.datesHelp}
+            </p>
+          ) : null}
+          <p className={styles.hint}>{t.reports.retryHelp}</p>
+        </aside>
+      </div>
       {result || download ? (
         <section ref={output} tabIndex={-1} aria-label={t.reports.result} className={styles.result}>
           {download ? (

@@ -261,7 +261,7 @@ export function ClientEditor({
           </div>
         ) : null}
         <fieldset
-          className={styles.formFields}
+          className={`${styles.formFields} ${local.editorFields}`}
           aria-label={title}
           disabled={pending || Boolean(blocked) || result?.kind === 'success'}
         >

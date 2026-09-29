@@ -22,6 +22,7 @@ import { Field } from '../clients/client-fields';
 import { ClientAlert } from '../clients/client-alert';
 import styles from '../staff/staff.module.css';
 import local from './matters.module.css';
+import { workspaceSelection, selectedWorkspaceHref } from './workspace-context';
 
 export async function MatterDetail({
   params,
@@ -37,6 +38,7 @@ export async function MatterDetail({
   const Container = embedded ? 'section' : 'main';
   const Heading = embedded ? 'h2' : 'h1';
   const { id } = await params;
+  const workspace = workspaceSelection((await searchParams).workspace);
   let filters, hearingReturn;
   try {
     const input = await searchParams;
@@ -58,7 +60,18 @@ export async function MatterDetail({
     );
   }
   const matter = await getMatter(session, id);
-  if (!matter) notFound();
+  if (!matter) {
+    if (embedded)
+      return (
+        <section>
+          <p>{t.common.noResults}</p>
+          <Link className={styles.link} href={matterListHref(filters)}>
+            {t.matters.back}
+          </Link>
+        </section>
+      );
+    notFound();
+  }
   const caseLines = (matter.caseNumber?.trim() ? matter.caseNumber : t.common.notRecorded).split(
     /\r\n|\n|\r/u,
   );
@@ -80,6 +93,90 @@ export async function MatterDetail({
     [t.matters.courtShelf, matter.courtShelf],
     [t.matters.courtSecretaryRoom, matter.courtSecretaryRoom],
   ] as const;
+  if (embedded)
+    return (
+      <section data-matter-id={matter.id}>
+        <header className={local.readingHeader}>
+          <h2 className={local.hero}>
+            {caseLines.map((line, i) => (
+              <bdi className={local.caseLine} key={i}>
+                {line || '\u00a0'}
+              </bdi>
+            ))}
+          </h2>
+          {!matter.archived && hasPermission(session.user.role, 'matters', 'update') ? (
+            <Link
+              className={styles.link}
+              href={`/matters/${matter.id}/edit${matterListHref(filters).slice('/matters'.length)}`}
+            >
+              {t.matters.manage.edit}
+            </Link>
+          ) : null}
+        </header>
+        <p className={local.readingSubjectLabel}>{t.fields.subject}</p>
+        <p className={local.readingSubject} dir="auto">
+          {matter.subject ?? t.common.notRecorded}
+        </p>
+        <dl className={local.readingFacts}>
+          <Field label={t.matters.filters.branch} value={matter.branch} />
+          <Field label={t.matters.filters.status} value={matter.status} />
+          <Field label={t.fields.status} value={matter.currentStatus} />
+          <Field label={t.clients.systemId} value={matter.id} />
+          <Field
+            label={t.fields.client}
+            value={
+              matter.clientId ? (
+                <Link
+                  href={`/clients/${matter.clientId}?matterReturn=${encodeURIComponent(matterDetailHref(matter.id, filters))}`}
+                >
+                  {matter.clientName}
+                </Link>
+              ) : null
+            }
+          />
+        </dl>
+        {matter.archived ? <p className={styles.state}>{t.matters.lifecycle.notice}</p> : null}
+        {matter.clientArchived ? <p className={styles.state}>{t.clients.archivedNotice}</p> : null}
+        <section className={local.readingRelated}>
+          <h2>{t.ui.relatedRecords}</h2>
+          <div className={local.readingActions}>
+            <Link
+              className={styles.link}
+              href={hearingListHref(
+                parseHearingFilters({
+                  matter: String(matter.id),
+                  archive: 'all',
+                  fromMatter: matterDetailHref(matter.id, filters),
+                }),
+              )}
+            >
+              {t.hearings.title}
+            </Link>
+            {hasPermission(session.user.role, 'documents', 'view') ? (
+              <Link className={styles.link} href={`/documents?matter=${matter.id}&archive=all`}>
+                {t.documentsModule.title}
+              </Link>
+            ) : null}
+            <Link
+              className={styles.link}
+              href={`/admin-works?archive=all&matter=${matter.id}&fromMatter=${encodeURIComponent(matterDetailHref(matter.id, filters))}`}
+            >
+              {t.adminWorks.title}
+            </Link>
+          </div>
+          <div className={local.readingActions}>
+            <Link
+              className={styles.link}
+              data-full-matter
+              href={`${matterDetailHref(matter.id, filters)}${matterDetailHref(matter.id, filters).includes('?') ? '&' : '?'}workspace=${matter.id}`}
+            >
+              {t.ui.fullDetails}
+            </Link>
+            <AuditRecordEntry session={session} table="matters" id={matter.id} />
+          </div>
+        </section>
+      </section>
+    );
   return (
     <Container className={styles.page} data-matter-id={matter.id}>
       <header className={styles.header}>
@@ -112,7 +209,16 @@ export async function MatterDetail({
             <p>{t.matters.readOnly}</p>
           ) : null}
         </div>
-        <Link className={styles.link} href={matterListHref(filters)}>
+        <Link
+          className={styles.link}
+          data-workspace-return
+          scroll={workspace === matter.id ? false : undefined}
+          href={
+            workspace === matter.id
+              ? selectedWorkspaceHref(matterListHref(filters), matter.id)
+              : matterListHref(filters)
+          }
+        >
           {t.matters.back}
         </Link>
       </header>

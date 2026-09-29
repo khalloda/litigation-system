@@ -6,17 +6,12 @@ import styles from '../home.module.css';
 function OutcomeChart({
   rows,
   max,
-  annual,
 }: {
   rows: readonly { period: string; favour: number; against: number }[];
   max: number;
-  annual: boolean;
 }) {
   return (
-    <div
-      aria-hidden="true"
-      className={`${styles.outcomeChart} ${annual ? styles.annualChart : ''}`}
-    >
+    <div aria-hidden="true" className={`${styles.outcomeChart} ${styles.annualChart}`}>
       <p>{t.dashboardMetrics.scale(max)}</p>
       {rows.map((r) => (
         <div key={r.period} className={styles.chartBucket}>
@@ -33,7 +28,7 @@ function OutcomeChart({
                   <span className={styles.barTrack}>
                     <span
                       className={series === 'favour' ? styles.favourBar : styles.againstBar}
-                      style={annual ? { blockSize: extent } : { inlineSize: extent }}
+                      style={{ blockSize: extent }}
                       data-outcome-period={r.period}
                       data-outcome-series={series}
                       data-outcome-value={value}
@@ -69,51 +64,61 @@ async function OutcomePanel({
       ? await getFiveYearOutcomes(session, instant)
       : await getCurrentOutcomes(session, instant);
   } catch (error) {
-    return <DashboardError error={error} title={title} id={id} />;
+    return (
+      <DashboardError
+        view={compact ? undefined : 'analytics'}
+        error={error}
+        title={title}
+        id={id}
+      />
+    );
   }
   const { window, rows, sums, coverage } = snapshot,
     max = Math.max(1, ...rows.flatMap((r) => [r.favour, r.against]));
   return (
-    <section className={styles.panel} aria-labelledby={id}>
+    <section className={`${styles.panel} ${styles.outcomePanel}`} aria-labelledby={id}>
       <h2 id={id}>{title}</h2>
       <p className={styles.recognized}>
         {t.dashboardMetrics.recognizedCounts(sums.favour, sums.against)}
       </p>
       <p>{fiveYear ? t.dashboardMetrics.fiveYearNote : t.dashboardMetrics.fullYearNote}</p>
-      {compact && fiveYear ? <OutcomeChart rows={rows} max={max} annual /> : null}
+      {compact && fiveYear ? <OutcomeChart rows={rows} max={max} /> : null}
       <details open={!compact}>
-        <summary>{t.ui.fullDetails}</summary> <p>{t.dashboardMetrics.outcomeScope}</p>
-        <p>{fiveYear ? t.dashboardMetrics.fiveYearNote : t.dashboardMetrics.fullYearNote}</p>
-        <p>
-          {t.dashboardMetrics.windowLabel}
-          <time dateTime={window.start} dir="ltr">
-            {window.start}
-          </time>
-          {t.dashboardMetrics.exclusiveEnd}
-          <time dateTime={window.end} dir="ltr">
-            {window.end}
-          </time>
-        </p>
-        <p>
-          {t.dashboardMetrics.anchor}
-          <time dateTime={window.anchor} dir="ltr">
-            {window.anchor}
-          </time>{' '}
-          · {t.dashboard.cairo}
-        </p>
-        <p>{t.dashboardMetrics.unknownCounts(sums.missing, sums.empty, sums.other)}</p>
-        <p>
-          {t.dashboardMetrics.outcomeCoverage(
-            coverage.total,
-            coverage.inside,
-            coverage.outside,
-            coverage.undated,
-          )}
-        </p>
+        <summary>{t.ui.fullDetails}</summary>
+        <details className={styles.definition}>
+          <summary>{t.ui.definitions}</summary> <p>{t.dashboardMetrics.outcomeScope}</p>
+          <p>{fiveYear ? t.dashboardMetrics.fiveYearNote : t.dashboardMetrics.fullYearNote}</p>
+          <p>
+            {t.dashboardMetrics.windowLabel}
+            <time dateTime={window.start} dir="ltr">
+              {window.start}
+            </time>
+            {t.dashboardMetrics.exclusiveEnd}
+            <time dateTime={window.end} dir="ltr">
+              {window.end}
+            </time>
+          </p>
+          <p>
+            {t.dashboardMetrics.anchor}
+            <time dateTime={window.anchor} dir="ltr">
+              {window.anchor}
+            </time>{' '}
+            · {t.dashboard.cairo}
+          </p>
+          <p>{t.dashboardMetrics.unknownCounts(sums.missing, sums.empty, sums.other)}</p>
+          <p>
+            {t.dashboardMetrics.outcomeCoverage(
+              coverage.total,
+              coverage.inside,
+              coverage.outside,
+              coverage.undated,
+            )}
+          </p>
+        </details>
         {sums.favour + sums.against === 0 ? (
           <p className={styles.empty}>{t.dashboardMetrics.outcomesEmpty}</p>
         ) : null}
-        {!compact || !fiveYear ? <OutcomeChart rows={rows} max={max} annual={false} /> : null}
+        {!compact || !fiveYear ? <OutcomeChart rows={rows} max={max} /> : null}
         <div className={styles.tableScroll} role="region" aria-label={title} tabIndex={0}>
           <table className={styles.metricTable}>
             <caption>{t.dashboardMetrics.outcomeTable}</caption>

@@ -15,13 +15,23 @@ export async function LawyerWorkload({
   try {
     snapshot = await workloadSnapshot(session);
   } catch (error) {
-    return <DashboardError error={error} title={t.dashboardMetrics.workload} id="workload-title" />;
+    return (
+      <DashboardError
+        view={compact ? undefined : 'analytics'}
+        error={error}
+        title={t.dashboardMetrics.workload}
+        id="workload-title"
+      />
+    );
   }
   return (
     <section className={styles.panel} aria-labelledby="workload-title">
       <h2 id="workload-title">{t.dashboardMetrics.workload}</h2>
-      <p>{t.dashboardMetrics.workloadScope}</p>
-      <p>{t.dashboardMetrics.overlap}</p>
+      <details className={styles.definition}>
+        <summary>{t.ui.definitions}</summary>
+        <p>{t.dashboardMetrics.workloadScope}</p>
+        <p>{t.dashboardMetrics.overlap}</p>
+      </details>
       <p>{t.dashboardMetrics.matterPopulation(snapshot.total, snapshot.unassigned)}</p>
       {compact ? (
         <div className={styles.compactPreview}>
@@ -29,7 +39,9 @@ export async function LawyerWorkload({
             <thead>
               <tr>
                 <th scope="col">{t.fields.lawyer}</th>
-                <th scope="col">{t.dashboardMetrics.distinctTotal}</th>
+                <th scope="col">{t.matters.lawyerRoles.lead}</th>
+                <th scope="col">{t.matters.lawyerRoles.co_lead}</th>
+                <th scope="col">{t.matters.lawyerRoles.support}</th>
               </tr>
             </thead>
             <tbody>
@@ -38,7 +50,9 @@ export async function LawyerWorkload({
                   <th scope="row">
                     <bdi>{r.name.trim() ? r.name : t.common.notRecorded}</bdi>
                   </th>
-                  <td>{r.total}</td>
+                  <td>{r.lead}</td>
+                  <td>{r.coLead}</td>
+                  <td>{r.support}</td>
                 </tr>
               ))}
             </tbody>

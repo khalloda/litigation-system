@@ -27,7 +27,7 @@ const REVIEWED_MUTATIONS: Record<string, string> = {
   'src/lib/client-mutations.ts': 'f6beddf9b04248394555edba032fad6994fe47b334ff2d824905eba4036ca334',
   'src/app/clients/actions.ts': 'c07a904e449e43ac2ee204f570781b1745aa2268707d52e0664e8b29413be337',
   'src/app/clients/client-editor.tsx':
-    '86dfdf0c376a9f55e5467b710b96a0453d7bdeef1f54c012528838a87c10953a',
+    '9f310ac18de22b3a613ef9a0ad1eed58b5ac8eb164976b17fa46d1b88c2204a6',
 };
 function failures(sources: AuditRuntimeSource[]): string[] {
   const errors: string[] = [];

@@ -33,70 +33,134 @@ export default async function SelectionPage({
   const url = (p: number) =>
     `/reports/selection?client=${client}${id === null ? '' : `&id=${id}`}&page=${p}`;
   return (
-    <main className={styles.page}>
-      <Link href={`/reports?client=${client}`}>{t.reports.back}</Link>
+    <main className={styles.page} data-reviewed>
+      <Link
+        className={styles.secondaryAction}
+        href={id === null ? `/reports?client=${client}` : `/reports/selection?client=${client}`}
+      >
+        {id === null ? t.reports.back : t.reportSelection.returnList}
+      </Link>
       <h1>{t.reportSelection.title}</h1>
-      <h2>
+      <p className={styles.hint}>
         {model.name} ({client})
-      </h2>
-      <p>
-        {t.reportSelection.totalCount}: {model.counts.total} · {t.reportSelection.savedCount}:{' '}
-        {model.counts.selected} · {t.reportSelection.draftCount}: {model.counts.incomplete}
+        {id !== null
+          ? ` · ${model.matters[0]!.caseNumber ?? model.matters[0]!.subject} · ${id}`
+          : ''}
       </p>
-      <p>{t.reportSelection.help}</p>
       {id === null ? (
-        <ul>
-          {model.matters.map((m) => (
-            <li key={m.id} className={styles.choice}>
-              <Link href={`/reports/selection?client=${client}&id=${m.id}`}>
-                <span dir="auto">
-                  {m.caseNumber ?? m.subject ?? t.reports.nullValue} ({m.id})
-                </span>
-              </Link>
-              <p>
-                {t.reportSelection.include}:{' '}
-                {m.selected ? t.reports.trueValue : t.reports.falseValue} ·{' '}
-                {t.reportSelection.current}: {m.hearingId ?? t.reportSelection.none} {m.date ?? ''}
-              </p>
-              {m.selected && (m.hearingId === null || !m.decision) ? (
-                <p>{t.reportSelection.draft}</p>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <dl className={styles.countCards}>
+          <div>
+            <dt>{t.reportSelection.totalCount}</dt>
+            <dd>{model.counts.total}</dd>
+          </div>
+          <div>
+            <dt>{t.reportSelection.savedCount}</dt>
+            <dd>{model.counts.selected}</dd>
+          </div>
+          <div>
+            <dt>{t.reportSelection.draftCount}</dt>
+            <dd>{model.counts.incomplete}</dd>
+          </div>
+        </dl>
+      ) : null}
+      {id === null ? (
+        <aside className={styles.guidance}>
+          <h2>{t.ui.savedChoice}</h2>
+          <p>{t.reportSelection.help}</p>
+        </aside>
+      ) : null}
+      {id === null ? (
+        <section className={styles.selectionList} aria-label={t.reportSelection.title}>
+          <h2>{t.reportSelection.title}</h2>
+          <div
+            className={styles.scroll}
+            role="region"
+            tabIndex={0}
+            aria-label={t.reportSelection.title}
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">{t.matters.title}</th>
+                  <th scope="col">{t.reportSelection.include}</th>
+                  <th scope="col">{t.reportSelection.current}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {model.matters.map((m) => (
+                  <tr key={m.id}>
+                    <th scope="row">
+                      <Link href={`/reports/selection?client=${client}&id=${m.id}`}>
+                        <bdi className={styles.wrap}>
+                          {m.caseNumber ?? m.subject ?? t.reports.nullValue}
+                        </bdi>
+                        <span className={styles.hint}> ({m.id})</span>
+                      </Link>
+                    </th>
+                    <td>
+                      {m.selected ? t.reports.trueValue : t.reports.falseValue}
+                      {m.selected && (m.hearingId === null || !m.decision) ? (
+                        <p>{t.reportSelection.draft}</p>
+                      ) : null}
+                    </td>
+                    <td>
+                      <bdi>
+                        {m.hearingId ?? t.reportSelection.none} {m.date ?? ''}
+                      </bdi>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       ) : (
         <>
-          <Link href={`/reports/selection?client=${client}`}>{t.reportSelection.returnList}</Link>
-          <h3 dir="auto" className={styles.choice}>
-            {model.matters[0]!.caseNumber ?? model.matters[0]!.subject}
-          </h3>
-          <aside className={styles.choice}>
-            <h3>{t.ui.latestAvailable}</h3>
-            {page === 1 ? (
-              model.hearings[0] ? (
-                <p className={styles.wrap} dir="auto">
-                  ({model.hearings[0].id}) {model.hearings[0].date ?? t.clientReports.undated}
-                  {'\n'}
-                  {model.hearings[0].decision ?? t.reports.nullValue}
-                  {model.hearings[0].archived ? '\n' + t.reportSelection.archive : ''}
-                </p>
-              ) : (
-                <p>{t.reportSelection.none}</p>
-              )
-            ) : (
-              <Link href={`/reports/selection?client=${client}&id=${id}`}>
-                {t.ui.latestFirstPage}
+          <div className={styles.setupLayout}>
+            <div>
+              <SelectionEditor
+                key={`${id}:${page}`}
+                client={client}
+                matter={model.matters[0]!}
+                hearings={model.hearings}
+                latest={
+                  <details className={styles.guidance}>
+                    <summary>{t.ui.latestAvailable}</summary>
+                    {page === 1 ? (
+                      model.hearings[0] ? (
+                        <p className={styles.wrap} dir="auto">
+                          ({model.hearings[0].id}){' '}
+                          {model.hearings[0].date ?? t.clientReports.undated}
+                          {'\n'}
+                          {model.hearings[0].decision ?? t.reports.nullValue}
+                          {model.hearings[0].archived ? '\n' + t.reportSelection.archive : ''}
+                        </p>
+                      ) : (
+                        <p>{t.reportSelection.none}</p>
+                      )
+                    ) : (
+                      <Link href={`/reports/selection?client=${client}&id=${id}`}>
+                        {t.ui.latestFirstPage}
+                      </Link>
+                    )}
+                    <p>{t.ui.latestDoesNotSave}</p>
+                  </details>
+                }
+                canEdit={canEdit}
+              />
+            </div>
+            <aside className={styles.setupSummary}>
+              <h2>{t.ui.selectionUsage}</h2>
+              <h3>{t.reportSelection.selected}</h3>
+              <p>{t.reportSelection.help}</p>
+              <h3>{t.reportSelection.all}</h3>
+              <p>{t.reportSelection.period}</p>
+              <p>{t.reportSelection.readOnly}</p>
+              <Link className={styles.secondaryAction} href={`/reports?client=${client}`}>
+                {t.reports.back}
               </Link>
-            )}
-            <p>{t.ui.latestDoesNotSave}</p>
-          </aside>
-          <SelectionEditor
-            key={`${id}:${page}`}
-            client={client}
-            matter={model.matters[0]!}
-            hearings={model.hearings}
-            canEdit={canEdit}
-          />
+            </aside>
+          </div>
         </>
       )}
       <nav className={styles.actions} aria-label={t.reports.page}>

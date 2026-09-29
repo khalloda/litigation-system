@@ -11,11 +11,13 @@ export function SelectionEditor({
   matter,
   hearings,
   canEdit,
+  latest,
 }: {
   client: number;
   matter: SelectionMatter;
   hearings: SelectionHearing[];
   canEdit: boolean;
+  latest: React.ReactNode;
 }) {
   const [selected, setSelected] = useState(matter.selected);
   const [hearing, setHearing] = useState<number | null>(matter.hearingId);
@@ -25,6 +27,7 @@ export function SelectionEditor({
   useDirtyNavigation(dirty);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [outcome, setOutcome] = useState<'success' | 'error' | ''>('');
   const pending = useRef<SelectionInput | null>(null);
   const summary = useRef<HTMLDivElement>(null);
   const disabled = !canEdit || matter.archived;
@@ -48,6 +51,7 @@ export function SelectionEditor({
   function changed() {
     pending.current = null;
     setMessage('');
+    setOutcome('');
   }
   async function save() {
     if (disabled || busy) return;
@@ -65,6 +69,7 @@ export function SelectionEditor({
     try {
       const result = await saveSelectionAction(pending.current);
       setMessage(result.message);
+      setOutcome(result.ok ? 'success' : 'error');
       if (result.ok) {
         setVersion(result.version);
         setSaved({ selected, hearing });
@@ -72,6 +77,7 @@ export function SelectionEditor({
       }
     } catch {
       setMessage(t.reportSelection.errors.generic);
+      setOutcome('error');
     } finally {
       setBusy(false);
       requestAnimationFrame(() => summary.current?.focus());
@@ -79,25 +85,33 @@ export function SelectionEditor({
   }
   return (
     <form
+      className={styles.selectionEditor}
       onSubmit={(e) => {
         e.preventDefault();
         void save();
       }}
       aria-busy={busy}
     >
-      <div ref={summary} tabIndex={-1} role="status" aria-live="polite" className={styles.summary}>
+      <div
+        ref={summary}
+        tabIndex={-1}
+        role="status"
+        aria-live="polite"
+        className={`${styles.summary} ${message ? (outcome === 'error' ? styles.errorNotice : styles.successNotice) : ''}`}
+      >
         {message}
       </div>
-      <p id="selection-help">{t.reportSelection.help}</p>
-      <p>
-        {t.ui.savedChoice}: {saved.selected ? t.reports.trueValue : t.reports.falseValue} ·{' '}
-        {saved.hearing ?? t.reportSelection.none}
-      </p>
-      {dirty ? <p role="status">{t.ui.draft}</p> : null}
-      {!canEdit ? <p>{t.reportSelection.readOnly}</p> : null}
-      {matter.archived || matter.hearingArchived ? <p>{t.reportSelection.archive}</p> : null}
+      {dirty ? (
+        <p role="status" className={styles.guidance}>
+          {t.ui.draft}
+        </p>
+      ) : null}
+      {!canEdit ? <p className={styles.guidance}>{t.reportSelection.readOnly}</p> : null}
+      {matter.archived || matter.hearingArchived ? (
+        <p className={styles.guidance}>{t.reportSelection.archive}</p>
+      ) : null}
       <fieldset disabled={disabled || busy} aria-describedby="selection-help">
-        <legend>
+        <legend className={styles.srOnly}>
           {t.reportSelection.title} ({matter.id})
         </legend>
         <label>
@@ -112,6 +126,25 @@ export function SelectionEditor({
           />
           {t.reportSelection.include}
         </label>
+        <p className={styles.guidance}>
+          {t.ui.savedChoice}: {saved.selected ? t.reports.trueValue : t.reports.falseValue} ·{' '}
+          {saved.hearing ?? t.reportSelection.none}
+          {saved.hearing !== null ? (
+            <>
+              <br />
+              <bdi>
+                {choices.find((h) => h.id === saved.hearing)?.date ?? t.clientReports.undated}
+              </bdi>
+              {' · '}
+              {choices.find((h) => h.id === saved.hearing)?.court ?? t.common.notRecorded}
+            </>
+          ) : null}
+        </p>
+
+        {latest}
+        <p id="selection-help" className={styles.hint}>
+          {t.reportSelection.help}
+        </p>
         <fieldset>
           <legend>{t.reportSelection.hearing}</legend>
           <p>{t.reports.identityHelp}</p>
@@ -142,19 +175,20 @@ export function SelectionEditor({
                   }}
                 />
                 <span dir="auto">
-                  {saved.hearing === h.id ? `${t.ui.savedChoice}\n` : ''}({h.id}){' '}
+                  {saved.hearing === h.id ? `${t.ui.savedChoice} · ` : ''}({h.id}){' '}
                   {h.date ?? t.clientReports.undated}
-                  {'\n'}
-                  {h.action ?? ''}
-                  {'\n'}
-                  {h.court ?? ''}
-                  {'\n'}
-                  {h.circuit ?? ''}
-                  {'\n'}
-                  {h.decision ?? t.reports.nullValue}
-                  {h.archived ? '\n' + t.reportSelection.archive : ''}
+                  {h.archived ? ' · ' + t.reportSelection.archive : ''}
                 </span>
               </label>
+              <div className={styles.choiceBody}>
+                <p dir="auto">{h.action ?? t.common.notRecorded}</p>
+                <p dir="auto">
+                  {h.court ?? t.common.notRecorded}
+                  {h.circuit ? ` · ${h.circuit}` : ''}
+                </p>
+                <p className={styles.hint}>{t.reportSelection.decision}</p>
+                <p dir="auto">{h.decision ?? t.reports.nullValue}</p>
+              </div>
             </div>
           ))}
         </fieldset>

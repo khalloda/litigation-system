@@ -16,6 +16,23 @@
 
 export const t = {
   ui: {
+    searchHelp: 'إرشادات البحث',
+    searchResults: 'نتائج البحث',
+    basicData: 'البيانات الأساسية',
+    relatedRecords: 'السجلات المرتبطة',
+    clientActions: 'إجراءات العميل',
+    prepareReport: 'إعداد التقرير',
+    beforeReport: 'قبل إنشاء التقرير',
+    currentScope: 'النطاق الحالي',
+    noRunOnOpen: 'لن يتم تشغيل التقرير حتى تضغط عرض النتائج أو أحد أزرار التنزيل.',
+    reportScopeHelp:
+      'جميع الدعاوى هو النطاق الافتراضي. تستخدم الاختيارات المحفوظة في النطاق المحدد للتقرير فقط، حيث يتاح هذا النطاق.',
+    reportFormats: 'معاينة · Excel · PDF',
+    definitions: 'التعريفات وطريقة الاحتساب',
+    expandPreview: 'توسيع المعاينة (حتى 25)',
+    selectionUsage: 'كيف يُستخدم هذا الاختيار؟',
+    currentParameters: 'المرشحات الحالية',
+
     skip: 'انتقل إلى المحتوى',
     more: 'المزيد',
     menu: 'القائمة',

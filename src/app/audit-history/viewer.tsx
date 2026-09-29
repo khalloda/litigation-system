@@ -295,29 +295,39 @@ function HistoryViewer({
                     <p>
                       {s.eventId}: <bdi>{event.id}</bdi> {event.matched ? `· ${s.matched}` : ''}
                     </p>
-                    <div className={styles.differences}>
-                      {event.fields.map((field) => (
-                        <div key={field} className={styles.difference}>
-                          <strong>
-                            {auditLabel('fields', field)} <bdi>({field})</bdi>
-                          </strong>
-                          <div className={styles.values}>
-                            <div>
-                              <strong>{s.before}</strong>
-                              <p className={styles.value}>
-                                {auditValue(auditRecordedValue(event.before, field))}
-                              </p>
-                            </div>
-                            <div>
-                              <strong>{s.after}</strong>
-                              <p className={styles.value}>
-                                {auditValue(auditRecordedValue(event.after, field))}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    {event.fields.length ? (
+                      <div
+                        className={styles.tableScroll}
+                        role="region"
+                        tabIndex={0}
+                        aria-label={`${s.eventId} ${event.id}`}
+                      >
+                        <table className={styles.changeTable}>
+                          <thead>
+                            <tr>
+                              <th scope="col">{s.field}</th>
+                              <th scope="col">{s.before}</th>
+                              <th scope="col">{s.after}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {event.fields.map((field) => (
+                              <tr key={field}>
+                                <th scope="row">
+                                  {auditLabel('fields', field)} <bdi>({field})</bdi>
+                                </th>
+                                <td className={styles.value}>
+                                  {auditValue(auditRecordedValue(event.before, field))}
+                                </td>
+                                <td className={styles.value}>
+                                  {auditValue(auditRecordedValue(event.after, field))}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
                     <details>
                       <summary>{s.details}</summary>
                       <dl className={styles.details}>

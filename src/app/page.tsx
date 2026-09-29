@@ -22,7 +22,7 @@ export default async function HomePage({
   const instant = new Date();
   const detailed = (await searchParams).view === 'analytics';
   return (
-    <main className={`${styles.page} ${detailed ? styles.detailed : styles.compact}`}>
+    <main className={`${styles.page} ${detailed ? styles.detailed : styles.compact}`} data-reviewed>
       <a className={styles.skip} href="#today-panel">
         {t.dashboard.skip}
       </a>
@@ -40,28 +40,35 @@ export default async function HomePage({
           <DashboardSummary session={session} instant={instant} />
         </Suspense>
       ) : null}
-      <nav
-        className={`${styles.navigation} ${detailed ? '' : styles.sectionNavigation}`}
-        aria-label={t.dashboardMetrics.sections}
-      >
-        <a href="#today-panel">{t.dashboard.today}</a>
-        <a href="#open-title">{t.dashboardMetrics.open}</a>
-        <a href="#workload-title">{t.dashboardMetrics.workload}</a>
-        <a href="#top-clients-title">{t.dashboardMetrics.topClients}</a>
-        <a href="#outcomes-current-title">{t.dashboardMetrics.currentOutcomes}</a>
-        <a href="#outcomes-five-year-title">{t.dashboardMetrics.fiveYearOutcomes}</a>
-      </nav>
+      <details className={styles.sectionLinks}>
+        <summary>{t.dashboardMetrics.sections}</summary>
+        <nav
+          className={`${styles.navigation} ${detailed ? '' : styles.sectionNavigation}`}
+          aria-label={t.dashboardMetrics.sections}
+        >
+          <a href="#today-panel">{t.dashboard.today}</a>
+          <a href="#open-title">{t.dashboardMetrics.open}</a>
+          <a href="#workload-title">{t.dashboardMetrics.workload}</a>
+          <a href="#top-clients-title">{t.dashboardMetrics.topClients}</a>
+          <a href="#outcomes-current-title">{t.dashboardMetrics.currentOutcomes}</a>
+          <a href="#outcomes-five-year-title">{t.dashboardMetrics.fiveYearOutcomes}</a>
+        </nav>
+      </details>
       <div className={styles.metrics}>
-        <div id="today-panel">
-          {hasPermission(session.user.role, 'hearings', 'view') ? (
+        {!detailed ? (
+          <>
+            <div id="today-panel">
+              {hasPermission(session.user.role, 'hearings', 'view') ? (
+                <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+                  <TodayHearings session={session} compact={!detailed} />
+                </Suspense>
+              ) : null}
+            </div>
             <Suspense fallback={<p role="status">{t.common.loading}</p>}>
-              <TodayHearings session={session} compact={!detailed} />
+              <OpenDecisions session={session} compact={!detailed} instant={instant} />
             </Suspense>
-          ) : null}
-        </div>
-        <Suspense fallback={<p role="status">{t.common.loading}</p>}>
-          <OpenDecisions session={session} compact={!detailed} instant={instant} />
-        </Suspense>
+          </>
+        ) : null}
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
           <LawyerWorkload session={session} compact={!detailed} />
         </Suspense>
@@ -74,6 +81,20 @@ export default async function HomePage({
         <Suspense fallback={<p role="status">{t.common.loading}</p>}>
           <FiveYearOutcomes session={session} compact={!detailed} instant={instant} />
         </Suspense>
+        {detailed ? (
+          <>
+            <div id="today-panel">
+              {hasPermission(session.user.role, 'hearings', 'view') ? (
+                <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+                  <TodayHearings session={session} compact={!detailed} />
+                </Suspense>
+              ) : null}
+            </div>
+            <Suspense fallback={<p role="status">{t.common.loading}</p>}>
+              <OpenDecisions session={session} compact={!detailed} instant={instant} />
+            </Suspense>
+          </>
+        ) : null}
       </div>
     </main>
   );

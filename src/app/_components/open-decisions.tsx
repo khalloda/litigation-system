@@ -20,13 +20,23 @@ export async function OpenDecisions({
   try {
     snapshot = await openSnapshot(session, instant);
   } catch (error) {
-    return <DashboardError error={error} title={t.dashboardMetrics.open} id="open-title" />;
+    return (
+      <DashboardError
+        view={compact ? undefined : 'analytics'}
+        error={error}
+        title={t.dashboardMetrics.open}
+        id="open-title"
+      />
+    );
   }
   const { date, rows, total, filters } = snapshot;
   return (
     <section className={styles.panel} aria-labelledby="open-title">
       <h2 id="open-title">{t.dashboardMetrics.open}</h2>
-      <p>{t.dashboardMetrics.openScope}</p>
+      <details className={styles.definition}>
+        <summary>{t.ui.definitions}</summary>
+        <p>{t.dashboardMetrics.openScope}</p>
+      </details>
       <p>
         <time dateTime={date} dir="ltr">
           {date}
@@ -41,8 +51,37 @@ export async function OpenDecisions({
         </Link>
       </div>
       {rows.length ? (
-        <details open={!compact}>
-          <summary>{t.ui.fullDetails}</summary>
+        <div className={styles.compactPreview}>
+          <table className={styles.metricTable}>
+            <thead>
+              <tr>
+                <th scope="col">{t.fields.decision}</th>
+                <th scope="col">{t.fields.nextHearingDate}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 2).map((row) => (
+                <tr key={row.id}>
+                  <th scope="row">
+                    <Link href={hearingDetailHref(row.id, filters)}>
+                      <bdi className={styles.previewText}>
+                        {row.caseNumber?.trim() ? row.caseNumber : t.common.notRecorded}
+                      </bdi>
+                    </Link>
+                    <p className={styles.previewText}>{row.decision ?? t.common.notRecorded}</p>
+                  </th>
+                  <td>
+                    <bdi>{row.nextHearingDate ?? t.common.notRecorded}</bdi>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {rows.length ? (
+        <details className={styles.previewExpansion}>
+          <summary>{t.ui.expandPreview}</summary>
           <ol className={styles.records}>
             {rows.map((row) => (
               <li key={row.id} className={styles.record} data-open-decision-id={row.id}>

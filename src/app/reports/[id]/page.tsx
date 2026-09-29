@@ -31,7 +31,7 @@ export default async function ReportPage({
       ? String(context)
       : '';
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-reviewed>
       <Link href={initialClient ? `/reports?client=${initialClient}` : '/reports'}>
         {t.reports.back}
       </Link>
