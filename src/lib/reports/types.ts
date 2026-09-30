@@ -21,7 +21,13 @@ export type DateRule = Readonly<{
   fieldMeaning: string;
   source: 'date' | 'cairo-timestamp';
 }>;
-export type ReportOption = Readonly<{ id: number; label: string }>;
+/** Canonical pieces remain separate; presentation isolation never enters business values. */
+export type ReportLabelPart = Readonly<{ label: string; value: string }>;
+export type ReportOption = Readonly<{
+  id: number;
+  label: string;
+  parts?: readonly ReportLabelPart[];
+}>;
 export type ReportOptions = Readonly<
   Record<'client' | 'branch' | 'lawyer', readonly ReportOption[]> & {
     matter?: readonly ReportOption[];
@@ -52,6 +58,8 @@ export type ReportData = Readonly<{
   clientBrand?: Readonly<{ name: string; logo: LogoMetadata | null }>;
   /** Ordered, typed record header values, bound to descriptor.details. */
   details?: readonly ReportCell[];
+  /** Complete exact-outcome counts, independent of the detail preview budget. */
+  outcomeCounts?: readonly Readonly<{ outcome: string; count: number }>[];
 }>;
 export type ReportLayout = 'grouped' | 'date-grouped' | 'flat' | 'card' | 'cover';
 export type ReportDescriptor = Readonly<{
@@ -73,6 +81,7 @@ export type ReportDescriptor = Readonly<{
   details?: readonly ReportColumn[];
   /** Trusted section IDs whose favourable/against integer columns are charted. */
   charts?: readonly string[];
+  outcomeChart?: boolean;
   layout: ReportLayout;
   clientFacing: boolean;
   /** Trusted label for this definition's logical row grain. */
@@ -88,7 +97,11 @@ export type ReportDefinition = Readonly<{
 export type ReportResult = Readonly<{
   descriptor: ReportDescriptor;
   parameters: ReportParameters;
-  filterLabels: readonly Readonly<{ label: string; value: string }>[];
+  filterLabels: readonly Readonly<{
+    label: string;
+    value: string;
+    parts?: readonly ReportLabelPart[];
+  }>[];
   data: ReportData;
   generatedAt: string;
   operationId: string;

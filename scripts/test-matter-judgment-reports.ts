@@ -168,6 +168,14 @@ async function main() {
         const expected: ReportData = {
           subtitle: '',
           sections: [{ id: 'judgments', title: '', groups }],
+          ...(!byLawyer
+            ? {
+                outcomeCounts: outcomes.map((outcome) => ({
+                  outcome,
+                  count: qualified.filter((h) => h.outcome === outcome).length,
+                })),
+              }
+            : {}),
           totals: [
             {
               label: t.matterReports.favourableCount,

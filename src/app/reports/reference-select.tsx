@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { t } from '@/strings';
 import { reportSearchText } from '@/lib/reports/search';
+import { reportOptionDisplay } from '@/lib/reports/label';
 import type { ParameterRule, ReportOption } from '@/lib/reports/types';
 
 export function ReportReferenceSelect({
@@ -44,7 +45,7 @@ export function ReportReferenceSelect({
         {rule.unassigned ? <option value="unassigned">{t.reports.unassigned}</option> : null}
         {matches.map((x) => (
           <option key={x.id} value={String(x.id)}>
-            {x.label}
+            {reportOptionDisplay(x)}
           </option>
         ))}
       </select>

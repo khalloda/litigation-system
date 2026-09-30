@@ -49,6 +49,7 @@ function definition(byLawyer: boolean): ReportDefinition {
       layout: 'grouped',
       clientFacing: false,
       countLabel: t.matterReports.hearingCount,
+      ...(!byLawyer ? { outcomeChart: true } : {}),
       permissions: [
         { area: 'clients', action: 'view' },
         { area: 'matters', action: 'view' },
@@ -135,6 +136,14 @@ async function readMatterJudgments(
   return {
     subtitle: '',
     sections: [{ id: 'judgments', title: '', groups: [...groups.values()] }],
+    ...(!byLawyer
+      ? {
+          outcomeCounts: [...groups].map(([outcome, group]) => ({
+            outcome,
+            count: group.rows.length,
+          })),
+        }
+      : {}),
     totals: [
       { label: t.matterReports.favourableCount, value: count((row) => row.outcome === 'صالح') },
       { label: t.matterReports.againstCount, value: count((row) => row.outcome === 'ضد') },

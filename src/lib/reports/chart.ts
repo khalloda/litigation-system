@@ -1,5 +1,22 @@
-import type { ReportDescriptor, ReportSection } from './types';
+import type { ReportData, ReportDescriptor, ReportSection } from './types';
 import { cellText } from './result';
+import { countPercentage } from './percentage';
+
+/** Parent judgment footer, from complete canonical counts, never preview rows. */
+export function reportOutcomeChart(data: ReportData) {
+  if (!data.outcomeCounts) return null;
+  const total = data.outcomeCounts.reduce((sum, x) => sum + x.count, 0);
+  return {
+    total,
+    maximum: Math.max(1, ...data.outcomeCounts.map((x) => x.count)),
+    rows: data.outcomeCounts.map((x) => ({
+      ...x,
+      label: cellText({ type: 'text', value: x.outcome }),
+      share: countPercentage(x.count, total),
+      against: x.outcome === 'ضد',
+    })),
+  };
+}
 
 /** Charts consume the same canonical cells as their adjacent accessible tables. */
 export function reportChart(descriptor: ReportDescriptor, section: ReportSection) {

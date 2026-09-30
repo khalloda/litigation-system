@@ -76,6 +76,26 @@ export function validateReportData(descriptor: ReportDescriptor, data: ReportDat
     }
   }
   data.totals.forEach((x) => validateCell(x.value));
+  if (Boolean(descriptor.outcomeChart) !== (data.outcomeCounts !== undefined))
+    throw new ReportError('generation');
+  if (data.outcomeCounts) {
+    const groups = data.sections.flatMap((section) => section.groups);
+    if (
+      data.outcomeCounts.length !== groups.length ||
+      new Set(data.outcomeCounts.map((x) => x.outcome)).size !== groups.length
+    )
+      throw new ReportError('generation');
+    for (const [index, item] of data.outcomeCounts.entries()) {
+      validateCell({ type: 'text', value: item.outcome });
+      if (
+        !Number.isSafeInteger(item.count) ||
+        item.count < 1 ||
+        item.count !== groups.at(index)!.rows.length ||
+        cellText({ type: 'text', value: item.outcome }) !== groups.at(index)!.title
+      )
+        throw new ReportError('generation');
+    }
+  }
   return rows;
 }
 export function validateDefinition(definition: ReportDefinition) {
@@ -91,6 +111,8 @@ export function validateDefinition(definition: ReportDefinition) {
     new Set(d.columns.map((x) => x.key)).size !== d.columns.length ||
     typeof definition.query !== 'function'
   )
+    throw new ReportError('generation');
+  if (d.outcomeChart !== undefined && typeof d.outcomeChart !== 'boolean')
     throw new ReportError('generation');
   if (
     d.details &&

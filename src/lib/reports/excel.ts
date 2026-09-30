@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { t } from '@/strings';
 import { cellText } from './result';
+import { reportOutcomeChart } from './chart';
 import { REPORT_LIMITS, ReportError, type ReportCell, type ReportResult } from './types';
 
 export function scalarChunks(value: string, limit: number) {
@@ -55,7 +56,11 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
     [result.descriptor.countLabel ?? t.reports.count, result.rowCount],
     [t.reports.exactHelp],
     [t.reports.controlsHelp],
-    ...result.filterLabels.map((x) => [x.label, x.value]),
+    ...result.filterLabels.flatMap((x) =>
+      x.parts
+        ? x.parts.map((part) => [`${x.label} — ${part.label}`, part.value])
+        : [[x.label, x.value]],
+    ),
   ]);
   const sheet = book.addWorksheet(t.reports.dataSheet, {
     views: [{ rightToLeft: true, state: 'frozen', ySplit: 1 }],
@@ -135,6 +140,33 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
     }
   }
   for (const total of result.data.totals) add(sheet, [total.label, excelCell(total.value)]);
+  const outcomes = reportOutcomeChart(result.data);
+  if (outcomes) {
+    add(sheet, [t.matterReports.outcomeChart]);
+    add(sheet, [
+      t.matterReports.outcomeLabel,
+      t.matterReports.hearingCount,
+      t.matterReports.outcomeShare,
+    ]);
+    for (const [index, item] of outcomes.rows.entries()) {
+      for (const [part, chunk] of scalarChunks(printableText(item.label), 30000).entries())
+        add(sheet, [chunk, ...(part === 0 ? [item.count, item.share] : [])]);
+      for (const [key, type, value] of [
+        ['outcome', 'text', item.outcome],
+        ['count', 'integer', String(item.count)],
+        ['share', 'decimal', item.share!],
+      ]) {
+        for (const [part, chunk] of scalarChunks(value!, 6000).entries())
+          add(exact, [
+            `outcome:${index}`,
+            key!,
+            type!,
+            part + 1,
+            Buffer.from(chunk, 'utf8').toString('base64'),
+          ]);
+      }
+    }
+  }
   const count = add(sheet, [result.descriptor.countLabel ?? t.reports.count, result.rowCount]);
   count.font = { bold: true };
   if (result.descriptor.manual) {

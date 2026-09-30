@@ -1,5 +1,5 @@
 'use client';
-import { reportChart } from '@/lib/reports/chart';
+import { reportChart, reportOutcomeChart } from '@/lib/reports/chart';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { t } from '@/strings';
@@ -13,6 +13,7 @@ import type {
 } from '@/lib/reports/types';
 import styles from './reports.module.css';
 import { ReportReferenceSelect } from './reference-select';
+import { ReportLabelParts } from './label-parts';
 
 export function ReportForm({
   descriptor,
@@ -33,6 +34,7 @@ export function ReportForm({
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState<ReportResult | null>(null);
+  const outcomeChart = result ? reportOutcomeChart(result.data) : null;
   const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
   const [selectionClient, setSelectionClient] = useState(initialClient);
   const [reset, setReset] = useState(0);
@@ -45,12 +47,17 @@ export function ReportForm({
     ...(descriptor.parameters.matter ? { matter: initialMatter } : {}),
   });
   const parameterText = (key: string, value: string) => {
-    if (['client', 'branch', 'lawyer', 'matter'].includes(key))
-      return (
-        referenceOptions(options, key as 'client' | 'branch' | 'lawyer' | 'matter').find(
-          (option) => String(option.id) === value,
-        )?.label ?? (value === 'unassigned' ? t.reports.unassigned : t.common.notRecorded)
+    if (['client', 'branch', 'lawyer', 'matter'].includes(key)) {
+      const option = referenceOptions(
+        options,
+        key as 'client' | 'branch' | 'lawyer' | 'matter',
+      ).find((option) => String(option.id) === value);
+      return option?.parts ? (
+        <ReportLabelParts parts={option.parts} />
+      ) : (
+        (option?.label ?? (value === 'unassigned' ? t.reports.unassigned : t.common.notRecorded))
       );
+    }
     return (
       descriptor.extra
         ?.find((rule) => rule.key === key)
@@ -491,6 +498,62 @@ export function ReportForm({
                 </section>
               ))}
               {result.rowCount === 0 ? <p>{t.reports.noRows}</p> : null}
+              {outcomeChart ? (
+                <section aria-label={t.matterReports.outcomeChart}>
+                  <h3>{t.matterReports.outcomeChart}</h3>
+                  <div aria-hidden="true" className={styles.reportChart}>
+                    {outcomeChart.rows.map((row) => (
+                      <div key={row.outcome} className={styles.chartLine}>
+                        <span>
+                          <bdi>{row.label}</bdi>: {row.count} ({row.share}%)
+                        </span>
+                        <span className={styles.chartTrack}>
+                          <span
+                            className={row.against ? styles.chartAgainst : styles.chartFavourable}
+                            style={{
+                              inlineSize: `${(100 * row.count) / outcomeChart.maximum}%`,
+                            }}
+                          />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div
+                    className={styles.scroll}
+                    role="region"
+                    tabIndex={0}
+                    aria-label={t.matterReports.outcomeChart}
+                  >
+                    <table>
+                      <thead>
+                        <tr>
+                          <th scope="col">{t.matterReports.outcomeLabel}</th>
+                          <th scope="col">{t.matterReports.hearingCount}</th>
+                          <th scope="col">{t.matterReports.outcomeShare}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {outcomeChart.rows.map((row) => (
+                          <tr key={row.outcome}>
+                            <th scope="row">
+                              <bdi>{row.label}</bdi>
+                            </th>
+                            <td>{row.count}</td>
+                            <td>{row.share}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <th scope="row">{t.matterReports.hearingCount}</th>
+                          <td>{outcomeChart.total}</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </section>
+              ) : null}
               {result.data.totals.length ? (
                 <dl className={styles.recordDetails}>
                   {result.data.totals.map((total, index) => (

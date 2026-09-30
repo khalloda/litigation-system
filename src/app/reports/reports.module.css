@@ -498,3 +498,15 @@
 .chartAgainst {
   background: var(--colour-accent-warm-dark);
 }
+.labelParts {
+  display: inline-grid;
+  gap: 0.25rem;
+}
+.labelValue {
+  display: inline-block;
+  direction: ltr;
+  unicode-bidi: plaintext;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-inline-size: 100%;
+}

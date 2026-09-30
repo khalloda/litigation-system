@@ -1,6 +1,7 @@
 import { Prisma } from '@/generated/prisma/client';
 import { t } from '@/strings';
 import { reportDateBounds } from './input';
+import { countPercentage } from './percentage';
 import { ReportError, type ReportCell, type ReportDefinition, type ReportRow } from './types';
 
 type OutcomeHearing = { id: number; matterId: number; date: string; outcome: string };
@@ -32,7 +33,7 @@ export function summarizeMatterOutcomes(
         count(values.filter((h) => !['صالح', 'ضد', ''].includes(h.outcome)).length),
         count(values.length),
         share && favourable
-          ? { type: 'decimal', value: ((100 * good) / favourable).toFixed(2) }
+          ? { type: 'decimal', value: countPercentage(good, favourable)! }
           : { type: 'null' },
       ],
     };

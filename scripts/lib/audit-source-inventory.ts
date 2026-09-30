@@ -63,7 +63,7 @@ const REPORT_ENGINE_CLOSURES = new Map([
   ],
   [
     'src/lib/reports/options.ts',
-    '2b02cb5073b6b153a4f48342077b0b1f898b94ebfd51b3d3496a6644feb2e356',
+    '87e590d90f04816b8b556e5b0519ec94c7a0c323381cc86db8cebacd17096afa',
   ],
   ['src/lib/reports/engine.ts', '34738cfd2b220ca17a1346b1efc0e9b8aa20e7ca206fbb12285902f703febfa3'],
 ]);
@@ -288,7 +288,7 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/reports/options.ts',
     'reportOptions',
-    'b3c26f5dc9dcff993c8f1d4254c0865ffd653af75388edb8141bbe59b55326f9',
+    '11a6cf62bcf55991261793975905b339361414ba6b155fcf67d9a1ea57bdcc06',
   ],
   [
     'src/lib/reports/matter-judgments.ts',

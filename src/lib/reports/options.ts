@@ -7,6 +7,7 @@ import {
   type ReportOption,
   type ReportOptions,
   type ReportParameters,
+  type ReportResult,
 } from './types';
 
 /** Report reference universe deliberately includes archives, inactive and external people. */
@@ -32,9 +33,10 @@ export async function reportOptions(
       Prisma.sql`SELECT id, name_ar AS label FROM public.people ORDER BY name_ar COLLATE "C",id`,
     );
   const matters = descriptor.parameters.matter
-    ? await tx.$queryRaw<ReportOption[]>(Prisma.sql`
-        SELECT m.id,coalesce(m.case_number_ar,${t.common.notRecorded}) || ' — ' ||
-          coalesce(c.name_ar,${t.common.notRecorded}) AS label
+    ? await tx.$queryRaw<
+        { id: number; caseNumber: string | null; client: string | null }[]
+      >(Prisma.sql`
+        SELECT m.id,m.case_number_ar AS "caseNumber",c.name_ar AS client
         FROM public.matters m LEFT JOIN public.clients c ON c.id=m.client_id ORDER BY m.id`)
     : undefined;
   const labelled = (rows: ReportOption[]) => {
@@ -45,7 +47,26 @@ export async function reportOptions(
     client: labelled(options.client),
     branch: labelled(options.branch),
     lawyer: labelled(options.lawyer),
-    ...(matters ? { matter: labelled(matters) } : {}),
+    ...(matters
+      ? {
+          matter: labelled(
+            matters.map((m) => ({
+              id: m.id,
+              label: `${m.caseNumber ?? t.common.notRecorded} — ${m.client ?? t.common.notRecorded}`,
+            })),
+          ).map((option, index) => ({
+            ...option,
+            parts: [
+              {
+                label: t.fields.caseNumber,
+                value: matters.at(index)!.caseNumber ?? t.common.notRecorded,
+              },
+              { label: t.fields.client, value: matters.at(index)!.client ?? t.common.notRecorded },
+              { label: t.reports.recordId, value: String(option.id) },
+            ],
+          })),
+        }
+      : {}),
   };
 }
 export function validateReportOptions(parameters: ReportParameters, options: ReportOptions) {
@@ -60,7 +81,7 @@ export function reportFilterLabels(
   parameters: ReportParameters,
   options: ReportOptions,
 ) {
-  const labels: { label: string; value: string }[] = [];
+  const labels: ReportResult['filterLabels'][number][] = [];
   if (descriptor.date) {
     labels.push({
       label: descriptor.date.fieldMeaning,
@@ -70,6 +91,10 @@ export function reportFilterLabels(
   for (const key of ['client', 'branch', 'lawyer', 'matter'] as const)
     if (referenceRule(descriptor, key)) {
       const selected = referenceChoice(parameters, key);
+      const option =
+        selected.kind === 'id'
+          ? referenceOptions(options, key).find((x) => x.id === selected.id)!
+          : undefined;
       labels.push({
         label: reportFieldLabel(key),
         value:
@@ -77,7 +102,8 @@ export function reportFilterLabels(
             ? t.reports.all
             : selected.kind === 'unassigned'
               ? t.reports.unassigned
-              : referenceOptions(options, key).find((x) => x.id === selected.id)!.label,
+              : option!.label,
+        ...(option?.parts ? { parts: option.parts } : {}),
       });
     }
   for (const extra of descriptor.extra ?? [])
