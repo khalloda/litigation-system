@@ -510,3 +510,6 @@
   overflow-wrap: anywhere;
   max-inline-size: 100%;
 }
+.labelValue bdi {
+  unicode-bidi: isolate;
+}

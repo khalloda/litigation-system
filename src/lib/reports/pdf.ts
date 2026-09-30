@@ -6,6 +6,7 @@ import { readClientLogoFile } from '@/lib/client-logo-file';
 import { reportAssets } from './assets';
 import { cellText } from './result';
 import { reportChart, reportOutcomeChart } from './chart';
+import { reportLineDirection } from './label';
 import { printableText } from './excel';
 import {
   REPORT_LIMITS,
@@ -109,7 +110,18 @@ export async function reportHtml(result: ReportResult, session: Session) {
   const filterText = result.filterLabels
     .map((x) =>
       x.parts
-        ? `<span class="filter-parts">${text(x.label)}: ${x.parts.map((part) => `<span>${text(part.label)}: <bdi class="filter-value">${text(part.value)}</bdi></span>`).join('')}</span>`
+        ? `<span class="filter-parts">${text(x.label)}: ${x.parts
+            .map(
+              (part) =>
+                `<span>${text(part.label)}: <bdi class="filter-value">${part.value
+                  .split('\n')
+                  .map(
+                    (line) =>
+                      `<bdi dir="${reportLineDirection(line)}" style="unicode-bidi:isolate">${text(line)}</bdi>`,
+                  )
+                  .join('\n')}</bdi></span>`,
+            )
+            .join('')}</span>`
         : `${text(x.label)}: <bdi>${text(x.value)}</bdi>`,
     )
     .join(' · ');

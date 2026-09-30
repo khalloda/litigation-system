@@ -5,7 +5,7 @@ import { reportOutcomeChart } from '../src/lib/reports/chart';
 import { matterJudgmentReports } from '../src/lib/reports/matter-judgments';
 import { validateReportData } from '../src/lib/reports/result';
 import { reportFilterLabels } from '../src/lib/reports/options';
-import { reportOptionDisplay } from '../src/lib/reports/label';
+import { reportOptionDisplay, reportLineDirection } from '../src/lib/reports/label';
 import { t } from '../src/strings';
 import type { ReportData, ReportParameters } from '../src/lib/reports/types';
 
@@ -23,6 +23,7 @@ const cases: [number, number, string | null][] = [
   [4000, 4000, '100.00'],
   [0, 0, null],
 ];
+assert.deepEqual('أَإِ ثانٍ\n001 / 2026'.split('\n').map(reportLineDirection), ['rtl', 'ltr']);
 for (const [numerator, denominator, expected] of cases) {
   assert.equal(countPercentage(numerator, denominator), expected);
   const hearings = Array.from({ length: denominator }, (_, i) => ({
