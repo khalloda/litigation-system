@@ -56,7 +56,7 @@ export async function reportHtml(result: ReportResult, session: Session) {
   const chartHtml = (section: ReportResult['data']['sections'][number]) => {
     const chart = reportChart(result.descriptor, section);
     return chart
-      ? `<div aria-hidden="true">${chart.rows.map((row) => `<div class="report-chart"><strong>${text(row.label)}</strong>${row.values.map((v) => `<div>${text(v.label)}: ${v.value}<div style="background:#eee"><div style="height:10px;width:${(100 * v.value) / chart.maximum}%;background:${v.key === 'favourable' ? '#214b4b' : '#8d6842'}"></div></div></div>`).join('')}</div>`).join('')}</div>`
+      ? `<div aria-hidden="true">${chart.rows.map((row) => `<div class="report-chart"><strong>${text(row.label)}</strong>${row.values.map((v) => `<div>${text(v.label)}: ${v.value}<div style="background:#e9f1ef"><div style="height:10px;width:${(100 * v.value) / chart.maximum}%;background:${v.key === 'favourable' ? '#214b4b' : '#9c9174'}"></div></div></div>`).join('')}</div>`).join('')}</div>`
       : '';
   };
   const body =
