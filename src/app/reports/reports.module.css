@@ -520,3 +520,11 @@
 .labelValue bdi {
   unicode-bidi: isolate;
 }
+.lawyerTable {
+  min-inline-size: 100rem;
+  table-layout: fixed;
+}
+.lawyerTable th:first-child,
+.lawyerTable td:first-child {
+  inline-size: 3rem;
+}

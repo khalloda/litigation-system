@@ -1,3 +1,4 @@
+import { lawyerSelectionApplied, LAWYER_SELECTION_MIGRATION } from './lawyer-selection-checkpoint';
 import { closedSelectionApplied, CLOSED_SELECTION_MIGRATION } from './closed-selection-checkpoint';
 import { REPORT_SELECTION_MIGRATION, reportSelectionApplied } from './report-selection-checkpoint';
 import { TASK62_SOURCE_MIGRATION, task62SourceApplied } from './task62-source-checkpoint';
@@ -198,7 +199,9 @@ export async function staffBoundaryApplied(db: ClientBase): Promise<boolean> {
 export async function assertStaffCheckpoint(
   db: ClientBase,
   profile: StaffProfile,
-): Promise<60 | 61 | 62 | 63 | 64 | 65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 | 73 | 74 | 75 | 76> {
+): Promise<
+  60 | 61 | 62 | 63 | 64 | 65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 | 73 | 74 | 75 | 76 | 77
+> {
   assert.ok(
     ['historical-full-state-upgrade', 'canonical-clean-replay'].includes(profile),
     'explicit accepted profile required',
@@ -216,7 +219,7 @@ export async function assertStaffCheckpoint(
   const repository = await readGate4RepositoryMigrationInventory();
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76].includes(
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77].includes(
       repository.migrations.length,
     ),
     'Exact reviewed repository checkpoint required',
@@ -250,8 +253,11 @@ export async function assertStaffCheckpoint(
     assert.equal(repository.migrations[73]?.name, REPORT_SELECTION_MIGRATION);
   if (repository.migrations.length >= 75)
     assert.equal(repository.migrations[74]?.name, TASK62_SOURCE_MIGRATION);
-  if (repository.migrations.length === 76)
+  if (repository.migrations.length >= 76)
     assert.equal(repository.migrations[75]?.name, CLOSED_SELECTION_MIGRATION);
+  if (repository.migrations.length >= 77)
+    assert.equal(repository.migrations[76]?.name, LAWYER_SELECTION_MIGRATION);
+  const lawyerSelection = await lawyerSelectionApplied(db);
   const closedSelection = await closedSelectionApplied(db);
   const task62Source = await task62SourceApplied(db);
   const reportSelection = await reportSelectionApplied(db);
@@ -287,39 +293,42 @@ export async function assertStaffCheckpoint(
   assert.ok(!reportSelection || auditHistory);
   assert.ok(!task62Source || reportSelection);
   assert.ok(!closedSelection || task62Source);
-  const checkpoint = closedSelection
-    ? 76
-    : task62Source
-      ? 75
-      : reportSelection
-        ? 74
-        : auditHistory
-          ? 73
-          : billingLabels
-            ? 72
-            : tasks46_47
-              ? 71
-              : poa
-                ? 70
-                : adminLifecycle
-                  ? 69
-                  : admin
-                    ? 68
-                    : hearingLifecycle
-                      ? 67
-                      : hearing
-                        ? 66
-                        : lifecycle
-                          ? 65
-                          : editing
-                            ? 64
-                            : logosApplied
-                              ? 63
-                              : clientsApplied
-                                ? 62
-                                : applied
-                                  ? 61
-                                  : 60;
+  assert.ok(!lawyerSelection || closedSelection);
+  const checkpoint = lawyerSelection
+    ? 77
+    : closedSelection
+      ? 76
+      : task62Source
+        ? 75
+        : reportSelection
+          ? 74
+          : auditHistory
+            ? 73
+            : billingLabels
+              ? 72
+              : tasks46_47
+                ? 71
+                : poa
+                  ? 70
+                  : adminLifecycle
+                    ? 69
+                    : admin
+                      ? 68
+                      : hearingLifecycle
+                        ? 67
+                        : hearing
+                          ? 66
+                          : lifecycle
+                            ? 65
+                            : editing
+                              ? 64
+                              : logosApplied
+                                ? 63
+                                : clientsApplied
+                                  ? 62
+                                  : applied
+                                    ? 61
+                                    : 60;
   const checkpointFiles = repository.migrations.slice(0, checkpoint);
   const evidence = reconcileGate4Migrations(history, {
     ...repository,

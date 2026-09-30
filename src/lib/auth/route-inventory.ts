@@ -50,6 +50,18 @@ export type RouteInventoryEntry = {
 export const ROUTE_INVENTORY = [
   {
     kind: 'page',
+    source: 'src/app/reports/lawyer-selection/page.tsx',
+    route: '/reports/lawyer-selection',
+    classification: { access: 'permission', area: 'reports', action: 'run' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/reports/lawyer-selection/actions.ts',
+    exportName: 'saveLawyerSelectionAction',
+    classification: { access: 'permission', area: 'matters', action: 'update' },
+  },
+  {
+    kind: 'page',
     source: 'src/app/reports/closed-selection/page.tsx',
     route: '/reports/closed-selection',
     classification: { access: 'permission', area: 'reports', action: 'run' },

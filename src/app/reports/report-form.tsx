@@ -37,6 +37,8 @@ export function ReportForm({
   const outcomeChart = result ? reportOutcomeChart(result.data) : null;
   const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
   const [selectionClient, setSelectionClient] = useState(initialClient);
+  const lawyerSelection =
+    descriptor.id.startsWith('lawyer-') && descriptor.id !== 'lawyer-upcoming-hearings';
   const [reset, setReset] = useState(0);
   const defaults = Object.fromEntries(
     (descriptor.extra ?? []).map((rule) => [rule.key, rule.defaultValue ?? '']),
@@ -353,18 +355,24 @@ export function ReportForm({
           {descriptor.extra?.some((rule) => rule.key === 'extra_mode') ? (
             <>
               <p>
-                {descriptor.id === 'matter-closed'
-                  ? t.closedSelection.period
-                  : t.reportSelection.period}
+                {lawyerSelection
+                  ? descriptor.id === 'lawyer-new-matters'
+                    ? t.lawyerReports.startPeriod
+                    : t.lawyerSelection.period
+                  : descriptor.id === 'matter-closed'
+                    ? t.closedSelection.period
+                    : t.reportSelection.period}
               </p>
-              {/^[1-9]\d*$/u.test(selectionClient) ? (
+              {lawyerSelection || /^[1-9]\d*$/u.test(selectionClient) ? (
                 <Link
                   className={styles.secondaryAction}
-                  href={`/reports/${descriptor.id === 'matter-closed' ? 'closed-selection' : 'selection'}?client=${selectionClient}`}
+                  href={`/reports/${lawyerSelection ? 'lawyer-selection' : descriptor.id === 'matter-closed' ? 'closed-selection' : 'selection'}${/^[1-9]\d*$/u.test(selectionClient) ? `?client=${selectionClient}` : ''}`}
                 >
-                  {descriptor.id === 'matter-closed'
-                    ? t.closedSelection.edit
-                    : t.reportSelection.edit}
+                  {lawyerSelection
+                    ? t.lawyerSelection.edit
+                    : descriptor.id === 'matter-closed'
+                      ? t.closedSelection.edit
+                      : t.reportSelection.edit}
                 </Link>
               ) : null}
             </>
@@ -469,9 +477,11 @@ export function ReportForm({
                         >
                           <table
                             className={
-                              descriptor.id === 'lawyer-upcoming-hearings'
-                                ? styles.upcomingTable
-                                : undefined
+                              lawyerSelection
+                                ? styles.lawyerTable
+                                : descriptor.id === 'lawyer-upcoming-hearings'
+                                  ? styles.upcomingTable
+                                  : undefined
                             }
                           >
                             <thead>

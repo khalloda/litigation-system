@@ -155,6 +155,14 @@ export async function reportSelectionFailures(db: ClientBase) {
         declaredTriggers.push('closed_selection_scope');
         declaredTriggers.sort();
       }
+      if (
+        table.endsWith('_submission') &&
+        (await db.query("SELECT to_regclass('_migration.lawyer_report_submission_scope') present"))
+          .rows[0].present
+      ) {
+        declaredTriggers.push('lawyer_selection_scope');
+        declaredTriggers.sort();
+      }
       assert.deepEqual(
         (
           await db.query(

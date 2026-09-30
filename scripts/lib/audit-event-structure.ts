@@ -1,4 +1,9 @@
 import {
+  lawyerSelectionApplied,
+  lawyerSelectionFailures,
+  LAWYER_SELECTION_FIELDS,
+} from './lawyer-selection-checkpoint';
+import {
   closedSelectionApplied,
   closedSelectionFailures,
   CLOSED_SELECTION_FIELDS,
@@ -170,6 +175,8 @@ export async function auditEventStructureFailures(
   failures.push(...(await task62SourceFailures(db)));
   const reportSelection = await reportSelectionApplied(db);
   const closedSelection = await closedSelectionApplied(db);
+  const lawyerSelection = await lawyerSelectionApplied(db);
+  failures.push(...(await lawyerSelectionFailures(db)));
   failures.push(...(await closedSelectionFailures(db)));
   failures.push(...(await reportSelectionFailures(db)));
   const eventTables = reportSelection
@@ -177,6 +184,7 @@ export async function auditEventStructureFailures(
         ...AUDITED_TABLES,
         'client_report_selections',
         ...(closedSelection ? ['closed_report_selections'] : []),
+        ...(lawyerSelection ? ['lawyer_report_selections'] : []),
       ].sort()
     : AUDITED_TABLES;
   const auditHistory = await auditHistoryApplied(db);
@@ -195,6 +203,7 @@ export async function auditEventStructureFailures(
   const currentFieldRules = [
     ...(reportSelection ? REPORT_SELECTION_FIELDS : []),
     ...(closedSelection ? CLOSED_SELECTION_FIELDS : []),
+    ...(lawyerSelection ? LAWYER_SELECTION_FIELDS : []),
     ...(poaBoundary ? POA_EDIT_FIELDS : []),
     ...(tasks46_47Boundary ? TASKS46_47_FIELDS : []),
     ...(staffBoundary ? STAFF_FIELD_RULES : []),

@@ -2,35 +2,36 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
-export const CLOSED_SELECTION_MIGRATION = '20260930080000_closed_report_selection';
-export const CLOSED_SELECTION_FIELDS = [
-  ['closed_report_selections', 'hearing_id', 64, 'closed_report_selection_current'],
-  ['closed_report_selections', 'id', 0, 'closed_report_selection_identity'],
-  ['closed_report_selections', 'is_selected', 64, 'closed_report_selection_current'],
-  ['closed_report_selections', 'row_version', 64, 'closed_report_selection_current'],
+export const LAWYER_SELECTION_MIGRATION = '20260930210000_lawyer_report_selection';
+export const LAWYER_SELECTION_FIELDS = [
+  ['lawyer_report_selections', 'hearing_id', 64, 'lawyer_report_selection_current'],
+  ['lawyer_report_selections', 'id', 0, 'lawyer_report_selection_identity'],
+  ['lawyer_report_selections', 'is_selected', 64, 'lawyer_report_selection_current'],
+  ['lawyer_report_selections', 'row_version', 64, 'lawyer_report_selection_current'],
 ] as const;
 const source = () =>
-  readFileSync(`prisma/migrations/${CLOSED_SELECTION_MIGRATION}/migration.sql`, 'utf8');
+  readFileSync(`prisma/migrations/${LAWYER_SELECTION_MIGRATION}/migration.sql`, 'utf8');
 const tables = [
-  '_migration.closed_report_selection_change',
-  '_migration.closed_report_selection_submission',
-  'public.closed_report_selections',
+  '_migration.lawyer_report_selection_change',
+  '_migration.lawyer_report_selection_submission',
+  'public.lawyer_report_selections',
+  '_migration.lawyer_report_submission_scope',
 ];
-export async function closedSelectionApplied(db: ClientBase) {
+export async function lawyerSelectionApplied(db: ClientBase) {
   const ledger = (
     await db.query(
       'SELECT checksum,finished_at,applied_steps_count FROM public._prisma_migrations WHERE migration_name=$1 AND rolled_back_at IS NULL',
-      [CLOSED_SELECTION_MIGRATION],
+      [LAWYER_SELECTION_MIGRATION],
     )
   ).rows;
   const surfaces = (
     await db.query(
-      "SELECT n.nspname||'.'||c.relname name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','_migration') AND c.relkind IN('r','v','m') AND c.relname LIKE 'closed_report_%' ORDER BY 1",
+      "SELECT n.nspname||'.'||c.relname name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','_migration') AND c.relkind IN('r','v','m') AND c.relname LIKE 'lawyer_report_%' ORDER BY 1",
     )
   ).rows.map((r) => r.name);
   const functions = (
     await db.query(
-      "SELECT n.nspname||'.'||p.proname name FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','_migration') AND p.proname LIKE 'closed_report_%' ORDER BY 1",
+      "SELECT n.nspname||'.'||p.proname name FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','_migration') AND p.proname LIKE 'lawyer_report_%' ORDER BY 1",
     )
   ).rows.map((r) => r.name);
   if (!ledger.length) {
@@ -42,19 +43,19 @@ export async function closedSelectionApplied(db: ClientBase) {
   assert.ok(ledger[0].finished_at);
   assert.equal(ledger[0].applied_steps_count, 1);
   assert.equal(ledger[0].checksum, createHash('sha256').update(source()).digest('hex'));
-  assert.deepEqual(surfaces, tables);
+  assert.deepEqual(surfaces, tables.toSorted());
   assert.deepEqual(
     functions,
-    [...source().matchAll(/CREATE FUNCTION ((?:public|_migration)\.closed_report_\w+)\(/gu)]
+    [...source().matchAll(/CREATE FUNCTION ((?:public|_migration)\.lawyer_report_\w+)\(/gu)]
       .map((m) => m[1])
       .sort(),
   );
   return true;
 }
-export async function closedSelectionFailures(db: ClientBase) {
+export async function lawyerSelectionFailures(db: ClientBase) {
   const failures: string[] = [];
   try {
-    if (!(await closedSelectionApplied(db))) return failures;
+    if (!(await lawyerSelectionApplied(db))) return failures;
     const migrationOwner = (
       await db.query(
         "SELECT pg_get_userbyid(relowner) owner FROM pg_class WHERE oid='public._prisma_migrations'::regclass",
@@ -62,7 +63,7 @@ export async function closedSelectionFailures(db: ClientBase) {
     ).rows[0].owner;
     const normalize = (s: string) => s.replaceAll('\r\n', '\n').trim();
     for (const match of source().matchAll(
-      /CREATE FUNCTION ((?:public|_migration)\.closed_report_\w+)\(([\s\S]*?)\)\s*RETURNS([\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
+      /CREATE FUNCTION ((?:public|_migration)\.lawyer_report_\w+)\(([\s\S]*?)\)\s*RETURNS([\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
     )) {
       const [schema, name] = match[1]!.split('.');
       const rows = (
@@ -97,16 +98,22 @@ export async function closedSelectionFailures(db: ClientBase) {
           [r.oid],
         )
       ).rows[0];
-      assert.deepEqual(access, { runtime: name === 'closed_report_selection_save', public: false });
+      assert.deepEqual(access, {
+        runtime: ['lawyer_report_selection_save', 'lawyer_report_historical_reviewer'].includes(
+          name!,
+        ),
+        public: false,
+      });
     }
     const columns: Record<string, string[]> = {
-      'public.closed_report_selections': [
+      '_migration.lawyer_report_submission_scope': ['submission_id:uuid:true', 'purpose:text:true'],
+      'public.lawyer_report_selections': [
         'id:integer:true',
         'hearing_id:integer:false',
         'is_selected:boolean:true',
         'row_version:bigint:true',
       ],
-      '_migration.closed_report_selection_change': [
+      '_migration.lawyer_report_selection_change': [
         'matter_id:integer:true',
         'version:bigint:true',
         'actor_id:integer:true',
@@ -115,7 +122,7 @@ export async function closedSelectionFailures(db: ClientBase) {
         'before_values:jsonb:false',
         'after_values:jsonb:true',
       ],
-      '_migration.closed_report_selection_submission': [
+      '_migration.lawyer_report_selection_submission': [
         'submission_id:uuid:true',
         'actor_id:integer:true',
         'request_payload:jsonb:true',
@@ -143,14 +150,6 @@ export async function closedSelectionFailures(db: ClientBase) {
         .filter((m) => m[2] === table)
         .map((m) => m[1])
         .sort();
-      if (
-        table.endsWith('_submission') &&
-        (await db.query("SELECT to_regclass('_migration.lawyer_report_submission_scope') present"))
-          .rows[0].present
-      ) {
-        declaredTriggers.push('lawyer_selection_scope');
-        declaredTriggers.sort();
-      }
       assert.deepEqual(
         (
           await db.query(
@@ -197,23 +196,28 @@ export async function closedSelectionFailures(db: ClientBase) {
       ).rows;
       assert.ok(indexes.every((r) => r.indisvalid && r.indisready && r.indislive));
       const expectedConstraints: Record<string, string[]> = {
-        'public.closed_report_selections': [
+        '_migration.lawyer_report_submission_scope': [
+          'PRIMARY KEY (submission_id)',
+          "CHECK (purpose = ANY (ARRAY['client'::text, 'closed'::text, 'lawyer'::text]))",
+          'TRIGGER DEFERRABLE INITIALLY DEFERRED',
+        ],
+        'public.lawyer_report_selections': [
           'PRIMARY KEY (id)',
           'FOREIGN KEY (id) REFERENCES matters(id) ON DELETE RESTRICT',
           'FOREIGN KEY (hearing_id) REFERENCES hearings(id) ON DELETE RESTRICT',
           'CHECK (row_version > 0)',
           'TRIGGER DEFERRABLE INITIALLY DEFERRED',
         ],
-        '_migration.closed_report_selection_change': [
+        '_migration.lawyer_report_selection_change': [
           'PRIMARY KEY (matter_id, version)',
           'UNIQUE (submission_id)',
           'FOREIGN KEY (matter_id) REFERENCES matters(id)',
           'FOREIGN KEY (actor_id) REFERENCES audit_actors(id)',
-          'FOREIGN KEY (submission_id) REFERENCES _migration.closed_report_selection_submission(submission_id) DEFERRABLE INITIALLY DEFERRED',
+          'FOREIGN KEY (submission_id) REFERENCES _migration.lawyer_report_selection_submission(submission_id) DEFERRABLE INITIALLY DEFERRED',
           'CHECK (version > 0)',
           'TRIGGER DEFERRABLE INITIALLY DEFERRED',
         ],
-        '_migration.closed_report_selection_submission': [
+        '_migration.lawyer_report_selection_submission': [
           'PRIMARY KEY (submission_id)',
           'FOREIGN KEY (actor_id) REFERENCES audit_actors(id)',
           'FOREIGN KEY (matter_id) REFERENCES matters(id)',
@@ -234,17 +238,20 @@ export async function closedSelectionFailures(db: ClientBase) {
         expectedConstraints[table]!.toSorted(),
       );
       const expectedIndexes: Record<string, string[]> = {
-        'public.closed_report_selections': [
-          'CREATE UNIQUE INDEX closed_report_selections_pkey ON public.closed_report_selections USING btree (id)',
-          'CREATE INDEX closed_report_selections_hearing ON public.closed_report_selections USING btree (hearing_id) WHERE (hearing_id IS NOT NULL)',
+        '_migration.lawyer_report_submission_scope': [
+          'CREATE UNIQUE INDEX lawyer_report_submission_scope_pkey ON _migration.lawyer_report_submission_scope USING btree (submission_id)',
         ],
-        '_migration.closed_report_selection_change': [
-          'CREATE UNIQUE INDEX closed_report_selection_change_pkey ON _migration.closed_report_selection_change USING btree (matter_id, version)',
-          'CREATE UNIQUE INDEX closed_report_selection_change_submission_id_key ON _migration.closed_report_selection_change USING btree (submission_id)',
+        'public.lawyer_report_selections': [
+          'CREATE UNIQUE INDEX lawyer_report_selections_pkey ON public.lawyer_report_selections USING btree (id)',
+          'CREATE INDEX lawyer_report_selections_hearing ON public.lawyer_report_selections USING btree (hearing_id) WHERE (hearing_id IS NOT NULL)',
         ],
-        '_migration.closed_report_selection_submission': [
-          'CREATE UNIQUE INDEX closed_report_selection_submission_pkey ON _migration.closed_report_selection_submission USING btree (submission_id)',
-          'CREATE UNIQUE INDEX closed_report_selection_changed_version ON _migration.closed_report_selection_submission USING btree (matter_id, result_version) WHERE changed',
+        '_migration.lawyer_report_selection_change': [
+          'CREATE UNIQUE INDEX lawyer_report_selection_change_pkey ON _migration.lawyer_report_selection_change USING btree (matter_id, version)',
+          'CREATE UNIQUE INDEX lawyer_report_selection_change_submission_id_key ON _migration.lawyer_report_selection_change USING btree (submission_id)',
+        ],
+        '_migration.lawyer_report_selection_submission': [
+          'CREATE UNIQUE INDEX lawyer_report_selection_submission_pkey ON _migration.lawyer_report_selection_submission USING btree (submission_id)',
+          'CREATE UNIQUE INDEX lawyer_report_selection_changed_version ON _migration.lawyer_report_selection_submission USING btree (matter_id, result_version) WHERE changed',
         ],
       };
       assert.deepEqual(
@@ -300,9 +307,19 @@ export async function closedSelectionFailures(db: ClientBase) {
           ),
         );
     }
+    const scopeMismatch = (
+      await db.query(`WITH receipts AS (
+      SELECT submission_id,'client'::text purpose FROM _migration.client_report_selection_submission
+      UNION ALL SELECT submission_id,'closed' FROM _migration.closed_report_selection_submission
+      UNION ALL SELECT submission_id,'lawyer' FROM _migration.lawyer_report_selection_submission)
+      SELECT coalesce(r.submission_id,s.submission_id) id FROM receipts r FULL JOIN _migration.lawyer_report_submission_scope s USING(submission_id)
+      WHERE r.purpose IS DISTINCT FROM s.purpose
+      UNION ALL SELECT submission_id FROM receipts GROUP BY submission_id HAVING count(*)<>1`)
+    ).rows;
+    assert.deepEqual(scopeMismatch, [], 'Exact three-purpose receipt registry correspondence');
     const bad = (
       await db.query(
-        `SELECT id FROM (SELECT id FROM public.closed_report_selections UNION SELECT matter_id FROM _migration.closed_report_selection_change UNION SELECT matter_id FROM _migration.closed_report_selection_submission) x WHERE NOT _migration.closed_report_selection_valid(id)`,
+        `SELECT id FROM (SELECT id FROM public.lawyer_report_selections UNION SELECT matter_id FROM _migration.lawyer_report_selection_change UNION SELECT matter_id FROM _migration.lawyer_report_selection_submission) x WHERE NOT _migration.lawyer_report_selection_valid(id)`,
       )
     ).rows;
     assert.deepEqual(

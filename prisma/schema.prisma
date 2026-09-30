@@ -1270,6 +1270,7 @@ model Contact {
 model Matter {
   reportSelection ClientReportSelection?
   closedReportSelection ClosedReportSelection?
+  lawyerReportSelection LawyerReportSelection?
   isArchived Boolean @default(false) @map("is_archived")
   rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
@@ -1434,6 +1435,7 @@ model Matter {
 model Hearing {
   reportSelections ClientReportSelection[]
   closedReportSelections ClosedReportSelection[]
+  lawyerReportSelections LawyerReportSelection[]
   isArchived Boolean @default(false) @map("is_archived")
   rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
@@ -2719,4 +2721,15 @@ model ClosedReportSelection {
   isSelected Boolean @map("is_selected")
   rowVersion BigInt @map("row_version")
   @@map("closed_report_selections")
+}
+
+
+model LawyerReportSelection {
+  id Int @id
+  matter Matter @relation(fields:[id],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  hearingId Int? @map("hearing_id")
+  hearing Hearing? @relation(fields:[hearingId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  isSelected Boolean @map("is_selected")
+  rowVersion BigInt @map("row_version")
+  @@map("lawyer_report_selections")
 }

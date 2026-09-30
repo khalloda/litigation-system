@@ -24,3 +24,29 @@ Each export must have saved bytes and matched operation/audit receipts. Preserve
 all failed attempts; establish uncertain write outcomes before retry. Reuse only
 unchanged evidence with explicit identities and scope. No owner migration,
 login, report/export/save, activation, acceptance checkbox or push is authorized.
+
+## Approved continuation matrix
+
+Prepared by the approved continuation/design before candidate77 application;
+progress below updates the earlier checkpoint without changing its history.
+Evidence: `test-results/task64-continuation-20260930T202946Z`.
+
+| Safeguard / gate | Fresh proof / remaining work |
+|---|---|
+| D64-1/revised2/3/4 | Adopted continuation hash and design; all choices resolved |
+| Intake/recovery | Clean d9d3784/unchanged remote; complete fresh owner state equals original protected76 recovery; same dated healthy PID/build |
+| Pristine fixture | New owned cluster7691431658251071526/loopback52978;148+15 quiet gates; pristine restore equality, no reuse of populated dump as owner data |
+| Candidate77 | Runtime refusal; deliberate pre-COMMIT rollback; exact additive upgrade, prior complete rows/catalogs/sequences/receipts exact and new choices empty |
+| Full-family source | Initial858 independent comparisons across all137 person IDs,1744 matters/13384 hearings; empty Selected/All, coherent fields/groups/totals and client245 contexts |
+| Selection integrity | Both permitted roles/four-role reads; denied/stale/foreign/expired/revoked cases; no-op/exact/lost-response retry; six cross-purpose directions plus simultaneous token race; current rows/history and client245 accepted outputs exact |
+| Native mismatch edges | Five labelled native matters across two clients; older chosen/newer expert, equal-date ID tie/undated, period exclusion, no-hearing distribution, principal/support/status/archive/retirement, shared credits, missing reviewer, full party lines |
+| Defensive literal read fixtures | Duplicate person-role rows deduplicated; identical names retain different IDs; blank historical reviewer stays blank. These are read-contract fixtures; the actual write gateway prohibits duplicate people within one matter and that refusal is separately proved |
+| Ongoing invariants | All three selection checks; disabled global registry trigger/altered accessor rejected, orphan registry insertion fails deferred constraint |
+| Project/static gates | Full check2 PASS after exact new route classifications; prior failures retained. Final source/build checks remain mandatory |
+| Browser/outputs/regressions | Pending final exact-source built artifact and genuinely authenticated isolated campaign; unchanged reuse must be explicitly bound |
+| Accounting/cleanup/delivery | Pending final complete-state reconciliation,148+15 quiet gates, owner preservation and five-file receipt-inclusive seal |
+
+The reusable later-family mismatch checklist is: population/mode; chosen versus
+latest; coherent source fields; correct date/assignment grain; complete parties
+and honest historical absence; complete-parent/export totals; explicit-save
+authority/retry/draft behavior. It is **not yet validated for Tasks6.5+**.

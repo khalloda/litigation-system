@@ -136,3 +136,59 @@ build at320/390/1440 and actual200%zoom. Data/query/export/auth evidence is reus
 only where its source is unchanged. The eight-entry family remains incomplete
 and all four material questions above remain pending. No migration candidate or
 complete-family PASS delivery exists at this checkpoint.
+
+## Approved continuation — 30 September / 1 October 2026
+
+The owner adopted D64-1, revised D64-2, D64-3 and D64-4 with the
+Ahmed Essam Sami mismatch safeguards. This supersedes the pending decisions
+above; those paragraphs remain the dated history of d9d3784. The bounded
+[selection design](task-6-4-selection-design.md) preceded candidate77 SQL.
+
+| Source entry from the eight-entry map | Final candidate destination |
+|---|---|
+| `Copy Of تقرير فردي لفريق العمل بالمحامي أ` | Merged into `lawyer-principal-matters` v1, retaining its fields and client grouping |
+| `تقرير فردي لفريق العمل بالمحامي أ` | Same complete principal report, including principal grouping, support, historical reviewer and complete-parent principal summary |
+| `تقرير فردي لفريق العمل بالمحامي ب` | `lawyer-supporting-matters` v1; current support qualification, explicitly labelled matter court/circuit |
+| `Lawyers sub-report` | Nested full-parent distinct-matter credits in principal/all-lawyer reports; no standalone menu item or unrelated Combo75 filter |
+| `تقارير المحامين` | `lawyer-all-matters` v1; active matters, current principal/client groups, support/reviewer and full-parent credits, eligible unassigned matters retained |
+| `تقرير بأعمال المحامي خلال فترة` | `lawyer-current-position` v1; current principal membership, hearing-date period, no active/closed restriction |
+| `تقرير بأعمال المحامي خلال فترة قادمة` | Preserved `lawyer-upcoming-hearings` v1, every next-date-qualified hearing |
+| `توزيع دعاوى جديدة للمحامين خلال فترة` | `lawyer-new-matters` v1; matter start-date period and current principal qualification, no hearing requirement |
+
+All five new purposes default to All qualifying, with optional client filtering.
+A/B/current require the appropriate stable lawyer ID. All chooses the latest
+hearing overall, then applies the hearing-date period where present. Selected
+reads only the separate lawyer purpose and its exact chosen hearing. Missing,
+foreign or undated choices block otherwise relevant position output; a valid
+out-of-period choice is excluded without substitution. Matter distribution
+accepts a saved matter with no hearing. Empty Selected explicitly stays empty.
+Upcoming has no selected mode. No immutable legacy flag is imported or used.
+
+Each position row is one matter and one coherent hearing. Hearing court/circuit
+never fall back to the matter fields; only B deliberately prints matter court.
+The exact preserved historical reviewer is labelled as source history; stable
+team keys, including absent/blank/unmatched states, are not current assignments.
+Native records remain included. The source copy is dated27 September; no live
+Access snapshot or department choices are claimed and no PostgreSQL repair is
+inferred from freshness differences.
+
+A/all groups represent current principal-ID combinations then clients; B uses
+current support-ID combinations then clients. IDs keep equal display names
+separate. Within client groups A/B/all sort case text then matter ID; current
+position sorts selected/latest hearing date then matter ID; distribution sorts
+start date then matter ID. Exact linked party/capacity lines are preserved.
+All principal credits use the complete qualifying result, distinct person and
+matter IDs, not preview50. Shared credits overlap, overall matters do not.
+Support is not counted as principal. No percentages are introduced.
+
+Candidate77 adds empty lawyer current/history/submission tables and a private
+three-purpose UUID registry. Its13 initial registry entries identify existing
+client/closed receipts only; they are not new choices. Existing functions,
+data, choices/history/receipts, sequences and migrations1–76 remain exact in
+the isolated upgrade proof. The owner remains at76; no deployment is implied.
+
+The six standalone lawyer IDs plus the15 accepted IDs produce21 definitions.
+The eight literal source entries above exhaust this task's disposition; the
+other37 entries in the full45 catalog remain unchanged. No later-family or
+D17-dropped report is implemented. Browser/export and final evidence gates
+are recorded separately; this source map does not accept the candidate.

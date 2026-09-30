@@ -50,6 +50,10 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 // The selection editor also uses the existing trusted human context, bounded below.
 const REPORT_ENGINE_CLOSURES = new Map([
   [
+    'src/lib/reports/lawyer-selection.ts',
+    '9a645dfde161ebc3cedd552b0cae18972babf096e8bd13a29ffffa0d5d6bd836',
+  ],
+  [
     'src/lib/reports/closed-selection.ts',
     '2c8a02afd568430fe3c74fffe353bd4d2e0afb31e7410f8e0595a34652780386',
   ],
@@ -195,6 +199,48 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  // Task6.4: bound fixed read queries and the exact audited third-purpose save gateway.
+  [
+    'src/lib/reports/lawyer-matters.ts',
+    'readLawyerMatters',
+    '560e1b4adca3dde3344bfe2bc404e34c038c5b6bd2a4d7e438d79125637afa6a',
+  ],
+  [
+    'src/lib/reports/lawyer-matters.ts',
+    'readLawyerMatters',
+    'cb09a6982b21ca5f8b8757929de83c021db926431e6934fd4c7687e7078fe2d3',
+  ],
+  [
+    'src/lib/reports/lawyer-matters.ts',
+    'readLawyerMatters',
+    '80d0b4c8053132586411aaf8013226e843dc89258136503dfe1af91a4bbba150',
+  ],
+  [
+    'src/lib/reports/lawyer-selection.ts',
+    'readLawyerReportSelection',
+    '331d87c20fd34192772129da04c06bcbd89c50cf0aaabaf9cdae5bda3d301824',
+  ],
+  [
+    'src/lib/reports/lawyer-selection.ts',
+    'readLawyerReportSelection',
+    '36b118eb809cbddb14591f72bc4a0f9774ffbad802cc92bed88a4d1a11ec3c88',
+  ],
+  [
+    'src/lib/reports/lawyer-selection.ts',
+    'readLawyerReportSelection',
+    '86e82163d63c16757763cc0d1f927ea80e45df63bed2774b4e3e498d5c666b4a',
+  ],
+  [
+    'src/lib/reports/lawyer-selection.ts',
+    'readLawyerReportSelection',
+    '7ca476dafb51331008550d5250b51602f66153fc0e64353d09091a262d0baf6b',
+  ],
+  [
+    'src/lib/reports/lawyer-selection.ts',
+    'saveLawyerReportSelection',
+    '65b08df7b9ef69093e3f1418335e9828aac51252fb0ab3ec749896f641602de7',
+  ],
+
   // Task 6.4 upcoming hearings: fixed SELECT with bound civil dates/person ID;
   // current principal EXISTS preserves hearing grain and does not write.
   [
@@ -2474,6 +2520,7 @@ export function auditRuntimeSourceFailures(
       source.path === 'src/lib/reports/client-judgments.ts' ||
       source.path === 'src/lib/reports/matter-judgments.ts' ||
       source.path === 'src/lib/reports/lawyer-upcoming.ts' ||
+      source.path === 'src/lib/reports/lawyer-matters.ts' ||
       source.path === 'src/lib/reports/matter-record.ts' ||
       source.path === 'src/lib/reports/matter-closed.ts' ||
       source.path === 'src/lib/reports/matter-outcome-summary.ts' ||
@@ -2601,7 +2648,8 @@ export function auditRuntimeSourceFailures(
       failures.add('Logo mutation closure differs from reviewed inventory');
     const isReportSelectionService =
       source.path === 'src/lib/reports/selection.ts' ||
-      source.path === 'src/lib/reports/closed-selection.ts';
+      source.path === 'src/lib/reports/closed-selection.ts' ||
+      source.path === 'src/lib/reports/lawyer-selection.ts';
     const isReviewedAuthService =
       isReportSelectionService ||
       isAuditExportService ||
@@ -3159,6 +3207,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'saveLawyerReportSelection',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'saveClosedReportSelection',

@@ -4,6 +4,8 @@ import type { SelectionMatter, SelectionHearing, SelectionInput } from '@/lib/re
 import { t } from '@/strings';
 import styles from '../reports.module.css';
 import { saveSelectionAction } from './actions';
+import { saveLawyerSelectionAction } from '../lawyer-selection/actions';
+import type { LawyerSelectionInput } from '@/lib/reports/lawyer-selection';
 import { saveClosedSelectionAction } from '../closed-selection/actions';
 import type { ClosedSelectionInput } from '@/lib/reports/closed-selection';
 import { useDirtyNavigation } from '@/app/_components/use-dirty-navigation';
@@ -16,15 +18,25 @@ export function SelectionEditor({
   canEdit,
   latest,
 }: {
-  scope?: 'client' | 'closed';
+  scope?: 'client' | 'closed' | 'lawyer';
   client: number;
   matter: SelectionMatter & { eligible?: boolean };
   hearings: SelectionHearing[];
   canEdit: boolean;
   latest: React.ReactNode;
 }) {
-  const labels = scope === 'closed' ? t.closedSelection : t.reportSelection;
-  const selectionPath = scope === 'closed' ? '/reports/closed-selection' : '/reports/selection';
+  const labels =
+    scope === 'lawyer'
+      ? t.lawyerSelection
+      : scope === 'closed'
+        ? t.closedSelection
+        : t.reportSelection;
+  const selectionPath =
+    scope === 'lawyer'
+      ? '/reports/lawyer-selection'
+      : scope === 'closed'
+        ? '/reports/closed-selection'
+        : '/reports/selection';
   const [selected, setSelected] = useState(matter.selected);
   const [hearing, setHearing] = useState<number | null>(matter.hearingId);
   const [version, setVersion] = useState(matter.version);
@@ -34,7 +46,7 @@ export function SelectionEditor({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [outcome, setOutcome] = useState<'success' | 'error' | ''>('');
-  const pending = useRef<SelectionInput | ClosedSelectionInput | null>(null);
+  const pending = useRef<SelectionInput | ClosedSelectionInput | LawyerSelectionInput | null>(null);
   const summary = useRef<HTMLDivElement>(null);
   const disabled = !canEdit || matter.archived;
   // Preserve an out-of-page current choice; changing pages never silently chooses another hearing.
@@ -65,7 +77,11 @@ export function SelectionEditor({
   async function save() {
     if (disabled || busy) return;
     pending.current ??= {
-      ...(scope === 'closed' ? { scope: 'closed' as const } : {}),
+      ...(scope === 'lawyer'
+        ? { scope: 'lawyer' as const }
+        : scope === 'closed'
+          ? { scope: 'closed' as const }
+          : {}),
       client,
       id: matter.id,
       version,
@@ -77,9 +93,13 @@ export function SelectionEditor({
     };
     setBusy(true);
     try {
-      const result = await (scope === 'closed' ? saveClosedSelectionAction : saveSelectionAction)(
-        pending.current,
-      );
+      const result = await (
+        scope === 'lawyer'
+          ? saveLawyerSelectionAction
+          : scope === 'closed'
+            ? saveClosedSelectionAction
+            : saveSelectionAction
+      )(pending.current);
       setMessage(result.message);
       setOutcome(result.ok ? 'success' : 'error');
       if (result.ok) {
@@ -176,7 +196,7 @@ export function SelectionEditor({
                 setHearing(null);
               }}
             />
-            {t.reportSelection.none}
+            {scope === 'lawyer' ? t.lawyerSelection.none : t.reportSelection.none}
           </label>
           {choices.map((h) => (
             <div key={h.id} className={styles.choice}>
