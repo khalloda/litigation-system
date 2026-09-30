@@ -520,7 +520,7 @@
 .labelValue bdi {
   unicode-bidi: isolate;
 }
-.lawyerTable {
+.scroll .lawyerTable {
   min-inline-size: 100rem;
   table-layout: fixed;
 }

@@ -240,8 +240,11 @@ export async function auditEventStructureFailures(
         field_name,
         max_text_characters,
         capture_mode:
-          ['client_report_selections', 'closed_report_selections'].includes(entity_table) &&
-          field_name === 'id'
+          [
+            'client_report_selections',
+            'closed_report_selections',
+            'lawyer_report_selections',
+          ].includes(entity_table) && field_name === 'id'
             ? 'entity_key'
             : 'value',
         classification_reason,
