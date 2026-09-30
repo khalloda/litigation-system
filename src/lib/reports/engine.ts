@@ -107,6 +107,12 @@ export function createReportEngine(
           client: parameters.client.kind === 'id' ? parameters.client.id : parameters.client.kind,
           branch: parameters.branch.kind === 'id' ? parameters.branch.id : parameters.branch.kind,
           lawyer: parameters.lawyer.kind === 'id' ? parameters.lawyer.id : parameters.lawyer.kind,
+          ...(parameters.matter
+            ? {
+                matter:
+                  parameters.matter.kind === 'id' ? parameters.matter.id : parameters.matter.kind,
+              }
+            : {}),
           ...parameters.extra,
         };
         const evidence = {

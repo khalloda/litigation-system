@@ -17,10 +17,12 @@ export function ReportForm({
   descriptor,
   options,
   initialClient = '',
+  initialMatter = '',
 }: {
   descriptor: ReportDescriptor;
   options: ReportOptions;
   initialClient?: string;
+  initialMatter?: string;
 }) {
   const form = useRef<HTMLFormElement>(null);
   const summary = useRef<HTMLDivElement>(null);
@@ -39,11 +41,12 @@ export function ReportForm({
   const [parameters, setParameters] = useState<Record<string, string>>({
     ...defaults,
     client: initialClient,
+    ...(descriptor.parameters.matter ? { matter: initialMatter } : {}),
   });
   const parameterText = (key: string, value: string) => {
-    if (['client', 'branch', 'lawyer'].includes(key))
+    if (['client', 'branch', 'lawyer', 'matter'].includes(key))
       return (
-        referenceOptions(options, key as 'client' | 'branch' | 'lawyer').find(
+        referenceOptions(options, key as 'client' | 'branch' | 'lawyer' | 'matter').find(
           (option) => String(option.id) === value,
         )?.label ?? (value === 'unassigned' ? t.reports.unassigned : t.common.notRecorded)
       );
@@ -133,7 +136,7 @@ export function ReportForm({
     key in t.reports.fields
       ? reportFieldLabel(key)
       : (descriptor.extra?.find((x) => x.key === key)?.label ?? t.reports.validation);
-  const referenceField = (key: 'client' | 'branch' | 'lawyer') => {
+  const referenceField = (key: 'client' | 'branch' | 'lawyer' | 'matter') => {
     const rule = referenceRule(descriptor, key);
     return rule ? (
       <div key={key} className={`${styles.field} ${key === 'lawyer' ? styles.fullField : ''}`}>
@@ -146,7 +149,15 @@ export function ReportForm({
           label={reportFieldLabel(key)}
           rule={rule}
           options={referenceOptions(options, key)}
-          initialValue={key === 'client' && reset === 0 ? initialClient : ''}
+          initialValue={
+            reset === 0
+              ? key === 'client'
+                ? initialClient
+                : key === 'matter'
+                  ? initialMatter
+                  : ''
+              : ''
+          }
           invalid={errors.includes(key)}
           describedBy={help(key)}
         />
@@ -215,7 +226,7 @@ export function ReportForm({
           </div>
           <fieldset key={reset} disabled={busy} className={styles.fields}>
             <legend>{t.ui.prepareReport}</legend>
-            {(['client', 'branch'] as const).map(referenceField)}
+            {(['client', 'branch', 'matter'] as const).map(referenceField)}
             {[...(descriptor.extra ?? [])]
               .sort((a, b) => (a.key === 'extra_mode' ? 1 : b.key === 'extra_mode' ? -1 : 0))
               .map((rule) => (
@@ -376,48 +387,87 @@ export function ReportForm({
                 </bdi>
               </p>
               <p>{t.reports.previewHelp}</p>
+              {descriptor.details?.length ? (
+                <dl className={styles.recordDetails}>
+                  {descriptor.details.map((column, index) => (
+                    <div key={column.key}>
+                      <dt>{column.label}</dt>
+                      <dd>
+                        <bdi>{cellText(result.data.details!.at(index)!)}</bdi>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : null}
               {result.data.sections.map((section) => (
                 <section key={section.id}>
                   {section.title ? <h3>{section.title}</h3> : null}
                   {section.groups.map((group) => (
                     <div key={group.id}>
                       {group.title ? <h4>{group.title}</h4> : null}
-                      <div
-                        className={styles.scroll}
-                        role="region"
-                        tabIndex={0}
-                        aria-label={group.title || t.reports.result}
-                      >
-                        <table>
-                          <thead>
-                            <tr>
-                              <th scope="col">{t.reports.rowNumber}</th>
-                              {descriptor.columns.map((c) => (
-                                <th key={c.key} scope="col">
-                                  {c.label}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {group.rows.map((row, index) => (
-                              <tr key={row.id}>
-                                <td>{index + 1}</td>
-                                {row.cells.map((cell, i) => (
-                                  <td key={descriptor.columns.at(i)!.key}>
-                                    <bdi>{cellText(cell)}</bdi>
-                                  </td>
+                      {descriptor.layout === 'cover' ? (
+                        group.rows.map((row) => (
+                          <dl key={row.id} className={styles.recordDetails}>
+                            {descriptor.columns.map((column, index) => (
+                              <div key={column.key}>
+                                <dt>{column.label}</dt>
+                                <dd>
+                                  <bdi>{cellText(row.cells.at(index)!)}</bdi>
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ))
+                      ) : (
+                        <div
+                          className={styles.scroll}
+                          role="region"
+                          tabIndex={0}
+                          aria-label={group.title || t.reports.result}
+                        >
+                          <table>
+                            <thead>
+                              <tr>
+                                <th scope="col">{t.reports.rowNumber}</th>
+                                {descriptor.columns.map((c) => (
+                                  <th key={c.key} scope="col">
+                                    {c.label}
+                                  </th>
                                 ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            </thead>
+                            <tbody>
+                              {group.rows.map((row, index) => (
+                                <tr key={row.id}>
+                                  <td>{index + 1}</td>
+                                  {row.cells.map((cell, i) => (
+                                    <td key={descriptor.columns.at(i)!.key}>
+                                      <bdi>{cellText(cell)}</bdi>
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </section>
               ))}
               {result.rowCount === 0 ? <p>{t.reports.noRows}</p> : null}
+              {result.data.totals.length ? (
+                <dl className={styles.recordDetails}>
+                  {result.data.totals.map((total, index) => (
+                    <div key={index}>
+                      <dt>{total.label}</dt>
+                      <dd>
+                        <bdi>{cellText(total.value)}</bdi>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : null}
             </>
           ) : null}
         </section>

@@ -59,9 +59,9 @@ const REPORT_ENGINE_CLOSURES = new Map([
   ],
   [
     'src/lib/reports/options.ts',
-    'f0372ce7a2ea7a65b8226b4bd7cfd5b9f8a1b561ccc3ce0f2d01dcc6e71548b7',
+    '2b02cb5073b6b153a4f48342077b0b1f898b94ebfd51b3d3496a6644feb2e356',
   ],
-  ['src/lib/reports/engine.ts', '2e43765c66a2d0daa083fcca5f9eacc76ce61ec1501ea136dec5c96d088ebd55'],
+  ['src/lib/reports/engine.ts', '34738cfd2b220ca17a1346b1efc0e9b8aa20e7ca206fbb12285902f703febfa3'],
 ]);
 const DASHBOARD_READ_CLOSURES = new Map([
   ['src/lib/outcome-query.ts', 'ceb3685ccbc35b342314cb7d0cc8eec467f2849f645477255cd572001c8b27c2'],
@@ -231,6 +231,16 @@ const REVIEWED_RAW_SQL_CALLS = [
   // IDs/date endpoints are bound values; no request-provided SQL or writes.
   // Task 6.3: hearing-grain judgment query; bound dates/lead ID, EXISTS avoids
   // multiplying rows. No archive exclusion, raw-text fallback or data mutation.
+  [
+    'src/lib/reports/matter-record.ts',
+    'readMatterRecord',
+    'a88e811ceeabb422f44d69d2ac52e15c43ce530f51218d6e49e40894e63356be',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    'b3c26f5dc9dcff993c8f1d4254c0865ffd653af75388edb8141bbe59b55326f9',
+  ],
   [
     'src/lib/reports/matter-judgments.ts',
     'readMatterJudgments',
@@ -2407,6 +2417,7 @@ export function auditRuntimeSourceFailures(
       source.path === 'src/lib/reports/client-contacts.ts' ||
       source.path === 'src/lib/reports/client-judgments.ts' ||
       source.path === 'src/lib/reports/matter-judgments.ts' ||
+      source.path === 'src/lib/reports/matter-record.ts' ||
       source.path === 'src/lib/reports/client-matter-reports.ts' ||
       source.path === 'src/lib/reports/client-report-data.ts';
     const isReportEngine = source.path === 'src/lib/reports/engine.ts';

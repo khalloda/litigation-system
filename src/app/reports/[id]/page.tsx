@@ -7,13 +7,19 @@ import { ReportForm } from '../report-form';
 import { t } from '@/strings';
 import styles from '../reports.module.css';
 import { reportClientContext } from '@/lib/reports/client-context';
+import { MatterFilterError } from '@/lib/matter-query';
+import { reportMatterReturn } from '@/lib/reports/matter-context';
 export const dynamic = 'force-dynamic';
 export default async function ReportPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ client?: string | string[] }>;
+  searchParams: Promise<{
+    client?: string | string[];
+    matter?: string | string[];
+    fromMatter?: string | string[];
+  }>;
 }) {
   const session = await requirePagePermission({ area: 'reports', action: 'run' });
   const { id } = await params;
@@ -24,7 +30,20 @@ export default async function ReportPage({
     if (error instanceof ReportError && error.code === 'unknown') notFound();
     throw error;
   }
-  const context = reportClientContext((await searchParams).client);
+  const input = await searchParams;
+  const context = reportClientContext(input.client);
+  const matter = reportClientContext(input.matter);
+  const initialMatter =
+    model.descriptor.parameters.matter &&
+    model.options.matter?.some((option) => option.id === matter)
+      ? String(matter)
+      : '';
+  let fromMatter = '';
+  try {
+    fromMatter = reportMatterReturn(input.fromMatter);
+  } catch (error) {
+    if (!(error instanceof MatterFilterError)) throw error;
+  }
   const initialClient =
     model.descriptor.parameters.client &&
     model.options.client.some((option) => option.id === context)
@@ -36,8 +55,14 @@ export default async function ReportPage({
         {t.reports.back}
       </Link>
       <h1>{model.descriptor.title}</h1>
+      {fromMatter ? <Link href={fromMatter}>{t.matters.details}</Link> : null}
       <p>{model.descriptor.description}</p>
-      <ReportForm key={`${id}:${initialClient}`} {...model} initialClient={initialClient} />
+      <ReportForm
+        key={`${id}:${initialClient}:${initialMatter}`}
+        {...model}
+        initialClient={initialClient}
+        initialMatter={initialMatter}
+      />
     </main>
   );
 }

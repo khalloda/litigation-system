@@ -44,3 +44,30 @@ gates. Five-file review packaging follows completion, never replaces it.
 PDF copying remains an owner-accepted limitation, NOT FIXED; search is not
 certified. No copying/search diagnosis is performed. Task6.4 remains outside
 this task.
+# Second working-piece checkpoint — 30 September 2026
+
+Local first-piece commit: `cfb04a03e6868ab49f3d8954a072f6d562340627`.
+The corrected complete first-piece check passed in `working-piece1-check2.log`.
+The second piece adds a validated matter selector, bounded return navigation,
+permission-appropriate matter links, typed header details and a portrait cover
+layout. Old report parameter bodies retain their original shape; matter is only
+added for descriptors which declare it. Preview now exposes canonical totals.
+
+`records-source-1.log` and `record-source-proof.json` pass 3,488 independent
+comparisons: both current working adapters for every one of 1,744 matters,
+covering the 13,384-hearing source. This checks current fields only; the partner
+field remains a disclosed pending business decision, alongside closed-report
+selection/latest semantics and summary attribution. No full-family PASS is claimed.
+
+`working-piece2-check.log` passes the complete project check. The existing pure
+report contract passes 62 cases; the full permission suite was rerun. The four
+roles were prepared only in the restored fixture using independent random
+passwords, after a complete pristine-state comparison. The first direct setup
+command failed at import because DATABASE_URL was absent, before any database
+operation; absence of setup files and subsequent full equality establish that
+no mutation occurred. The corrected fixture-environment attempt passed.
+
+The independent dependency copy passed fresh equality for 35,183 files.
+The owner artifact and service were not used for testing or changed. No candidate
+activation, owner authentication/export or publication has occurred. Production
+build/browser/export and remaining business decisions are still outstanding.

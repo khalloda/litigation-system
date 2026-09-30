@@ -6,7 +6,13 @@ import { readClientLogoFile } from '@/lib/client-logo-file';
 import { reportAssets } from './assets';
 import { cellText } from './result';
 import { printableText } from './excel';
-import { REPORT_LIMITS, ReportError, type ReportResult } from './types';
+import {
+  REPORT_LIMITS,
+  ReportError,
+  type ReportResult,
+  type ReportColumn,
+  type ReportCell,
+} from './types';
 
 export const escapeReportHtml = (value: string) =>
   value.replace(
@@ -41,6 +47,11 @@ export async function reportHtml(result: ReportResult, session: Session) {
     ? `<aside><h2>${text(manual.heading)}</h2><table><thead><tr>${manual.labels.map((x) => `<th>${text(x)}</th>`).join('')}</tr></thead><tbody>${Array.from({ length: manual.lines }, () => `<tr>${manual.labels.map(() => '<td class="blank">................................</td>').join('')}</tr>`).join('')}</tbody></table></aside>`
     : '';
   let cardNumber = 0;
+  const vertical = (columns: readonly ReportColumn[], cells: readonly ReportCell[]) =>
+    `<table class="record-details"><colgroup><col style="width:25%"><col style="width:75%"></colgroup><tbody>${columns.map((column, index) => `<tr><th scope="row">${text(column.label)}</th><td><bdi>${text(cellText(cells.at(index)!))}</bdi></td></tr>`).join('')}</tbody></table>`;
+  const details = result.descriptor.details
+    ? vertical(result.descriptor.details, result.data.details!)
+    : '';
   const body =
     result.data.sections
       .map(
@@ -54,6 +65,13 @@ export async function reportHtml(result: ReportResult, session: Session) {
                 : '';
               const groupTitle =
                 result.descriptor.layout === 'date-grouped' ? `${day} ${group.date}` : group.title;
+              if (result.descriptor.layout === 'cover')
+                return group.rows
+                  .map(
+                    (r) =>
+                      `<article class="cover">${vertical(result.descriptor.columns, r.cells)}</article>`,
+                  )
+                  .join('');
               if (result.descriptor.layout === 'card')
                 return group.rows
                   .map(
@@ -77,8 +95,8 @@ export async function reportHtml(result: ReportResult, session: Session) {
   }).format(new Date(result.generatedAt));
   const footer = `<div style="font-family:Report0;font-size:9px;width:100%;direction:rtl;text-align:center"><style>${fonts}</style>${text(generated)} — ${text(result.descriptor.title)} — ${text(t.reports.page)} <span class="pageNumber"></span> ${text(t.reports.of)} <span class="totalPages"></span></div>`;
   const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"><style>${fonts}
-    @page{size:A4 ${result.descriptor.layout === 'card' ? 'portrait' : 'landscape'}}
-    body{font-family:Report0;font-size:9pt;line-height:1.5;color:#000}h1,h2{color:#214B4B;break-after:avoid}h1{font-size:17pt;margin:2px;line-height:1.3}h2{font-size:11pt;margin:2px;line-height:1.3}header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #214B4B;padding-bottom:6px}header:after{content:'';position:absolute;inset-inline:0;inset-block-end:2px;border-bottom:2px solid #B6AA92}header>div{width:30%;text-align:center}header img{max-width:100%;max-height:55px;object-fit:contain}.watermark{position:fixed;inset-block-start:0;inset-inline-end:0;width:85px;opacity:.05;z-index:-1}.watermark img{width:100%}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}th,td{border:1px solid #ccc;padding:3px;text-align:start;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}th{background:#eee}thead{display:table-header-group}tr{break-inside:auto}bdi{unicode-bidi:plaintext;white-space:pre-wrap}.attention td{background:#ffff00}.count{font-weight:bold}.next-card{break-before:page}.record{display:inline-block;border:3px solid #000;padding:5px}.blank{height:20px}aside{break-inside:auto;border-top:2px solid #B6AA92}aside h2{break-after:avoid}</style></head><body><div class="watermark">${image(assets.emblem, 'image/png', '')}</div>${heading}<p>${result.filterLabels.map((x) => `${text(x.label)}: <bdi>${text(x.value)}</bdi>`).join(' · ')}</p><p>${text(t.reports.generatedAt)}: <bdi>${text(generated)}</bdi></p>${body}${result.descriptor.layout !== 'card' ? `<table><tbody>${result.data.totals.map((x) => `<tr><th>${text(x.label)}</th><td>${text(cellText(x.value))}</td></tr>`).join('')}<tr class="count"><th>${text(result.descriptor.countLabel ?? t.reports.count)}</th><td>${result.rowCount}</td></tr></tbody></table>${blanks}` : ''}</body></html>`;
+    @page{size:A4 ${['card', 'cover'].includes(result.descriptor.layout) ? 'portrait' : 'landscape'}}
+    body{font-family:Report0;font-size:9pt;line-height:1.5;color:#000}h1,h2{color:#214B4B;break-after:avoid}h1{font-size:17pt;margin:2px;line-height:1.3}h2{font-size:11pt;margin:2px;line-height:1.3}header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #214B4B;padding-bottom:6px}header:after{content:'';position:absolute;inset-inline:0;inset-block-end:2px;border-bottom:2px solid #B6AA92}header>div{width:30%;text-align:center}header img{max-width:100%;max-height:55px;object-fit:contain}.watermark{position:fixed;inset-block-start:0;inset-inline-end:0;width:85px;opacity:.05;z-index:-1}.watermark img{width:100%}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}th,td{border:1px solid #ccc;padding:3px;text-align:start;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}th{background:#eee}thead{display:table-header-group}tr{break-inside:auto}bdi{unicode-bidi:plaintext;white-space:pre-wrap}.attention td{background:#ffff00}.count{font-weight:bold}.next-card{break-before:page}.record{display:inline-block;border:3px solid #000;padding:5px}.blank{height:20px}aside{break-inside:auto;border-top:2px solid #B6AA92}aside h2{break-after:avoid}</style></head><body><div class="watermark">${image(assets.emblem, 'image/png', '')}</div>${heading}<p>${result.filterLabels.map((x) => `${text(x.label)}: <bdi>${text(x.value)}</bdi>`).join(' · ')}</p><p>${text(t.reports.generatedAt)}: <bdi>${text(generated)}</bdi></p>${details}${body}${result.descriptor.layout !== 'card' ? `<table><tbody>${result.data.totals.map((x) => `<tr><th>${text(x.label)}</th><td>${text(cellText(x.value))}</td></tr>`).join('')}<tr class="count"><th>${text(result.descriptor.countLabel ?? t.reports.count)}</th><td>${result.rowCount}</td></tr></tbody></table>${blanks}` : ''}</body></html>`;
   if (Buffer.byteLength(html) > REPORT_LIMITS.resultBytes) throw new ReportError('too-large');
   return { html, footer };
 }
@@ -118,7 +136,7 @@ export async function renderReportPdf(
     await context.route('**/*', (route) => route.abort());
     const page = await context.newPage();
     await page.setViewportSize({
-      width: result.descriptor.layout === 'card' ? 794 : 1123,
+      width: ['card', 'cover'].includes(result.descriptor.layout) ? 794 : 1123,
       height: 900,
     });
     await page.setContent(html, { waitUntil: 'load', timeout: 20000 });
@@ -192,13 +210,13 @@ export async function renderReportPdf(
         }
       },
       {
-        maximumHeight: result.descriptor.layout === 'card' ? 640 : 400,
+        maximumHeight: ['card', 'cover'].includes(result.descriptor.layout) ? 640 : 400,
         continuation: t.reports.continuation,
       },
     );
     const bytes = await page.pdf({
       format: 'A4',
-      landscape: result.descriptor.layout !== 'card',
+      landscape: !['card', 'cover'].includes(result.descriptor.layout),
       printBackground: true,
       displayHeaderFooter: true,
       headerTemplate: header,

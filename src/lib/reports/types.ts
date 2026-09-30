@@ -3,7 +3,7 @@ import type { PermissionRequest } from '@/lib/auth/authorization-core';
 import type { LogoMetadata } from '@/lib/client-query';
 
 /** These descriptors are code, never request payloads or stored user templates. */
-export type ReportField = 'from' | 'to' | 'client' | 'branch' | 'lawyer';
+export type ReportField = 'from' | 'to' | 'client' | 'branch' | 'lawyer' | 'matter';
 export type Selection = { kind: 'all' } | { kind: 'unassigned' } | { kind: 'id'; id: number };
 export type ReportParameters = Readonly<{
   from: string | null;
@@ -11,6 +11,7 @@ export type ReportParameters = Readonly<{
   client: Selection;
   branch: Selection;
   lawyer: Selection;
+  matter?: Selection;
   extra: Readonly<Record<string, string>>;
 }>;
 export type ParameterRule = Readonly<{ required: boolean; unassigned?: boolean; help: string }>;
@@ -22,7 +23,9 @@ export type DateRule = Readonly<{
 }>;
 export type ReportOption = Readonly<{ id: number; label: string }>;
 export type ReportOptions = Readonly<
-  Record<'client' | 'branch' | 'lawyer', readonly ReportOption[]>
+  Record<'client' | 'branch' | 'lawyer', readonly ReportOption[]> & {
+    matter?: readonly ReportOption[];
+  }
 >;
 export type ReportCell =
   | Readonly<{ type: 'null' }>
@@ -47,15 +50,17 @@ export type ReportData = Readonly<{
   sections: readonly ReportSection[];
   totals: readonly Readonly<{ label: string; value: ReportCell }>[];
   clientBrand?: Readonly<{ name: string; logo: LogoMetadata | null }>;
+  /** Ordered, typed record header values, bound to descriptor.details. */
+  details?: readonly ReportCell[];
 }>;
-export type ReportLayout = 'grouped' | 'date-grouped' | 'flat' | 'card';
+export type ReportLayout = 'grouped' | 'date-grouped' | 'flat' | 'card' | 'cover';
 export type ReportDescriptor = Readonly<{
   id: string;
   version: string;
   title: string;
   description: string;
   date?: DateRule;
-  parameters: Readonly<Partial<Record<'client' | 'branch' | 'lawyer', ParameterRule>>>;
+  parameters: Readonly<Partial<Record<'client' | 'branch' | 'lawyer' | 'matter', ParameterRule>>>;
   /** Narrow enum extension; no arbitrary filter/query language. */
   extra?: readonly Readonly<{
     key: string;
@@ -65,6 +70,7 @@ export type ReportDescriptor = Readonly<{
     choices: readonly Readonly<{ value: string; label: string }>[];
   }>[];
   columns: readonly ReportColumn[];
+  details?: readonly ReportColumn[];
   layout: ReportLayout;
   clientFacing: boolean;
   /** Trusted label for this definition's logical row grain. */

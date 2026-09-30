@@ -1,22 +1,32 @@
 import { t } from '@/strings';
 import type { ReportDescriptor, ReportOptions, ReportParameters } from './types';
-export type ReferenceField = 'client' | 'branch' | 'lawyer';
+export type ReferenceField = 'client' | 'branch' | 'lawyer' | 'matter';
 export function referenceRule(descriptor: ReportDescriptor, key: ReferenceField) {
   return key === 'client'
     ? descriptor.parameters.client
     : key === 'branch'
       ? descriptor.parameters.branch
-      : descriptor.parameters.lawyer;
+      : key === 'lawyer'
+        ? descriptor.parameters.lawyer
+        : descriptor.parameters.matter;
 }
 export function referenceChoice(parameters: ReportParameters, key: ReferenceField) {
   return key === 'client'
     ? parameters.client
     : key === 'branch'
       ? parameters.branch
-      : parameters.lawyer;
+      : key === 'lawyer'
+        ? parameters.lawyer
+        : (parameters.matter ?? { kind: 'all' as const });
 }
 export function referenceOptions(options: ReportOptions, key: ReferenceField) {
-  return key === 'client' ? options.client : key === 'branch' ? options.branch : options.lawyer;
+  return key === 'client'
+    ? options.client
+    : key === 'branch'
+      ? options.branch
+      : key === 'lawyer'
+        ? options.lawyer
+        : (options.matter ?? []);
 }
 export function reportFieldLabel(key: string) {
   return (

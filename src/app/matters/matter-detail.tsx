@@ -23,6 +23,7 @@ import { ClientAlert } from '../clients/client-alert';
 import styles from '../staff/staff.module.css';
 import local from './matters.module.css';
 import { workspaceSelection, selectedWorkspaceHref } from './workspace-context';
+import { matterRecordReports } from '@/lib/reports/matter-record';
 
 export async function MatterDetail({
   params,
@@ -93,6 +94,25 @@ export async function MatterDetail({
     [t.matters.courtShelf, matter.courtShelf],
     [t.matters.courtSecretaryRoom, matter.courtSecretaryRoom],
   ] as const;
+  const reportLinks = hasPermission(session.user.role, 'reports', 'run') ? (
+    <nav className={local.readingActions} aria-label={t.nav.reports}>
+      {matterRecordReports
+        .filter(({ descriptor }) =>
+          descriptor.permissions.every(({ area, action }) =>
+            hasPermission(session.user.role, area, action),
+          ),
+        )
+        .map(({ descriptor }) => (
+          <Link
+            key={descriptor.id}
+            className={styles.link}
+            href={`/reports/${descriptor.id}?matter=${matter.id}&fromMatter=${encodeURIComponent(embedded ? selectedWorkspaceHref(matterListHref(filters), matter.id) : matterDetailHref(matter.id, filters))}`}
+          >
+            {descriptor.title}
+          </Link>
+        ))}
+    </nav>
+  ) : null;
   if (embedded)
     return (
       <section data-matter-id={matter.id}>
@@ -139,6 +159,7 @@ export async function MatterDetail({
         {matter.clientArchived ? <p className={styles.state}>{t.clients.archivedNotice}</p> : null}
         <section className={local.readingRelated}>
           <h2>{t.ui.relatedRecords}</h2>
+          {reportLinks}
           <div className={local.readingActions}>
             <Link
               className={styles.link}
@@ -223,6 +244,7 @@ export async function MatterDetail({
         </Link>
       </header>
       <AuditRecordEntry session={session} table="matters" id={matter.id} />
+      {reportLinks}
       {hasPermission(session.user.role, 'matters', matter.archived ? 'restore' : 'archive') ? (
         <Link
           className={styles.button}

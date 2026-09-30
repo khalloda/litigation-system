@@ -75,6 +75,27 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
     if (target.rowCount >= 1048576) throw new ReportError('too-large');
     return target.addRow(values);
   };
+  for (const [index, cell] of (result.data.details ?? []).entries()) {
+    const column = result.descriptor.details!.at(index)!;
+    const value = excelCell(cell);
+    const chunks = typeof value === 'string' ? scalarChunks(value, 30000) : [value];
+    for (const [part, chunk] of chunks.entries()) {
+      const row = add(info, [part === 0 ? column.label : t.reports.continuation, chunk]);
+      if (typeof chunk === 'string') row.getCell(2).numFmt = '@';
+      else if (cell.type === 'date') row.getCell(2).numFmt = 'yyyy-mm-dd';
+    }
+    for (const [part, chunk] of scalarChunks(
+      cell.type === 'null' ? '' : String(cell.value),
+      6000,
+    ).entries())
+      add(exact, [
+        'header',
+        column.key,
+        cell.type,
+        part + 1,
+        Buffer.from(chunk, 'utf8').toString('base64'),
+      ]);
+  }
   for (const section of result.data.sections) {
     add(sheet, [section.title]);
     for (const group of section.groups) {

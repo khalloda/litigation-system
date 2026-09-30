@@ -107,7 +107,7 @@ export function parseReportInput(descriptor: ReportDescriptor, pairs: URLSearchP
       fields.push('from', 'to');
   }
   const choices = new Map<string, Selection>();
-  for (const key of ['client', 'branch', 'lawyer'] as const) {
+  for (const key of ['client', 'branch', 'lawyer', 'matter'] as const) {
     const rule = referenceRule(descriptor, key);
     if (!rule) continue;
     try {
@@ -131,6 +131,9 @@ export function parseReportInput(descriptor: ReportDescriptor, pairs: URLSearchP
       client: choices.get('client') ?? parsed.client,
       branch: choices.get('branch') ?? parsed.branch,
       lawyer: choices.get('lawyer') ?? parsed.lawyer,
+      ...(descriptor.parameters.matter
+        ? { matter: choices.get('matter') ?? { kind: 'all' as const } }
+        : {}),
       from,
       to,
       extra: Object.fromEntries(extra),

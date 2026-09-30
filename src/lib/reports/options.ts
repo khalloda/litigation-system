@@ -31,6 +31,12 @@ export async function reportOptions(
     options.lawyer = await tx.$queryRaw<ReportOption[]>(
       Prisma.sql`SELECT id, name_ar AS label FROM public.people ORDER BY name_ar COLLATE "C",id`,
     );
+  const matters = descriptor.parameters.matter
+    ? await tx.$queryRaw<ReportOption[]>(Prisma.sql`
+        SELECT m.id,coalesce(m.case_number_ar,${t.common.notRecorded}) || ' — ' ||
+          coalesce(c.name_ar,${t.common.notRecorded}) AS label
+        FROM public.matters m LEFT JOIN public.clients c ON c.id=m.client_id ORDER BY m.id`)
+    : undefined;
   const labelled = (rows: ReportOption[]) => {
     if (rows.length > 20000) throw new ReportError('too-large');
     return rows.map((x) => ({ id: x.id, label: `${x.label} [${x.id}]` }));
@@ -39,10 +45,11 @@ export async function reportOptions(
     client: labelled(options.client),
     branch: labelled(options.branch),
     lawyer: labelled(options.lawyer),
+    ...(matters ? { matter: labelled(matters) } : {}),
   };
 }
 export function validateReportOptions(parameters: ReportParameters, options: ReportOptions) {
-  for (const key of ['client', 'branch', 'lawyer'] as const) {
+  for (const key of ['client', 'branch', 'lawyer', 'matter'] as const) {
     const selected = referenceChoice(parameters, key);
     if (selected.kind === 'id' && !referenceOptions(options, key).some((x) => x.id === selected.id))
       throw new ReportError('invalid', [key]);
@@ -60,7 +67,7 @@ export function reportFilterLabels(
       value: `${parameters.from ?? t.reports.all} — ${parameters.to ?? t.reports.all}`,
     });
   }
-  for (const key of ['client', 'branch', 'lawyer'] as const)
+  for (const key of ['client', 'branch', 'lawyer', 'matter'] as const)
     if (referenceRule(descriptor, key)) {
       const selected = referenceChoice(parameters, key);
       labels.push({

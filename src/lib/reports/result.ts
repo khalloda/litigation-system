@@ -46,6 +46,9 @@ export function validateReportData(descriptor: ReportDescriptor, data: ReportDat
     throw new ReportError('too-large');
   if (data.clientBrand && !descriptor.clientFacing) throw new ReportError('generation');
   if (descriptor.clientFacing && !data.clientBrand) throw new ReportError('generation');
+  if ((descriptor.details?.length ?? 0) !== (data.details?.length ?? 0))
+    throw new ReportError('generation');
+  data.details?.forEach(validateCell);
   for (const section of data.sections) {
     if (!section.id || sections.has(section.id)) throw new ReportError('generation');
     sections.add(section.id);
@@ -79,7 +82,7 @@ export function validateDefinition(definition: ReportDefinition) {
     !/^[a-z][a-z0-9-]{0,63}$/u.test(d.id) ||
     !/^[a-zA-Z0-9.-]{1,32}$/u.test(d.version) ||
     !d.title ||
-    !['grouped', 'date-grouped', 'flat', 'card'].includes(d.layout) ||
+    !['grouped', 'date-grouped', 'flat', 'card', 'cover'].includes(d.layout) ||
     d.columns.length < 1 ||
     d.columns.length > REPORT_LIMITS.columns ||
     (d.countLabel !== undefined && (!d.countLabel || d.countLabel.length > 256)) ||
@@ -87,7 +90,13 @@ export function validateDefinition(definition: ReportDefinition) {
     typeof definition.query !== 'function'
   )
     throw new ReportError('generation');
-  for (const c of d.columns)
+  if (
+    d.details &&
+    (d.details.length > REPORT_LIMITS.columns ||
+      new Set(d.details.map((c) => c.key)).size !== d.details.length)
+  )
+    throw new ReportError('generation');
+  for (const c of [...d.columns, ...(d.details ?? [])])
     if (
       !/^[a-z][a-zA-Z0-9_]*$/u.test(c.key) ||
       !c.label ||

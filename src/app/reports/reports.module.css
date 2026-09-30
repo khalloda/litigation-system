@@ -454,3 +454,23 @@
   padding: var(--space-4);
   border-radius: var(--radius);
 }
+.recordDetails {
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+
+.recordDetails > div {
+  border-block-end: 1px solid var(--colour-border);
+  padding-block: 0.5rem;
+}
+
+.recordDetails dt {
+  font-weight: 600;
+}
+
+.recordDetails dd {
+  margin-inline: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

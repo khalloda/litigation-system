@@ -102,3 +102,19 @@ The owner has been asked about closed-report All closed/latest versus current
 saved selection, and distinct-lead outcome attribution versus fractional credit.
 These are genuine new meanings not resolved by the earlier six-client-report
 decision. The dependent adapters remain on hold; other implementation continues.
+
+### Additional partner-field gap (30 September, 02:00–02:14 UTC checkpoint)
+
+The current schema has no matter-partner assignment. `legacy_partner_raw` is
+immutable retained source text, not a current relation; 1,175 restored matters
+have a non-null value. For example, matter 1698 (`1 / 2010`) retains
+`د. هاني سري الدين`. Team reviewer, billing reviewer and `co_lead` are different
+meanings and cannot substitute. See `partner-source-gap.json` and schema
+`Matter.legacyPartnerRaw` / `MatterLawyer.role`.
+
+A third owner question proposes displaying that text with an explicit historical
+source label, or omitting it with a limitation, or separately designing a current
+partner assignment. No answer is assumed. The current working history/cover
+adapters omit that pending field; they are not complete for final delivery until
+the decision is applied. Their other current fields and all hearings can be
+implemented and independently tested now.
