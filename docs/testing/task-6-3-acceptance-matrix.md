@@ -72,3 +72,34 @@ Fresh/reused evidence still needs final source/build binding before delivery.
 | `continuation-check5.log` | Full project check PASS; final build/browser/export still pending. |
 
 Do not present this checkpoint as a sealed implementation review package.
+
+## Final implementation review checkpoint
+
+Earlier pending rows are historical. All three owner decisions are resolved.
+The following evidence is under `test-results/task63-20260930T011622Z/`.
+
+| Gate | Final result and evidence |
+|---|---|
+| Complete source semantics | Six IDs and both independent closed modes; adopted continuation and source catalog retained. |
+| Full-volume data | `closed-summary-final1-data`, `judgments-final1-data`, `records-partner-final1-data`: 1,908 +4 +142 +3,490 comparisons, independently reconstructed typed values. |
+| Native/status/date edges | `closed-selection2-data`, `closed-edges2-data`, `fresh-rejections.json`, `native-record-data`: no fallback, exact scope, ties, boundaries, undated/reopened, archive policy, overlap/zero/rounding. |
+| Migration | `candidate76-upgrade-proof.json` PASS; old identities preserved, initially empty new scope; no owner application. |
+| Database gates | `pristine-gates.json` and `final-gates.json`: 148 historical +15 setup each, full state equality. |
+| Source/check/build | `final-pagination-check-command.json`, `final-build-source3.json`, `final-build3-command.json`, `artifact-freeze3.json`: final application check/build and exact identities. |
+| Browser/exports | `browser-final3/result.json`: 28 runs, 56 saved outputs; `browser-native-final3`: two additional runs/four outputs. |
+| Independent values | Both campaigns' `independent-output-inspection.json`: 30 workbooks decoded, all typed cells exact, RTL/no formulas/Cairo. |
+| PDF visual | `visual-review-final.json`: ten final pages sampled; no copying/search diagnosis. `visual-pagination-reconciliation.json` withdraws the mistaken header inference. |
+| UI/accessibility | `browser-flow-final/result.json`, `browser-selection-final2/result.json`: unchanged UI/editor bytes; keyboard/focus, axe, narrow/genuine200%, drafts, no-op, response loss, stale reload and role distinctions. No speech certification. |
+| Regression | `client-nine-matters-final-data`, `client-nine-other-final-data`, `client-pdf-unchanged.json`: all nine data adapters and exact unchanged PDF HTML/footer. Audit O1/Noto source bytes preserved. |
+| Permissions/contracts | `permissions-final1-command.json`, `report-contract-final1-command.json`: 480 decisions and database account-state checks; 62 reporting contract cases. |
+| Owner preservation | `owner-final-equality.json`, `preservation-after.json`: complete owner equality;110 original protected file hashes and86 checkbox lines exact. Owner app absent, never started. |
+| Fixture accounting | `fixture-reconciliation.json`: 545 exact events,165 saved completions, one retained failed export; old data/auth/selection state reconciled. |
+| Cleanup/recovery | `fixture-cleanup.json`, `final-app-cleanup.json`, `recovery-final.json`: exact disposable resources removed, owner/prior resources retained; local recovery limitation. |
+| Package | Five-file receipt-inclusive verification and realistic corruption probes supplied externally; independent implementation review still required. |
+
+PDF copying is an accepted limitation, not fixed; search is uncertified. Annual
+chart blocks may continue across pages, with full labelled annual values in the
+adjacent table. No owner migration, activation, acceptance checkbox, push or
+later-task work occurred. The authorized Docker startup exception is documented
+separately from the owner web-app hold. Final documentation/commit and post-seal
+observations are bound by the delivery receipt, not predicted here.

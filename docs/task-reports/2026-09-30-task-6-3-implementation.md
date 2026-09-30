@@ -154,3 +154,98 @@ replaced by existing tokens, a dynamic chart-array access rejected by the audit
 scanner, and a test-only native lookup field corrected before any write. The
 complete project check passes in `continuation-check5.log`; subsequent final
 changes must retain or refresh the relevant proof. No acceptance is claimed.
+
+## Completed local implementation candidate — 30 September 2026
+
+This dated section supersedes earlier pending statements without rewriting their
+history. All six report definitions are complete: `matter-judgments`,
+`matter-lawyer-judgments`, `matter-hearing-history`, `matter-file-cover`,
+`matter-closed` (All/Selected) and `matter-outcome-summary`. The nine accepted
+client definitions retain their IDs, versions and meanings. Independent review
+and owner acceptance remain pending; TASKS and its 86 checkbox lines are unchanged.
+
+Final application source `2bb33d06a659afc6a77ae79bc2546f9849ea5e41` built successfully as
+`4p2pqrIVKB_RMz5W2_PuL` in the task-owned artifact. The documentation child identity
+and final package verification belong to the external receipt. No application
+source changed after this build. The complete project check, permission suite
+(480 decisions plus database-backed account-state checks), 62 reporting contract
+cases and fresh nine-client full-volume regressions passed. Independent oracles
+cover 1,908 closed comparisons, four summary periods, 142 judgment comparisons,
+and 3,490 history/cover comparisons at 1,745 matters and 13,436 hearings.
+
+`browser-final3` passed all seven mode/report cases across four genuine fixture
+roles: 28 previews and 56 actually saved exports. Independent openpyxl decoding
+proved all 28 workbooks' typed cells, identifiers, RTL, formula exclusion and
+Cairo metadata. The separate native boundary run saved four more exports,
+proving a 52-hearing history retains all rows beyond its 50-row preview. The
+PDF review samples ten final pages across every layout and both closed modes;
+it does not certify every page. Arabic, Noto, historical partner labels, exact
+saved versus latest hearing, date/null distinctions and outcome totals were
+inspected. PDF copying remains an accepted limitation, not fixed; search is not
+certified. Annual chart groups can continue across pages; their complete labelled
+annual table contains the exact corresponding values.
+
+The full-width summary attribution note fixes a demonstrated HTTP 413 failure:
+its original repeated banner measured 167.25 pixels against the unchanged
+115-pixel guard. No limit was relaxed. A later multi-image display misleadingly
+suggested missing repeated headers; reopening identical PNG bytes and checking
+raw pixels disproved that diagnosis. It is expressly withdrawn in
+`visual-pagination-reconciliation.json`. The final row-avoidance change is a
+Task 6.3 pagination refinement, not a claimed repair of missing headers. Exact
+before/after HTML and footer comparisons prove all nine client PDF renderers
+unchanged. Earlier builds, outputs and diagnoses remain preserved.
+
+`browser-flow-final` and `browser-selection-final2` retain source-bound UI proof:
+all UI/editor bytes match the final build; only PDF pagination changed later.
+Checks cover required-error/result focus, keyboard operation, mode/parameter
+invalidation, Clear, validated matter-return links, axe scans, 320/390 widths,
+genuine 200% browser zoom, four-role edit/read-only distinctions, dirty-draft
+protection, loaded/unloaded/missing metadata and explicit stale recovery.
+Response-loss retry produced exactly one business/history/audit/receipt write;
+an explicit no-op added only one receipt. The first interceptor failed after
+its save committed: that result was inspected and a new deliberate restoration
+was recorded before the corrected test. No uncertain save was blindly replayed.
+
+Candidate76 was applied only to the isolated migration75 full-state restore.
+The pristine 148 historical +15 setup results are retained. The final fixture
+also passes 148+15, with complete before/after state equality. Exact upgrade
+proof covers three initially empty tables, seven functions and their bounded
+catalog/audit additions, with old data and sequences preserved. The owner
+remains at migration75; no selection seeding, repair or provisioning occurred.
+
+Final accounting is exact: 1,061 owner audits remain unchanged; the disposable
+fixture ended at 1,606, with all 545 additional events classified. They include
+89 preview executions, 166 export attempts (165 completed and saved, one measured
+banner failure), 13 genuine fixture sign-ins, isolated authentication setup,
+53 native record creations, 18 scope-specific selection business events and
+bounded native status/archive exercises. Existing client selections, histories,
+receipts and outputs remain exact outside the deliberate native shared-pool
+hazard, which was cleared. The final closed choice is native matter5128/hearing39496.
+All 165 completed exports are bound to actual saved bytes. The two used sequences
+advance by exactly one matter and52 hearings; the other46 are unchanged.
+
+Complete owner snapshots compare equal across business/authentication data,
+all145 tables, all48 sequences, catalogs and75 migrations. The owner app was
+absent following the Desktop restart and was never started. The separately
+owner-authorized Docker startup/update recovery is recorded as an infrastructure
+exception, not application activation. The accepted artifact,54 logos, protected
+recovery, original handoff, prior evidence, applied SQL1–75, fonts, configuration,
+lockfile, governance and all TASKS bytes are preserved. Exact task-only app,
+container, volume and network cleanup passed. Recovery is local, not protection
+against losing this laptop/disk.
+
+Other retained harness failures include Windows default text encoding, transient
+reads of an in-progress JSON file, sandbox-only process/Docker visibility,
+Date-object versus serialized ledger comparison, and a SQL exclusion that first
+omitted four original null-matter hearings. Bounded corrections preserve the
+original failures and enforce exact equality; no check was weakened to pass.
+
+The five review files bind the complete retained commit chain, full shareable
+base/current source and working bytes, raw Git identities, forward/reverse
+per-child and combined patches, source evidence, fresh/reused tests, failures,
+cleanup and receipt-inclusive package verification. Package integrity does not
+constitute independent application review or acceptance.
+
+**NOT PUSHED; STOPPED FOR INDEPENDENT TASK 6.3 IMPLEMENTATION REVIEW.**
+No owner migration/provisioning/repair, web-app activation/restart, acceptance
+closure, publication or Task 6.4 work was performed.
