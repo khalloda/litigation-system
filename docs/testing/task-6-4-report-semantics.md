@@ -123,3 +123,16 @@ Full project checks and all480 established permission decisions passed for
 this first application piece. The edge harness was additionally typechecked
 after its correction. Browser, saved exports and the remaining family are still
 incomplete; these results are not final Task6.4 acceptance.
+
+
+## Later working-piece checkpoint
+
+The [incomplete checkpoint report](../task-reports/2026-09-30-task-6-4-incomplete-checkpoint.md)
+records the completed four-role browser, saved exports, exact fixture accounting,
+owner preservation and148+15 quiet-window gates. Actual image review found
+long-subject column compression which automatic checks did not detect. Local
+`45fb865` fixes only the upcoming preview table, verified in a separate exact-source
+build at320/390/1440 and actual200%zoom. Data/query/export/auth evidence is reused
+only where its source is unchanged. The eight-entry family remains incomplete
+and all four material questions above remain pending. No migration candidate or
+complete-family PASS delivery exists at this checkpoint.

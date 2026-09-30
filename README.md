@@ -714,3 +714,14 @@ The documentation child and ordinary publication outcome are external receipts;
 independent operational review remains pending. PDF copying is an accepted
 limitation, not fixed; search is uncertified. Task 6.4 is not started. Earlier
 dated unaccepted/unactivated/migration75 statements remain historical checkpoints.
+
+
+## Task 6.4 incomplete local candidate — 30 September 2026
+
+The source-defined upcoming-hearings report is implemented and tested locally,
+including its bounded readable-preview correction. The other lawyer-report
+purposes await four explicit business decisions. This is an incomplete candidate,
+with no acceptance, activation or push. Migration76, all15 accepted reports and
+TASKS remain unchanged. See the [resumable checkpoint](docs/task-reports/2026-09-30-task-6-4-incomplete-checkpoint.md)
+and [source map](docs/testing/task-6-4-report-semantics.md). The complete five-file
+independent-review package follows the decisions, remaining work and final gates.
