@@ -50,3 +50,14 @@ The reusable later-family mismatch checklist is: population/mode; chosen versus
 latest; coherent source fields; correct date/assignment grain; complete parties
 and honest historical absence; complete-parent/export totals; explicit-save
 authority/retry/draft behavior. It is **not yet validated for Tasks6.5+**.
+# Continuation PDF header correction — 1 October 2026 Cairo
+
+The first committed-build browser attempt returned HTTP 413 for the principal
+PDF: its complete mode/reviewer/attribution explanation made the repeated
+banner 224.44px high, above the unchanged 115px safety limit. The five new
+lawyer definitions now print this full explanation in the document body using
+the existing attribution-note treatment. No text or data is truncated and no
+limit is relaxed. The 15 accepted definitions and upcoming definition produce
+byte-identical HTML in the focused old/new renderer contract; all five new
+headers measure below the existing limit. The failed attempt and its saved
+XLSX remain evidence; complete exports will be tested on the corrected build.

@@ -37,7 +37,15 @@ export async function reportHtml(result: ReportResult, session: Session) {
     ? await readClientLogoFile(session, process.env['CLIENT_LOGO_ROOT'], client.logo)
     : null;
   // Long attribution guidance belongs in the body, outside the bounded repeated banner.
-  const bodyNote = Boolean(result.descriptor.charts?.length);
+  const bodyNote =
+    Boolean(result.descriptor.charts?.length) ||
+    [
+      'lawyer-principal-matters',
+      'lawyer-supporting-matters',
+      'lawyer-all-matters',
+      'lawyer-current-position',
+      'lawyer-new-matters',
+    ].includes(result.descriptor.id);
   const heading = `<header><div>${image(assets.logo, 'image/png', t.app.name)}</div><div><h1>${text(result.descriptor.title)}</h1>${bodyNote ? '' : `<h2>${text(result.data.subtitle)}</h2>`}</div><div>${client ? (clientLogo ? image(clientLogo.data, clientLogo.contentType, client.name) : text(client.name)) : ''}</div></header>`;
   const cols = `<tr><th>${text(t.reports.rowNumber)}</th>${result.descriptor.columns.map((c) => `<th>${text(c.label)}</th>`).join('')}</tr>`;
   const width = `<colgroup><col style="width:4%">${result.descriptor.columns.map((c) => `<col style="width:${(96 * c.width) / result.descriptor.columns.reduce((sum, x) => sum + x.width, 0)}%">`).join('')}</colgroup>`;
