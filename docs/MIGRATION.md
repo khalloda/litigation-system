@@ -4026,3 +4026,42 @@ removed through their normal guards. Owner Docker was not restarted in this run.
 All prior recovery, incident disk images and original evidence remain retained.
 Local recovery does not provide disk-loss protection. This is not full Access
 synchronization or final cutover. See the [operational report](task-reports/2026-09-28-task-6-2-bounded-repair-activation.md).
+
+
+## Task 6.3 actual migration76 execution and recovery — 30 September 2026
+
+Khaled adopted the correction1 PASS operational mandate. Exact migration76 SQL
+SHA256 `0a1a88828bfae5ef9c471e6c96be79bbad349f758f87f017ace3db0591a463ed`
+(18,248 bytes) was applied once through the approved deploy/principal wrapper at
+2026-09-30T13:14:47.794Z. The owner cluster is `7676117521894273062`.
+The exact fresh schema-stage proof matches the isolated rehearsal: 145→148
+tables, 75→76 successful migrations, three empty closed current/history/receipt
+tables, seven routines with their exact constraints/indexes/triggers/grants,
+one audit entity rule and four field classifications. All 48 sequences and all
+old rows/auth/choices/audits/counters and old migration provenance remained exact.
+No checksum rewriting, resolve-around-failure, migration77 or owner data repair.
+
+Both protected logical recovery packages remain local, together with roles,
+configuration, 54 registered logos and UI/report/font assets. The first recovery
+had 1061 audits. Five later client245 preview/PDF events 1062–1066 were personally
+confirmed by Khaled; no other state changed. A new recovery-refresh01 captured
+1066 without overwriting the first. Its fresh isolated restore was fully compared
+before migration, ran pristine and post76 148+15 gates, and proved the complete
+reviewed delta. The already completed browser campaign remained valid because
+the only intervening changes were these five known append-only audit events.
+Both exact disposable clusters were removed through their ownership-guarded
+normal helper. Owner data was never restored over newer records.
+
+The actual pre-migration snapshot was frozen and equal to refreshed recovery.
+The formerly running exact PID30412 was stopped once only after all gates. A
+platform rejection was preserved and resolved through the adopted operational
+authority; a stop guard's date-parsing mismatch failed before termination and
+was diagnosed by fresh PID/start/path evidence. Migration then committed once;
+it was not repeated. The approved frozen artifact was started as PID68632.
+All actual post76 148+15/structural checks and complete read windows passed.
+
+This is tested local logical recovery, not disaster recovery against laptop or
+disk loss. Private dump/configuration/credential bodies are excluded from the
+review ZIP and Git. No full Access synchronization, provisioning, seeding or
+owner repair occurred. See the
+[operational report](task-reports/2026-09-30-task-6-3-acceptance-activation.md).

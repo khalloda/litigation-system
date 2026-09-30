@@ -684,3 +684,33 @@ and [owner PDF decision](docs/approvals/2026-09-29-ui-implementation-01-pdf-visu
 The external resumed operational receipt records this documentation child's actual
 identity and normal publication outcome. Independent resumed operational review
 remains pending; Task6.3 has not started.
+
+
+## Current Task 6.3 acceptance and activation — 30 September 2026
+
+Khaled adopted the bounded operational mandate after the correction1 independent
+PASS and accepted candidate `a0ac559c088e6bb58dbf291ddfa1108af8fdd927` (application
+`ac046a28b7157421b34d303bd4b25867d9b9ed60`). The six matter reports, both closed
+modes and separate deliberately saved closed choices are now locally accepted.
+Exact migration 76 was applied once after protected recovery and isolated
+rehearsal. The three closed-selection tables are empty; no owner repair, selection
+seeding, account or capability provisioning occurred. Client 245's ten active
+choices remain exact. The owner database has 148 tables, 48 unchanged sequences
+and 76 successful migrations; fresh 148 historical and 15 setup checks passed.
+
+The frozen artifact serves `http://127.0.0.1:3000`, observed PID 68632, reused and
+freshly verified build `_RzjAkHqwy8M9tcZ9AF2I`. Seven genuine owner previews and
+eight saved exports passed exact independent data and visual checks. Audit count
+1066→1091 comprises one account update, one genuine sign-in, 15 report executions
+and eight export completions. Five earlier owner-confirmed check events 1062–1066
+were preserved in a refreshed recovery boundary. Business data, credentials,
+roles, existing choices and all old audit records are unchanged.
+
+Only Task 6.3 is newly checked. See the
+[operational report](docs/task-reports/2026-09-30-task-6-3-acceptance-activation.md),
+[independent implementation PASS](docs/reviews/2026-09-30-task63-correction1-independent-review.md)
+and appended [matrix](docs/testing/task-6-3-acceptance-matrix.md).
+The documentation child and ordinary publication outcome are external receipts;
+independent operational review remains pending. PDF copying is an accepted
+limitation, not fixed; search is uncertified. Task 6.4 is not started. Earlier
+dated unaccepted/unactivated/migration75 statements remain historical checkpoints.

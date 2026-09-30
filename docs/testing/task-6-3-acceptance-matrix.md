@@ -126,3 +126,41 @@ review. Evidence root: `test-results/task63-correction1-20260930T093504Z`.
 
 No acceptance closure, owner migration/activation, push or later task is authorized
 by this evidence. PDF copying is accepted limitation/not fixed; search uncertified.
+
+
+## Actual acceptance/activation supplement — 30 September 2026
+
+Disposition: **READY FOR INDEPENDENT OPERATIONAL REVIEW**. The correction1
+implementation PASS was adopted; this operational evidence does not close its
+own independent review. Task6.3 is locally accepted and newly checked;6.4 unstarted.
+
+| Gate | Actual evidence/result |
+| --- | --- |
+| Frozen source/toolchain | All993 accepted source identities, complete1553 compiled files,62 generated client files and35183 locked dependency files freshly verified in independent stable artifact. Build `_RzjAkHqwy8M9tcZ9AF2I` reused, not rebuilt; fresh full project check exit0. |
+| Recovery/pristine/schema | Two protected recovery roots retained. Refreshed1066-audit recovery fully restored; pristine and exact migration76 delta/post76 gates PASS,148historical+15setup and complete read windows. |
+| Four-role fixture | Six report IDs/two closed modes;30 genuine previews,20 saved exports, independent full-data oracles/decoding and visual checks. Required-field error-summary focus/link recovery,320/390/1440 RTL and genuine browser200% zoom PASS. |
+| Chart/labels | Fresh80-row fixture chart beyond50 preview:63/17 totals,78.75/21.25 shares; contextual/multiline IDs and historical partner disclosure PASS. |
+| Separate choices | One fixture-only deliberate closed Save, identical-receipt replay, one new no-op receipt and genuine Lawyer denial; exact current/history/receipt/audit effects and unchanged active choices. No owner Save. |
+| Actual migration76 | Exact SQL/delta once,148tables/76successful migrations,48unchanged sequences; no schema-stage audit/auth/business change. Fresh schema-stage/final148+15/structural gates PASS. |
+| Owner browser | Genuine account2/actor1002 sign-in;7previews and8files only. Independent scope queries match all output; closed Selected empty and All populated. Narrow390, keyboard/focus and read-only closed editor PASS. |
+| Owner saved outputs | Four XLSX decoded exactly (typed and visible values, Cairo metadata, RTL, no formulas). Every page of four PDFs visually inspected:7pages, NotoArabic, exact data/identifier direction and pagination. |
+| Exact owner accounting |1066→1091:record_updated1,login_succeeded1,report_executed15,export_completed8. No failed login, unsaved export, business/choice/credential/role/session-version change. Account timestamp/actor and roster mutex+1 reconcile exactly. |
+| Publication/receipt | Seven-document child and ordinary non-force push identified externally. Final receipt requires post-package live runtime, DB equality, clean matching refs, preserved recovery and absent fixtures. |
+
+Fresh operational receipts are under
+`test-results/task63-operational-20260930T114343Z` (ignored). All successful partial
+campaign evidence was preserved and combined explicitly; failed harness attempts
+were not relabelled PASS or repeated blindly. The owner campaign's final generic
+heading count failed after all7previews/8files; frozen source has distinct h1/h2.
+Only the missing editor observation was resumed read-only, with zero report
+requests. The earlier duplicate-declaration syntax failure executed no requests.
+
+Reused unchanged original/correction campaigns: deeper conflict/cross-purpose/
+race/security, nine client-report semantics, synthetic1.03% rounding and identifier
+edges, bound by freshly verified original/correction receipt-inclusive five-file
+deliveries and exact source/dependency closure. Those campaigns were not rerun.
+True browser back-forward cache restoration remains unobserved. Private full-state
+bodies are retained locally; the package supplies hashes and exact local proofs.
+**PDF copying: accepted limitation, NOT FIXED. Search: uncertified.** No further
+copying/search diagnosis. See the detailed
+[operational report](../task-reports/2026-09-30-task-6-3-acceptance-activation.md).

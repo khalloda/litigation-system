@@ -1413,3 +1413,36 @@ were retained; subsequent complete owner database equality passed. This is a
 disclosed exception to the run's original restart prohibition, not authority for
 future restarts or data repairs. Check physical host storage headroom before each
 full-state test clone; test isolation does not isolate shared host disk capacity.
+
+
+## Actual Task 6.3 migration76 state — 30 September 2026
+
+The independently reviewed exact migration
+`20260930080000_closed_report_selection` was applied once on owner cluster
+`7676117521894273062` at 2026-09-30T13:14:47.794Z (16:14:47 Cairo), through the
+approved migration principal and deploy route. SQL: 18,248 bytes, SHA256
+`0a1a88828bfae5ef9c471e6c96be79bbad349f758f87f017ace3db0591a463ed`.
+There are 148 non-system tables, 48 unchanged sequence vectors and 76 successful
+migrations. All older ledger entries/checksums, including failed/rolled-back
+history, remain exact; no migration77, schema push, reset or provisioning.
+
+Exactly `public.closed_report_selections`,
+`_migration.closed_report_selection_submission` and
+`_migration.closed_report_selection_change` were added empty, with the seven
+reviewed routines and exact indexes, constraints, triggers and grants/revokes,
+one audit entity rule and four field classifications. Existing client submissions
+have the reviewed cross-purpose receipt trigger. The fresh isolated rehearsal
+and actual schema-stage comparison prove definitions, ownership, grants and
+row identities, not counts alone. No schema-stage business/auth/audit/counter/
+selection change occurred. All three tables remain empty after owner checks;
+Selected closed correctly returns no rows. Client245's ten active choices and
+current/history/receipt identities remain exact.
+
+Fresh actual schema-stage and post-browser checks passed 148 historical and
+15 setup checks plus closed/client structural/history checks, each in a complete
+read-only equality window. Final audit count is 1091: seven previews, eight export
+executions and eight completions plus the normal account update/sign-in above
+1066. Credentials, roles, session version, all business/financial rows, prior
+audits and sequences remain exact. Full sensitive state is retained privately;
+the review package binds summaries/helper logic and private-body identities.
+See the [operational report](task-reports/2026-09-30-task-6-3-acceptance-activation.md).

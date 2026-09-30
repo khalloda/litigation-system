@@ -2446,7 +2446,7 @@ than assuming one rule for every workflow. Test with real volumes.
       report** (D17). Build it once.
       Layout: `docs/REPORT-LAYOUTS.md`, "Type 4 — Client status report".
       Includes the client's own logo, with a text fallback.
-- [ ] **6.3 Matter reports**
+- [x] **6.3 Matter reports**
 - [ ] **6.4 Lawyer reports**
 - [ ] **6.5 Hearing reports**
 - [ ] **6.6 Administrative works reports**
