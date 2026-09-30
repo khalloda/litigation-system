@@ -84,7 +84,7 @@ async function readMatterRecord(
   if (!matter) throw new ReportError('invalid', ['matter']);
   const parties = await reportParties(tx, [id]);
   const leads = await tx.matterLawyer.findMany({
-    where: { matterId: id, role: 'lead', isRetired: false },
+    where: { matterId: id, role: { in: ['lead', 'co_lead'] }, isRetired: false },
     orderBy: [{ position: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
     select: { person: { select: { nameAr: true } } },
   });

@@ -94,7 +94,7 @@ async function readMatterJudgments(
       AND h.outcome IS NOT NULL AND (NOT ${byLawyer}::boolean OR h.outcome<>'')
       AND (NOT ${byLawyer}::boolean OR EXISTS(
         SELECT 1 FROM public.matter_lawyers ml WHERE ml.matter_id=m.id
-          AND NOT ml.is_retired AND ml.role='lead' AND ml.person_id=${lawyer}::int))
+          AND NOT ml.is_retired AND ml.role IN ('lead','co_lead') AND ml.person_id=${lawyer}::int))
     ORDER BY h.outcome COLLATE "C",h.hearing_date,h.id`);
   const parties = await reportParties(
     tx,

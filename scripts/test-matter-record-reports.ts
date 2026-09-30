@@ -165,7 +165,9 @@ async function main() {
       const runs: { id: string; matter: number; rows: number; sha256: string }[] = [];
       for (const m of matters) {
         const lead = assignments
-          .filter((a) => a.matterId === m.id && a.role === 'lead' && !a.isRetired)
+          .filter(
+            (a) => a.matterId === m.id && ['lead', 'co_lead'].includes(a.role) && !a.isRetired,
+          )
           .sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity) || a.id - b.id);
         const cells: ReportCell[] = [
           text(clients.get(m.clientId!) ?? null),

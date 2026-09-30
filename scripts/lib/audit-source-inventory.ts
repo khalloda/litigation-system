@@ -244,7 +244,7 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/reports/matter-judgments.ts',
     'readMatterJudgments',
-    'bc0963a3def27529b9f4fcb372dc7e1c1d72b87b7f9ae13fa648c3550b39682c',
+    '56dd936bafe75511649214f0c79c66c543198de1b874148053ada488c1f06af5',
   ],
   [
     'src/lib/reports/client-contacts.ts',

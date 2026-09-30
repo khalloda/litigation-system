@@ -71,3 +71,34 @@ The independent dependency copy passed fresh equality for 35,183 files.
 The owner artifact and service were not used for testing or changed. No candidate
 activation, owner authentication/export or publication has occurred. Production
 build/browser/export and remaining business decisions are still outstanding.
+## Browser/export checkpoint and principal-role correction
+
+Working source `d302e3aaa2f5297606dcf3d27aa843260dcdf2ee`, parent
+`cfb04a03e6868ab49f3d8954a072f6d562340627`, tree
+`92be1b1e77bb56e40607fd071cae0a1f69ad5454`, passed the isolated production build.
+The four implemented reports passed 16 browser/role runs and produced 32 saved
+exports; 16 independently decoded workbooks and seven sampled PDF pages are
+recorded in the acceptance matrix. The nine existing client adapters passed
+their fresh independent full-volume regression oracles. Changed-flow tests
+passed at 320/390 desktop sizes and genuine 200% browser zoom.
+
+A subsequent source check corrected the interpretation of Access lawyerA:
+current `lead` **and** `co_lead` assignments represent its split members. The
+initial lead-only oracle shared an incomplete role assumption; its PASS did not
+establish that semantic completeness. The corrected SQL, header mapping, labels
+and independently reconstructed expectations are retained with fresh full-volume
+tests. Current real judgment counts happen not to change. Synthetic overlap and
+affected final-build output tests remain necessary, not waived.
+
+The complete family and five-file delivery cannot be sealed while the three
+business decisions remain unresolved. This checkpoint preserves implemented
+work and failures; it is neither acceptance nor an independent-review delivery.
+
+The principal-role full check passed (`principal-role-check.log`), as did 142
+judgment and 3,488 record/history independent comparisons. Fresh owner snapshot
+at 02:34 UTC equals the complete initial state: 145 tables, 48 sequences,
+migration75, 1,061 audit rows, unchanged authentication and catalogs. The fixture
+has exactly 106 additional events at this checkpoint: 12 account row updates,
+4 password resets, 4 password changes, 4 genuine logins, 50 report executions and
+32 completed exports. Its permission-test database has been removed. This is
+an intermediate snapshot; final reconciliation/sealing remain outstanding.

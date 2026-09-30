@@ -117,7 +117,7 @@ async function main() {
                     (a) =>
                       a.matterId === m.id &&
                       !a.isRetired &&
-                      a.role === 'lead' &&
+                      ['lead', 'co_lead'].includes(a.role) &&
                       a.personId === lawyer,
                   )))
             );
@@ -208,6 +208,10 @@ async function main() {
         });
         if (!byLawyer && from === '0001-01-01')
           writeFileSync(join(output, 'judgments-all-oracle.json'), JSON.stringify(expected), {
+            flag: 'wx',
+          });
+        if (byLawyer && lawyer === 7 && from === '0001-01-01')
+          writeFileSync(join(output, 'judgments-lawyer7-oracle.json'), JSON.stringify(expected), {
             flag: 'wx',
           });
       }

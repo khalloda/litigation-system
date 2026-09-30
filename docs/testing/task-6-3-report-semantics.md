@@ -118,3 +118,15 @@ partner assignment. No answer is assumed. The current working history/cover
 adapters omit that pending field; they are not complete for final delivery until
 the decision is applied. Their other current fields and all hearings can be
 implemented and independently tested now.
+
+### Lawyer A principal-role correction
+
+D5 and `scripts/lib/matter-relationship-plan.ts` lines 403–424 establish that
+the first member of an Access lawyerA combination became `lead` and subsequent
+members became `co_lead`; lawyerB became `support`. Therefore current lawyerA
+reporting must use both principal roles. The first working implementation's
+lead-only predicate was incomplete even though its initial oracle agreed.
+Both adapters and their independent expectations are corrected; source-backed
+tests are rerun. Support assignments remain outside this particular source field.
+The pending summary attribution choice applies to distinct people across both
+principal roles. No assumption that overlap is absent is retained.
