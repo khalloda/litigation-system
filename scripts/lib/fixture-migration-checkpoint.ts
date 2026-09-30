@@ -84,11 +84,13 @@ function reviewedRepository(
 ) {
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75].includes(
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76].includes(
       repository.migrations.length,
     ),
   );
-  if (repository.migrations.length === 75)
+  if (repository.migrations.length === 76)
+    assert.equal(repository.migrations[75]?.name, '20260930080000_closed_report_selection');
+  if (repository.migrations.length >= 75)
     assert.equal(
       repository.migrations[74]?.name,
       '20260928070000_task62_bounded_source_provenance',

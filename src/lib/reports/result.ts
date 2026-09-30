@@ -49,6 +49,8 @@ export function validateReportData(descriptor: ReportDescriptor, data: ReportDat
   if ((descriptor.details?.length ?? 0) !== (data.details?.length ?? 0))
     throw new ReportError('generation');
   data.details?.forEach(validateCell);
+  if (descriptor.charts?.some((id) => !data.sections.some((s) => s.id === id)))
+    throw new ReportError('generation');
   for (const section of data.sections) {
     if (!section.id || sections.has(section.id)) throw new ReportError('generation');
     sections.add(section.id);
@@ -114,6 +116,13 @@ export function validateDefinition(definition: ReportDefinition) {
   )
     throw new ReportError('generation');
   const extraKeys = new Set<string>();
+  if (
+    d.charts &&
+    (new Set(d.charts).size !== d.charts.length ||
+      d.charts.length > 4 ||
+      !['favourable', 'against'].every((key) => d.columns.some((c) => c.key === key)))
+  )
+    throw new ReportError('generation');
   for (const e of d.extra ?? []) {
     if (
       !/^extra_[a-z][a-z0-9_]{0,31}$/u.test(e.key) ||

@@ -474,3 +474,27 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.reportChart {
+  margin-block: 1rem;
+}
+.chartLine {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+.chartTrack {
+  display: block;
+  background: var(--surface-selected);
+}
+.chartFavourable,
+.chartAgainst {
+  display: block;
+  min-block-size: 1rem;
+}
+.chartFavourable {
+  background: var(--colour-primary);
+}
+.chartAgainst {
+  background: var(--colour-accent-warm-dark);
+}

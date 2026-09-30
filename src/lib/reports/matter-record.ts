@@ -17,6 +17,7 @@ const recordColumns: readonly ReportColumn[] = [
   { key: 'category', label: t.matters.filters.category, width: 25 },
   { key: 'degree', label: t.matters.filters.degree, width: 25 },
   { key: 'leadLawyer', label: t.matterReports.leadLawyer, width: 30 },
+  { key: 'historicalPartner', label: t.matterReports.partner, width: 30 },
 ];
 const historyDetails: readonly ReportColumn[] = [
   ...recordColumns,
@@ -73,6 +74,7 @@ async function readMatterRecord(
       id: true,
       caseNumberAr: true,
       subject: true,
+      legacyPartnerRaw: true,
       status: true,
       clientId: true,
       client: { select: { nameAr: true } },
@@ -114,9 +116,10 @@ async function readMatterRecord(
     reportText(matter.matterCategory?.labelAr ?? null),
     reportText(matter.degree?.labelAr ?? null),
     reportText(leads.length ? leads.map((row) => row.person.nameAr).join('\n') : null),
+    reportText(matter.legacyPartnerRaw),
   ];
   const header = {
-    subtitle: matter.client?.nameAr ?? '',
+    subtitle: [matter.client?.nameAr, t.matterReports.partnerNote].filter(Boolean).join('\n'),
     clientBrand: { name: matter.client?.nameAr ?? t.common.notRecorded, logo: logos[0] ?? null },
     totals: [],
   };

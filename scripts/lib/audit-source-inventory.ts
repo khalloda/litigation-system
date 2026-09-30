@@ -50,6 +50,10 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 // The selection editor also uses the existing trusted human context, bounded below.
 const REPORT_ENGINE_CLOSURES = new Map([
   [
+    'src/lib/reports/closed-selection.ts',
+    '2c8a02afd568430fe3c74fffe353bd4d2e0afb31e7410f8e0595a34652780386',
+  ],
+  [
     'src/lib/reports/selection.ts',
     '7da0af4445b11af79bd060ea16a71fff5806a3589665d543a41702e2c24d6de0',
   ],
@@ -191,6 +195,51 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/reports/closed-selection.ts',
+    'saveClosedReportSelection',
+    'e8595aaa4e46ea42c2e1def13daf0c2c183d03739ee0899d73b25f7154ded135',
+  ],
+  [
+    'src/lib/reports/closed-selection.ts',
+    'readClosedReportSelection',
+    '331d87c20fd34192772129da04c06bcbd89c50cf0aaabaf9cdae5bda3d301824',
+  ],
+  [
+    'src/lib/reports/closed-selection.ts',
+    'readClosedReportSelection',
+    'ff70d0717ec02e05e16b5675cf0c67f21e170c51b7c0c0d638df32c9e3b97286',
+  ],
+  [
+    'src/lib/reports/closed-selection.ts',
+    'readClosedReportSelection',
+    '23484d839163a61a059c793dc42a854afbdcdc36f2fa7dac7d0e2fb28dd8b2aa',
+  ],
+  [
+    'src/lib/reports/closed-selection.ts',
+    'readClosedReportSelection',
+    '7ca476dafb51331008550d5250b51602f66153fc0e64353d09091a262d0baf6b',
+  ],
+  [
+    'src/lib/reports/matter-closed.ts',
+    'readClosedMatterReport',
+    '257a3ee293e58162e36748150185b1afbf0b8144ca5bc2ed3d98918690bac081',
+  ],
+  [
+    'src/lib/reports/matter-closed.ts',
+    'readClosedMatterReport',
+    '563d1ce94dec070efb3682afba5ee2a07f9a5fb060d01b81493f9482d1e57231',
+  ],
+  [
+    'src/lib/reports/matter-outcome-summary.ts',
+    'readMatterOutcomeSummary',
+    '29c0854b2b25a701738fcf1babe178b785a7064d64cb9aac67f9d0e51a74dce6',
+  ],
+  [
+    'src/lib/reports/matter-outcome-summary.ts',
+    'readMatterOutcomeSummary',
+    '66c41deb0148ff69c6917fbf5211bf92d0612276a5fb1e2cd3bb133201f59834',
+  ],
   [
     'src/lib/reports/selection.ts',
     'readReportSelection',
@@ -2418,6 +2467,8 @@ export function auditRuntimeSourceFailures(
       source.path === 'src/lib/reports/client-judgments.ts' ||
       source.path === 'src/lib/reports/matter-judgments.ts' ||
       source.path === 'src/lib/reports/matter-record.ts' ||
+      source.path === 'src/lib/reports/matter-closed.ts' ||
+      source.path === 'src/lib/reports/matter-outcome-summary.ts' ||
       source.path === 'src/lib/reports/client-matter-reports.ts' ||
       source.path === 'src/lib/reports/client-report-data.ts';
     const isReportEngine = source.path === 'src/lib/reports/engine.ts';
@@ -2540,7 +2591,9 @@ export function auditRuntimeSourceFailures(
         LOGO_MUTATION_SERVICE_SHA256
     )
       failures.add('Logo mutation closure differs from reviewed inventory');
-    const isReportSelectionService = source.path === 'src/lib/reports/selection.ts';
+    const isReportSelectionService =
+      source.path === 'src/lib/reports/selection.ts' ||
+      source.path === 'src/lib/reports/closed-selection.ts';
     const isReviewedAuthService =
       isReportSelectionService ||
       isAuditExportService ||
@@ -3098,6 +3151,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'saveClosedReportSelection',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'saveReportSelection',

@@ -102,3 +102,55 @@ has exactly 106 additional events at this checkpoint: 12 account row updates,
 4 password resets, 4 password changes, 4 genuine logins, 50 report executions and
 32 completed exports. Its permission-test database has been removed. This is
 an intermediate snapshot; final reconciliation/sealing remain outstanding.
+
+## Approved continuation and candidate76 working piece
+
+The owner adopted `task63-approved-continuation-prompt.md`, closing all three
+business questions and replacing the All closed ONLY proposal. Both closed
+report modes, independent saved closed choices, full credit for distinct current
+lead/co_lead lawyers, and labelled historical partner text are implemented.
+The source limitations and superseded proposals remain dated evidence.
+
+After the Desktop restart, HEAD was clean at `8e0c3a7`. The owner web app was
+absent and was not started. Docker was unavailable; the owner explicitly approved
+Docker startup/read-only verification. A background Docker update interrupted
+the first snapshot; the owner confirmed that update. The exact retained fixture
+was reidentified and restarted with its newly assigned localhost port. No socket
+files were manually changed. Complete owner and fixture state comparisons then
+passed against the previous checkpoint, including 1,061 owner and 1,167 fixture
+audit rows. This is a bounded infrastructure exception, not application activation.
+
+The [candidate76 design](../testing/task-6-3-closed-selection-design.md) preceded
+isolated application. Three new tables start empty, with distinct scope-bound
+requests, histories, versions, receipts and audit entity. Existing client
+selection services and business validation remain unchanged. A shared UUID guard
+rejects cross-purpose replay in both directions. Applied migrations1–75 remain
+unchanged. Both ongoing selection invariants and148 historical checks pass on
+the upgraded fixture. No owner migration has occurred.
+
+Full-volume independent comparisons pass1,908 closed-report runs and four summary
+periods. Pure attribution cases prove joint100% shares, duplicate-person
+deduplication, unassigned denominator inclusion, zero denominator and exact
+rounding. Charts consume the same cells as their tables. History/cover reruns
+pass3,490 comparisons, including the historical partner and a clearly marked
+native52-hearing fixture; judgment reruns pass142 comparisons at13,436hearings.
+
+Scoped write tests prove exact preservation of existing client rows/history/
+receipts, client245's rederived ten choices and four All/Selected outputs across
+closed operations. The old shared-pool hazard is deliberately reproduced only
+on the native fixture matter, then explicitly cleared. Independent scope saves,
+no-ops, retries, conflicts, concurrent writers, malformed/foreign hearings,
+read-only roles, reopened/undated choices, inclusive boundaries and archive
+content are exercised. Fresh-version rejection probes additionally isolate
+status/archive refusal from stale-version refusal. Final browser/export and
+complete accounting/cleanup/package checks are still required.
+
+Preserved failures include the unavailable Docker endpoint/interrupted snapshot,
+the initial upgrade comparator treating its new ledger row as frozen (migration
+success was confirmed; never replayed), the exact added deferred constraint in
+the comparator, missing candidate checkpoint/route registrations, a null-opponent
+ordering defect found by the independent oracle, unapproved stylesheet literals
+replaced by existing tokens, a dynamic chart-array access rejected by the audit
+scanner, and a test-only native lookup field corrected before any write. The
+complete project check passes in `continuation-check5.log`; subsequent final
+changes must retain or refresh the relevant proof. No acceptance is claimed.

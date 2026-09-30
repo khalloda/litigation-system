@@ -8,6 +8,7 @@ export const AUDITED_ENTITY_TABLES = [
   'attendance',
   'client_logos',
   'client_report_selections',
+  'closed_report_selections',
   'clients',
   'contacts',
   'documents',

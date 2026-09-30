@@ -1,3 +1,8 @@
+import {
+  closedSelectionApplied,
+  closedSelectionFailures,
+  CLOSED_SELECTION_FIELDS,
+} from './closed-selection-checkpoint';
 import { task62SourceFailures } from './task62-source-checkpoint';
 import {
   reportSelectionApplied,
@@ -164,9 +169,15 @@ export async function auditEventStructureFailures(
   const failures: string[] = [];
   failures.push(...(await task62SourceFailures(db)));
   const reportSelection = await reportSelectionApplied(db);
+  const closedSelection = await closedSelectionApplied(db);
+  failures.push(...(await closedSelectionFailures(db)));
   failures.push(...(await reportSelectionFailures(db)));
   const eventTables = reportSelection
-    ? [...AUDITED_TABLES, 'client_report_selections'].sort()
+    ? [
+        ...AUDITED_TABLES,
+        'client_report_selections',
+        ...(closedSelection ? ['closed_report_selections'] : []),
+      ].sort()
     : AUDITED_TABLES;
   const auditHistory = await auditHistoryApplied(db);
   failures.push(...(await auditHistoryFailures(db)));
@@ -183,6 +194,7 @@ export async function auditEventStructureFailures(
   const lifecycle = await matterLifecycleApplied(db);
   const currentFieldRules = [
     ...(reportSelection ? REPORT_SELECTION_FIELDS : []),
+    ...(closedSelection ? CLOSED_SELECTION_FIELDS : []),
     ...(poaBoundary ? POA_EDIT_FIELDS : []),
     ...(tasks46_47Boundary ? TASKS46_47_FIELDS : []),
     ...(staffBoundary ? STAFF_FIELD_RULES : []),
@@ -219,7 +231,8 @@ export async function auditEventStructureFailures(
         field_name,
         max_text_characters,
         capture_mode:
-          entity_table === 'client_report_selections' && field_name === 'id'
+          ['client_report_selections', 'closed_report_selections'].includes(entity_table) &&
+          field_name === 'id'
             ? 'entity_key'
             : 'value',
         classification_reason,

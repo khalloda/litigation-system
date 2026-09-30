@@ -2,35 +2,35 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
-export const REPORT_SELECTION_MIGRATION = '20260927130000_client_report_selection';
-export const REPORT_SELECTION_FIELDS = [
-  ['client_report_selections', 'hearing_id', 64, 'client_report_selection_current'],
-  ['client_report_selections', 'id', 0, 'client_report_selection_identity'],
-  ['client_report_selections', 'is_selected', 64, 'client_report_selection_current'],
-  ['client_report_selections', 'row_version', 64, 'client_report_selection_current'],
+export const CLOSED_SELECTION_MIGRATION = '20260930080000_closed_report_selection';
+export const CLOSED_SELECTION_FIELDS = [
+  ['closed_report_selections', 'hearing_id', 64, 'closed_report_selection_current'],
+  ['closed_report_selections', 'id', 0, 'closed_report_selection_identity'],
+  ['closed_report_selections', 'is_selected', 64, 'closed_report_selection_current'],
+  ['closed_report_selections', 'row_version', 64, 'closed_report_selection_current'],
 ] as const;
 const source = () =>
-  readFileSync(`prisma/migrations/${REPORT_SELECTION_MIGRATION}/migration.sql`, 'utf8');
+  readFileSync(`prisma/migrations/${CLOSED_SELECTION_MIGRATION}/migration.sql`, 'utf8');
 const tables = [
-  '_migration.client_report_selection_change',
-  '_migration.client_report_selection_submission',
-  'public.client_report_selections',
+  '_migration.closed_report_selection_change',
+  '_migration.closed_report_selection_submission',
+  'public.closed_report_selections',
 ];
-export async function reportSelectionApplied(db: ClientBase) {
+export async function closedSelectionApplied(db: ClientBase) {
   const ledger = (
     await db.query(
       'SELECT checksum,finished_at,applied_steps_count FROM public._prisma_migrations WHERE migration_name=$1 AND rolled_back_at IS NULL',
-      [REPORT_SELECTION_MIGRATION],
+      [CLOSED_SELECTION_MIGRATION],
     )
   ).rows;
   const surfaces = (
     await db.query(
-      "SELECT n.nspname||'.'||c.relname name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','_migration') AND c.relkind IN('r','v','m') AND c.relname LIKE 'client_report_%' ORDER BY 1",
+      "SELECT n.nspname||'.'||c.relname name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','_migration') AND c.relkind IN('r','v','m') AND c.relname LIKE 'closed_report_%' ORDER BY 1",
     )
   ).rows.map((r) => r.name);
   const functions = (
     await db.query(
-      "SELECT n.nspname||'.'||p.proname name FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','_migration') AND p.proname LIKE 'client_report_%' ORDER BY 1",
+      "SELECT n.nspname||'.'||p.proname name FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','_migration') AND p.proname LIKE 'closed_report_%' ORDER BY 1",
     )
   ).rows.map((r) => r.name);
   if (!ledger.length) {
@@ -45,16 +45,16 @@ export async function reportSelectionApplied(db: ClientBase) {
   assert.deepEqual(surfaces, tables);
   assert.deepEqual(
     functions,
-    [...source().matchAll(/CREATE FUNCTION ((?:public|_migration)\.client_report_\w+)\(/gu)]
+    [...source().matchAll(/CREATE FUNCTION ((?:public|_migration)\.closed_report_\w+)\(/gu)]
       .map((m) => m[1])
       .sort(),
   );
   return true;
 }
-export async function reportSelectionFailures(db: ClientBase) {
+export async function closedSelectionFailures(db: ClientBase) {
   const failures: string[] = [];
   try {
-    if (!(await reportSelectionApplied(db))) return failures;
+    if (!(await closedSelectionApplied(db))) return failures;
     const migrationOwner = (
       await db.query(
         "SELECT pg_get_userbyid(relowner) owner FROM pg_class WHERE oid='public._prisma_migrations'::regclass",
@@ -62,7 +62,7 @@ export async function reportSelectionFailures(db: ClientBase) {
     ).rows[0].owner;
     const normalize = (s: string) => s.replaceAll('\r\n', '\n').trim();
     for (const match of source().matchAll(
-      /CREATE FUNCTION ((?:public|_migration)\.client_report_\w+)\(([\s\S]*?)\)\s*RETURNS([\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
+      /CREATE FUNCTION ((?:public|_migration)\.closed_report_\w+)\(([\s\S]*?)\)\s*RETURNS([\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
     )) {
       const [schema, name] = match[1]!.split('.');
       const rows = (
@@ -97,16 +97,16 @@ export async function reportSelectionFailures(db: ClientBase) {
           [r.oid],
         )
       ).rows[0];
-      assert.deepEqual(access, { runtime: name === 'client_report_selection_save', public: false });
+      assert.deepEqual(access, { runtime: name === 'closed_report_selection_save', public: false });
     }
     const columns: Record<string, string[]> = {
-      'public.client_report_selections': [
+      'public.closed_report_selections': [
         'id:integer:true',
         'hearing_id:integer:false',
         'is_selected:boolean:true',
         'row_version:bigint:true',
       ],
-      '_migration.client_report_selection_change': [
+      '_migration.closed_report_selection_change': [
         'matter_id:integer:true',
         'version:bigint:true',
         'actor_id:integer:true',
@@ -115,7 +115,7 @@ export async function reportSelectionFailures(db: ClientBase) {
         'before_values:jsonb:false',
         'after_values:jsonb:true',
       ],
-      '_migration.client_report_selection_submission': [
+      '_migration.closed_report_selection_submission': [
         'submission_id:uuid:true',
         'actor_id:integer:true',
         'request_payload:jsonb:true',
@@ -143,18 +143,6 @@ export async function reportSelectionFailures(db: ClientBase) {
         .filter((m) => m[2] === table)
         .map((m) => m[1])
         .sort();
-      // Candidate76 adds exactly one cross-purpose replay guard to the old receipt table.
-      if (
-        table === '_migration.client_report_selection_submission' &&
-        (
-          await db.query(
-            "SELECT to_regclass('_migration.closed_report_selection_submission') present",
-          )
-        ).rows[0].present
-      ) {
-        declaredTriggers.push('closed_selection_scope');
-        declaredTriggers.sort();
-      }
       assert.deepEqual(
         (
           await db.query(
@@ -201,23 +189,23 @@ export async function reportSelectionFailures(db: ClientBase) {
       ).rows;
       assert.ok(indexes.every((r) => r.indisvalid && r.indisready && r.indislive));
       const expectedConstraints: Record<string, string[]> = {
-        'public.client_report_selections': [
+        'public.closed_report_selections': [
           'PRIMARY KEY (id)',
           'FOREIGN KEY (id) REFERENCES matters(id) ON DELETE RESTRICT',
           'FOREIGN KEY (hearing_id) REFERENCES hearings(id) ON DELETE RESTRICT',
           'CHECK (row_version > 0)',
           'TRIGGER DEFERRABLE INITIALLY DEFERRED',
         ],
-        '_migration.client_report_selection_change': [
+        '_migration.closed_report_selection_change': [
           'PRIMARY KEY (matter_id, version)',
           'UNIQUE (submission_id)',
           'FOREIGN KEY (matter_id) REFERENCES matters(id)',
           'FOREIGN KEY (actor_id) REFERENCES audit_actors(id)',
-          'FOREIGN KEY (submission_id) REFERENCES _migration.client_report_selection_submission(submission_id) DEFERRABLE INITIALLY DEFERRED',
+          'FOREIGN KEY (submission_id) REFERENCES _migration.closed_report_selection_submission(submission_id) DEFERRABLE INITIALLY DEFERRED',
           'CHECK (version > 0)',
           'TRIGGER DEFERRABLE INITIALLY DEFERRED',
         ],
-        '_migration.client_report_selection_submission': [
+        '_migration.closed_report_selection_submission': [
           'PRIMARY KEY (submission_id)',
           'FOREIGN KEY (actor_id) REFERENCES audit_actors(id)',
           'FOREIGN KEY (matter_id) REFERENCES matters(id)',
@@ -238,17 +226,17 @@ export async function reportSelectionFailures(db: ClientBase) {
         expectedConstraints[table]!.toSorted(),
       );
       const expectedIndexes: Record<string, string[]> = {
-        'public.client_report_selections': [
-          'CREATE UNIQUE INDEX client_report_selections_pkey ON public.client_report_selections USING btree (id)',
-          'CREATE INDEX client_report_selections_hearing ON public.client_report_selections USING btree (hearing_id) WHERE (hearing_id IS NOT NULL)',
+        'public.closed_report_selections': [
+          'CREATE UNIQUE INDEX closed_report_selections_pkey ON public.closed_report_selections USING btree (id)',
+          'CREATE INDEX closed_report_selections_hearing ON public.closed_report_selections USING btree (hearing_id) WHERE (hearing_id IS NOT NULL)',
         ],
-        '_migration.client_report_selection_change': [
-          'CREATE UNIQUE INDEX client_report_selection_change_pkey ON _migration.client_report_selection_change USING btree (matter_id, version)',
-          'CREATE UNIQUE INDEX client_report_selection_change_submission_id_key ON _migration.client_report_selection_change USING btree (submission_id)',
+        '_migration.closed_report_selection_change': [
+          'CREATE UNIQUE INDEX closed_report_selection_change_pkey ON _migration.closed_report_selection_change USING btree (matter_id, version)',
+          'CREATE UNIQUE INDEX closed_report_selection_change_submission_id_key ON _migration.closed_report_selection_change USING btree (submission_id)',
         ],
-        '_migration.client_report_selection_submission': [
-          'CREATE UNIQUE INDEX client_report_selection_submission_pkey ON _migration.client_report_selection_submission USING btree (submission_id)',
-          'CREATE UNIQUE INDEX client_report_selection_changed_version ON _migration.client_report_selection_submission USING btree (matter_id, result_version) WHERE changed',
+        '_migration.closed_report_selection_submission': [
+          'CREATE UNIQUE INDEX closed_report_selection_submission_pkey ON _migration.closed_report_selection_submission USING btree (submission_id)',
+          'CREATE UNIQUE INDEX closed_report_selection_changed_version ON _migration.closed_report_selection_submission USING btree (matter_id, result_version) WHERE changed',
         ],
       };
       assert.deepEqual(
@@ -306,7 +294,7 @@ export async function reportSelectionFailures(db: ClientBase) {
     }
     const bad = (
       await db.query(
-        `SELECT id FROM (SELECT id FROM public.client_report_selections UNION SELECT matter_id FROM _migration.client_report_selection_change UNION SELECT matter_id FROM _migration.client_report_selection_submission) x WHERE NOT _migration.client_report_selection_valid(id)`,
+        `SELECT id FROM (SELECT id FROM public.closed_report_selections UNION SELECT matter_id FROM _migration.closed_report_selection_change UNION SELECT matter_id FROM _migration.closed_report_selection_submission) x WHERE NOT _migration.closed_report_selection_valid(id)`,
       )
     ).rows;
     assert.deepEqual(

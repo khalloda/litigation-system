@@ -71,6 +71,8 @@ export type ReportDescriptor = Readonly<{
   }>[];
   columns: readonly ReportColumn[];
   details?: readonly ReportColumn[];
+  /** Trusted section IDs whose favourable/against integer columns are charted. */
+  charts?: readonly string[];
   layout: ReportLayout;
   clientFacing: boolean;
   /** Trusted label for this definition's logical row grain. */

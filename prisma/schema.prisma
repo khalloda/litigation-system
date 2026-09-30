@@ -1269,6 +1269,7 @@ model Contact {
 /// (D8) instead of the two overloaded ones Access had.
 model Matter {
   reportSelection ClientReportSelection?
+  closedReportSelection ClosedReportSelection?
   isArchived Boolean @default(false) @map("is_archived")
   rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
@@ -1432,6 +1433,7 @@ model Matter {
 /// panel on the dashboard, which reads the next date.
 model Hearing {
   reportSelections ClientReportSelection[]
+  closedReportSelections ClosedReportSelection[]
   isArchived Boolean @default(false) @map("is_archived")
   rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
@@ -2706,4 +2708,15 @@ model ClientReportSelection {
   isSelected Boolean @map("is_selected")
   rowVersion BigInt @map("row_version")
   @@map("client_report_selections")
+}
+
+
+model ClosedReportSelection {
+  id Int @id
+  matter Matter @relation(fields:[id],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  hearingId Int? @map("hearing_id")
+  hearing Hearing? @relation(fields:[hearingId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  isSelected Boolean @map("is_selected")
+  rowVersion BigInt @map("row_version")
+  @@map("closed_report_selections")
 }

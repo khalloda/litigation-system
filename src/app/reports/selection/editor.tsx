@@ -4,21 +4,27 @@ import type { SelectionMatter, SelectionHearing, SelectionInput } from '@/lib/re
 import { t } from '@/strings';
 import styles from '../reports.module.css';
 import { saveSelectionAction } from './actions';
+import { saveClosedSelectionAction } from '../closed-selection/actions';
+import type { ClosedSelectionInput } from '@/lib/reports/closed-selection';
 import { useDirtyNavigation } from '@/app/_components/use-dirty-navigation';
 
 export function SelectionEditor({
+  scope = 'client',
   client,
   matter,
   hearings,
   canEdit,
   latest,
 }: {
+  scope?: 'client' | 'closed';
   client: number;
-  matter: SelectionMatter;
+  matter: SelectionMatter & { eligible?: boolean };
   hearings: SelectionHearing[];
   canEdit: boolean;
   latest: React.ReactNode;
 }) {
+  const labels = scope === 'closed' ? t.closedSelection : t.reportSelection;
+  const selectionPath = scope === 'closed' ? '/reports/closed-selection' : '/reports/selection';
   const [selected, setSelected] = useState(matter.selected);
   const [hearing, setHearing] = useState<number | null>(matter.hearingId);
   const [version, setVersion] = useState(matter.version);
@@ -28,7 +34,7 @@ export function SelectionEditor({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [outcome, setOutcome] = useState<'success' | 'error' | ''>('');
-  const pending = useRef<SelectionInput | null>(null);
+  const pending = useRef<SelectionInput | ClosedSelectionInput | null>(null);
   const summary = useRef<HTMLDivElement>(null);
   const disabled = !canEdit || matter.archived;
   // Preserve an out-of-page current choice; changing pages never silently chooses another hearing.
@@ -59,6 +65,7 @@ export function SelectionEditor({
   async function save() {
     if (disabled || busy) return;
     pending.current ??= {
+      ...(scope === 'closed' ? { scope: 'closed' as const } : {}),
       client,
       id: matter.id,
       version,
@@ -70,7 +77,9 @@ export function SelectionEditor({
     };
     setBusy(true);
     try {
-      const result = await saveSelectionAction(pending.current);
+      const result = await (scope === 'closed' ? saveClosedSelectionAction : saveSelectionAction)(
+        pending.current,
+      );
       setMessage(result.message);
       setOutcome(result.ok ? 'success' : 'error');
       if (result.ok) {
@@ -109,25 +118,29 @@ export function SelectionEditor({
           {t.ui.draft}
         </p>
       ) : null}
+      {scope === 'closed' && matter.eligible === false ? (
+        <p className={styles.guidance}>{t.closedSelection.ineligible}</p>
+      ) : null}
       {!canEdit ? <p className={styles.guidance}>{t.reportSelection.readOnly}</p> : null}
       {matter.archived || matter.hearingArchived ? (
         <p className={styles.guidance}>{t.reportSelection.archive}</p>
       ) : null}
       <fieldset disabled={disabled || busy} aria-describedby="selection-help">
         <legend className={styles.srOnly}>
-          {t.reportSelection.title} ({matter.id})
+          {labels.title} ({matter.id})
         </legend>
         <label>
           <input
             type="checkbox"
             name="selected"
+            disabled={scope === 'closed' && matter.eligible === false && !selected}
             checked={selected}
             onChange={(e) => {
               changed();
               setSelected(e.target.checked);
             }}
           />
-          {t.reportSelection.include}
+          {labels.include}
         </label>
         <p className={styles.guidance}>
           {t.ui.savedChoice}: {saved.selected ? t.reports.trueValue : t.reports.falseValue} ·{' '}
@@ -148,7 +161,7 @@ export function SelectionEditor({
 
         {latest}
         <p id="selection-help" className={styles.hint}>
-          {t.reportSelection.help}
+          {labels.help}
         </p>
         <fieldset>
           <legend>{t.reportSelection.hearing}</legend>
@@ -208,9 +221,7 @@ export function SelectionEditor({
         </div>
       </fieldset>
       <p>
-        <a href={`/reports/selection?client=${client}&id=${matter.id}`}>
-          {t.reportSelection.reload}
-        </a>
+        <a href={`${selectionPath}?client=${client}&id=${matter.id}`}>{t.reportSelection.reload}</a>
       </p>
     </form>
   );

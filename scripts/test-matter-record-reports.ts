@@ -52,6 +52,7 @@ async function main() {
           clientId: true,
           caseNumberAr: true,
           subject: true,
+          legacyPartnerRaw: true,
           status: true,
           matterCategoryId: true,
           degreeId: true,
@@ -180,6 +181,7 @@ async function main() {
           text(categories.get(m.matterCategoryId!) ?? null),
           text(degrees.get(m.degreeId!) ?? null),
           text(lead.length ? lead.map((a) => people.get(a.personId)!).join('\n') : null),
+          text(m.legacyPartnerRaw),
         ];
         const hs = hearings
           .filter((h) => h.matterId === m.id)
@@ -189,7 +191,9 @@ async function main() {
               a.id - b.id,
           );
         const header = {
-          subtitle: clients.get(m.clientId!) ?? '',
+          subtitle: [clients.get(m.clientId!), t.matterReports.partnerNote]
+            .filter(Boolean)
+            .join('\n'),
           clientBrand: {
             name: clients.get(m.clientId!) ?? t.common.notRecorded,
             logo: logos.find((l) => l.clientId === m.clientId) ?? null,

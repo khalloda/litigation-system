@@ -25,8 +25,9 @@ or consistency of the original departmental backup operation.
 
 ## Finite production map
 
-Six new standalone purposes are identified below. Two have pending business
-decisions; their adapters must wait. This count is derived from the trace, not
+Six new standalone purposes are identified below. The dated pending decisions
+below are superseded by the owner's approved continuation recorded at the end.
+This count is derived from the trace, not
 imposed as a substitute for catalog coverage.
 
 | Entry | Production destination | Source meaning / disposition |
@@ -130,3 +131,36 @@ Both adapters and their independent expectations are corrected; source-backed
 tests are rerun. Support assignments remain outside this particular source field.
 The pending summary attribution choice applies to distinct people across both
 principal roles. No assumption that overlap is absent is retained.
+
+## Approved continuation — 30 September 2026
+
+The owner explicitly adopted `task63-approved-continuation-prompt.md`, replacing
+the intervening All closed ONLY proposal. The three holds above are resolved:
+
+- `matter-closed`: All closed is default, latest hearing overall by date/ID,
+  then inclusive hearing-date period. Selected uses an exact hearing from the
+  independent closed-report scope, then the period. Both keep the client,
+  closed-status and exact annual-profit-subject exclusion. NULL subject remains
+  excluded by the source SQL predicate. No additional nonempty-decision rule.
+  Archived content remains eligible; a reopened selected matter or absent,
+  foreign or undated saved hearing blocks Selected output until resolved.
+- Closed selections begin empty and use separate current/history/receipt storage,
+  purpose-bound requests and a cross-purpose retry-token guard. The accepted
+  client selection semantics and rows remain intact. Candidate76 is additive;
+  the [design](task-6-3-closed-selection-design.md) preceded its isolated apply.
+- `matter-outcome-summary`: current distinct non-retired lead/co_lead people get
+  full hearing credit. Supporting roles do not. Inactive/external references
+  remain eligible. Unassigned is visible; overall/monthly/annual totals never
+  multiply hearings. Share = favourable credit / all unduplicated favourable
+  hearings in scope, including unassigned, to two decimals; NULL at zero
+  denominator. This is not win rate and joint shares may total above100%.
+  Monthly and annual sections follow the requested period, not dashboard years.
+  Chart bars read the exact adjacent table cells.
+- History and cover display exact `legacy_partner_raw` as
+  `الشريك — كما ورد في المصدر`, with a visible historical-source note. It is
+  neither editable nor a current assignment; no fallback person is invented.
+
+These are owner-approved replacements for missing/broken source meanings, not
+claims that the source already supplied them. The original source limitations,
+copy comparison and entire45-entry catalog map remain evidence. No DECISIONS,
+governance or TASKS edits are made.

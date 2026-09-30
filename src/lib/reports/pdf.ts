@@ -5,6 +5,7 @@ import { t } from '@/strings';
 import { readClientLogoFile } from '@/lib/client-logo-file';
 import { reportAssets } from './assets';
 import { cellText } from './result';
+import { reportChart } from './chart';
 import { printableText } from './excel';
 import {
   REPORT_LIMITS,
@@ -52,11 +53,17 @@ export async function reportHtml(result: ReportResult, session: Session) {
   const details = result.descriptor.details
     ? vertical(result.descriptor.details, result.data.details!)
     : '';
+  const chartHtml = (section: ReportResult['data']['sections'][number]) => {
+    const chart = reportChart(result.descriptor, section);
+    return chart
+      ? `<div aria-hidden="true">${chart.rows.map((row) => `<div class="report-chart"><strong>${text(row.label)}</strong>${row.values.map((v) => `<div>${text(v.label)}: ${v.value}<div style="background:#eee"><div style="height:10px;width:${(100 * v.value) / chart.maximum}%;background:${v.key === 'favourable' ? '#214b4b' : '#8d6842'}"></div></div></div>`).join('')}</div>`).join('')}</div>`
+      : '';
+  };
   const body =
     result.data.sections
       .map(
         (section) =>
-          `<section><h2>${text(section.title)}</h2>${section.groups
+          `<section><h2>${text(section.title)}</h2>${chartHtml(section)}${section.groups
             .map((group) => {
               const day = group.date
                 ? new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(

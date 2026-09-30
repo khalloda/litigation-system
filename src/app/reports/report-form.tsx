@@ -1,4 +1,5 @@
 'use client';
+import { reportChart } from '@/lib/reports/chart';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { t } from '@/strings';
@@ -344,13 +345,19 @@ export function ReportForm({
           ) : null}
           {descriptor.extra?.some((rule) => rule.key === 'extra_mode') ? (
             <>
-              <p>{t.reportSelection.period}</p>
+              <p>
+                {descriptor.id === 'matter-closed'
+                  ? t.closedSelection.period
+                  : t.reportSelection.period}
+              </p>
               {/^[1-9]\d*$/u.test(selectionClient) ? (
                 <Link
                   className={styles.secondaryAction}
-                  href={`/reports/selection?client=${selectionClient}`}
+                  href={`/reports/${descriptor.id === 'matter-closed' ? 'closed-selection' : 'selection'}?client=${selectionClient}`}
                 >
-                  {t.reportSelection.edit}
+                  {descriptor.id === 'matter-closed'
+                    ? t.closedSelection.edit
+                    : t.reportSelection.edit}
                 </Link>
               ) : null}
             </>
@@ -402,6 +409,34 @@ export function ReportForm({
               {result.data.sections.map((section) => (
                 <section key={section.id}>
                   {section.title ? <h3>{section.title}</h3> : null}
+                  {reportChart(descriptor, section) ? (
+                    <div aria-hidden="true" className={styles.reportChart}>
+                      {reportChart(descriptor, section)!.rows.map((row) => (
+                        <div key={row.id}>
+                          <p>{row.label}</p>
+                          {row.values.map((value) => (
+                            <div key={value.key} className={styles.chartLine}>
+                              <span>
+                                {value.label}: {value.value}
+                              </span>
+                              <span className={styles.chartTrack}>
+                                <span
+                                  className={
+                                    value.key === 'favourable'
+                                      ? styles.chartFavourable
+                                      : styles.chartAgainst
+                                  }
+                                  style={{
+                                    inlineSize: `${(100 * value.value) / reportChart(descriptor, section)!.maximum}%`,
+                                  }}
+                                />
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {section.groups.map((group) => (
                     <div key={group.id}>
                       {group.title ? <h4>{group.title}</h4> : null}

@@ -24,8 +24,10 @@ claimed. Evidence root: `test-results/task63-20260930T011622Z/`.
 
 Record fresh and reused scopes separately, including tested commit/build and
 artifact hashes. Preserve failed attempts; package integrity cannot stand in for
-application correctness. No migration is planned; confirm schema sufficiency
-before reporting migration/provisioning not applicable.
+application correctness. The original no-migration expectation is superseded by
+the approved continuation: candidate76 supplies an independent closed-report
+selection scope. Owner migration remains prohibited; only isolated application
+is authorized.
 ## Preserved working checkpoint — 30 September, after d302e3a
 
 This is **not the final family gate**. Three owner business questions remain
@@ -53,3 +55,20 @@ retained: setup environment missing at module import; independent workbook
 inspector CRLF/display normalization; missing Python tzdata resolved with the
 existing Windows timezone API, without a dependency installation. Byte-exact
 workbook reconstruction was not relaxed.
+
+## Approved continuation checkpoint
+
+The owner adopted both independent closed-selection modes, current lead/co_lead
+full credit and historical partner labels. All former decision holds are closed.
+Fresh/reused evidence still needs final source/build binding before delivery.
+
+| Evidence | Actual scope |
+|---|---|
+| `resume-checkpoint-verification.json` | Exact full owner/fixture equality after the authorized Docker startup/update interruption; owner web app absent, not started. |
+| `candidate76-structural2.json`, `candidate76-db-check2.log` | Both selection invariants and148 historical checks pass after the isolated additive migration. Original148+15 pristine evidence remains retained. |
+| `closed-summary-final1-data/` | 1,908 independent closed comparisons, four summary periods at13,436hearings, pure principal-overlap/duplicate/unassigned/zero/percentage cases and chart/table equality. |
+| `closed-selection2-data/`, `closed-edges2-data/`, `fresh-rejections.json` | Scoped saves/clears/no-ops/retries/conflicts, role denial, shared-pool hazard, old client baseline preservation, native date/status/archive/pagination cases. |
+| `records-partner-final1-data/`, `judgments-final1-data/` | 3,490 record/history and142 judgment comparisons on the continued source and native fixture. |
+| `continuation-check5.log` | Full project check PASS; final build/browser/export still pending. |
+
+Do not present this checkpoint as a sealed implementation review package.

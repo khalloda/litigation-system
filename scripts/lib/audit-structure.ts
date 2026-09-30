@@ -1,3 +1,4 @@
+import { closedSelectionApplied } from './closed-selection-checkpoint';
 import { reportSelectionApplied } from './report-selection-checkpoint';
 import { poaEditApplied, POA_EDIT_GATEWAYS, POA_EDIT_TABLES } from './poa-edit-checkpoint';
 import { auditHistoryApplied, AUDIT_HISTORY_GATEWAYS } from './audit-history-checkpoint';
@@ -363,8 +364,13 @@ export async function runtimeRoleBoundaryFailures(
 ): Promise<string[]> {
   const failures: string[] = [];
   const reportSelection = await reportSelectionApplied(db);
+  const closedSelection = await closedSelectionApplied(db);
   const runtimeTables: readonly string[] = reportSelection
-    ? [...AUDITED_TABLES, 'client_report_selections']
+    ? [
+        ...AUDITED_TABLES,
+        'client_report_selections',
+        ...(closedSelection ? ['closed_report_selections'] : []),
+      ]
     : AUDITED_TABLES;
   const auditHistory = await auditHistoryApplied(db);
   const staffBoundary = await staffBoundaryApplied(db);
@@ -379,6 +385,7 @@ export async function runtimeRoleBoundaryFailures(
   const matterBoundary = await matterEditApplied(db);
   const lifecycle = await matterLifecycleApplied(db);
   const rosterLocked = (table: string) =>
+    (closedSelection && table === 'closed_report_selections') ||
     (reportSelection && table === 'client_report_selections') ||
     (staffBoundary && STAFF_ROSTER_TABLES.includes(table)) ||
     (clientBoundary && ['clients', 'contacts'].includes(table)) ||
@@ -393,6 +400,11 @@ export async function runtimeRoleBoundaryFailures(
     ...(reportSelection
       ? [
           'public.client_report_selection_save(p_account integer, p_person integer, p_session integer, p_role text, p_expires timestamp with time zone, p_request jsonb)',
+        ]
+      : []),
+    ...(closedSelection
+      ? [
+          'public.closed_report_selection_save(p_account integer, p_person integer, p_session integer, p_role text, p_expires timestamp with time zone, p_request jsonb)',
         ]
       : []),
     ...APPROVED_RUNTIME_SECURITY_DEFINERS,
