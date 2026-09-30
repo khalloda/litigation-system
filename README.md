@@ -1,5 +1,18 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Task 6.4 implementation candidate — 1 October 2026
+
+The complete lawyer-report family is implemented locally: six standalone
+reports, separate All qualifying / Selected modes for the five applicable
+purposes, historical reviewer labels and summaries of the complete result.
+Candidate migration 77 adds the independent lawyer-selection workflow; it has
+been applied only to a disposable test database. The owner app and database
+remain at accepted Task 6.3 / migration 76. No acceptance, activation or push
+is included. See the [implementation report](docs/task-reports/2026-10-01-task-6-4-implementation.md),
+[source map](docs/testing/task-6-4-report-semantics.md) and
+[matrix](docs/testing/task-6-4-acceptance-matrix.md). Earlier dated checkpoints
+below retain their historical scope. Stop for independent implementation review.
+
 ## Task 6.1 shared reporting engine candidate - 26 September 2026
 
 The local candidate adds the reusable reporting form, guarded execution and Excel/PDF

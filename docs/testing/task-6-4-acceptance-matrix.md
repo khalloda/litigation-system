@@ -61,3 +61,34 @@ limit is relaxed. The 15 accepted definitions and upcoming definition produce
 byte-identical HTML in the focused old/new renderer contract; all five new
 headers measure below the existing limit. The failed attempt and its saved
 XLSX remain evidence; complete exports will be tested on the corrected build.
+
+## Complete candidate evidence — 1 October 2026 Cairo
+
+This dated completion supersedes the pending continuation rows above, without
+rewriting those checkpoints. It is implementation evidence, not acceptance.
+Application `d4ee1d9d1055ba805e9e6b6d9d7a19bf961cfab3`, isolated build
+`dV6wkGfF2-SxHassEZNGj`; final documentation/receipt identify the child.
+
+| Gate | Result and exact evidence under the continuation root |
+|---|---|
+| Complete source/catalog | `catalog-coverage-final.json`: all45 literal entries, eight accounted by six lawyer definitions; other37 unchanged |
+| Population/fields/full totals | `source-populated1-data/lawyer-reports-source-proof.json`:858 independent comparisons; `lawyer-edges.json`: five native matters/seven hearings; `client245-oracles.json` accepted scopes exact |
+| Upcoming/shared behavior | `upcoming-fresh1-data/upcoming-source-proof.json`:141 fresh comparisons; bound prior native0/1/50/51/four-role10output evidence; `banner-correction-proof.json`:15accepted+upcoming HTML exact |
+| Candidate77 | `candidate77-upgrade.json`, `candidate77-rollback.json`, `candidate77-runtime-refusal-attempt2.json`; SQL unchanged, no owner application |
+| Selection/state authority | `lawyer-selection-proof.json`, native edge proof and `fixture-state-reconciliation.json`: exact retries/noops/races/all cross-purpose directions, strict fresh authority and full old-choice preservation |
+| Genuine browser | `browser-coverage.json` combines retained campaigns: five new purposes × four roles, each PDF/XLSX. `browser-final-ui/result.json`: affected old reports and serial anonymous denials. Failed campaigns retain FAIL status |
+| Selection browser | `selection-browser-combined.json`:21 successful retained observations plus disclosed retry-label/Flight-status/overlapped-count limitations; final exact accounting resolves effects; no bfcache claim |
+| Final reflow | `browser-reflow-final2/result.json`: five layouts at320/390/1440, keyboard scrolling/axe/AX and true200%zoom metrics; supplementary zoom capture records distinguish saved-response replay from backend execution |
+| Read-only final workflow | `readonly-final-closure.json`: dirty hearing-page cancel/explicit discard, shared actionable missing-selection error and exact client239 lawyer-editor link; complete baseline equality after all browser checks |
+| Outputs | Four independent saved-file inspections cover34XLSX+33PDF; `pdf-visual-review.json`:22 observed pages, including long continuation, totals, empty Selected and80-row judgment chart |
+| Fresh combined checks | `full-check8-command.json` and `build4-command.json` exit0; `permissions1-command.json`:480; ongoing source/audit inventory included |
+| Complete fixture final gate | `fixture-final-gates-c.json`:148+15 PASS,152tables/48sequences/77migrations/1362events; exact quiet read-window |
+| Complete effect accounting | `fixture-state-reconciliation.json`, `report-effect-reconciliation.json`:268events,12genuine logins,43previews,68completed exports;67saved, one unsaved, one separate failed render |
+| Owner and files | `owner-final-gates.json`:148+15, migration76/148tables/48sequences/1094events; full baseline equality. `final-file-preservation.json`: exact protected bytes,54logos,recovery and2608accepted-artifact identities |
+| Delivery/cleanup | External five-file receipt binds exact child/clean Git/remote, positively owned cleanup and fresh post-package observations; offline verifier PASS is integrity only |
+
+No owner login, report generation, selection save, migration, repair, restart,
+activation, acceptance closure or publication is included. PDF copying is an
+accepted limitation, not fixed; search remains uncertified and untested.
+The [implementation report](../task-reports/2026-10-01-task-6-4-implementation.md)
+explains failures, reuse and observation limits in plain language.
