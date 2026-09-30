@@ -395,6 +395,25 @@ export function ReportForm({
           {result ? (
             <>
               <h2>{t.reports.result}</h2>
+              {lawyerSelection ? (
+                <>
+                  <p className={styles.wrap}>{result.data.subtitle}</p>
+                  <dl className={styles.recordDetails}>
+                    {result.filterLabels.map((filter, index) => (
+                      <div key={index}>
+                        <dt>{filter.label}</dt>
+                        <dd>
+                          {filter.parts ? (
+                            <ReportLabelParts parts={filter.parts} />
+                          ) : (
+                            <bdi>{filter.value}</bdi>
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              ) : null}
               <p>
                 {descriptor.countLabel ?? t.reports.count}: <bdi>{result.rowCount}</bdi>
               </p>
