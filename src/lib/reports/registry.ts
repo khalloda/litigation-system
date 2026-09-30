@@ -3,12 +3,14 @@ import type { ReportDefinition } from './types';
 import { activeClientContacts } from './client-contacts';
 import { clientJudgments } from './client-judgments';
 import { clientMatterReports } from './client-matter-reports';
+import { matterJudgmentReports } from './matter-judgments';
 
-/** Nine production definitions; owner-adopted semantics are recorded in the
- * Task 6.2 semantics map. Test probes never enter this catalog. */
+/** The nine accepted client definitions retain their IDs and semantics.
+ * New matter definitions follow the Task 6.3 source map; no test probes. */
 export const reportDefinitions: readonly ReportDefinition[] = Object.freeze([
   activeClientContacts,
   ...clientMatterReports.slice(0, 6),
   clientJudgments,
   ...clientMatterReports.slice(6),
+  ...matterJudgmentReports,
 ]);

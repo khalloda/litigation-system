@@ -229,6 +229,13 @@ const REVIEWED_RAW_SQL_CALLS = [
   ],
   // Task 6.2: fixed SELECT adapters inside the engine's read-only snapshot.
   // IDs/date endpoints are bound values; no request-provided SQL or writes.
+  // Task 6.3: hearing-grain judgment query; bound dates/lead ID, EXISTS avoids
+  // multiplying rows. No archive exclusion, raw-text fallback or data mutation.
+  [
+    'src/lib/reports/matter-judgments.ts',
+    'readMatterJudgments',
+    'bc0963a3def27529b9f4fcb372dc7e1c1d72b87b7f9ae13fa648c3550b39682c',
+  ],
   [
     'src/lib/reports/client-contacts.ts',
     'readActiveClientContacts',
@@ -2399,6 +2406,7 @@ export function auditRuntimeSourceFailures(
       source.path === 'src/lib/reports/options.ts' ||
       source.path === 'src/lib/reports/client-contacts.ts' ||
       source.path === 'src/lib/reports/client-judgments.ts' ||
+      source.path === 'src/lib/reports/matter-judgments.ts' ||
       source.path === 'src/lib/reports/client-matter-reports.ts' ||
       source.path === 'src/lib/reports/client-report-data.ts';
     const isReportEngine = source.path === 'src/lib/reports/engine.ts';
