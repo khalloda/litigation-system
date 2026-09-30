@@ -103,3 +103,26 @@ adjacent table. No owner migration, activation, acceptance checkbox, push or
 later-task work occurred. The authorized Docker startup exception is documented
 separately from the owner web-app hold. Final documentation/commit and post-seal
 observations are bound by the delivery receipt, not predicted here.
+
+## Correction 1 review gates — 30 September 2026
+
+All rows below are implementation evidence, pending independent correction 1
+review. Evidence root: `test-results/task63-correction1-20260930T093504Z`.
+
+| Gate | Disposition / evidence |
+|---|---|
+| T63-R1 | Corrected; `pure-final`, `existing-share-comparison.json`, `synthetic-final`: exact ties and canonical preview/XLSX/PDF 1.03; four existing scopes unchanged. |
+| T63-R2 | Corrected; `source-trace.json`, finite nested-form map, `judgments1-data`, `browser-final-extra-complete`, synthetic 0/1/66 and saved full 756-row footer/table. |
+| T63-R3 | Corrected; separate per-line display pieces, final real 1698/native browser and history/cover PDFs, five synthetic edge cases, exact XLSX metadata. First visual failure retained and fixed in separate child. |
+| Source / build | `final-check-command.json`, `build-source2.json`, `build2-command.json`, `artifact-freeze2.json`: application `ac046a28b7157421b34d303bd4b25867d9b9ed60`, build `_RzjAkHqwy8M9tcZ9AF2I`. |
+| Saved outputs | `browser-final-complete/result.json`: 18 cases/36 files, four roles; `synthetic-final`: additional nine workbook/PDF pairs. |
+| Exact / visual | `independent-final-output-inspection.json`: 27 decoded workbooks; `visual-review-final.json`: 16 inspected final PDF pages; no PDF text extraction/search. |
+| Accessibility / context | `browser-final-flow`, `browser-final-extra-complete`: keyboard/error focus, Clear/return/context/stale results, narrow/genuine 200%/axe, chart-table agreement. No speech certification. |
+| Existing reports / rules | Fresh 142 +3, 490 +1, 908 +4 source comparisons; all nine client adapters and HTML/Excel model equality. Unchanged selection/security campaigns explicitly reused with blob bindings. |
+| Database / migration | Fresh 148 +15 pristine and final, exact read windows; isolated 76 upgrade exact; owner 75 unchanged. |
+| Owner preservation | `owner-final-equality.json`, `preservation-after.json`, `runtime-final.json`: full state equal, original five files/recovery/artifact/protected bytes retained; owner app absent, not started. |
+| Effects / failures | `fixture-reconciliation.json`: 350 classified events, 88 saved completions, two explicitly uninspected lost responses; all remaining original rows/sequences/selection state accounted for. Failed harness/visual attempts preserved. |
+| Cleanup / delivery | `fixture-cleanup.json`, `final-app-cleanup.json`; five-file receipt-inclusive verification with exact commit/tree/patch reconstruction and corruption probes; independent review pending. |
+
+No acceptance closure, owner migration/activation, push or later task is authorized
+by this evidence. PDF copying is accepted limitation/not fixed; search uncertified.

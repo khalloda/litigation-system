@@ -249,3 +249,99 @@ constitute independent application review or acceptance.
 **NOT PUSHED; STOPPED FOR INDEPENDENT TASK 6.3 IMPLEMENTATION REVIEW.**
 No owner migration/provisioning/repair, web-app activation/restart, acceptance
 closure, publication or Task 6.4 work was performed.
+
+## Correction 1 implementation delivery — 30 September 2026
+
+**T63-R1–R3 corrected; independent correction 1 review pending.** This section
+supersedes the original readiness claim for those three findings. The independent
+review is imported verbatim at
+`docs/reviews/2026-09-30-task63-independent-implementation-review.md`.
+
+The preserved candidate `369fc987e54d5735b08317aa8985f6dcba21d57c` now has source
+children `1fef44fa2be448e0db96a91baff22f22f9487311` and
+`ac046a28b7157421b34d303bd4b25867d9b9ed60`. Final tested application build:
+`_RzjAkHqwy8M9tcZ9AF2I`, from the latter commit. The final review-documentation
+child changes no application source; its exact identity is in the external receipt.
+The published base remains `9f50f3b8061b5680a943902f7aa1339b1797581a`.
+
+- **R1:** count-based BigInt half-up rounding gives exactly `1.03%` for 41/4000.
+  Twelve tie/neighbor/zero/full cases, duplicate roles, joint full credit and
+  Unassigned pass. The denominator and null-at-zero rule are unchanged. Four
+  current full-volume scopes have no changed displayed values. The synthetic
+  preview, full typed Excel and visibly inspected PDF agree on the corrected value.
+- **R2:** the retained Access parent footer, exact nested form and `صالح-ضد`
+  query are traced in the finite source map. Its complete outcome distribution
+  appears as the approved horizontal bars with a numeric equivalent; source pie
+  geometry is not copied. Counts include empty and unfamiliar outcomes and never
+  depend on the 50-row preview. The full fixture chart totals 756 (512 favourable,
+  241 against, one empty and two other); bounded 2026 totals 3. Synthetic 0/1/66
+  cases, exact complete XLSX cells, visible PDF labels/bars/counts and browser
+  chart/table agreement pass. Each label stays with its bar; a large chart may
+  continue across pages with the complete numeric table.
+- **R3:** matter case number, client and stable ID remain distinct canonical
+  pieces. Each displayed line is isolated separately; no stored/legal value is
+  reversed or receives formatting controls. Native option isolates are display
+  only; search/payloads are unchanged. The real 1698 filter and record both show
+  `1 / 2010`; multiline native, leading-zero, Arabic-mark, long-name and
+  missing/empty cases pass. Excel metadata preserves exact separate values.
+
+Evidence root: `test-results/task63-correction1-20260930T093504Z`.
+
+Fresh checks: complete `npm run check` including audit/authorization self-tests;
+exact committed production build; 62 report-contract cases; 142 judgment,
+3, 490 record, 1, 908 closed and 4 summary full-value comparisons; 322 accepted-client
+judgment runs and 3, 852 other client-report runs; all nine prior PDF HTML/footer
+and complete Excel worksheet/cell/style models equal the corrected renderer.
+Final browser evidence contains 18 complete role/report cases and 36 saved outputs
+(four affected reports across four roles, plus native history/cover). The final
+synthetic campaign adds nine workbooks/PDFs. All 27 final workbooks were decoded
+independently with openpyxl; 16 actual final PDF pages were visually inspected.
+Keyboard/focus, Clear, stale-preview invalidation, matter return context,
+320/390/1440 px, genuine 200% browser zoom and axe checks pass. Screen-reader speech
+was not certified. Original selection conflict/retry/permission campaigns and
+480 permission decisions are reused only for unchanged source closures, with
+exact blob bindings and named limits in `reuse-and-attempts.json`.
+
+The original recovery was freshly hashed and owner full-state equality established
+before reuse. A new identified disposable full-state fixture applied exact 76 once;
+owner remains 75. No migration bytes changed. Fresh pristine/final gates each pass
+148 historical plus 15 setup checks with exact read-window equality. The final
+owner comparison preserves all 145 tables, 48 sequences, catalogs/role fingerprints,
+authentication, 1061 audits and 75 successful migrations. Final owner runtime
+observation at 2026-09-30 10: 43: 01 UTC / 13: 43: 01 Cairo found no 3000 listener and an
+anonymous connection refusal. The owner app was not started or used.
+
+Fixture accounting is exact: 350 additions, IDs 1062–1411; 53 native creations,
+four password-reset/change pairs, 15 genuine sign-ins, 23 account updates,
+161 report executions and 90 completed exports. Of those, 88 have retained bytes;
+events 1200 and 1313 completed but their browser responses were lost. Their exact
+outcomes were inspected read-only before retry, and they are **uninspected**
+completions, never certified output. All required final files were subsequently
+saved. No unexplained export operation remains. Old business rows, all client
+selections/history/receipts, current closed scope (empty), roles and catalogs are
+preserved; only the explicit native matter/hearings and exact fixture authentication
+bookkeeping differ. Sequence increments are one matter and 52 hearings; other 46
+are exact. Both test apps and the exact disposable container/network/volume are
+removed; all earlier evidence, candidates and protected local recovery remain.
+
+Failures are retained. They include formatter/type/audit-inventory refusals,
+a missing Origin in a synthetic request, an ambiguous chart locator, the two
+lost browser responses, and a Windows harness encoding error. Visual inspection
+of the first candidate caught an Arabic-first multiline numeric reversal; the
+second local child fixed it and affected final outputs were rerun. A final
+comparison first used the fixture environment for a snapshot labelled owner;
+cluster/equality checks refused it. The explicit owner comparison then passed.
+The fixture comparator also initially confused account IDs with audit-actor IDs;
+the actual foreign-key relationship corrected that read-only harness. Original
+failed snapshots/logs remain; valid captures were reused without replaying writes.
+The inherited auth-setup table-count and migration-comparator text limitations
+are disclosed in the evidence reuse record. No safety check was weakened.
+
+**NOT PUSHED; STOPPED FOR INDEPENDENT TASK 6.3 CORRECTION 1 REVIEW.**
+Migration 76 remains isolated-only. No owner migration/provisioning/repair,
+activation/restart, acceptance checkbox or Task 6.4 work occurred. TASKS bytes and
+all 86 checkbox lines, governance decisions, UI/Noto fonts and applied SQL are
+unchanged. PDF copying remains an accepted limitation, not fixed; search is
+uncertified and no copying/search diagnosis was reopened. Package integrity is
+not independent implementation acceptance. Local recovery is not off-device
+disaster recovery.
