@@ -87,6 +87,13 @@
   inline-size: 100%;
   min-inline-size: 40rem;
 }
+.scroll .upcomingTable {
+  min-inline-size: 80rem;
+  table-layout: fixed;
+}
+.upcomingTable th:first-child {
+  inline-size: 3rem;
+}
 .scroll th,
 .scroll td {
   border: 1px solid var(--colour-border);

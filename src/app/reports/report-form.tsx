@@ -467,7 +467,13 @@ export function ReportForm({
                           tabIndex={0}
                           aria-label={group.title || t.reports.result}
                         >
-                          <table>
+                          <table
+                            className={
+                              descriptor.id === 'lawyer-upcoming-hearings'
+                                ? styles.upcomingTable
+                                : undefined
+                            }
+                          >
                             <thead>
                               <tr>
                                 <th scope="col">{t.reports.rowNumber}</th>
