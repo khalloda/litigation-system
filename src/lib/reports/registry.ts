@@ -7,6 +7,7 @@ import { matterJudgmentReports } from './matter-judgments';
 import { matterRecordReports } from './matter-record';
 import { closedMatterReport } from './matter-closed';
 import { matterOutcomeSummary } from './matter-outcome-summary';
+import { lawyerUpcomingHearings } from './lawyer-upcoming';
 
 /** The nine accepted client definitions retain their IDs and semantics.
  * New matter definitions follow the Task 6.3 source map; no test probes. */
@@ -19,4 +20,5 @@ export const reportDefinitions: readonly ReportDefinition[] = Object.freeze([
   ...matterRecordReports,
   closedMatterReport,
   matterOutcomeSummary,
+  lawyerUpcomingHearings,
 ]);

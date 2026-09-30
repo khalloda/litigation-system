@@ -195,6 +195,13 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  // Task 6.4 upcoming hearings: fixed SELECT with bound civil dates/person ID;
+  // current principal EXISTS preserves hearing grain and does not write.
+  [
+    'src/lib/reports/lawyer-upcoming.ts',
+    'readLawyerUpcomingHearings',
+    '9952960935453ef7e0ad729f5940e805af2dfdd2b8e8153511931e7d64e4248e',
+  ],
   [
     'src/lib/reports/closed-selection.ts',
     'saveClosedReportSelection',
@@ -2466,6 +2473,7 @@ export function auditRuntimeSourceFailures(
       source.path === 'src/lib/reports/client-contacts.ts' ||
       source.path === 'src/lib/reports/client-judgments.ts' ||
       source.path === 'src/lib/reports/matter-judgments.ts' ||
+      source.path === 'src/lib/reports/lawyer-upcoming.ts' ||
       source.path === 'src/lib/reports/matter-record.ts' ||
       source.path === 'src/lib/reports/matter-closed.ts' ||
       source.path === 'src/lib/reports/matter-outcome-summary.ts' ||
