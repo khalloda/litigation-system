@@ -41,6 +41,7 @@ export async function reportHtml(result: ReportResult, session: Session) {
   // Long attribution guidance belongs in the body, outside the bounded repeated banner.
   const bodyNote =
     Boolean(result.descriptor.charts?.length) ||
+    result.descriptor.id.startsWith('administrative-') ||
     [
       'lawyer-principal-matters',
       'lawyer-supporting-matters',

@@ -67,3 +67,32 @@ Evidence root: `test-results/task65-67-20261001T104114Z`.
 Browser, saved PDF/XLSX visual coverage, final combined regression and cleanup
 remain part of the combined delivery gates. These working proofs do not claim
 that those later gates have already passed. Owner migration remains 77.
+
+## Combined browser finding and bounded correction
+
+The first built Administrator campaign reached the new destination report after
+all five hearing layouts produced saved PDF/XLSX files. Its PDF correctly refused
+an oversized repeated banner: the age explanation was 129.125px high together
+with the title, exceeding the unchanged 115px bound. The three administrative
+work reports now place that explanation in the body, following the existing
+long-guidance pattern. Fresh static renders measure 69.9375px / 68px / 68px
+banners; the full explanation remains visible below the letterhead. This is a
+presentation correction only; query data and all independent oracles are
+unchanged. The source is rebuilt and affected browser exports rerun.
+
+An earlier browser transport failure occurred after one hearing PDF had been
+audited as completed. It was not saved and is explicitly retained as a lost
+output, not visual evidence. Exact audit reconciliation preceded retry; the
+three saved files and two previews were reused. Removing Playwright request
+routing from local download traffic resolved that transport failure. A
+browser-scoped closed proxy blocks external destinations without changing the
+owner app or global settings.
+
+Candidate 78 also passes a fresh full-state migration77 atomicity campaign:
+runtime ledger access is denied, an injected final-statement failure rolls back
+all candidate objects/data, and the complete SQL creates empty new choices and
+13 existing receipt registrations before explicit rehearsal rollback. Complete
+before/after state matches. The two earlier harness assumptions (total ledger
+rows versus completed migrations, and the exact runtime denial message) are
+preserved as failed attempts. All three second fixtures were removed through
+the exact-ownership helper; the primary fixture was retained.
