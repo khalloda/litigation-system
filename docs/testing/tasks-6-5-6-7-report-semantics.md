@@ -1,6 +1,7 @@
 # Tasks 6.5–6.7 source map and candidate contract
 
-Status: implementation in progress; no acceptance or activation. Published base
+Status: local implementation candidate with an open PDF transport finding;
+independent review required, no acceptance or candidate activation. Published base
 `186fd91d4528ac4da480a0699bd0fd44b4fb4749`, migration77. The owner's combined
 instruction is the specific batching exception; all TASKS bytes remain frozen.
 

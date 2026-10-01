@@ -101,3 +101,18 @@ before/after state matches. The two earlier harness assumptions (total ledger
 rows versus completed migrations, and the exact runtime denial message) are
 preserved as failed attempts. All three second fixtures were removed through
 the exact-ownership helper; the primary fixture was retained.
+
+## Final combined evidence — 1 October 2026
+
+The primary fixture was retained until final accounting, then removed with its
+exact owned container, volume and network. The application, profiles and copied
+credentials are removed separately, with receipts in the review package.
+All six administrative definitions have saved PDF/XLSX outputs under all four
+roles. The shared form/result accessibility checks cover 320px, 390px, desktop
+and actual browser 200% zoom; they do not claim universal accessibility conformance.
+Explicit hearing/step Save, restored values and a stale-version refusal were
+proved in the browser. All 148 historical and 15 setup checks pass with complete
+state equality across that final read-only window. The build-label correction
+supplement preserves the original mislabeled result files and binds their actual
+runtime through exclusive port/process/build evidence. The four lost PDF responses
+remain a disclosed unresolved transport finding despite complete replacement files.

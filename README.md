@@ -1,5 +1,22 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Tasks 6.5–6.7 local review candidate — 1 October 2026
+
+Seventeen hearing, administrative, document and POA reports are implemented,
+including blank movement cards and separate administrative hearing/step choices.
+The combined candidate retains all 21 accepted reports and existing selections.
+Candidate migration 78 was tested only on disposable full-state copies; the owner
+remains on accepted Task 6.4 / migration 77. All TASKS bytes remain unchanged.
+
+Full checks, build, independent data comparisons and required saved exports pass.
+An intermittent PDF download failure remains unresolved and is explicitly carried
+to review; successful retries do not constitute a transport fix. See the
+[implementation report](docs/task-reports/2026-10-01-tasks-6-5-6-7-implementation.md),
+[combined matrix](docs/testing/tasks-6-5-6-7-acceptance-matrix.md) and
+[source contract](docs/testing/tasks-6-5-6-7-report-semantics.md).
+No candidate activation, acceptance or publication occurred. Earlier dated entries
+below retain their historical status.
+
 ## Task 6.4 implementation candidate — 1 October 2026
 
 The complete lawyer-report family is implemented locally: six standalone

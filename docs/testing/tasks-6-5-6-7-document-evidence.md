@@ -82,3 +82,15 @@ lines. Its shared POA year column width is increased from 10 to 16, preserving
 every field, value, font and source predicate. Affected list outputs are rerun;
 card layouts retain their fixed header geometry. The prior saved files remain
 dated evidence, not the final corrected inventory visuals.
+
+## Final combined evidence — 1 October 2026
+
+The dated pending gates above are now covered by the combined matrix and report.
+Application source `4ab5a55f929a413fc8fc92773e9adc4518d042c6` built successfully as
+`zOkgjzPES5a1bxa4Kt7fA`. All three affected POA definitions were rerun under all four
+roles, with 12 freshly decoded workbooks and 12 saved PDFs. Visual review inspected
+POA inventory pages 1/147/293, client POA pages 1/5/9 and the one-page blank card.
+Four-digit years and native `0052` stay intact. All other layouts reuse the exact
+bound build2 evidence. Full checks and final 148 historical / 15 setup gates pass;
+the latter leave the complete fixture state unchanged. Independent review still
+must consider the disclosed intermittent transport finding; it is not fixed.
