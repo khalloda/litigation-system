@@ -1,6 +1,5 @@
 'use client';
 import { useRef, useState } from 'react';
-import Link from 'next/link';
 import type {
   AdministrativeSelectionInput,
   AdministrativeSelectionKind,
@@ -218,7 +217,7 @@ export function AdministrativeSelectionEditor({
                   {t.reportSelection.save}
                 </button>
                 {state.error && !state.uncertain ? (
-                  <Link href={reload}>{t.reportSelection.reload}</Link>
+                  <a href={reload}>{t.reportSelection.reload}</a>
                 ) : null}
               </div>
             ) : null}
