@@ -74,3 +74,11 @@ regressions, accounting and cleanup remain mandatory. These working proofs do
 not claim those gates are complete. Owner migration remains 77; candidate 78
 exists only in the task fixture. PDF copying remains an accepted limitation,
 not fixed; search is uncertified.
+
+## Combined visual follow-up
+
+The full-volume POA inventory exposed a four-digit year wrapping across two
+lines. Its shared POA year column width is increased from 10 to 16, preserving
+every field, value, font and source predicate. Affected list outputs are rerun;
+card layouts retain their fixed header geometry. The prior saved files remain
+dated evidence, not the final corrected inventory visuals.

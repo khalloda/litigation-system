@@ -51,7 +51,7 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 const REPORT_ENGINE_CLOSURES = new Map([
   [
     'src/lib/reports/document-reports.ts',
-    'e350d31114528e153e741b501e66bde5f4d423c462be6225395deab7e31d5649',
+    'dae744058de44296089a522d46632af3def205a138f91ce8aee82f3ec3d8e9da',
   ],
   [
     'src/lib/reports/administrative-reports.ts',

@@ -25,7 +25,7 @@ const poaColumns: readonly ReportColumn[] = [
   { key: 'capacity', label: t.poa.capacity, width: 25 },
   { key: 'number', label: t.poa.number, width: 14 },
   { key: 'letter', label: t.poa.letter, width: 12 },
-  { key: 'year', label: t.poa.year, width: 10 },
+  { key: 'year', label: t.poa.year, width: 16 },
   { key: 'issuer', label: t.poa.issuer, width: 22 },
   { key: 'issueDate', label: t.poa.issueDate, width: 24 },
   { key: 'lawyers', label: t.poa.currentLawyers, width: 38 },

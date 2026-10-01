@@ -83,10 +83,15 @@ unchanged. The source is rebuilt and affected browser exports rerun.
 An earlier browser transport failure occurred after one hearing PDF had been
 audited as completed. It was not saved and is explicitly retained as a lost
 output, not visual evidence. Exact audit reconciliation preceded retry; the
-three saved files and two previews were reused. Removing Playwright request
-routing from local download traffic resolved that transport failure. A
-browser-scoped closed proxy blocks external destinations without changing the
-owner app or global settings.
+three saved files and two previews were reused. A retry without Playwright
+request routing succeeded, but later native-transport failures establish that
+routing was not a proven cause. Four server-completed PDFs were not saved;
+each attempt was reconciled before a bounded retry. Protected Chromium wire
+logs show an invalid HTTP response on a reused local connection. A separate
+300-download static Node/Chromium probe did not reproduce it. All required
+files were eventually saved and independently inspected, but the intermittent
+transport failure is not claimed fixed. A browser-scoped closed proxy blocks
+external destinations without changing the owner app or global settings.
 
 Candidate 78 also passes a fresh full-state migration77 atomicity campaign:
 runtime ledger access is denied, an injected final-statement failure rolls back
