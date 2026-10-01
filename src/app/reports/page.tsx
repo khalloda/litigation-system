@@ -53,6 +53,9 @@ export default async function ReportsPage({
         <h2>{t.ui.currentScope}</h2>
         <p>{t.ui.reportScopeHelp}</p>
         <p>{t.ui.noRunOnOpen}</p>
+        <Link href={`/reports/administrative-selection${client ? `?client=${client}` : ''}`}>
+          {t.administrativeSelection.title}
+        </Link>
       </aside>
       {catalog.length ? (
         <ul className={styles.catalog}>

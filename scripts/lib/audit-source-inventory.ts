@@ -50,6 +50,18 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 // The selection editor also uses the existing trusted human context, bounded below.
 const REPORT_ENGINE_CLOSURES = new Map([
   [
+    'src/lib/reports/hearing-teams.ts',
+    '99ac3a4b3e65a881e0b2c000325618d52ffeef466803f728892bb12e322c59b1',
+  ],
+  [
+    'src/lib/reports/hearing-periods.ts',
+    '7893af54b7daeb917a892baef356ea65bc669c2a0bce613a40a30e016f3bb000',
+  ],
+  [
+    'src/lib/reports/administrative-selection.ts',
+    '55bb6c6e25eb27bbaee28c9f4dc3df81fecb912f29c5b69bd269f874d3571954',
+  ],
+  [
     'src/lib/reports/lawyer-selection.ts',
     '9a645dfde161ebc3cedd552b0cae18972babf096e8bd13a29ffffa0d5d6bd836',
   ],
@@ -67,9 +79,9 @@ const REPORT_ENGINE_CLOSURES = new Map([
   ],
   [
     'src/lib/reports/options.ts',
-    '87e590d90f04816b8b556e5b0519ec94c7a0c323381cc86db8cebacd17096afa',
+    'e180266e3127b25fe7197a976dd13bef150496664ddd382a65b1187385ac06bc',
   ],
-  ['src/lib/reports/engine.ts', '34738cfd2b220ca17a1346b1efc0e9b8aa20e7ca206fbb12285902f703febfa3'],
+  ['src/lib/reports/engine.ts', '81314e8a35544d7d28b64a0ac1171960abe62bc1e747eac03a29d2bcd11bb918'],
 ]);
 const DASHBOARD_READ_CLOSURES = new Map([
   ['src/lib/outcome-query.ts', 'ceb3685ccbc35b342314cb7d0cc8eec467f2849f645477255cd572001c8b27c2'],
@@ -199,6 +211,92 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  // Tasks6.5-6.7: exact bound hearing/options reads and separately authorized administrative choices.
+  [
+    'src/lib/reports/administrative-selection.ts',
+    'saveAdministrativeReportSelection',
+    'e03b83e53f59cc5502a3886853d1c4dace2e178685280a8d5dbe09559b57762f',
+  ],
+  [
+    'src/lib/reports/administrative-selection.ts',
+    'readAdministrativeReportSelection',
+    '3a7cca31b9f62dc3eb4e7ffdf5fb5b668946521ed61e0b4888092e3e16a985dc',
+  ],
+  [
+    'src/lib/reports/administrative-selection.ts',
+    'readAdministrativeReportSelection',
+    '3dccc1b04b93b8bba16213d99c97807fee8856446ca3adad877216dd491fb130',
+  ],
+  [
+    'src/lib/reports/administrative-selection.ts',
+    'readAdministrativeReportSelection',
+    '356d483d651ccfaf4a13301fa821148c44d64fbf9b6652e8ffd59587fef174aa',
+  ],
+  [
+    'src/lib/reports/administrative-selection.ts',
+    'readAdministrativeReportSelection',
+    '989563e9d398d4a39c2eaaeca2bcbd3231990c00965b3e512f782006afe6951e',
+  ],
+  [
+    'src/lib/reports/administrative-selection.ts',
+    'readAdministrativeReportSelection',
+    '01086bd1ee3e7f1376b1966bddfa6b38e92d3f127b0325a81f87abe14a4834a0',
+  ],
+  [
+    'src/lib/reports/hearing-periods.ts',
+    'readHearingPeriod',
+    '88e813e189456fd2558d6c7c52dacb91d1a49c4bd0bc8946592273b1bfc49680',
+  ],
+  [
+    'src/lib/reports/hearing-teams.ts',
+    'readTeamHearings',
+    '391616b661b51cd89f6fd0c6b6f18c3448113980ad8f7b366ca87f82704b9601',
+  ],
+  [
+    'src/lib/reports/hearing-teams.ts',
+    'readTeamHearings',
+    '3b7edb89776b543b6d3475487a66c43318bcbcd6a29c643c06d31fce458defac',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '2b1d1f16e998bda5c0f91fd0a570d8eb17eb68caea5f775d7d1a3dbe5ff6e76c',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '2ca943aa3c24733ea0c54c2f263d0d06ea97296f465a816fad8e8229fd47b98a',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '858c7bf64ff2da16df2caa6f3e240b8332aec8f8a3a584eb348a7a886a90967e',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '11a6cf62bcf55991261793975905b339361414ba6b155fcf67d9a1ea57bdcc06',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '8af8022f998145e1ae1c8a5de84204037a55965fa8ce4141aed40817bab13ecb',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '69866cdefb9ea2941df6ba9de7c4c8efcf3176af01f3833d4686aa33a920efc2',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '4ff0378b6be6e4469f13952bbfa80ab52c97bc8768790f64c9cd31ec3bafdf77',
+  ],
+  [
+    'src/lib/reports/options.ts',
+    'reportOptions',
+    '67ead7849f93aa5e86b1e7695e20912ac9759f060598be70233c17db3dd489b3',
+  ],
   // Task6.4: bound fixed read queries and the exact audited third-purpose save gateway.
   [
     'src/lib/reports/lawyer-matters.ts',
@@ -339,11 +437,6 @@ const REVIEWED_RAW_SQL_CALLS = [
     'a88e811ceeabb422f44d69d2ac52e15c43ce530f51218d6e49e40894e63356be',
   ],
   [
-    'src/lib/reports/options.ts',
-    'reportOptions',
-    '11a6cf62bcf55991261793975905b339361414ba6b155fcf67d9a1ea57bdcc06',
-  ],
-  [
     'src/lib/reports/matter-judgments.ts',
     'readMatterJudgments',
     '56dd936bafe75511649214f0c79c66c543198de1b874148053ada488c1f06af5',
@@ -377,21 +470,6 @@ const REVIEWED_RAW_SQL_CALLS = [
     'src/lib/reports/authority.ts',
     'reportSnapshot',
     '56faf7ccbeb2ecb45e810e25897d3edc2f93adc5399918d2f7b5fb265d71b45c',
-  ],
-  [
-    'src/lib/reports/options.ts',
-    'reportOptions',
-    '2b1d1f16e998bda5c0f91fd0a570d8eb17eb68caea5f775d7d1a3dbe5ff6e76c',
-  ],
-  [
-    'src/lib/reports/options.ts',
-    'reportOptions',
-    '2ca943aa3c24733ea0c54c2f263d0d06ea97296f465a816fad8e8229fd47b98a',
-  ],
-  [
-    'src/lib/reports/options.ts',
-    'reportOptions',
-    '858c7bf64ff2da16df2caa6f3e240b8332aec8f8a3a584eb348a7a886a90967e',
   ],
   [
     'src/lib/outcome-query.ts',
@@ -2514,6 +2592,8 @@ export function auditRuntimeSourceFailures(
     )
       failures.add('Report guarded closure differs from reviewed inventory: ' + source.path);
     const isReportReadService =
+      source.path === 'src/lib/reports/hearing-periods.ts' ||
+      source.path === 'src/lib/reports/hearing-teams.ts' ||
       source.path === 'src/lib/reports/authority.ts' ||
       source.path === 'src/lib/reports/options.ts' ||
       source.path === 'src/lib/reports/client-contacts.ts' ||
@@ -2647,6 +2727,7 @@ export function auditRuntimeSourceFailures(
     )
       failures.add('Logo mutation closure differs from reviewed inventory');
     const isReportSelectionService =
+      source.path === 'src/lib/reports/administrative-selection.ts' ||
       source.path === 'src/lib/reports/selection.ts' ||
       source.path === 'src/lib/reports/closed-selection.ts' ||
       source.path === 'src/lib/reports/lawyer-selection.ts';
@@ -3207,6 +3288,12 @@ export function auditRuntimeSourceFailures(
       if (!authImports.has(helper)) failures.add(`${AUDIT_AUTH_SERVICE} must import ${helper}`);
     }
     const expectedCalls = [
+      [
+        'setHumanAuditContext',
+        'saveAdministrativeReportSelection',
+        'tx,Number(actor.user.id),dependencies.auditMetadata',
+        1,
+      ],
       [
         'setHumanAuditContext',
         'saveLawyerReportSelection',

@@ -1,3 +1,4 @@
+import { administrativeSelectionApplied } from './administrative-selection-checkpoint';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -150,6 +151,10 @@ export async function lawyerSelectionFailures(db: ClientBase) {
         .filter((m) => m[2] === table)
         .map((m) => m[1])
         .sort();
+      if (table.endsWith('_submission') && (await administrativeSelectionApplied(db))) {
+        declaredTriggers.push('administrative_selection_scope');
+        declaredTriggers.sort();
+      }
       assert.deepEqual(
         (
           await db.query(

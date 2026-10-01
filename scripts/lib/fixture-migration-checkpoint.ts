@@ -84,10 +84,15 @@ function reviewedRepository(
 ) {
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77].includes(
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78].includes(
       repository.migrations.length,
     ),
   );
+  if (repository.migrations.length >= 78)
+    assert.equal(
+      repository.migrations[77]?.name,
+      '20261001123000_administrative_report_selections',
+    );
   if (repository.migrations.length >= 77)
     assert.equal(repository.migrations[76]?.name, '20260930210000_lawyer_report_selection');
   if (repository.migrations.length >= 76)

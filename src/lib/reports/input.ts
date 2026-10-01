@@ -133,7 +133,7 @@ export function parseReportInput(descriptor: ReportDescriptor, pairs: URLSearchP
       lawyer: choices.get('lawyer') ?? parsed.lawyer,
       ...Object.fromEntries(
         REFERENCE_FIELDS.slice(3)
-          .filter((key) => descriptor.parameters[key])
+          .filter((key) => referenceRule(descriptor, key))
           .map((key) => [key, choices.get(key) ?? { kind: 'all' as const }]),
       ),
       from,

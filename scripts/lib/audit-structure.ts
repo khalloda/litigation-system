@@ -1,3 +1,8 @@
+import {
+  administrativeSelectionApplied,
+  ADMINISTRATIVE_SELECTION_TABLES,
+  ADMINISTRATIVE_SELECTION_GATEWAYS,
+} from './administrative-selection-checkpoint';
 import { lawyerSelectionApplied } from './lawyer-selection-checkpoint';
 import { closedSelectionApplied } from './closed-selection-checkpoint';
 import { reportSelectionApplied } from './report-selection-checkpoint';
@@ -366,6 +371,7 @@ export async function runtimeRoleBoundaryFailures(
   const failures: string[] = [];
   const reportSelection = await reportSelectionApplied(db);
   const closedSelection = await closedSelectionApplied(db);
+  const administrativeSelection = await administrativeSelectionApplied(db);
   const lawyerSelection = await lawyerSelectionApplied(db);
   const runtimeTables: readonly string[] = reportSelection
     ? [
@@ -373,6 +379,7 @@ export async function runtimeRoleBoundaryFailures(
         'client_report_selections',
         ...(closedSelection ? ['closed_report_selections'] : []),
         ...(lawyerSelection ? ['lawyer_report_selections'] : []),
+        ...(administrativeSelection ? ADMINISTRATIVE_SELECTION_TABLES : []),
       ]
     : AUDITED_TABLES;
   const auditHistory = await auditHistoryApplied(db);
@@ -388,6 +395,7 @@ export async function runtimeRoleBoundaryFailures(
   const matterBoundary = await matterEditApplied(db);
   const lifecycle = await matterLifecycleApplied(db);
   const rosterLocked = (table: string) =>
+    (administrativeSelection && ADMINISTRATIVE_SELECTION_TABLES.includes(table)) ||
     (closedSelection && table === 'closed_report_selections') ||
     (lawyerSelection && table === 'lawyer_report_selections') ||
     (reportSelection && table === 'client_report_selections') ||
@@ -417,6 +425,7 @@ export async function runtimeRoleBoundaryFailures(
           'public.lawyer_report_historical_reviewer(p_ids integer[])',
         ]
       : []),
+    ...(administrativeSelection ? ADMINISTRATIVE_SELECTION_GATEWAYS : []),
     ...APPROVED_RUNTIME_SECURITY_DEFINERS,
     ...(poaBoundary ? POA_EDIT_GATEWAYS : []),
     ...(tasks46_47Boundary ? TASKS46_47_GATEWAYS : []),

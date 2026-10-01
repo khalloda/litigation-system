@@ -166,7 +166,10 @@ async function readHearingPeriod(
             : datedDecision(r.hearingDate, r.shortDecision);
     const names =
       purpose === 'preliminary'
-        ? r.assignments.map((a) => `${t.matters.lawyerRoles[a.role]}: ${a.name}`)
+        ? r.assignments.map(
+            (a) =>
+              `${a.role === 'lead' ? t.matters.lawyerRoles.lead : a.role === 'co_lead' ? t.matters.lawyerRoles.co_lead : t.matters.lawyerRoles.support}: ${a.name}`,
+          )
         : r.attendees;
     group.rows.push({
       id: `hearing:${r.id}`,

@@ -8,7 +8,7 @@ import { t } from '@/strings';
 import { requireReportAuthority, reportSnapshot } from './authority';
 import { parseReportInput, readReportRequest } from './input';
 import { reportOptions, validateReportOptions, reportFilterLabels } from './options';
-import { REFERENCE_FIELDS } from './fields';
+import { REFERENCE_FIELDS, referenceRule, referenceChoice } from './fields';
 import { validateDefinition, validateReportData } from './result';
 import { renderReportExcel } from './excel';
 import { renderReportPdf } from './pdf';
@@ -110,8 +110,10 @@ export function createReportEngine(
           lawyer: parameters.lawyer.kind === 'id' ? parameters.lawyer.id : parameters.lawyer.kind,
           ...Object.fromEntries(
             REFERENCE_FIELDS.slice(3).flatMap((key) => {
-              const selected = parameters[key];
-              return selected ? [[key, selected.kind === 'id' ? selected.id : selected.kind]] : [];
+              const selected = referenceChoice(parameters, key);
+              return referenceRule(d.descriptor, key)
+                ? [[key, selected.kind === 'id' ? selected.id : selected.kind]]
+                : [];
             }),
           ),
           ...parameters.extra,

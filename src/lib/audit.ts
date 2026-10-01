@@ -5,6 +5,8 @@ type AuditTransaction = Prisma.TransactionClient;
 
 export const AUDITED_ENTITY_TABLES = [
   'admin_tasks',
+  'administrative_hearing_report_selections',
+  'administrative_step_report_selections',
   'attendance',
   'client_logos',
   'client_report_selections',

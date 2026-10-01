@@ -1,4 +1,10 @@
 import {
+  administrativeSelectionApplied,
+  administrativeSelectionFailures,
+  ADMINISTRATIVE_SELECTION_TABLES,
+  ADMINISTRATIVE_SELECTION_FIELDS,
+} from './administrative-selection-checkpoint';
+import {
   lawyerSelectionApplied,
   lawyerSelectionFailures,
   LAWYER_SELECTION_FIELDS,
@@ -175,6 +181,8 @@ export async function auditEventStructureFailures(
   failures.push(...(await task62SourceFailures(db)));
   const reportSelection = await reportSelectionApplied(db);
   const closedSelection = await closedSelectionApplied(db);
+  const administrativeSelection = await administrativeSelectionApplied(db);
+  failures.push(...(await administrativeSelectionFailures(db)));
   const lawyerSelection = await lawyerSelectionApplied(db);
   failures.push(...(await lawyerSelectionFailures(db)));
   failures.push(...(await closedSelectionFailures(db)));
@@ -185,6 +193,7 @@ export async function auditEventStructureFailures(
         'client_report_selections',
         ...(closedSelection ? ['closed_report_selections'] : []),
         ...(lawyerSelection ? ['lawyer_report_selections'] : []),
+        ...(administrativeSelection ? ADMINISTRATIVE_SELECTION_TABLES : []),
       ].sort()
     : AUDITED_TABLES;
   const auditHistory = await auditHistoryApplied(db);
@@ -204,6 +213,7 @@ export async function auditEventStructureFailures(
     ...(reportSelection ? REPORT_SELECTION_FIELDS : []),
     ...(closedSelection ? CLOSED_SELECTION_FIELDS : []),
     ...(lawyerSelection ? LAWYER_SELECTION_FIELDS : []),
+    ...(administrativeSelection ? ADMINISTRATIVE_SELECTION_FIELDS : []),
     ...(poaBoundary ? POA_EDIT_FIELDS : []),
     ...(tasks46_47Boundary ? TASKS46_47_FIELDS : []),
     ...(staffBoundary ? STAFF_FIELD_RULES : []),
@@ -244,6 +254,7 @@ export async function auditEventStructureFailures(
             'client_report_selections',
             'closed_report_selections',
             'lawyer_report_selections',
+            ...ADMINISTRATIVE_SELECTION_TABLES,
           ].includes(entity_table) && field_name === 'id'
             ? 'entity_key'
             : 'value',

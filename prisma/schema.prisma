@@ -1436,6 +1436,7 @@ model Hearing {
   reportSelections ClientReportSelection[]
   closedReportSelections ClosedReportSelection[]
   lawyerReportSelections LawyerReportSelection[]
+  administrativeReportChoice AdministrativeHearingReportSelection?
   isArchived Boolean @default(false) @map("is_archived")
   rowVersion BigInt @default(1) @map("row_version")
   id       Int  @id @default(autoincrement())
@@ -1602,6 +1603,7 @@ model AdminTask {
 /// 36 source rows name no task and 39 name none; they remain in immutable
 /// quarantine rather than becoming detached target steps.
 model TaskAction {
+  administrativeReportChoice AdministrativeStepReportSelection?
   isArchived Boolean @default(false) @map("is_archived")
   /// Native append order; imported source ordinal remains unchanged.
   currentOrder Int? @map("current_order")
@@ -2732,4 +2734,21 @@ model LawyerReportSelection {
   isSelected Boolean @map("is_selected")
   rowVersion BigInt @map("row_version")
   @@map("lawyer_report_selections")
+}
+
+/// Independent administrative-report choice, never a legacy manual flag.
+model AdministrativeHearingReportSelection {
+  id Int @id
+  hearing Hearing @relation(fields:[id],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  isSelected Boolean @map("is_selected")
+  rowVersion BigInt @map("row_version")
+  @@map("administrative_hearing_report_selections")
+}
+
+model AdministrativeStepReportSelection {
+  id Int @id
+  step TaskAction @relation(fields:[id],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  isSelected Boolean @map("is_selected")
+  rowVersion BigInt @map("row_version")
+  @@map("administrative_step_report_selections")
 }

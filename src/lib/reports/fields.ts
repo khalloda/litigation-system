@@ -17,13 +17,31 @@ export const REFERENCE_FIELDS = [
   'document',
 ] as const;
 export function referenceRule(descriptor: ReportDescriptor, key: ReferenceField) {
-  return descriptor.parameters[key];
+  return Object.entries(descriptor.parameters).find(([name]) => name === key)?.[1];
 }
 export function referenceChoice(parameters: ReportParameters, key: ReferenceField) {
-  return parameters[key] ?? { kind: 'all' as const };
+  // Explicit fields keep the reference contract distinct from dates and extras.
+  switch (key) {
+    case 'client':
+      return parameters.client;
+    case 'branch':
+      return parameters.branch;
+    case 'lawyer':
+      return parameters.lawyer;
+    case 'matter':
+      return parameters.matter ?? { kind: 'all' as const };
+    case 'team':
+      return parameters.team ?? { kind: 'all' as const };
+    case 'destination':
+      return parameters.destination ?? { kind: 'all' as const };
+    case 'poa':
+      return parameters.poa ?? { kind: 'all' as const };
+    case 'document':
+      return parameters.document ?? { kind: 'all' as const };
+  }
 }
 export function referenceOptions(options: ReportOptions, key: ReferenceField) {
-  return options[key] ?? [];
+  return Object.entries(options).find(([name]) => name === key)?.[1] ?? [];
 }
 export function reportFieldLabel(key: string) {
   return (

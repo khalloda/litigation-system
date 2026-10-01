@@ -50,6 +50,19 @@ export type RouteInventoryEntry = {
 export const ROUTE_INVENTORY = [
   {
     kind: 'page',
+    source: 'src/app/reports/administrative-selection/page.tsx',
+    route: '/reports/administrative-selection',
+    classification: { access: 'permission', area: 'reports', action: 'run' },
+  },
+  {
+    kind: 'server-action',
+    source: 'src/app/reports/administrative-selection/actions.ts',
+    exportName: 'saveAdministrativeSelectionAction',
+    // The service and SQL gateways additionally enforce the hearing/work edit role.
+    classification: { access: 'permission', area: 'reports', action: 'run' },
+  },
+  {
+    kind: 'page',
     source: 'src/app/reports/lawyer-selection/page.tsx',
     route: '/reports/lawyer-selection',
     classification: { access: 'permission', area: 'reports', action: 'run' },
