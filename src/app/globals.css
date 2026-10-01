@@ -60,6 +60,9 @@
   /* Lines and warnings */
   --colour-border: #c7c7c7;
   --colour-danger: #802f1c; /* Terracotta Red */
+  /* Source-mandated POA zero-copy highlight (REPORT-LAYOUTS / Task 6.7),
+     matching the printed report; a report semantic, not a new brand colour. */
+  --report-zero-copy-background: #ffff00;
 
   /* ---- LAYER 2: UI tokens ------------------------------------------------
      Derived from the twelve above, which are the firm's fixed identity

@@ -8,6 +8,7 @@ import { cellText, reportColumns } from './result';
 import { reportChart, reportOutcomeChart } from './chart';
 import { reportLineDirection } from './label';
 import { printableText } from './excel';
+import { movementHtml, movementPrintCss } from './movement-html';
 import {
   REPORT_LIMITS,
   ReportError,
@@ -23,6 +24,7 @@ export const escapeReportHtml = (value: string) =>
   );
 const text = (value: string) => escapeReportHtml(printableText(value));
 export async function reportHtml(result: ReportResult, session: Session) {
+  const movement = Boolean(result.descriptor.manual?.kind);
   const assets = await reportAssets();
   const fonts = assets.fonts
     .map(
@@ -53,9 +55,10 @@ export async function reportHtml(result: ReportResult, session: Session) {
   ) =>
     `<tr${r.highlight === 'attention' ? ' class="attention"' : ''}><td>${n}</td>${r.cells.map((c) => `<td><bdi>${text(cellText(c))}</bdi></td>`).join('')}</tr>`;
   const manual = result.descriptor.manual;
-  const blanks = manual
-    ? `<aside><h2>${text(manual.heading)}</h2><table><thead><tr>${manual.labels.map((x) => `<th>${text(x)}</th>`).join('')}</tr></thead><tbody>${Array.from({ length: manual.lines }, () => `<tr>${manual.labels.map(() => '<td class="blank">................................</td>').join('')}</tr>`).join('')}</tbody></table></aside>`
-    : '';
+  const blanks =
+    manual && !manual.kind
+      ? `<aside><h2>${text(manual.heading)}</h2><table><thead><tr>${manual.labels.map((x) => `<th>${text(x)}</th>`).join('')}</tr></thead><tbody>${Array.from({ length: manual.lines }, () => `<tr>${manual.labels.map(() => '<td class="blank">................................</td>').join('')}</tr>`).join('')}</tbody></table></aside>`
+      : '';
   let cardNumber = 0;
   const vertical = (columns: readonly ReportColumn[], cells: readonly ReportCell[]) =>
     `<table class="record-details"><colgroup><col style="width:25%"><col style="width:75%"></colgroup><tbody>${columns.map((column, index) => `<tr><th scope="row">${text(column.label)}</th><td><bdi>${text(cellText(cells.at(index)!))}</bdi></td></tr>`).join('')}</tbody></table>`;
@@ -89,9 +92,10 @@ export async function reportHtml(result: ReportResult, session: Session) {
                 .join('');
             if (result.descriptor.layout === 'card')
               return group.rows
-                .map(
-                  (r, i) =>
-                    `<article class="card${cardNumber++ ? ' next-card' : ''}"><strong class="record">${text(r.id)}</strong><table>${width}<thead>${cols}</thead><tbody>${row(r, i + 1)}</tbody></table>${blanks}</article>`,
+                .map((r, i) =>
+                  movement
+                    ? movementHtml(result.descriptor, columns, r, text)
+                    : `<article class="card${cardNumber++ ? ' next-card' : ''}"><strong class="record">${text(r.id)}</strong><table>${width}<thead>${cols}</thead><tbody>${row(r, i + 1)}</tbody></table>${blanks}</article>`,
                 )
                 .join('');
             return `<table>${width}<thead>${result.descriptor.layout !== 'flat' ? `<tr><th colspan="${columns.length + 1}">${text(groupTitle)}</th></tr>` : ''}${cols}</thead><tbody>${group.rows.map((r, i) => row(r, i + 1)).join('') || `<tr><td colspan="${columns.length + 1}">${text(t.reports.noRows)}</td></tr>`}</tbody></table>`;
@@ -114,7 +118,13 @@ export async function reportHtml(result: ReportResult, session: Session) {
   const outcomeFooter = outcomes
     ? `<section class="outcome-chart"><h2>${text(t.matterReports.outcomeChart)}</h2>${outcomes.rows.map((r) => `<div class="report-chart"><p><bdi>${text(r.label)}</bdi>: ${r.count} (${r.share}%)</p><div aria-hidden="true" style="background:#e9f1ef"><div style="height:10px;width:${(100 * r.count) / outcomes.maximum}%;background:${r.against ? '#9c9174' : '#214b4b'}"></div></div></div>`).join('')}<table><thead><tr><th>${text(t.matterReports.outcomeLabel)}</th><th>${text(t.matterReports.hearingCount)}</th><th>${text(t.matterReports.outcomeShare)}</th></tr></thead><tbody>${outcomes.rows.map((r) => `<tr><th scope="row"><bdi>${text(r.label)}</bdi></th><td>${r.count}</td><td>${r.share}</td></tr>`).join('')}<tr><th>${text(t.matterReports.hearingCount)}</th><td>${outcomes.total}</td><td></td></tr></tbody></table></section>`
     : '';
-  const filterText = result.filterLabels
+  const displayedFilters = movement
+    ? result.filterLabels.map((label) => ({
+        ...label,
+        parts: label.parts?.filter((part) => part.label === t.reports.recordId),
+      }))
+    : result.filterLabels;
+  const filterText = displayedFilters
     .map((x) =>
       x.parts
         ? `<span class="filter-parts">${text(x.label)}: ${x.parts
@@ -135,7 +145,7 @@ export async function reportHtml(result: ReportResult, session: Session) {
   const footer = `<div style="font-family:Report0;font-size:9px;width:100%;direction:rtl;text-align:center"><style>${fonts}</style>${text(generated)} — ${text(result.descriptor.title)} — ${text(t.reports.page)} <span class="pageNumber"></span> ${text(t.reports.of)} <span class="totalPages"></span></div>`;
   const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"><style>${fonts}
     @page{size:A4 ${['card', 'cover'].includes(result.descriptor.layout) ? 'portrait' : 'landscape'}}
-    body{font-family:Report0;font-size:9pt;line-height:1.5;color:#000}h1,h2{color:#214B4B;break-after:avoid}h1{font-size:17pt;margin:2px;line-height:1.3}h2{font-size:11pt;margin:2px;line-height:1.3}header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #214B4B;padding-bottom:6px}header:after{content:'';position:absolute;inset-inline:0;inset-block-end:2px;border-bottom:2px solid #B6AA92}header>div{width:30%;text-align:center}header img{max-width:100%;max-height:55px;object-fit:contain}.watermark{position:fixed;inset-block-start:0;inset-inline-end:0;width:85px;opacity:.05;z-index:-1}.watermark img{width:100%}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}th,td{border:1px solid #ccc;padding:3px;text-align:start;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}th{background:#eee}thead{display:table-header-group}tr{break-inside:${result.descriptor.id.startsWith('matter-') ? 'avoid' : 'auto'}}bdi{unicode-bidi:plaintext;white-space:pre-wrap}.attention td{background:#ffff00}.count{font-weight:bold}.next-card{break-before:page}.record{display:inline-block;border:3px solid #000;padding:5px}.blank{height:20px}aside{break-inside:auto;border-top:2px solid #B6AA92}aside h2{break-after:avoid}${result.descriptor.id.startsWith('matter-') ? '.report-chart{break-inside:avoid}.filter-parts{display:inline-grid;gap:3px;max-width:100%}.filter-value{display:inline-block;direction:ltr;unicode-bidi:plaintext;max-width:100%;overflow-wrap:anywhere}' : ''}</style></head><body><div class="watermark">${image(assets.emblem, 'image/png', '')}</div>${heading}${bodyNote ? `<p>${text(result.data.subtitle)}</p>` : ''}<p>${filterText}</p><p>${text(t.reports.generatedAt)}: <bdi>${text(generated)}</bdi></p>${details}${body}${outcomeFooter}${result.descriptor.layout !== 'card' ? `<table><tbody>${result.data.totals.map((x) => `<tr><th>${text(x.label)}</th><td>${text(cellText(x.value))}</td></tr>`).join('')}<tr class="count"><th>${text(result.descriptor.countLabel ?? t.reports.count)}</th><td>${result.rowCount}</td></tr></tbody></table>${blanks}` : ''}</body></html>`;
+    body{font-family:Report0;font-size:9pt;line-height:1.5;color:#000}h1,h2{color:#214B4B;break-after:avoid}h1{font-size:17pt;margin:2px;line-height:1.3}h2{font-size:11pt;margin:2px;line-height:1.3}header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #214B4B;padding-bottom:6px}header:after{content:'';position:absolute;inset-inline:0;inset-block-end:2px;border-bottom:2px solid #B6AA92}header>div{width:30%;text-align:center}header img{max-width:100%;max-height:55px;object-fit:contain}.watermark{position:fixed;inset-block-start:0;inset-inline-end:0;width:85px;opacity:.05;z-index:-1}.watermark img{width:100%}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-block:8px}th,td{border:1px solid #ccc;padding:3px;text-align:start;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}th{background:#eee}thead{display:table-header-group}tr{break-inside:${result.descriptor.id.startsWith('matter-') ? 'avoid' : 'auto'}}bdi{unicode-bidi:plaintext;white-space:pre-wrap}.attention td{background:#ffff00}.count{font-weight:bold}.next-card{break-before:page}.record{display:inline-block;border:3px solid #000;padding:5px}.blank{height:20px}aside{break-inside:auto;border-top:2px solid #B6AA92}aside h2{break-after:avoid}${result.descriptor.id.startsWith('matter-') ? '.report-chart{break-inside:avoid}.filter-parts{display:inline-grid;gap:3px;max-width:100%}.filter-value{display:inline-block;direction:ltr;unicode-bidi:plaintext;max-width:100%;overflow-wrap:anywhere}' : ''}${movement ? movementPrintCss : ''}.filter-parts{display:inline-grid;gap:3px;max-width:100%}.filter-value{display:inline-block;direction:ltr;unicode-bidi:plaintext;max-width:100%;overflow-wrap:anywhere}</style></head><body><div class="watermark">${image(assets.emblem, 'image/png', '')}</div>${heading}${bodyNote ? `<p>${text(result.data.subtitle)}</p>` : ''}<p>${filterText}</p><p>${text(t.reports.generatedAt)}: <bdi>${text(generated)}</bdi></p>${details}${body}${outcomeFooter}${result.descriptor.layout !== 'card' ? `<table><tbody>${result.data.totals.map((x) => `<tr><th>${text(x.label)}</th><td>${text(cellText(x.value))}</td></tr>`).join('')}<tr class="count"><th>${text(result.descriptor.countLabel ?? t.reports.count)}</th><td>${result.rowCount}</td></tr></tbody></table>${blanks}` : ''}</body></html>`;
   if (Buffer.byteLength(html) > REPORT_LIMITS.resultBytes) throw new ReportError('too-large');
   return { html, footer };
 }
@@ -197,7 +207,8 @@ export async function renderReportPdf(
       (element as HTMLElement).style.position = 'relative';
     });
     const bannerBounds = await banner.boundingBox();
-    if (!bannerBounds || bannerBounds.height > 115) throw new ReportError('too-large');
+    if (!bannerBounds || bannerBounds.height > (result.descriptor.manual?.kind ? 90 : 115))
+      throw new ReportError('too-large');
     // Chromium's repeated header font subsetting can clip later pages. Render
     // this shared branded header once with the already verified bundled fonts;
     // repeat those exact pixels. Body/footer text retains embedded glyph fonts.
@@ -210,49 +221,57 @@ export async function renderReportPdf(
     });
     const header = `<div style="width:100%;margin:4mm 10mm 0"><img style="width:100%;height:auto" alt="${text(result.descriptor.title)}" src="data:image/png;base64,${bannerBytes.toString('base64')}"></div>`;
     await banner.evaluate((element) => element.remove());
-    await page.evaluate(
-      ({ maximumHeight, continuation }) => {
-        const started = performance.now();
-        for (const original of [...document.querySelectorAll<HTMLTableRowElement>('tbody tr')]) {
-          if (original.getBoundingClientRect().height <= maximumHeight) continue;
-          const cells = [...original.cells];
-          const remaining = cells.map((c) => [...(c.textContent ?? '')]);
-          const recordNumber = remaining.at(0)!.join('');
-          let part = 0;
-          while (remaining.some((s, i) => i > 0 && s.length)) {
-            if (performance.now() - started > 20000) throw Error('pagination bound');
-            const chunk = original.cloneNode(true) as HTMLTableRowElement;
-            original.before(chunk);
-            const targets = [...chunk.cells];
-            targets.forEach((c) => {
-              c.textContent = '';
-            });
-            targets.at(0)!.textContent = part++ ? continuation : recordNumber;
-            for (let i = 1; i < targets.length; i++) {
-              const target = targets.at(i)!;
-              const source = remaining.at(i)!;
-              let low = 0,
-                high = Math.min(source.length, 16000);
-              while (low < high) {
-                const mid = Math.ceil((low + high) / 2);
-                target.textContent = source.slice(0, mid).join('');
-                if (chunk.getBoundingClientRect().height <= maximumHeight) low = mid;
-                else high = mid - 1;
+    if (result.descriptor.manual?.kind) {
+      const height = await page
+        .locator('body')
+        .evaluate((body) => body.getBoundingClientRect().height);
+      // One complete card per page. Refuse an oversized header rather than clipping
+      // source text, shrinking writing rows or silently emitting a partial card.
+      if (height > 950) throw new ReportError('too-large');
+    } else
+      await page.evaluate(
+        ({ maximumHeight, continuation }) => {
+          const started = performance.now();
+          for (const original of [...document.querySelectorAll<HTMLTableRowElement>('tbody tr')]) {
+            if (original.getBoundingClientRect().height <= maximumHeight) continue;
+            const cells = [...original.cells];
+            const remaining = cells.map((c) => [...(c.textContent ?? '')]);
+            const recordNumber = remaining.at(0)!.join('');
+            let part = 0;
+            while (remaining.some((s, i) => i > 0 && s.length)) {
+              if (performance.now() - started > 20000) throw Error('pagination bound');
+              const chunk = original.cloneNode(true) as HTMLTableRowElement;
+              original.before(chunk);
+              const targets = [...chunk.cells];
+              targets.forEach((c) => {
+                c.textContent = '';
+              });
+              targets.at(0)!.textContent = part++ ? continuation : recordNumber;
+              for (let i = 1; i < targets.length; i++) {
+                const target = targets.at(i)!;
+                const source = remaining.at(i)!;
+                let low = 0,
+                  high = Math.min(source.length, 16000);
+                while (low < high) {
+                  const mid = Math.ceil((low + high) / 2);
+                  target.textContent = source.slice(0, mid).join('');
+                  if (chunk.getBoundingClientRect().height <= maximumHeight) low = mid;
+                  else high = mid - 1;
+                }
+                if (source.length && !low) throw Error('unprintable column');
+                const isolate = document.createElement('bdi');
+                isolate.textContent = source.splice(0, low).join('');
+                target.replaceChildren(isolate);
               }
-              if (source.length && !low) throw Error('unprintable column');
-              const isolate = document.createElement('bdi');
-              isolate.textContent = source.splice(0, low).join('');
-              target.replaceChildren(isolate);
             }
+            original.remove();
           }
-          original.remove();
-        }
-      },
-      {
-        maximumHeight: ['card', 'cover'].includes(result.descriptor.layout) ? 640 : 400,
-        continuation: t.reports.continuation,
-      },
-    );
+        },
+        {
+          maximumHeight: ['card', 'cover'].includes(result.descriptor.layout) ? 640 : 400,
+          continuation: t.reports.continuation,
+        },
+      );
     const bytes = await page.pdf({
       format: 'A4',
       landscape: !['card', 'cover'].includes(result.descriptor.layout),
@@ -260,7 +279,12 @@ export async function renderReportPdf(
       displayHeaderFooter: true,
       headerTemplate: header,
       footerTemplate: footer,
-      margin: { top: '43mm', bottom: '18mm', left: '10mm', right: '10mm' },
+      margin: {
+        top: result.descriptor.manual?.kind ? '28mm' : '43mm',
+        bottom: result.descriptor.manual?.kind ? '12mm' : '18mm',
+        left: '10mm',
+        right: '10mm',
+      },
     });
     signal?.throwIfAborted();
     if (bytes.length > REPORT_LIMITS.artifactBytes) throw new ReportError('too-large');

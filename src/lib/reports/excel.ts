@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { t } from '@/strings';
 import { cellText, reportColumns } from './result';
 import { reportOutcomeChart } from './chart';
+import { movementWorksheet } from './movement-excel';
 import { REPORT_LIMITS, ReportError, type ReportCell, type ReportResult } from './types';
 
 export function scalarChunks(value: string, limit: number) {
@@ -184,7 +185,7 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
   }
   const count = add(sheet, [result.descriptor.countLabel ?? t.reports.count, result.rowCount]);
   count.font = { bold: true };
-  if (result.descriptor.manual) {
+  if (result.descriptor.manual && !result.descriptor.manual.kind) {
     add(sheet, [result.descriptor.manual.heading]);
     add(sheet, [...result.descriptor.manual.labels]);
     for (let i = 0; i < result.descriptor.manual.lines; i++)
@@ -193,18 +194,36 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
         result.descriptor.manual.labels.map(() => '................................'),
       );
   }
+  if (result.descriptor.manual?.kind) movementWorksheet(sheet, result, excelCell);
+  else if (
+    ['poa-inventory', 'client-poas', 'document-inventory', 'client-documents'].includes(
+      result.descriptor.id,
+    )
+  ) {
+    sheet.pageSetup = {
+      orientation: 'landscape',
+      paperSize: 9,
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      printTitlesRow: '1:1',
+      printArea: `A1:${sheet.getColumn(sheet.columnCount).letter}${sheet.rowCount}`,
+    };
+  }
   for (const target of [info, sheet, exact]) {
     target.getRow(1).font = { bold: true };
-    target.eachRow((row) =>
-      row.eachCell({ includeEmpty: true }, (cell) => {
-        cell.alignment = { wrapText: true, vertical: 'top', readingOrder: 'rtl' };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-          bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-          left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-          right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-        };
-      }),
+    target.eachRow(
+      { includeEmpty: target === sheet && Boolean(result.descriptor.manual?.kind) },
+      (row) =>
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.alignment = { wrapText: true, vertical: 'top', readingOrder: 'rtl' };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+            bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+            left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+            right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+          };
+        }),
     );
   }
   const bytes = Buffer.from(await book.xlsx.writeBuffer());

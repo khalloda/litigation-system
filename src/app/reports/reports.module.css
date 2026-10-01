@@ -528,3 +528,28 @@
 .lawyerTable td:first-child {
   inline-size: 3rem;
 }
+.attention td {
+  background: var(--report-zero-copy-background);
+  color: var(--colour-text);
+}
+.movement {
+  margin-block: 1rem;
+}
+.movementPair {
+  border: 1px solid var(--colour-border);
+  padding: 0.75rem;
+  margin-block: 0.75rem;
+}
+.movementPair dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.75rem;
+}
+.movementPair dd {
+  margin: 0;
+}
+.writingBlank {
+  block-size: 2rem;
+  min-inline-size: 5rem;
+  border-block-end: 1px dotted currentColor;
+}

@@ -11,6 +11,7 @@ import {
   type ReferenceField,
 } from '@/lib/reports/fields';
 import { cellText, reportColumns } from '@/lib/reports/result';
+import { MovementPreview } from './movement-preview';
 import type {
   ReportDescriptor,
   ReportOptions,
@@ -483,7 +484,7 @@ export function ReportForm({
                   {section.groups.map((group) => (
                     <div key={group.id}>
                       {group.title ? <h4>{group.title}</h4> : null}
-                      {descriptor.layout === 'cover' ? (
+                      {descriptor.layout === 'cover' || descriptor.manual?.kind ? (
                         group.rows.map((row) => (
                           <dl key={row.id} className={styles.recordDetails}>
                             {reportColumns(descriptor, section.id).map((column, index) => (
@@ -524,7 +525,12 @@ export function ReportForm({
                             </thead>
                             <tbody>
                               {group.rows.map((row, index) => (
-                                <tr key={row.id}>
+                                <tr
+                                  key={row.id}
+                                  className={
+                                    row.highlight === 'attention' ? styles.attention : undefined
+                                  }
+                                >
                                   <td>{index + 1}</td>
                                   {row.cells.map((cell, i) => (
                                     <td key={reportColumns(descriptor, section.id).at(i)!.key}>
@@ -542,6 +548,7 @@ export function ReportForm({
                 </section>
               ))}
               {result.rowCount === 0 ? <p>{t.reports.noRows}</p> : null}
+              <MovementPreview descriptor={descriptor} />
               {outcomeChart ? (
                 <section aria-label={t.matterReports.outcomeChart}>
                   <h3>{t.matterReports.outcomeChart}</h3>

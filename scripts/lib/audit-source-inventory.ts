@@ -50,6 +50,10 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 // The selection editor also uses the existing trusted human context, bounded below.
 const REPORT_ENGINE_CLOSURES = new Map([
   [
+    'src/lib/reports/document-reports.ts',
+    'e350d31114528e153e741b501e66bde5f4d423c462be6225395deab7e31d5649',
+  ],
+  [
     'src/lib/reports/administrative-reports.ts',
     'd47e24acea95cf0e92125cbc0375a86abe6b3e051eb00eb7475a0d3f57ed6c43',
   ],
@@ -215,6 +219,16 @@ const LOW_LEVEL_PATTERN =
   /audit_set_(?:human|authentication|administration|migration|event)_context|audit_append_semantic_event|audit_current_actor_id|litigation\.audit_(?:actor|request|correlation|session|ip|user_agent|device)_|set_config|\bset\s+(?:local|session)\b/iu;
 
 const REVIEWED_RAW_SQL_CALLS = [
+  [
+    'src/lib/reports/document-reports.ts',
+    'readPoaReport',
+    '35f24d450bf41a2d27c4d5a7f17e2b714671fdc9da3233d0ad976b946e679bda',
+  ],
+  [
+    'src/lib/reports/document-reports.ts',
+    'readDocumentReport',
+    '8a7fdacc2db3e27fbfb8bbdfc6234774d3cc37264b92ba5949afc35343006fa1',
+  ],
   [
     'src/lib/reports/administrative-reports.ts',
     'readAdministrative',
@@ -2606,6 +2620,7 @@ export function auditRuntimeSourceFailures(
     )
       failures.add('Report guarded closure differs from reviewed inventory: ' + source.path);
     const isReportReadService =
+      source.path === 'src/lib/reports/document-reports.ts' ||
       source.path === 'src/lib/reports/administrative-reports.ts' ||
       source.path === 'src/lib/reports/hearing-periods.ts' ||
       source.path === 'src/lib/reports/hearing-teams.ts' ||

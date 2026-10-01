@@ -98,7 +98,12 @@ export type ReportDescriptor = Readonly<{
   clientFacing: boolean;
   /** Trusted label for this definition's logical row grain. */
   countLabel?: string;
-  manual?: Readonly<{ heading: string; labels: readonly string[]; lines: number }>;
+  manual?: Readonly<{
+    heading: string;
+    labels: readonly string[];
+    lines: number;
+    kind?: 'poa-movement' | 'document-movement';
+  }>;
   permissions: readonly PermissionRequest[];
 }>;
 export type ReportDefinition = Readonly<{

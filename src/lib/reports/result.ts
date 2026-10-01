@@ -89,6 +89,7 @@ export function validateReportData(descriptor: ReportDescriptor, data: ReportDat
     }
   }
   data.totals.forEach((x) => validateCell(x.value));
+  if (descriptor.manual?.kind && rows !== 1) throw new ReportError('generation');
   if (Boolean(descriptor.outcomeChart) !== (data.outcomeCounts !== undefined))
     throw new ReportError('generation');
   if (data.outcomeCounts) {
@@ -164,6 +165,16 @@ export function validateDefinition(definition: ReportDefinition) {
       d.manual.lines > 30 ||
       !Number.isInteger(d.manual.lines) ||
       d.manual.labels.length > 10)
+  )
+    throw new ReportError('generation');
+  if (
+    d.manual?.kind &&
+    (d.layout !== 'card' ||
+      (d.manual.kind === 'poa-movement'
+        ? d.manual.lines !== 25 || d.manual.labels.length !== 6
+        : d.manual.kind === 'document-movement'
+          ? d.manual.lines !== 3 || d.manual.labels.length !== 8
+          : true))
   )
     throw new ReportError('generation');
   const extraKeys = new Set<string>();
