@@ -3,7 +3,9 @@ import type { PermissionRequest } from '@/lib/auth/authorization-core';
 import type { LogoMetadata } from '@/lib/client-query';
 
 /** These descriptors are code, never request payloads or stored user templates. */
-export type ReportField = 'from' | 'to' | 'client' | 'branch' | 'lawyer' | 'matter';
+export type ReportReferenceField =
+  'client' | 'branch' | 'lawyer' | 'matter' | 'team' | 'destination' | 'poa' | 'document';
+export type ReportField = 'from' | 'to' | ReportReferenceField;
 export type Selection = { kind: 'all' } | { kind: 'unassigned' } | { kind: 'id'; id: number };
 export type ReportParameters = Readonly<{
   from: string | null;
@@ -12,6 +14,10 @@ export type ReportParameters = Readonly<{
   branch: Selection;
   lawyer: Selection;
   matter?: Selection;
+  team?: Selection;
+  destination?: Selection;
+  poa?: Selection;
+  document?: Selection;
   extra: Readonly<Record<string, string>>;
 }>;
 export type ParameterRule = Readonly<{ required: boolean; unassigned?: boolean; help: string }>;
@@ -31,6 +37,10 @@ export type ReportOption = Readonly<{
 export type ReportOptions = Readonly<
   Record<'client' | 'branch' | 'lawyer', readonly ReportOption[]> & {
     matter?: readonly ReportOption[];
+    team?: readonly ReportOption[];
+    destination?: readonly ReportOption[];
+    poa?: readonly ReportOption[];
+    document?: readonly ReportOption[];
   }
 >;
 export type ReportCell =
@@ -68,7 +78,7 @@ export type ReportDescriptor = Readonly<{
   title: string;
   description: string;
   date?: DateRule;
-  parameters: Readonly<Partial<Record<'client' | 'branch' | 'lawyer' | 'matter', ParameterRule>>>;
+  parameters: Readonly<Partial<Record<ReportReferenceField, ParameterRule>>>;
   /** Narrow enum extension; no arbitrary filter/query language. */
   extra?: readonly Readonly<{
     key: string;
@@ -92,7 +102,11 @@ export type ReportDescriptor = Readonly<{
 export type ReportDefinition = Readonly<{
   descriptor: ReportDescriptor;
   /** Same read-only repeatable-read snapshot as parameter validation/labels. */
-  query: (tx: Prisma.TransactionClient, parameters: ReportParameters) => Promise<ReportData>;
+  query: (
+    tx: Prisma.TransactionClient,
+    parameters: ReportParameters,
+    context?: Readonly<{ generatedAt: string }>,
+  ) => Promise<ReportData>;
 }>;
 export type ReportResult = Readonly<{
   descriptor: ReportDescriptor;

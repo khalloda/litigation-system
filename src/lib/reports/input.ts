@@ -1,4 +1,4 @@
-import { referenceRule } from './fields';
+import { referenceRule, REFERENCE_FIELDS } from './fields';
 import { cairoDate } from '@/lib/cairo-date';
 import {
   ReportError,
@@ -107,7 +107,7 @@ export function parseReportInput(descriptor: ReportDescriptor, pairs: URLSearchP
       fields.push('from', 'to');
   }
   const choices = new Map<string, Selection>();
-  for (const key of ['client', 'branch', 'lawyer', 'matter'] as const) {
+  for (const key of REFERENCE_FIELDS) {
     const rule = referenceRule(descriptor, key);
     if (!rule) continue;
     try {
@@ -131,9 +131,11 @@ export function parseReportInput(descriptor: ReportDescriptor, pairs: URLSearchP
       client: choices.get('client') ?? parsed.client,
       branch: choices.get('branch') ?? parsed.branch,
       lawyer: choices.get('lawyer') ?? parsed.lawyer,
-      ...(descriptor.parameters.matter
-        ? { matter: choices.get('matter') ?? { kind: 'all' as const } }
-        : {}),
+      ...Object.fromEntries(
+        REFERENCE_FIELDS.slice(3)
+          .filter((key) => descriptor.parameters[key])
+          .map((key) => [key, choices.get(key) ?? { kind: 'all' as const }]),
+      ),
       from,
       to,
       extra: Object.fromEntries(extra),

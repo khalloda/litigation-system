@@ -5,7 +5,13 @@ import { join } from 'node:path';
 import { Prisma } from '../src/generated/prisma/client';
 import { db } from '../src/lib/db';
 import { hearingPeriodReports } from '../src/lib/reports/hearing-periods';
+import { teamHearingReport } from '../src/lib/reports/hearing-teams';
 import { parseReportInput } from '../src/lib/reports/input';
+import {
+  reportOptions,
+  reportFilterLabels,
+  validateReportOptions,
+} from '../src/lib/reports/options';
 import { validateDefinition, validateReportData } from '../src/lib/reports/result';
 import { type ReportCell } from '../src/lib/reports/types';
 import { t } from '../src/strings';
@@ -55,6 +61,10 @@ async function main() {
         'matter_parties',
         'matter_party_roles',
         'lookup_party_role',
+        'lookup_team',
+        'lookup_matter_destination',
+        'powers_of_attorney',
+        'documents',
       ]) {
         const rows = await tx.$queryRaw<{ data: Row }[]>(
           Prisma.sql`SELECT to_jsonb(x) data FROM ${Prisma.raw('public.' + table)} x ORDER BY id`,
@@ -104,6 +114,43 @@ async function main() {
         );
       };
       const runs = [];
+      const referenceDescriptor = {
+        ...teamHearingReport.descriptor,
+        parameters: {
+          team: { required: false, unassigned: true, help: t.reports.identityHelp },
+          destination: { required: false, unassigned: true, help: t.reports.identityHelp },
+          poa: { required: true, help: t.reports.identityHelp },
+          document: { required: true, help: t.reports.identityHelp },
+        },
+      };
+      const options = await reportOptions(tx, referenceDescriptor);
+      for (const [field, table] of [
+        ['team', 'lookup_team'],
+        ['destination', 'lookup_matter_destination'],
+        ['poa', 'powers_of_attorney'],
+        ['document', 'documents'],
+      ] as const) {
+        assert.deepEqual(
+          options[field]!.map((o) => o.id).sort((a, b) => a - b),
+          tables[table]!.map((r) => num(r, 'id')),
+        );
+      }
+      const refs = parseReportInput(
+        referenceDescriptor,
+        new URLSearchParams({
+          format: 'preview',
+          from: '2026-01-01',
+          to: '2026-12-31',
+          team: 'unassigned',
+          destination: '1',
+          poa: String(options.poa![0]!.id),
+          document: String(options.document![0]!.id),
+        }),
+      ).parameters;
+      validateReportOptions(refs, options);
+      const labels = reportFilterLabels(referenceDescriptor, refs, options);
+      assert.equal(labels.find((l) => l.label === t.reports.fields.poa)!.parts!.length, 6);
+      assert.equal(labels.find((l) => l.label === t.reports.fields.document)!.parts!.length, 4);
       for (const [mode, definition] of hearingPeriodReports.entries()) {
         validateDefinition(definition);
         for (const [from, to] of [
@@ -222,6 +269,137 @@ async function main() {
             rows: expected.length,
             groups: actual.sections[0]!.groups.length,
             sha256: createHash('sha256').update(JSON.stringify(expected)).digest('hex'),
+            rowIds: expected.map((r) => r.id),
+          });
+        }
+      }
+      for (const choice of ['', 'unassigned', ...tables.lookup_team!.map((r) => String(r.id))]) {
+        for (const [from, to] of [
+          ['0001-01-01', '9998-12-31'],
+          ['2026-08-22', '2026-08-27'],
+        ]) {
+          const parameters = parseReportInput(
+            teamHearingReport.descriptor,
+            new URLSearchParams({ format: 'preview', from: from!, to: to!, team: choice }),
+          ).parameters;
+          const actual = await teamHearingReport.query(tx, parameters);
+          validateReportData(teamHearingReport.descriptor, actual);
+          const expected: {
+            team: number | null;
+            date: string;
+            id: string;
+            matter: number;
+            cells: ReportCell[];
+          }[] = [];
+          for (const h of tables.hearings!) {
+            const m = matters.get(Number(h.matter_id)),
+              date = str(h, 'hearing_date');
+            if (!m || m.status !== 'سارية' || date === null || date < from! || date > to!) continue;
+            const assigned = tables
+              .matter_lawyers!.filter((a) => a.matter_id === m.id && !a.is_retired)
+              .sort(
+                (a, b) =>
+                  ['lead', 'co_lead', 'support'].indexOf(String(a.role)) -
+                    ['lead', 'co_lead', 'support'].indexOf(String(b.role)) ||
+                  Number(a.position ?? Infinity) - Number(b.position ?? Infinity) ||
+                  num(a, 'person_id') - num(b, 'person_id') ||
+                  num(a, 'id') - num(b, 'id'),
+              );
+            const teams = new Set(
+              assigned.map((a) => people.get(num(a, 'person_id'))!.team_id as number | null),
+            );
+            if (!teams.size) teams.add(null);
+            const c = court(h.court_id),
+              circuit = str(h, 'circuit');
+            const displayed =
+              circuit === null || circuit === '' || circuit === c
+                ? c
+                : `${c ?? t.reports.nullValue}\n${circuit.startsWith('(') && circuit.endsWith(')') ? circuit : '(' + circuit + ')'}`;
+            const lawyers = assigned.map(
+              (a) =>
+                `${t.matters.lawyerRoles[a.role as 'lead' | 'co_lead' | 'support']}: ${people.get(num(a, 'person_id'))!.name_ar}`,
+            );
+            for (const team of teams) {
+              if (
+                choice === 'unassigned' ? team !== null : choice !== '' && team !== Number(choice)
+              )
+                continue;
+              expected.push({
+                team,
+                date,
+                id: `team:${team ?? 'unassigned'}:hearing:${h.id}`,
+                matter: num(m, 'id'),
+                cells: [
+                  cell(str(m, 'case_number_ar'), 'identifier'),
+                  cell(displayed),
+                  parts(num(m, 'id'), 'client'),
+                  parts(num(m, 'id'), 'opponent'),
+                  cell(str(m, 'subject')),
+                  cell(str(h, 'previous_decision')),
+                  cell(lawyers.length ? lawyers.join('\n') : null),
+                ],
+              });
+            }
+          }
+          const hearingId = (id: string) => Number(id.split(':').at(-1));
+          const hearing = index('hearings');
+          expected.sort((a, b) => {
+            const ha = hearing.get(hearingId(a.id))!,
+              hb = hearing.get(hearingId(b.id))!;
+            const ma = matters.get(a.matter)!,
+              mb = matters.get(b.matter)!;
+            return (
+              (a.team ?? Infinity) - (b.team ?? Infinity) ||
+              cmp(a.date, b.date) ||
+              cmp(court(ha.court_id), court(hb.court_id)) ||
+              cmp(str(ha, 'circuit'), str(hb, 'circuit')) ||
+              cmp(str(ma, 'case_number_ar'), str(mb, 'case_number_ar')) ||
+              num(ha, 'id') - num(hb, 'id')
+            );
+          });
+          const values = expected.map(({ matter, ...r }) => {
+            assert.ok(matter);
+            return r;
+          });
+          assert.deepEqual(
+            actual.sections.flatMap((s) =>
+              s.groups.flatMap((g) =>
+                g.rows.map((r) => ({
+                  team: s.id === 'team:unassigned' ? null : Number(s.id.split(':')[1]),
+                  date: g.date,
+                  id: r.id,
+                  cells: r.cells,
+                })),
+              ),
+            ),
+            values,
+          );
+          for (const section of actual.sections) {
+            const id = section.id === 'team:unassigned' ? null : Number(section.id.split(':')[1]);
+            assert.equal(
+              section.title,
+              id === null
+                ? t.reports.unassigned
+                : tables.lookup_team!.find((r) => r.id === id)!.label_ar,
+            );
+          }
+          const uniqueHearings = new Set(expected.map((r) => hearingId(r.id))).size;
+          assert.deepEqual(
+            actual.totals.map((t) => t.value),
+            [
+              uniqueHearings,
+              new Set(expected.map((r) => r.matter)).size,
+              expected.length - uniqueHearings,
+            ].map((value) => ({ type: 'integer', value: String(value) })),
+          );
+          runs.push({
+            id: teamHearingReport.descriptor.id,
+            choice,
+            from,
+            to,
+            rows: expected.length,
+            groups: actual.sections.length,
+            sha256: createHash('sha256').update(JSON.stringify(values)).digest('hex'),
             rowIds: expected.map((r) => r.id),
           });
         }

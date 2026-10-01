@@ -126,3 +126,19 @@ all row IDs/cells/order/date groups and distinct-matter totals. Its first attemp
 omitted the required preview-format parameter and was refused before querying;
 the corrected attempt passes. Native-edge and browser/export checks remain for
 the combined implementation; this is not a final verification claim.
+
+The second working piece implements `team-hearings` with the approved current
+assignment rule, optional exact team/unassigned filter, English weekday/date
+groups and explicit overlap/unduplicated totals.24 independent whole-population
+comparisons now cover the five hearing adapters, including both current teams,
+unassigned people and the full and sample periods. The full source has13384
+hearings and1744 matters. Team entries total4470 across the complete date range
+(2669 teamA,1391 teamB,410 unassigned); these are memberships, not a claimed
+unduplicated hearing count.98 shared contract checks include the new reference
+fields' malformed, missing, duplicate and nonexistent-ID refusals.
+
+The shared form/input/options contract adds typed team, destination, POA and
+document identities, using existing controls and per-part labels. Source serial
+and current internal ID remain separately labelled. The engine passes its single
+captured generation instant into adapters for later age/overdue calculations;
+existing two-argument adapters and their audit parameter shape remain supported.

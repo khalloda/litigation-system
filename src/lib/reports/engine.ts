@@ -8,6 +8,7 @@ import { t } from '@/strings';
 import { requireReportAuthority, reportSnapshot } from './authority';
 import { parseReportInput, readReportRequest } from './input';
 import { reportOptions, validateReportOptions, reportFilterLabels } from './options';
+import { REFERENCE_FIELDS } from './fields';
 import { validateDefinition, validateReportData } from './result';
 import { renderReportExcel } from './excel';
 import { renderReportPdf } from './pdf';
@@ -86,7 +87,7 @@ export function createReportEngine(
             const options = await reportOptions(tx, d.descriptor);
             validateReportOptions(parameters, options);
             const generatedAt = new Date().toISOString();
-            const data = await d.query(tx, parameters);
+            const data = await d.query(tx, parameters, { generatedAt });
             const rowCount = validateReportData(d.descriptor, data);
             return {
               descriptor: d.descriptor,
@@ -107,12 +108,12 @@ export function createReportEngine(
           client: parameters.client.kind === 'id' ? parameters.client.id : parameters.client.kind,
           branch: parameters.branch.kind === 'id' ? parameters.branch.id : parameters.branch.kind,
           lawyer: parameters.lawyer.kind === 'id' ? parameters.lawyer.id : parameters.lawyer.kind,
-          ...(parameters.matter
-            ? {
-                matter:
-                  parameters.matter.kind === 'id' ? parameters.matter.id : parameters.matter.kind,
-              }
-            : {}),
+          ...Object.fromEntries(
+            REFERENCE_FIELDS.slice(3).flatMap((key) => {
+              const selected = parameters[key];
+              return selected ? [[key, selected.kind === 'id' ? selected.id : selected.kind]] : [];
+            }),
+          ),
           ...parameters.extra,
         };
         const evidence = {

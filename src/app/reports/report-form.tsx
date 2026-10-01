@@ -3,7 +3,13 @@ import { reportChart, reportOutcomeChart } from '@/lib/reports/chart';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { t } from '@/strings';
-import { referenceRule, referenceOptions, reportFieldLabel } from '@/lib/reports/fields';
+import {
+  referenceRule,
+  referenceOptions,
+  reportFieldLabel,
+  REFERENCE_FIELDS,
+  type ReferenceField,
+} from '@/lib/reports/fields';
 import { cellText } from '@/lib/reports/result';
 import type {
   ReportDescriptor,
@@ -49,11 +55,10 @@ export function ReportForm({
     ...(descriptor.parameters.matter ? { matter: initialMatter } : {}),
   });
   const parameterText = (key: string, value: string) => {
-    if (['client', 'branch', 'lawyer', 'matter'].includes(key)) {
-      const option = referenceOptions(
-        options,
-        key as 'client' | 'branch' | 'lawyer' | 'matter',
-      ).find((option) => String(option.id) === value);
+    if (REFERENCE_FIELDS.some((field) => field === key)) {
+      const option = referenceOptions(options, key as ReferenceField).find(
+        (option) => String(option.id) === value,
+      );
       return option?.parts ? (
         <ReportLabelParts parts={option.parts} />
       ) : (
@@ -146,7 +151,7 @@ export function ReportForm({
     key in t.reports.fields
       ? reportFieldLabel(key)
       : (descriptor.extra?.find((x) => x.key === key)?.label ?? t.reports.validation);
-  const referenceField = (key: 'client' | 'branch' | 'lawyer' | 'matter') => {
+  const referenceField = (key: ReferenceField) => {
     const rule = referenceRule(descriptor, key);
     return rule ? (
       <div key={key} className={`${styles.field} ${key === 'lawyer' ? styles.fullField : ''}`}>
@@ -303,6 +308,7 @@ export function ReportForm({
                 ))
               : null}
             {referenceField('lawyer')}
+            {(['team', 'destination', 'poa', 'document'] as const).map(referenceField)}
           </fieldset>
           <div className={styles.actions}>
             <button type="submit" disabled={busy}>

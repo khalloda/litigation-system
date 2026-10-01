@@ -81,6 +81,45 @@ check('Cairo 25-hour autumn day', () =>
 check('missing optional means all', () =>
   assert.deepEqual(parse('format=preview').parameters.branch, { kind: 'all' }),
 );
+for (const field of ['team', 'destination', 'poa', 'document'] as const) {
+  const d: ReportDescriptor = {
+    ...descriptor,
+    parameters: { [field]: { required: true, unassigned: false, help: t.reports.identityHelp } },
+  };
+  for (const input of ['', 'unassigned', '0', '-1', '1x', '2147483648'])
+    check(`new reference ${field} rejects ${input}`, () =>
+      assert.throws(() => parse(`format=preview&${field}=${input}`, d), ReportError),
+    );
+  check(`new reference ${field} preserves numeric identity`, () =>
+    assert.deepEqual(parse(`format=preview&${field}=123`, d).parameters[field], {
+      kind: 'id',
+      id: 123,
+    }),
+  );
+  check(`new reference ${field} rejects duplicate and undeclared keys`, () => {
+    assert.throws(() => parse(`format=preview&${field}=1&${field}=2`, d), ReportError);
+    assert.throws(() => parse(`format=preview&${field}=1`), ReportError);
+  });
+  check(`new reference ${field} checks exact option membership`, () => {
+    const parameters = parse(`format=preview&${field}=123`, d).parameters;
+    assert.throws(
+      () =>
+        validateReportOptions(parameters, {
+          client: [],
+          branch: [],
+          lawyer: [],
+          [field]: [{ id: 124, label: 'TEST ONLY' }],
+        }),
+      ReportError,
+    );
+    validateReportOptions(parameters, {
+      client: [],
+      branch: [],
+      lawyer: [],
+      [field]: [{ id: 123, label: 'TEST ONLY' }],
+    });
+  });
+}
 const withDefault: ReportDescriptor = {
   ...descriptor,
   extra: [
