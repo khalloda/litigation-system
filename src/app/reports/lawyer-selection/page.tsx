@@ -8,6 +8,7 @@ import { reporting } from '@/lib/reports/production';
 import { readLawyerReportSelection } from '@/lib/reports/lawyer-selection';
 import { t } from '@/strings';
 import { SelectionEditor } from '../selection/editor';
+import { ReportLabelParts } from '../label-parts';
 import styles from '../reports.module.css';
 export const dynamic = 'force-dynamic';
 export default async function SelectionPage({
@@ -76,10 +77,25 @@ export default async function SelectionPage({
       </Link>
       <h1>{t.lawyerSelection.title}</h1>
       <p className={styles.hint}>
-        {model.name} ({client})
-        {id !== null
-          ? ` · ${model.matters[0]!.caseNumber ?? model.matters[0]!.subject} · ${id}`
-          : ''}
+        {id === null ? (
+          <>
+            {model.name} ({client})
+          </>
+        ) : (
+          <ReportLabelParts
+            parts={[
+              { label: t.fields.client, value: model.name },
+              { label: t.auditHistory.fields.client_id, value: String(client) },
+              {
+                label:
+                  model.matters[0]!.caseNumber === null ? t.fields.subject : t.fields.caseNumber,
+                value:
+                  model.matters[0]!.caseNumber ?? model.matters[0]!.subject ?? t.reports.nullValue,
+              },
+              { label: t.auditHistory.fields.matter_id, value: String(id) },
+            ]}
+          />
+        )}
       </p>
       {id === null ? (
         <dl className={styles.countCards}>
