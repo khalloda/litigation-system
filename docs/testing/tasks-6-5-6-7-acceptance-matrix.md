@@ -39,3 +39,24 @@ Movement cards remain blank templates. No owner login/report/selection action wa
 performed by this task; its sole owner-runtime exception was the explicitly
 authorized startup of the previously accepted app. No candidate activation,
 owner migration/provisioning, seed, repair, push, synchronization or later task.
+
+
+## Correction1 supplement — 2 October 2026
+
+| Gate | Correction evidence and disposition |
+| --- | --- |
+| T6567-R1 before | Both actual visible Reload controls reproduced stale retention on09465c4; cancelled navigation and refused Saves made no write. |
+| T6567-R1 after | PASS18 focused browser cases on6cfd0d9; document GET, consent/no-write, one-effect Save, other dirty rows, parent/record versions, all roles, exact response-loss retry. |
+| Final source checks | PASS complete project check and isolated production build; no report, renderer, permission, dependency or migration byte changes. |
+| Full-state gates | Fresh pristine/final148+15PASS and complete quiet-window equality; candidate 78isolated only. |
+| N1 fresh campaign |42executions,30 completed/30saved/0unsaved; normal/reused and fresh-connection comparisons;15typed workbooks and15PDFs inspected,7PDFpages visually viewed. **No causal closure.** |
+| N1 disposition | **BLOCKED**; original 206 completed/202saved/4unsaved retained. Best failing reused-connection case and one bounded next proposal in correction report. |
+| Reuse | Original archive/member hashes plus exact unchanged source/dependency closure; deep family/permission/migration/output evidence not rerun or relabeled. |
+| Fixture accounting |129added audits;10 native mutations;33 selection requests,19receipts/history rows;137unchanged tables and11original-row proofs. |
+| Owner attribution | Owner directly confirmed hearing 11003archive at approximately15:50Cairo1October; preserve it. Previous personal-attribution question resolved. |
+| Owner preservation | Fresh final snapshot migration 77/152tables/48sequences/1134audits byte-exact to correction baseline; later activity outside observation is not certified. |
+| Delivery boundary | Exact-owned cleanup and five-file receipt-inclusive review package; no owner action, migration, activation, acceptance or push. |
+
+The earlier records above retain their historical scope. Correction integrity PASS
+must not convert blockedN1 into implementation acceptance. PDF copying remains
+an accepted limitation, NOT FIXED; search is not certified.

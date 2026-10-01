@@ -1,5 +1,14 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Tasks 6.5–6.7 correction1 — 2 October 2026
+
+The administrative-selection stale Reload flow is corrected and passed18 focused
+browser cases. PDF transport finding T6567-N1 remains blocked:30 fresh exports
+saved correctly, but the earlier four losses still have no demonstrated cause
+or fix. See the [correction report](docs/task-reports/2026-10-02-tasks-6-5-6-7-correction1.md).
+Owner migration 77, existing data/app and all TASKS bytes are preserved. This is
+local independent correction review only; no activation, acceptance or push.
+
 ## Tasks 6.5–6.7 local review candidate — 1 October 2026
 
 Seventeen hearing, administrative, document and POA reports are implemented,
