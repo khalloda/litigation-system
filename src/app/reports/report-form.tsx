@@ -10,7 +10,7 @@ import {
   REFERENCE_FIELDS,
   type ReferenceField,
 } from '@/lib/reports/fields';
-import { cellText } from '@/lib/reports/result';
+import { cellText, reportColumns } from '@/lib/reports/result';
 import type {
   ReportDescriptor,
   ReportOptions,
@@ -477,13 +477,16 @@ export function ReportForm({
                       ))}
                     </div>
                   ) : null}
+                  {section.groups.length === 0 && descriptor.sectionColumns ? (
+                    <p>{t.reports.noRows}</p>
+                  ) : null}
                   {section.groups.map((group) => (
                     <div key={group.id}>
                       {group.title ? <h4>{group.title}</h4> : null}
                       {descriptor.layout === 'cover' ? (
                         group.rows.map((row) => (
                           <dl key={row.id} className={styles.recordDetails}>
-                            {descriptor.columns.map((column, index) => (
+                            {reportColumns(descriptor, section.id).map((column, index) => (
                               <div key={column.key}>
                                 <dt>{column.label}</dt>
                                 <dd>
@@ -512,7 +515,7 @@ export function ReportForm({
                             <thead>
                               <tr>
                                 <th scope="col">{t.reports.rowNumber}</th>
-                                {descriptor.columns.map((c) => (
+                                {reportColumns(descriptor, section.id).map((c) => (
                                   <th key={c.key} scope="col">
                                     {c.label}
                                   </th>
@@ -524,7 +527,7 @@ export function ReportForm({
                                 <tr key={row.id}>
                                   <td>{index + 1}</td>
                                   {row.cells.map((cell, i) => (
-                                    <td key={descriptor.columns.at(i)!.key}>
+                                    <td key={reportColumns(descriptor, section.id).at(i)!.key}>
                                       <bdi>{cellText(cell)}</bdi>
                                     </td>
                                   ))}

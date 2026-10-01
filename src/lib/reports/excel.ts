@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { t } from '@/strings';
-import { cellText } from './result';
+import { cellText, reportColumns } from './result';
 import { reportOutcomeChart } from './chart';
 import { REPORT_LIMITS, ReportError, type ReportCell, type ReportResult } from './types';
 
@@ -65,8 +65,18 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
   const sheet = book.addWorksheet(t.reports.dataSheet, {
     views: [{ rightToLeft: true, state: 'frozen', ySplit: 1 }],
   });
-  sheet.columns = [{ width: 10 }, ...result.descriptor.columns.map((c) => ({ width: c.width }))];
-  sheet.addRow([t.reports.rowNumber, ...result.descriptor.columns.map((c) => c.label)]);
+  const layouts = [
+    result.descriptor.columns,
+    ...Object.values(result.descriptor.sectionColumns ?? {}),
+  ];
+  sheet.columns = [
+    { width: 10 },
+    ...Array.from({ length: Math.max(...layouts.map((c) => c.length)) }, (_, index) => ({
+      width: Math.max(...layouts.map((c) => c.at(index)?.width ?? 5)),
+    })),
+  ];
+  if (!result.descriptor.sectionColumns)
+    sheet.addRow([t.reports.rowNumber, ...result.descriptor.columns.map((c) => c.label)]);
   const exact = book.addWorksheet(t.reports.exactSheet, { views: [{ rightToLeft: true }] });
   exact.columns = [{ width: 28 }, { width: 32 }, { width: 16 }, { width: 12 }, { width: 80 }];
   exact.addRow([
@@ -102,7 +112,12 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
       ]);
   }
   for (const section of result.data.sections) {
+    const columns = reportColumns(result.descriptor, section.id);
     add(sheet, [section.title]);
+    if (result.descriptor.sectionColumns)
+      add(sheet, [t.reports.rowNumber, ...columns.map((column) => column.label)]).font = {
+        bold: true,
+      };
     for (const group of section.groups) {
       if (result.descriptor.layout !== 'flat')
         add(sheet, [group.title, ...(group.date ? [group.date] : [])]);
@@ -130,7 +145,7 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
           for (const [part, chunk] of scalarChunks(raw, 6000).entries())
             add(exact, [
               row.id,
-              result.descriptor.columns.at(index)!.key,
+              columns.at(index)!.key,
               cell.type,
               part + 1,
               Buffer.from(chunk, 'utf8').toString('base64'),

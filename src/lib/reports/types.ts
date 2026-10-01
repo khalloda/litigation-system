@@ -88,6 +88,8 @@ export type ReportDescriptor = Readonly<{
     choices: readonly Readonly<{ value: string; label: string }>[];
   }>[];
   columns: readonly ReportColumn[];
+  /** Trusted per-section layouts for a report with different row grains. */
+  sectionColumns?: Readonly<Record<string, readonly ReportColumn[]>>;
   details?: readonly ReportColumn[];
   /** Trusted section IDs whose favourable/against integer columns are charted. */
   charts?: readonly string[];

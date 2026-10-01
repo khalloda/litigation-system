@@ -9,6 +9,13 @@ import {
   type ReportDefinition,
 } from './types';
 
+export function reportColumns(descriptor: ReportDescriptor, sectionId: string) {
+  return (
+    Object.entries(descriptor.sectionColumns ?? {}).find(([id]) => id === sectionId)?.[1] ??
+    descriptor.columns
+  );
+}
+
 export function cellText(cell: ReportCell): string {
   if (cell.type === 'null') return t.reports.nullValue;
   if (cell.type === 'boolean') return cell.value ? t.reports.trueValue : t.reports.falseValue;
@@ -51,6 +58,12 @@ export function validateReportData(descriptor: ReportDescriptor, data: ReportDat
   data.details?.forEach(validateCell);
   if (descriptor.charts?.some((id) => !data.sections.some((s) => s.id === id)))
     throw new ReportError('generation');
+  if (
+    Object.keys(descriptor.sectionColumns ?? {}).some(
+      (id) => !data.sections.some((s) => s.id === id),
+    )
+  )
+    throw new ReportError('generation');
   for (const section of data.sections) {
     if (!section.id || sections.has(section.id)) throw new ReportError('generation');
     sections.add(section.id);
@@ -64,7 +77,7 @@ export function validateReportData(descriptor: ReportDescriptor, data: ReportDat
           !row.id ||
           row.id.length > 256 ||
           identities.has(row.id) ||
-          row.cells.length !== descriptor.columns.length ||
+          row.cells.length !== reportColumns(descriptor, section.id).length ||
           (row.highlight && row.highlight !== 'attention')
         )
           throw new ReportError('generation');
@@ -120,7 +133,23 @@ export function validateDefinition(definition: ReportDefinition) {
       new Set(d.details.map((c) => c.key)).size !== d.details.length)
   )
     throw new ReportError('generation');
-  for (const c of [...d.columns, ...(d.details ?? [])])
+  const sectionColumns = Object.entries(d.sectionColumns ?? {});
+  if (
+    sectionColumns.length > 8 ||
+    sectionColumns.some(
+      ([id, columns]) =>
+        !/^[a-z][a-z0-9-]{0,63}$/u.test(id) ||
+        !columns.length ||
+        columns.length > REPORT_LIMITS.columns ||
+        new Set(columns.map((column) => column.key)).size !== columns.length,
+    )
+  )
+    throw new ReportError('generation');
+  for (const c of [
+    ...d.columns,
+    ...(d.details ?? []),
+    ...sectionColumns.flatMap(([, columns]) => columns),
+  ])
     if (
       !/^[a-z][a-zA-Z0-9_]*$/u.test(c.key) ||
       !c.label ||

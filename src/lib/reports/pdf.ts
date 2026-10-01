@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import { t } from '@/strings';
 import { readClientLogoFile } from '@/lib/client-logo-file';
 import { reportAssets } from './assets';
-import { cellText } from './result';
+import { cellText, reportColumns } from './result';
 import { reportChart, reportOutcomeChart } from './chart';
 import { reportLineDirection } from './label';
 import { printableText } from './excel';
@@ -47,8 +47,6 @@ export async function reportHtml(result: ReportResult, session: Session) {
       'lawyer-new-matters',
     ].includes(result.descriptor.id);
   const heading = `<header><div>${image(assets.logo, 'image/png', t.app.name)}</div><div><h1>${text(result.descriptor.title)}</h1>${bodyNote ? '' : `<h2>${text(result.data.subtitle)}</h2>`}</div><div>${client ? (clientLogo ? image(clientLogo.data, clientLogo.contentType, client.name) : text(client.name)) : ''}</div></header>`;
-  const cols = `<tr><th>${text(t.reports.rowNumber)}</th>${result.descriptor.columns.map((c) => `<th>${text(c.label)}</th>`).join('')}</tr>`;
-  const width = `<colgroup><col style="width:4%">${result.descriptor.columns.map((c) => `<col style="width:${(96 * c.width) / result.descriptor.columns.reduce((sum, x) => sum + x.width, 0)}%">`).join('')}</colgroup>`;
   const row = (
     r: ReportResult['data']['sections'][number]['groups'][number]['rows'][number],
     n: number,
@@ -72,35 +70,36 @@ export async function reportHtml(result: ReportResult, session: Session) {
   };
   const body =
     result.data.sections
-      .map(
-        (section) =>
-          `<section><h2>${text(section.title)}</h2>${chartHtml(section)}${section.groups
-            .map((group) => {
-              const day = group.date
-                ? new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(
-                    new Date(`${group.date}T12:00:00Z`),
-                  )
-                : '';
-              const groupTitle =
-                result.descriptor.layout === 'date-grouped' ? `${day} ${group.date}` : group.title;
-              if (result.descriptor.layout === 'cover')
-                return group.rows
-                  .map(
-                    (r) =>
-                      `<article class="cover">${vertical(result.descriptor.columns, r.cells)}</article>`,
-                  )
-                  .join('');
-              if (result.descriptor.layout === 'card')
-                return group.rows
-                  .map(
-                    (r, i) =>
-                      `<article class="card${cardNumber++ ? ' next-card' : ''}"><strong class="record">${text(r.id)}</strong><table>${width}<thead>${cols}</thead><tbody>${row(r, i + 1)}</tbody></table>${blanks}</article>`,
-                  )
-                  .join('');
-              return `<table>${width}<thead>${result.descriptor.layout !== 'flat' ? `<tr><th colspan="${result.descriptor.columns.length + 1}">${text(groupTitle)}</th></tr>` : ''}${cols}</thead><tbody>${group.rows.map((r, i) => row(r, i + 1)).join('') || `<tr><td colspan="${result.descriptor.columns.length + 1}">${text(t.reports.noRows)}</td></tr>`}</tbody></table>`;
-            })
-            .join('')}</section>`,
-      )
+      .map((section) => {
+        const columns = reportColumns(result.descriptor, section.id);
+        const cols = `<tr><th>${text(t.reports.rowNumber)}</th>${columns.map((c) => `<th>${text(c.label)}</th>`).join('')}</tr>`;
+        const width = `<colgroup><col style="width:4%">${columns.map((c) => `<col style="width:${(96 * c.width) / columns.reduce((sum, x) => sum + x.width, 0)}%">`).join('')}</colgroup>`;
+        return `<section><h2>${text(section.title)}</h2>${chartHtml(section)}${section.groups
+          .map((group) => {
+            const day = group.date
+              ? new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(
+                  new Date(`${group.date}T12:00:00Z`),
+                )
+              : '';
+            const groupTitle =
+              result.descriptor.layout === 'date-grouped' ? `${day} ${group.date}` : group.title;
+            if (result.descriptor.layout === 'cover')
+              return group.rows
+                .map((r) => `<article class="cover">${vertical(columns, r.cells)}</article>`)
+                .join('');
+            if (result.descriptor.layout === 'card')
+              return group.rows
+                .map(
+                  (r, i) =>
+                    `<article class="card${cardNumber++ ? ' next-card' : ''}"><strong class="record">${text(r.id)}</strong><table>${width}<thead>${cols}</thead><tbody>${row(r, i + 1)}</tbody></table>${blanks}</article>`,
+                )
+                .join('');
+            return `<table>${width}<thead>${result.descriptor.layout !== 'flat' ? `<tr><th colspan="${columns.length + 1}">${text(groupTitle)}</th></tr>` : ''}${cols}</thead><tbody>${group.rows.map((r, i) => row(r, i + 1)).join('') || `<tr><td colspan="${columns.length + 1}">${text(t.reports.noRows)}</td></tr>`}</tbody></table>`;
+          })
+          .join(
+            '',
+          )}${section.groups.length === 0 && result.descriptor.sectionColumns ? `<p>${text(t.reports.noRows)}</p>` : ''}</section>`;
+      })
       .join('') +
     (result.data.sections.every((section) => section.groups.length === 0)
       ? `<p>${text(t.reports.noRows)}</p>`

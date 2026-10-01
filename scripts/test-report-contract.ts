@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import ExcelJS from 'exceljs';
 import {
   civilDate,
   nextCivilDay,
@@ -327,6 +328,122 @@ check('long Unicode chunks never split scalar', () =>
   assert.deepEqual(scalarChunks('أ😀ب', 2), ['أ', '😀', 'ب']),
 );
 async function main() {
+  const mixed: ReportDescriptor = {
+    ...descriptor,
+    sectionColumns: {
+      first: descriptor.columns,
+      second: [
+        { key: 'when', label: t.reports.fields.from, width: 20 },
+        { key: 'amount', label: t.reports.count, width: 30 },
+      ],
+    },
+  };
+  const mixedData: ReportData = {
+    subtitle: '',
+    sections: [
+      { id: 'first', title: t.administrativeReports.workSection, groups: [] },
+      {
+        id: 'second',
+        title: t.administrativeReports.decisionSection,
+        groups: [
+          {
+            id: 'g',
+            title: '',
+            rows: [
+              {
+                id: 'mixed',
+                cells: [
+                  { type: 'date', value: '2024-02-29' },
+                  { type: 'integer', value: '2' },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    totals: [],
+  };
+  check('per-section columns validate with an empty required section', () => {
+    validateDefinition({ descriptor: mixed, query: async () => mixedData });
+    assert.equal(validateReportData(mixed, mixedData), 1);
+  });
+  check('missing mixed section is refused', () =>
+    assert.throws(
+      () => validateReportData(mixed, { ...mixedData, sections: mixedData.sections.slice(1) }),
+      ReportError,
+    ),
+  );
+  check('wrong mixed row arity is refused', () =>
+    assert.throws(
+      () =>
+        validateReportData(mixed, {
+          ...mixedData,
+          sections: [
+            mixedData.sections[0]!,
+            {
+              ...mixedData.sections[1]!,
+              groups: [
+                {
+                  id: 'g',
+                  title: '',
+                  rows: [{ id: 'mixed', cells: [{ type: 'integer', value: '2' }] }],
+                },
+              ],
+            },
+          ],
+        }),
+      ReportError,
+    ),
+  );
+  for (const columns of [
+    [],
+    [mixed.columns[0]!, mixed.columns[0]!],
+    [{ key: 'bad-key', label: 'x', width: 20 }],
+    [{ key: 'value', label: 'x', width: NaN }],
+  ])
+    check('invalid section column definition refused', () =>
+      assert.throws(
+        () =>
+          validateDefinition({
+            descriptor: { ...mixed, sectionColumns: { first: columns } },
+            query: async () => mixedData,
+          }),
+        ReportError,
+      ),
+    );
+  const book = new ExcelJS.Workbook();
+  await book.xlsx.load(
+    new Uint8Array(
+      await renderReportExcel({
+        descriptor: mixed,
+        parameters: parse('format=preview').parameters,
+        data: mixedData,
+        filterLabels: [],
+        generatedAt: '2026-09-30T21:00:00Z',
+        operationId: 'mixed-contract',
+        rowCount: 1,
+      }),
+    ) as never,
+  );
+  const exact = book.getWorksheet(t.reports.exactSheet)!;
+  assert.equal(exact.getRow(2).getCell(2).value, 'when');
+  assert.equal(exact.getRow(3).getCell(2).value, 'amount');
+  assert.equal(
+    Buffer.from(String(exact.getRow(2).getCell(5).value), 'base64').toString('utf8'),
+    '2024-02-29',
+  );
+  assert.equal(
+    Buffer.from(String(exact.getRow(3).getCell(5).value), 'base64').toString('utf8'),
+    '2',
+  );
+  const sheet = book.getWorksheet(t.reports.dataSheet)!;
+  assert.equal(sheet.getRow(1).getCell(1).value, t.administrativeReports.workSection);
+  assert.equal(sheet.getRow(3).getCell(1).value, t.administrativeReports.decisionSection);
+  assert.equal(sheet.getRow(4).getCell(2).value, t.reports.fields.from);
+  assert.equal(sheet.getRow(6).getCell(2).type, ExcelJS.ValueType.Date);
+  assert.equal(sheet.getRow(6).getCell(3).value, 2);
+  cases++;
   const request = (body: string) =>
     new Request('http://127.0.0.1:3100/reports/probe/run', {
       method: 'POST',
