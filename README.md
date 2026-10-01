@@ -765,3 +765,16 @@ The documentation-child identity and publication/final observations are external
 receipts. Independent operational review is still pending; Task6.5 is not started.
 PDF copying remains an accepted limitation, **NOT FIXED**; search is uncertified.
 Earlier dated candidate/unactivated statements are preserved as historical evidence.
+
+
+## Tasks 6.5-6.7 implementation candidate - 1 October 2026
+
+The authorized combined report work starts from published `186fd91d`.
+The first local working piece adds hearing period and preliminary/final
+distribution adapters. Team, administrative and document/POA work continues
+under the [source map](docs/testing/tasks-6-5-6-7-report-semantics.md) and
+[three approved decisions](docs/approvals/2026-10-01-tasks-6-5-6-7-report-decisions.md).
+This is incomplete candidate work, not acceptance or activation. Owner migration77,
+existing report selections, accepted app artifact and all TASKS bytes are preserved.
+The [Task6.4 operational PASS](docs/reviews/2026-10-01-task-6-4-independent-operational-review.md)
+is retained verbatim. Stop at the combined independent implementation review.
