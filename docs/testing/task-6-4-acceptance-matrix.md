@@ -92,3 +92,23 @@ activation, acceptance closure or publication is included. PDF copying is an
 accepted limitation, not fixed; search remains uncertified and untested.
 The [implementation report](../task-reports/2026-10-01-task-6-4-implementation.md)
 explains failures, reuse and observation limits in plain language.
+
+## T64-R1 correction candidate — 1 October 2026 Cairo
+
+This supplements the preserved implementation evidence; acceptance remains on
+hold. See the [correction report](../task-reports/2026-10-01-task-6-4-correction1.md).
+Evidence is under `test-results/task64-r1-20261001T054845Z`.
+
+| Gate | Correction result |
+|---|---|
+| Actual before reproduction | Original built route visibly reverses spaced numeric identifiers and collapses multiline context; browser evidence replaces no prior review evidence |
+| Narrow source correction | `5af46ca`: one page uses existing per-line helper and existing labels; null fallback fixed. Selection list, queries/services/actions, migrations1–77, permissions, renderers and dependencies unchanged |
+| Final browser | Build `3cwCPGCheBiowTUpuqX61`: six cases × Administrator/Lawyer ×1440/390/320 =36 observations, plus identical before observations; canonical values, list, IDs/hearing choices and role affordances verified |
+| Accessibility/read-only behavior | Targeted axe/AX and keyboard/focus pass; complete state equality for every browser read interval; zero selection/report/export mutation |
+| Focused/project gates | 12 actual-page regression cases, full project check and fresh production build pass |
+| Fixture/accounting | Pristine/final148+15; unchanged candidate77 only in isolated cluster; exactly24 native-setup/authentication events, all prior rows/selections/history preserved |
+| Reuse/preservation/cleanup | Original five-file receipt-inclusive verification, source-bound deep evidence and67savedoutputs reused; protected owner state/TASKS exact. External receipt binds final owned cleanup and post-package observations |
+
+Independent correction review is the next gate. No owner activation, migration,
+acceptance closure, push or Task6.5. PDF copying remains an accepted limitation;
+search is uncertified and untested.
