@@ -112,3 +112,44 @@ Evidence is under `test-results/task64-r1-20261001T054845Z`.
 Independent correction review is the next gate. No owner activation, migration,
 acceptance closure, push or Task6.5. PDF copying remains an accepted limitation;
 search is uncertified and untested.
+
+
+## Actual acceptance and activation supplement — 1 October 2026
+
+Disposition: **READY FOR INDEPENDENT OPERATIONAL REVIEW**. Khaled adopted the
+correction1 PASS and authorized the exact bounded operation. Task6.4 is accepted;
+this operation does not certify its own independent review. Task6.5 is not started.
+
+| Gate | Fresh result and exact evidence |
+| --- | --- |
+| Frozen input | 1,014 tracked identities, all ten preserved local children, adopted prompt/contextv1.147/reviews and ten original/correction delivery files verified; both receipt-inclusive verifiers passed. |
+| Recovery | Protected migration76 dump SHA256 `a38d1e5e929677a1f57a2802b2057ba9822cff2e00c88716314f317b58eedde9`, roles/configuration and54logos; full restored equality with only documented restore-specific differences. `recovery-receipt.json`, `restore-equality-attempt2.json`. |
+| Build and artifact | Fresh full project check/build; sourcec59f0d2/build`_ehqxQr_3RiIGEhysOBbY`; independent35,183dependency files and38,154complete artifact files. Every original artifact file freshly hashed before activation; final source/compiled hashes and dependency size/mtime match. Only two runtime logs added. |
+| Rehearsal migration | Exact unchanged77 through guarded runner; four tables and exact catalogs/ACLs; existing13purpose-tagged receipt IDs derived from baseline, no seeded lawyer choices. Old data/auth/audit/sequences unchanged. `candidate77-upgrade.json`. |
+| Browser/context | Four genuine fixture logins;27fresh context observations including six administrator identifier/fallback cases at1440/390/320 and representative other-role affordances, focus/axe/read-only equality. `browser-after/result.json`. |
+| Reports/outputs | All six IDs independently reconstructed;11fixture previews including empty/nonempty Selected and one fresh ordinary flow per role. Twelve retained outputs (sixpairs), exact XLSX cells/types/order/totals/Cairo/RTL, all11PDFpages visually inspected. One deliberately saved older hearing in isolated selections; previous client/closed choices exact. |
+| Rehearsal accounting | 76exact fixture events:12updates,4resets,4password changes,4logins,13creates,25executions,14export completions. Two completed PDFs lost in browser transport are explicitly uninspected; two replacements supplied the required retained outputs. `fixture-reconciliation.json`. |
+| Actual migration | Ownercluster`7676117521894273062`;77finished`2026-10-01T07:58:21.848Z` through reviewed deploy runner. 148→152tables,76→77completed migrations,48unchanged sequences. Three lawyer choice/history/submission tables empty; scope registryexact13existing IDs. Full actual delta equals rehearsal, zero audit/auth/business change. |
+| Owner smoke | Catalogue21; matching matter1698/client/hearing detail/list atdesktop/mobile, noSave. Sevenpreviews (sixAll and explicit emptySelected), four saved files. Independent full-data expectation checks, both XLSX decoded, everypage of both PDFs inspected (threepages). Anonymous login200/home+reports307. |
+| Owner accounting | Audit1094→1111:one update/sign-in,11executions,4completions; no failed login or lost output. Exact account timestamps/actor/mutex+1; passwords/sessionversion/roles/capabilities unchanged. All business/old selections/history/receipts/catalogs/48sequences/prior audit rows exact. `owner-reconciliation.json`. |
+| Final gates and cleanup | Fresh148historical+15setup and all three selection checkpoints on pristine fixture, migrated fixture, schema-stage owner and final owner; complete quiet read windows. Exact fixture container/network/volume/app removed. Task session/temp credential cleanup and post-package observations are bound by the final receipt. |
+| Acceptance/publication | Exact six-document child; sole6.4checkbox change, all other85checkbox lines and historical prefixes exact. Native source/commit/tree and forward/reverse patches, normal non-force push and fresh matching clean refs are required external receipts. |
+
+Evidence root: `test-results/task64-operational-20261001T070711Z` (ignored).
+`evidence-reuse.json` binds19existing evidence items and the exact reviewed
+source/SQL/dependencies. Original deep full-volume/four-role480permission,
+stale/conflict/retry/rollback/cross-purpose concurrency, client245 ten-choice and
+existing15report regression, and correction1 full36before/36after context matrix
+are **reused, not rerun**. Fresh operational integration is distinguished above.
+
+Both failed fixture transport attempts and the initial shared-banner helper
+asset/ID setup failure remain preserved. Missing repeated header regions in an
+inline image display were checked with an existing second rasterizer and exact
+header-pixel comparison: saved PDF/page images contain complete headers; no PDF
+defect or application correction is claimed. A read-only recovery-account
+extraction needed the explicit stdout option; no database restore/write occurred.
+PDF copying is **ACCEPTED LIMITATION — NOT FIXED**; search is **NOT CERTIFIED**.
+Private row/recovery/credential bodies remain local; the package binds local
+comparisons, not independent inspection of those bodies. Recovery is local and
+does not protect against laptop/disk loss. See the
+[operational report](../task-reports/2026-10-01-task-6-4-acceptance-activation.md).

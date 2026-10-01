@@ -738,3 +738,30 @@ with no acceptance, activation or push. Migration76, all15 accepted reports and
 TASKS remain unchanged. See the [resumable checkpoint](docs/task-reports/2026-09-30-task-6-4-incomplete-checkpoint.md)
 and [source map](docs/testing/task-6-4-report-semantics.md). The complete five-file
 independent-review package follows the decisions, remaining work and final gates.
+
+
+## Task 6.4 acceptance and activation — 1 October 2026
+
+The independently reviewed correction1 candidate `c59f0d24a34ab966e45b3ac0aac3a7f0bdd96bb8`
+is accepted under Khaled's adopted bounded operational mandate. Its six lawyer
+reports and separate deliberate lawyer selections are live, alongside the existing
+15 reports. Exact migration 77 completed once at 10:58:21 Cairo after protected
+recovery, a full isolated restore and rehearsal. Existing client/closed selections,
+including client245's ten choices, remain exact; no new owner selections were seeded
+or saved and no Access data was synchronized.
+
+The independently built and tested artifact serves `http://127.0.0.1:3000`, observed
+PID35400/build `_ehqxQr_3RiIGEhysOBbY` at 11:11:02 Cairo. Fresh owner148+15 checks and
+three selection checkpoints passed. Seven genuine owner previews and two saved
+PDF/XLSX pairs passed independent data checks and inspection of every PDF page.
+Audit1094→1111 is exactly one account update/sign-in, eleven report executions and
+four export completions. Business data, credentials, previous selections and all
+48 sequences remain unchanged. Normal use resumed after the quiet final comparison.
+
+Only Task6.4 is newly checked. See the [operational report](docs/task-reports/2026-10-01-task-6-4-acceptance-activation.md),
+[independent PASS](docs/reviews/2026-10-01-task64-correction1-independent-review.md)
+and appended [acceptance matrix](docs/testing/task-6-4-acceptance-matrix.md).
+The documentation-child identity and publication/final observations are external
+receipts. Independent operational review is still pending; Task6.5 is not started.
+PDF copying remains an accepted limitation, **NOT FIXED**; search is uncertified.
+Earlier dated candidate/unactivated statements are preserved as historical evidence.

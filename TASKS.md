@@ -2447,7 +2447,7 @@ than assuming one rule for every workflow. Test with real volumes.
       Layout: `docs/REPORT-LAYOUTS.md`, "Type 4 — Client status report".
       Includes the client's own logo, with a text fallback.
 - [x] **6.3 Matter reports**
-- [ ] **6.4 Lawyer reports**
+- [x] **6.4 Lawyer reports**
 - [ ] **6.5 Hearing reports**
 - [ ] **6.6 Administrative works reports**
 - [ ] **6.7 Document and POA reports**
