@@ -80,3 +80,8 @@ The [correction2 report](../task-reports/2026-10-02-tasks-6-5-6-7-correction2.md
 contains the hypothesis matrix, control-guard failure, precise reuse/observation
 limits and a concrete next proposal for independent review. PDF copying remains
 accepted, NOT FIXED; search remains uncertified. No acceptance checkbox changes.
+
+
+## Fresh operational gates — 2 October 2026
+
+Recovery equality/hashes/protection and fresh full-state restore: PASS. Exact migration 78 rehearsal/actual delta and quiet 148+15/four-selection checkpoints: PASS. Fresh full project check and separate production build: PASS. Four-role catalog/preview/selection-affordance checks and ten focused R1 cases: PASS; unchanged deep 18-case R1/full-volume/480 permission evidence reused by source identity. Independent complete workbook and declared PDF visual coverage: PASS (fixture 18 saved files, owner 8 saved files). Owner 18 previews, one genuine login and 36 audit additions reconciled exactly; no selection Save/seeding/repair. Exact-owned cleanup: PASS. Native six-document/three-checkbox scope, source preservation and publication/seal are independently checked in operational delivery. N1 accepted/unresolved/not fixed; original 206/202/4, correction 1 30/30/0 and correction 2 real 8/8/0 remain separate historical counts. PDF copying accepted/unfixed; search uncertified. See [operational report](../task-reports/2026-10-02-tasks-6-5-6-7-acceptance-activation.md). Independent operational review pending; later tasks remain unchecked.

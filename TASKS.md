@@ -2448,9 +2448,9 @@ than assuming one rule for every workflow. Test with real volumes.
       Includes the client's own logo, with a text fallback.
 - [x] **6.3 Matter reports**
 - [x] **6.4 Lawyer reports**
-- [ ] **6.5 Hearing reports**
-- [ ] **6.6 Administrative works reports**
-- [ ] **6.7 Document and POA reports**
+- [x] **6.5 Hearing reports**
+- [x] **6.6 Administrative works reports**
+- [x] **6.7 Document and POA reports**
       **The POA and document movement cards are the paper half of a
       stock-control system.** `عدد النسخ` is a live count of copies in the
       safe; a lawyer signs one out to attend court and the count drops, and

@@ -814,3 +814,8 @@ This is incomplete candidate work, not acceptance or activation. Owner migration
 existing report selections, accepted app artifact and all TASKS bytes are preserved.
 The [Task6.4 operational PASS](docs/reviews/2026-10-01-task-6-4-independent-operational-review.md)
 is retained verbatim. Stop at the combined independent implementation review.
+
+
+## Tasks 6.5–6.7 operational acceptance — 2 October 2026
+
+The adopted migration 78/activation gates passed on the frozen reviewed source through `03b19ac`. N1 is **accepted, cause unresolved, not fixed**; R1 remains PASS. Historical blocked reviews remain unchanged. Owner migration 78 applied once with exact additive delta and no selection seeding/Save/repair; prior selections and hearing 11003 archive preserved. Same rehearsed build `FYrtWdvuxWXTekJvuSOZo` serves loopback 3000 as PID 55540 (dated 2 October observation). Fresh owner eighteen previews/eight saved exports and fixture thirty-seven previews/eighteen saved exports passed independent data/visual checks; owner accounting+36 audits exact. Retained pre-change recovery was fully rehashed and freshly restored; prior artifact and evidence preserved. See the [operational report](docs/task-reports/2026-10-02-tasks-6-5-6-7-acceptance-activation.md), [historical correction 2 review](docs/reviews/2026-10-02-tasks-6-5-6-7-independent-correction2-review.md) and [owner risk acceptance](docs/approvals/2026-10-02-tasks-6-5-6-7-N1-risk-acceptance.md). Final operational receipt binds the documentation child and normal publication result. Independent operational review remains pending; no later task started. PDF copying remains accepted/unfixed and search uncertified.
