@@ -628,6 +628,27 @@ export async function setMigrationAuditContext(tx: any) {}`,
       label + ' alteration must fail the exact guarded closure',
     );
   }
+  for (const [file, from, to] of [
+    ['src/lib/reports/engine.ts', 'decideAuthorization(session, p.area, p.action).allowed', 'true'],
+    ['src/lib/reports/judgments-by-lawyer.ts', "AND h.outcome<>''", ''],
+    [
+      'src/lib/reports/judgments-by-lawyer.ts',
+      "role IN ('lead','co_lead')",
+      "role IN ('lead','co_lead','support')",
+    ],
+  ]) {
+    const original = legitimateRuntime.find((s) => s.path === file)!;
+    assert.ok(original.text.includes(from!));
+    const altered = legitimateRuntime.map((s) =>
+      s.path === file ? { ...s, text: s.text.replace(from!, to!) } : s,
+    );
+    assert.ok(
+      auditRuntimeSourceFailures(altered).some(
+        (f) => f.includes('Report guarded closure differs') && f.includes(file!),
+      ),
+      'Task 6.8/catalog authority and source qualification must remain guarded',
+    );
+  }
   const service: AuditRuntimeSource = {
     path: 'src/lib/auth/service.ts',
     text: `import { setAdministrationAuditContext, setAuthenticationAuditContext, setHumanAuditContext } from '@/lib/audit';

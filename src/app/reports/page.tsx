@@ -6,6 +6,8 @@ import { reporting } from '@/lib/reports/production';
 import { t } from '@/strings';
 import styles from './reports.module.css';
 import { reportClientContext } from '@/lib/reports/client-context';
+import { categorizeReports } from '@/lib/reports/catalog';
+import { ReportCatalog } from './catalog';
 export const dynamic = 'force-dynamic';
 export default async function ReportsPage({
   searchParams,
@@ -19,22 +21,7 @@ export default async function ReportsPage({
     client && hasPermission(session.user.role, 'clients', 'view')
       ? await getClient(session, String(client))
       : null;
-  const order = [
-    'client-status',
-    'client-matters',
-    'client-branches',
-    'client-branch-matters',
-    'client-branch-finance',
-    'client-evaluation',
-    'client-branch-evaluation-finance',
-    'client-judgments',
-    'client-active-contacts',
-  ];
-  const ordered = [...catalog].sort(
-    (a, b) =>
-      (order.indexOf(a.id) < 0 ? 99 : order.indexOf(a.id)) -
-      (order.indexOf(b.id) < 0 ? 99 : order.indexOf(b.id)),
-  );
+  const categories = categorizeReports(catalog, client);
   return (
     <main className={styles.page} data-reviewed>
       <Link className={styles.secondaryAction} href={client ? `/clients/${client}` : '/'}>
@@ -46,36 +33,14 @@ export default async function ReportsPage({
           <Link href={`/clients/${client}`}>
             {context?.nameAr ?? t.clients.details} ({client})
           </Link>{' '}
-          · <Link href={`/reports/selection?client=${client}`}>{t.reportSelection.edit}</Link>
         </p>
       ) : null}
       <aside className={styles.guidance}>
-        <h2>{t.ui.currentScope}</h2>
-        <p>{t.ui.reportScopeHelp}</p>
+        <h2>{t.reportCatalog.guidance}</h2>
+        <p>{t.reportCatalog.help}</p>
         <p>{t.ui.noRunOnOpen}</p>
-        <Link href={`/reports/administrative-selection${client ? `?client=${client}` : ''}`}>
-          {t.administrativeSelection.title}
-        </Link>
       </aside>
-      {catalog.length ? (
-        <ul className={styles.catalog}>
-          {ordered.map((d) => (
-            <li key={d.id}>
-              <h2>{d.title}</h2>
-              <p>{d.description}</p>
-              <p className={styles.hint}>{t.ui.reportFormats}</p>
-              <Link
-                className={styles.secondaryAction}
-                href={`/reports/${d.id}${client && d.parameters.client ? `?client=${client}` : ''}`}
-              >
-                {t.ui.prepareReport}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>{t.reports.emptyCatalog}</p>
-      )}
+      <ReportCatalog categories={categories} clientContext={Boolean(client)} />
     </main>
   );
 }

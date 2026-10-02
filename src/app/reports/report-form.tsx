@@ -545,6 +545,18 @@ export function ReportForm({
                       )}
                     </div>
                   ))}
+                  {section.totals?.length ? (
+                    <dl className={styles.recordDetails}>
+                      {section.totals.map((total, index) => (
+                        <div key={index}>
+                          <dt>{total.label}</dt>
+                          <dd>
+                            <bdi>{cellText(total.value)}</bdi>
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
                 </section>
               ))}
               {result.rowCount === 0 ? <p>{t.reports.noRows}</p> : null}

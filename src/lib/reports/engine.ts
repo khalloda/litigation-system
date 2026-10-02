@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { PrismaClient } from '@/generated/prisma/client';
 import { recordObservedExternalEvent } from '@/lib/audit';
 import { createServerActionAuditMetadata } from '@/lib/audit-metadata';
-import { AuthorizationError } from '@/lib/auth/authorization-core';
+import { AuthorizationError, decideAuthorization } from '@/lib/auth/authorization-core';
 import { t } from '@/strings';
 import { requireReportAuthority, reportSnapshot } from './authority';
 import { parseReportInput, readReportRequest } from './input';
@@ -15,7 +15,7 @@ import { renderReportPdf } from './pdf';
 import { REPORT_LIMITS, ReportError, type ReportDefinition, type ReportResult } from './types';
 
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
-/** Composition root accepts trusted code only. Production passes its empty registry;
+/** Composition root accepts trusted code only. Production passes its reviewed registry;
  * integration harnesses import this very factory with their own test adapters. */
 export function createReportEngine(
   definitions: readonly ReportDefinition[],
@@ -45,7 +45,11 @@ export function createReportEngine(
   return Object.freeze({
     async catalog(session: Session | null) {
       await requireReportAuthority(session, database, 'run');
-      return [...registry.values()].map((x) => x.descriptor);
+      return [...registry.values()]
+        .map((x) => x.descriptor)
+        .filter((d) =>
+          d.permissions.every((p) => decideAuthorization(session, p.area, p.action).allowed),
+        );
     },
     async describe(session: Session | null, id: string) {
       await requireReportAuthority(session, database, 'run');

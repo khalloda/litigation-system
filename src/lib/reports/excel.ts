@@ -112,8 +112,10 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
         Buffer.from(chunk, 'utf8').toString('base64'),
       ]);
   }
-  for (const section of result.data.sections) {
+  for (const [sectionIndex, section] of result.data.sections.entries()) {
     const columns = reportColumns(result.descriptor, section.id);
+    if (result.descriptor.sectionPageBreaks && sectionIndex > 0)
+      sheet.getRow(sheet.rowCount).addPageBreak();
     add(sheet, [section.title]);
     if (result.descriptor.sectionColumns)
       add(sheet, [t.reports.rowNumber, ...columns.map((column) => column.label)]).font = {
@@ -154,6 +156,7 @@ export async function renderReportExcel(result: ReportResult, signal?: AbortSign
         });
       }
     }
+    for (const total of section.totals ?? []) add(sheet, [total.label, excelCell(total.value)]);
   }
   for (const total of result.data.totals) add(sheet, [total.label, excelCell(total.value)]);
   const outcomes = reportOutcomeChart(result.data);

@@ -13,6 +13,7 @@ import { hearingPeriodReports } from './hearing-periods';
 import { teamHearingReport } from './hearing-teams';
 import { administrativeReports } from './administrative-reports';
 import { documentReports } from './document-reports';
+import { judgmentsByLawyer } from './judgments-by-lawyer';
 
 /** The nine accepted client definitions retain their IDs and semantics.
  * New matter definitions follow the Task 6.3 source map; no test probes. */
@@ -31,4 +32,5 @@ export const reportDefinitions: readonly ReportDefinition[] = Object.freeze([
   teamHearingReport,
   ...administrativeReports,
   ...documentReports,
+  judgmentsByLawyer,
 ]);

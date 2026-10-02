@@ -67,6 +67,7 @@ export function validateReportData(descriptor: ReportDescriptor, data: ReportDat
   for (const section of data.sections) {
     if (!section.id || sections.has(section.id)) throw new ReportError('generation');
     sections.add(section.id);
+    section.totals?.forEach((total) => validateCell(total.value));
     const groups = new Set<string>();
     for (const group of section.groups) {
       if (!group.id || groups.has(group.id)) throw new ReportError('generation');
@@ -127,6 +128,8 @@ export function validateDefinition(definition: ReportDefinition) {
   )
     throw new ReportError('generation');
   if (d.outcomeChart !== undefined && typeof d.outcomeChart !== 'boolean')
+    throw new ReportError('generation');
+  if (d.sectionPageBreaks !== undefined && typeof d.sectionPageBreaks !== 'boolean')
     throw new ReportError('generation');
   if (
     d.details &&

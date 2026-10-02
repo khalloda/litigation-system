@@ -89,7 +89,11 @@ const REPORT_ENGINE_CLOSURES = new Map([
     'src/lib/reports/options.ts',
     'e180266e3127b25fe7197a976dd13bef150496664ddd382a65b1187385ac06bc',
   ],
-  ['src/lib/reports/engine.ts', '81314e8a35544d7d28b64a0ac1171960abe62bc1e747eac03a29d2bcd11bb918'],
+  ['src/lib/reports/engine.ts', 'ea56f8ecc314a42b11037454c312f93501cb2457b1bea3a162c81ef302e0647a'],
+  [
+    'src/lib/reports/judgments-by-lawyer.ts',
+    '51bcbf131e808125727de64b61b645e53e78009099b6a0c600a9330997a123c9',
+  ],
 ]);
 const DASHBOARD_READ_CLOSURES = new Map([
   ['src/lib/outcome-query.ts', 'ceb3685ccbc35b342314cb7d0cc8eec467f2849f645477255cd572001c8b27c2'],
@@ -468,6 +472,13 @@ const REVIEWED_RAW_SQL_CALLS = [
     'src/lib/reports/matter-judgments.ts',
     'readMatterJudgments',
     '56dd936bafe75511649214f0c79c66c543198de1b874148053ada488c1f06af5',
+  ],
+  // Task 6.8: exact SELECT only. Bound date endpoints; distinct current principals;
+  // no runtime SQL fragments or writes, inside the engine's read-only snapshot.
+  [
+    'src/lib/reports/judgments-by-lawyer.ts',
+    'readJudgmentsByLawyer',
+    '7493a6bf6f08af6532966c4d7a579d2c0edd64b57e0c2db6f84972d9d05226c8',
   ],
   [
     'src/lib/reports/client-contacts.ts',
@@ -2629,6 +2640,7 @@ export function auditRuntimeSourceFailures(
       source.path === 'src/lib/reports/client-contacts.ts' ||
       source.path === 'src/lib/reports/client-judgments.ts' ||
       source.path === 'src/lib/reports/matter-judgments.ts' ||
+      source.path === 'src/lib/reports/judgments-by-lawyer.ts' ||
       source.path === 'src/lib/reports/lawyer-upcoming.ts' ||
       source.path === 'src/lib/reports/lawyer-matters.ts' ||
       source.path === 'src/lib/reports/matter-record.ts' ||

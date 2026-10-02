@@ -60,7 +60,14 @@ export type ReportGroup = Readonly<{
   date?: string;
   rows: readonly ReportRow[];
 }>;
-export type ReportSection = Readonly<{ id: string; title: string; groups: readonly ReportGroup[] }>;
+export type ReportTotal = Readonly<{ label: string; value: ReportCell }>;
+export type ReportSection = Readonly<{
+  id: string;
+  title: string;
+  groups: readonly ReportGroup[];
+  /** Complete section totals, retained when a preview limits detail rows. */
+  totals?: readonly ReportTotal[];
+}>;
 export type ReportData = Readonly<{
   subtitle: string;
   sections: readonly ReportSection[];
@@ -98,6 +105,8 @@ export type ReportDescriptor = Readonly<{
   clientFacing: boolean;
   /** Trusted label for this definition's logical row grain. */
   countLabel?: string;
+  /** Trusted layout: each section starts a printed page and repeats its title. */
+  sectionPageBreaks?: boolean;
   manual?: Readonly<{
     heading: string;
     labels: readonly string[];
