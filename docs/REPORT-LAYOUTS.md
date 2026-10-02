@@ -307,7 +307,7 @@ people. Confirms these are multi-person fields needing the split rules.
 
 ---
 
-## Still needed from the firm
+## Original outstanding source requirement
 
 Only **one** report has an unknown layout, and D27 requires an original
 representative PDF export or clear scan before Task 6.8:
@@ -330,3 +330,38 @@ Their layout is the client report documented below.
 The firm has confirmed that **all** list reports carry a total count at the
 foot, in the same bordered-box style as the client report. The Access originals
 are inconsistent about this; the new system is not.
+
+## Task 6.8 resolution — 2 October 2026
+
+The preceding outstanding-layout note records the original D27 hold. The
+owner has now supplied the actual target's blank original PDF and route
+screenshots. Read-only design inspection of a disposable copy recovered its
+query, all visible controls, grouping and footer expressions. The remaining
+unreadable Detail_Format procedure was disclosed; the owner approved the
+proved query and visible layout as the complete contract without extra hidden
+row suppression. Task 6.7a's exact target is therefore resolved for this
+implementation, subject to independent review, with that source limitation.
+
+Command153's new `matter-judgments-by-lawyer` prints landscape with the approved
+Noto Sans Arabic, RTL house styling and nine columns including row number:
+client, complete case number, hearing court/circuit, current client parties and
+capacities, current opponent parties and capacities, matter subject, dated
+decision and hearing notes. The source query's partner field has no printed
+control; no invented partner relation or manual writing lines are added.
+
+Each current principal has a page section; unassigned hearings have a labelled
+section. Exact outcome groups repeat lawyer/outcome and column headings across
+pages. Dates ascend within each outcome, with hearing ID as a stable tie-break.
+The raw source GroupOn first-character property agrees for the ordinary
+صالح/ضد buckets; the approved contract preserves unknown nonempty outcomes as
+separate exact-value groups. Notes and multiline legal text use the accepted
+continuation rendering. Per-lawyer totals identify favourable, against, other
+and all hearings. Separate distinct overall totals prevent double counting
+between principals; the attributed row count is explicitly labelled.
+
+The neighboring populated Command250 sample remains comparison evidence only.
+It uses a selected lawyer and a different period and came from a separate
+Access snapshot. Neither its five rows nor the blank target's numbered empty
+line is used as a fabricated expected current population.
+
+Detailed bindings: [Task 6.8 source contract](reports/task68-source-contract.md).

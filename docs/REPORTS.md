@@ -102,7 +102,7 @@ count by four.
 - `صالح ضد -إحصائيات مجمعة`
 - `صالح-ضد شهور -تقرير فرعي`
 - `صالح-ضد محامين -بالنسبة`
-- `صالح-ضد مفصل حسب المحامي`  **(layout unknown — original PDF/scan required before Task 6.8)**
+- `صالح-ضد مفصل حسب المحامي`  **(Task 6.8 contract resolved on 2 October 2026; implementation pending independent review — see addendum below)**
 - `غلاف الملف`
 - `قرارات مفتوحة`
 - `قرارات مفتوحة جميع الجهات`
@@ -143,3 +143,37 @@ copied into reports implicitly. Future Stage 6 screens/exports must prove this
 with nonempty results and exact contents/totals, unless the owner separately
 approves an explicit archive report option. No report UI/export is added by
 Task 4.2 Phase 3.
+
+## Task 6.8 source resolution and catalog candidate — 2 October 2026
+
+Command153 opens `صالح-ضد مفصل حسب المحامي`. It is separate from
+Command250 / `rptصالح-ضد مفصل` / `matter-lawyer-judgments`, and from
+Command128 / `rptJudgmentsForAgainst`. The candidate adds
+`matter-judgments-by-lawyer` without merging or changing those reports.
+
+The original blank target PDF, retained query and visible report properties
+establish the printed fields, lawyer → outcome → hearing-date hierarchy,
+new-page lawyer sections and per-lawyer favourable/against totals. One
+`Detail_Format` event procedure could not be read. After that limitation was
+explained, the owner explicitly approved using the proved query and visible
+layout as the complete contract, with no additional hidden row suppression.
+This resolves the Task 6.7a/D27 source gate for implementation; it does not
+prove the unreadable procedure's contents or close acceptance.
+
+The report uses all distinct current non-retired lead/co_lead assignments,
+with an unassigned group. Each qualifying hearing appears once per principal;
+the overall hearing total and outcome totals count distinct hearing IDs.
+Required inclusive date endpoints use `hearing_date`. NULL and exact empty
+outcomes are excluded; unknown nonempty values are retained without trimming.
+Archived and native records, all qualifying hearing dates and notes remain.
+There is no selected-lawyer filter, latest-hearing reduction or saved selection.
+
+The reports landing page places the existing 38 IDs exactly once in seven
+categories and adds this genuine 39th definition to outcomes. Counts and search
+use only the server-authorized catalog. Search, disclosures and Back-state
+recovery do not generate reports or change saved choices. Each report's own
+form continues to explain its scope.
+
+See [source and semantics](reports/task68-source-contract.md),
+[catalog design](reports/task68-catalog-design.md) and
+[review checks](acceptance/task68-reports-catalog.md).
