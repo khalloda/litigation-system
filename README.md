@@ -819,3 +819,19 @@ is retained verbatim. Stop at the combined independent implementation review.
 ## Tasks 6.5–6.7 operational acceptance — 2 October 2026
 
 The adopted migration 78/activation gates passed on the frozen reviewed source through `03b19ac`. N1 is **accepted, cause unresolved, not fixed**; R1 remains PASS. Historical blocked reviews remain unchanged. Owner migration 78 applied once with exact additive delta and no selection seeding/Save/repair; prior selections and hearing 11003 archive preserved. Same rehearsed build `FYrtWdvuxWXTekJvuSOZo` serves loopback 3000 as PID 55540 (dated 2 October observation). Fresh owner eighteen previews/eight saved exports and fixture thirty-seven previews/eighteen saved exports passed independent data/visual checks; owner accounting+36 audits exact. Retained pre-change recovery was fully rehashed and freshly restored; prior artifact and evidence preserved. See the [operational report](docs/task-reports/2026-10-02-tasks-6-5-6-7-acceptance-activation.md), [historical correction 2 review](docs/reviews/2026-10-02-tasks-6-5-6-7-independent-correction2-review.md) and [owner risk acceptance](docs/approvals/2026-10-02-tasks-6-5-6-7-N1-risk-acceptance.md). Final operational receipt binds the documentation child and normal publication result. Independent operational review remains pending; no later task started. PDF copying remains accepted/unfixed and search uncertified.
+
+## Task 6.8 and reports catalog accepted and activated — 2 October 2026
+
+The independently reviewed candidate `875007aa9922fa503e56342e46ed588e554b1227` is accepted and running
+from the separately retained production artifact, build `qKKiY1Mm3YlI7kLKXlTaH`.
+Earlier candidate/blocked statements above remain historical. This operation
+resolves Tasks 6.7a and 6.8 under the approved source contract; Task 6.9 and Stage 7
+have not started. Migration/provisioning is **NOT APPLICABLE**: migration 78,
+all existing data and selection scopes, and hearing 11003's archive are preserved.
+
+See the [dated operational report](docs/task-reports/2026-10-02-task-6-8-reports-catalog-acceptance-activation.md),
+[independent implementation review](docs/reviews/2026-10-02-task68-reports-catalog-independent-implementation-review.md) and
+[owner authorization](docs/approvals/2026-10-02-task68-reports-catalog-owner-authorization.md). N1 remains accepted, unresolved and
+**NOT FIXED**. PDF copying remains an accepted limitation; search is uncertified.
+The operational review is still independent and pending. Publication is a later,
+separately verified step; this document does not preclaim it.

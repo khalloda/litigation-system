@@ -2467,12 +2467,12 @@ than assuming one rule for every workflow. Test with real volumes.
       of attorney are set to show and 55 are not. It is a report setting the firm controls per record —
       not a fact about the power of attorney — so the report must honour it
       and the record screen must let it be changed.
-- [ ] **6.7a Firm supplies the original unknown-layout report sample** —
+- [x] **6.7a Firm supplies the original unknown-layout report sample** —
       prerequisite for 6.8 (**D27**). Obtain an original representative PDF
       export or clear scan of `صالح-ضد مفصل حسب المحامي`. Do not approve a
       substitute layout or begin replacement design without further owner
       approval.
-- [ ] **6.8 The one report with an unknown layout** — do not start until the
+- [x] **6.8 The one report with an unknown layout** — do not start until the
       firm supplies the sample.
       Only `صالح-ضد مفصل حسب المحامي` remains unknown.
       `Copy Of صالح-ضد temp-JTI` has been dropped entirely (D17).

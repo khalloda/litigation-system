@@ -177,3 +177,20 @@ form continues to explain its scope.
 See [source and semantics](reports/task68-source-contract.md),
 [catalog design](reports/task68-catalog-design.md) and
 [review checks](acceptance/task68-reports-catalog.md).
+
+## Task 6.8 and catalog acceptance — 2 October 2026
+
+The 39-report catalog in seven expandable categories and `matter-judgments-by-lawyer`
+are accepted and activated following the independent implementation PASS and the
+bounded operational checks. All 38 prior report IDs and their contracts remain
+unchanged. Command153 is resolved separately from the existing Command250 report;
+the unreadable `Detail_Format` limitation remains explicit. See the
+[D27 supplement](DECISIONS.md), [operational report](task-reports/2026-10-02-task-6-8-reports-catalog-acceptance-activation.md)
+and [acceptance evidence](acceptance/task68-reports-catalog.md).
+
+Fresh checks cover genuine four-role catalog/navigation and previews, seven fixture
+files and four owner files, independent complete data comparisons and visible PDF
+output. No choice was saved or seeded. Migration 78 remains unchanged. N1 is
+accepted, unresolved and NOT FIXED; PDF copying remains accepted/unfixed and search
+is uncertified. Earlier candidate/blocked statuses are historical. Independent
+operational review remains pending; Task 6.9 and Stage 7 have not started.

@@ -1861,3 +1861,21 @@ Billing remains read-only under existing decisions, including for administrators
 Task 4.8 remains unstarted; implementing approved lookup/application displays
 and any necessary migration belongs to that future scope. No migration number
 is reserved. D1–D66, including D28, remain unchanged.
+
+## D27 resolution supplement — 2 October 2026
+
+The Task 6.7a source gate is resolved by the original supplied samples, recovered
+Access control/report trace and the owner's explicit approved contract. Command153
+opens `صالح-ضد مفصل حسب المحامي`, now `matter-judgments-by-lawyer`. Command250
+opens the distinct `rptصالح-ضد مفصل`, retained as `matter-lawyer-judgments`.
+The recovered query and 38 visible controls are the complete current contract;
+no additional hidden row suppression is assumed. `Detail_Format` remains unreadable.
+Neither VBA recovery nor diagnosis of the old Access error is claimed.
+
+The [source contract](reports/task68-source-contract.md), original samples/source
+trace in the verified implementation delivery, and the explicit owner decision
+remain the supporting evidence. See the [independent review](reviews/2026-10-02-task68-reports-catalog-independent-implementation-review.md),
+[owner authorization](approvals/2026-10-02-task68-reports-catalog-owner-authorization.md)
+and [acceptance operation](task-reports/2026-10-02-task-6-8-reports-catalog-acceptance-activation.md).
+All preceding decisions remain intact. This supplement records only the bounded
+resolution and acceptance; it introduces no other business-rule change.
