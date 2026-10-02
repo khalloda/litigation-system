@@ -1,5 +1,15 @@
 # Sarie Eldin & Partners — Litigation Management System
 
+## Tasks 6.5–6.7 correction2 — 2 October 2026
+
+R1 retains its independent PASS. The capped N1 diagnosis ended after 17 delivery
+attempts: eight real exports saved, eight fixed controls saved, and one explained
+control refusal. No original transport failure was reproduced or causally fixed;
+N1 remains blocked. Application source remains `6cfd0d9`. See the
+[correction2 report](docs/task-reports/2026-10-02-tasks-6-5-6-7-correction2.md).
+Owner migration 77 and all TASKS bytes remain unchanged. Independent review is
+required; no owner migration, activation, acceptance or push occurred.
+
 ## Tasks 6.5–6.7 correction1 — 2 October 2026
 
 The administrative-selection stale Reload flow is corrected and passed18 focused

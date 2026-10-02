@@ -60,3 +60,23 @@ owner migration/provisioning, seed, repair, push, synchronization or later task.
 The earlier records above retain their historical scope. Correction integrity PASS
 must not convert blockedN1 into implementation acceptance. PDF copying remains
 an accepted limitation, NOT FIXED; search is not certified.
+
+## Correction2 supplement — 2 October 2026
+
+| Gate | Bounded correction2 evidence and disposition |
+| --- | --- |
+| R1 | Independent correction1 PASS retained; unchanged anchor source and 18-case proof reused. |
+| N1 | **BLOCKED_CAUSE_UNESTABLISHED**; no reproduced original failure, production fix or harness-only closure. |
+| Original versus new counts | Original 206/202/4; correction1 30/30/0; correction2 8 real completed/saved, zero unsaved, plus 8 fixed controls saved and 1 explained 404 control refusal. |
+| Cap | 17 delivery attempts and 9 previews; monotonic ledger includes failed attempt; no automatic retries or third campaign. |
+| Whole-stream diagnosis | 88 browser streams/414 complete responses; instrumented 38 aligned connections, 33 byte-exact, 5 explicitly partial cancelled prefetch tails; no export mismatch. |
+| Observation limit | Original complete failed streams missing. Native outgoing bytes are pre-OS, native incoming bytes unavailable; browser request bytes match parsed Node request order. No causal closure. |
+| Outputs | 8 complete XLSX inspections, 8 PDF structural checks, 8 actual raster pages viewed; movement fields blank, source-bound prior data oracle reused. |
+| Fixture | New full-state restore, isolated unchanged78, pristine/final148+15PASS; 37 exact audit additions, all business/selection tables and48sequences unchanged. |
+| Owner | Fresh complete equality at migration77/152tables/48sequences/1134audits; hearing11003 archive and explicit personal confirmation retained; later activity not certified. |
+| Delivery | Documentation-only local child; exact-owned cleanup, retained protected raw streams, five-file receipt-inclusive verification; no owner action, acceptance or push. |
+
+The [correction2 report](../task-reports/2026-10-02-tasks-6-5-6-7-correction2.md)
+contains the hypothesis matrix, control-guard failure, precise reuse/observation
+limits and a concrete next proposal for independent review. PDF copying remains
+accepted, NOT FIXED; search remains uncertified. No acceptance checkbox changes.
