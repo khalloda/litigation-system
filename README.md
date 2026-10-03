@@ -835,3 +835,24 @@ See the [dated operational report](docs/task-reports/2026-10-02-task-6-8-reports
 **NOT FIXED**. PDF copying remains an accepted limitation; search is uncertified.
 The operational review is still independent and pending. Publication is a later,
 separately verified step; this document does not preclaim it.
+
+
+## Report null-label correction accepted and activated — 3 October 2026
+
+Reviewed source `20ae566` is accepted and active locally as build `nX8tceCzk9kmMQNThtYZA`
+(PID 6792 at `2026-10-03T19:59:55.7353212Z`). Generated missing-value labels now read
+**غير مسجل**; recorded values and raw originals are preserved. Earlier candidate
+statements remain dated history. Migration/provisioning is **NOT APPLICABLE**;
+migration 78, all selections and hearing 11003's archive remain unchanged.
+
+Fresh recovery/restore, full checks/build, isolated and owner 148+15 gates, two
+preview scopes and four saved exports per environment passed. Owner accounting is
+exactly nine permitted audit additions; normal use resumed after the quiet checks.
+See the [correction](docs/task-reports/2026-10-03-report-null-label-correction.md),
+[independent PASS](docs/reviews/2026-10-03-report-null-label-independent-implementation-review.md),
+[owner authorization](docs/approvals/2026-10-03-report-null-label-owner-authorization.md)
+and [operational report](docs/task-reports/2026-10-03-report-null-label-acceptance-activation.md).
+N1 remains accepted/unresolved/NOT FIXED; PDF copying is accepted/unfixed, search
+uncertified and Detail_Format unreadable. The external receipt binds the documentation
+child and normal publication result; independent operational review remains pending.
+TASKS is unchanged. Task 6.9 and Stage 7 have not started.
