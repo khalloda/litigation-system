@@ -46,3 +46,22 @@ review is pending. No acceptance criterion or TASKS checkbox has changed.
 | Scope-limited reuse | `evidence-reuse.json`, retained exact prior five-file verification | Historical roles/security/accessibility/volume;25 populated provision text cells separately bound, not an Access-populated sample |
 | Owner/recovery/cleanup | `owner-preservation.json`, final receipt observations, preservation and cleanup records | Owner reads only; full equality, migration78, archive11003 and all choices preserved; owner app absent, not restarted |
 | Delivery | Native source/commit/tree identities, patches and five-file verifier | Integrity must pass independently; no implication of six-report equality or acceptance |
+
+## T69-R1 addendum — 4 October 2026
+
+The original five-file delivery and its 117 source occurrences remain immutable.
+The additional financial rows now have all 35 cells individually classified in
+`financial-field-addendum.json`/`.html` under
+`test-results/task69-evidence-addendum-20261004T114429Z/`. Row eligibility does
+not stand in for field completeness. Three additional missing party fields are
+proved by exact quarantine/relationship/source witnesses, and one court-name
+expansion is bound to its reviewed crosswalk. Original 21 missing occurrences / 17
+fields remain a separate cohort; the deduplicated union is 20 fields / 17 matters.
+
+The five administrative task roots have `unmapped_destination`, while their nine
+sampled steps have `parent_task_quarantined`. Matter parents exist. The precise,
+unapplied repair and selection proposal is in
+[task-6-9-resolution-plan.md](task-6-9-resolution-plan.md). Current report grains,
+latest-overall finance and independent selections remain unchanged. Evidence
+complete and proposal ready do not mean literal equality, owner approval,
+application of repairs or Task 6.9 acceptance. Owner decisions remain pending.
