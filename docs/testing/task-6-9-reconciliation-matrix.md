@@ -25,3 +25,24 @@ The adopted handoff contains six representative PDFs plus one administrative sup
 7. Make local reconciliation script/test/document commits only; preserve TASKS and all 86 checkbox lines. Deliver five receipt-inclusive verified files. Package integrity is separate from report equality and independent review. No source fix, migration, activation, owner sign-in/report request, acceptance closure or push.
 
 N1 remains accepted/unresolved/not fixed; PDF copying accepted/unfixed; search uncertified; `Detail_Format` unreadable. None is diagnosed in this task.
+
+## Completed local reconciliation candidate
+
+See the [dated report](../task-reports/2026-10-04-task-6-9-reconciliation.md) for the
+per-report disposition and limits. All initial Pending entries above are retained
+as the before-execution plan. Fresh current-contract checks now pass for eight
+explicit scopes; **literal six-report equality remains NOT PASS** and independent
+review is pending. No acceptance criterion or TASKS checkbox has changed.
+
+| Gate | Final evidence in the task root | Result |
+| --- | --- | --- |
+| Handoff and exact sources | `intake-verification.json`, `access-intake.json`, `sample-preservation.json` | PASS; two exact read-only source copies, zero linked tables; seven PDFs and seven button screenshots preserved |
+| Exact source target/parameters | `source-button-trace.json`, `source-query-plan.json`, `source-full-query-results.json`, `full-projection-comparison.json` | PASS; source primary keys and complete raw field multisets; no attachment multiplication |
+| Every source/current occurrence | `source-current-mappings.json`, `complete-row-field-comparison.json` and `.html`, `page-row-locations.json`, `report-dispositions.json` | Comparison complete; literal equality NOT PASS; quarantine and semantic/selection differences explicitly retained |
+| Independent current contract | `current-contract-check.json`, `current-expected.json`, `oracle-corruption-probes.json` | PASS eight scopes / 57 rows / 392 row cells; seven rejected corruption cases |
+| Genuine isolated outputs | `outputs/browser/result.json`, `output-inspection.json`, `visual-inspection.json` | Eight previews, sixteen completed/saved outputs, eight exact typed books, all21 current and24 source PDF pages viewed; no copying/search certification |
+| Project / database gates | `project-check-r2-command.json`, pristine/final fixture gate logs | Full project check;148+15 pristine and final database checks PASS; complete quiet equality |
+| Authentication and export accounting | `fixture-accounting.json` | Exact46 additions, account replay and every saved export hash; no business/selection change |
+| Scope-limited reuse | `evidence-reuse.json`, retained exact prior five-file verification | Historical roles/security/accessibility/volume;25 populated provision text cells separately bound, not an Access-populated sample |
+| Owner/recovery/cleanup | `owner-preservation.json`, final receipt observations, preservation and cleanup records | Owner reads only; full equality, migration78, archive11003 and all choices preserved; owner app absent, not restarted |
+| Delivery | Native source/commit/tree identities, patches and five-file verifier | Integrity must pass independently; no implication of six-report equality or acceptance |
