@@ -1,3 +1,4 @@
+import { task69FoundationFailures } from './task69-foundation-checkpoint';
 import {
   administrativeSelectionApplied,
   administrativeSelectionFailures,
@@ -179,6 +180,7 @@ export async function auditEventStructureFailures(
 ): Promise<string[]> {
   const failures: string[] = [];
   failures.push(...(await task62SourceFailures(db)));
+  failures.push(...(await task69FoundationFailures(db)));
   const reportSelection = await reportSelectionApplied(db);
   const closedSelection = await closedSelectionApplied(db);
   const administrativeSelection = await administrativeSelectionApplied(db);

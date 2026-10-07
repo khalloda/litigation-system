@@ -1,0 +1,963 @@
+{
+  "columns": [
+    {
+      "table_name": "task69_allowlist",
+      "column_name": "operation_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_allowlist",
+      "column_name": "issue_id",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_allowlist",
+      "column_name": "stage",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_allowlist",
+      "column_name": "unit_kind",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_allowlist",
+      "column_name": "entry_text",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_allowlist",
+      "column_name": "entry_sha256",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_allowlist",
+      "column_name": "payload_text",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_allowlist",
+      "column_name": "payload_sha256",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_delta",
+      "column_name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_delta",
+      "column_name": "ordinal",
+      "type": "integer",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_delta",
+      "column_name": "entity_schema",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_delta",
+      "column_name": "entity_table",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_delta",
+      "column_name": "entity_key",
+      "type": "jsonb",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_delta",
+      "column_name": "before_values",
+      "type": "jsonb",
+      "attnotnull": false,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_delta",
+      "column_name": "after_values",
+      "type": "jsonb",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_delta",
+      "column_name": "audit_event_id",
+      "type": "bigint",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "operation_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "target_cluster",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "target_database",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "register_sha256",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "plan_sha256",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "runner_sha256",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "schema_sha256",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "contract_text",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "contract_sha256",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_operation",
+      "column_name": "created_at",
+      "type": "timestamp with time zone",
+      "attnotnull": true,
+      "default_value": "statement_timestamp()"
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "operation_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "issue_id",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "payload_sha256",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "phase",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "actor_id",
+      "type": "integer",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "audit_session_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "request_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "returned_ids",
+      "type": "jsonb",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "source_occurrences",
+      "type": "jsonb",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "effect",
+      "type": "text",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "expected_delta_count",
+      "type": "integer",
+      "attnotnull": true,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "prior_receipt_id",
+      "type": "uuid",
+      "attnotnull": false,
+      "default_value": null
+    },
+    {
+      "table_name": "task69_receipt",
+      "column_name": "created_at",
+      "type": "timestamp with time zone",
+      "attnotnull": true,
+      "default_value": "statement_timestamp()"
+    }
+  ],
+  "constraints": [
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (entry_sha256 = encode(sha256(convert_to(entry_text, 'UTF8'::name)), 'hex'::text))"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_check1",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (payload_sha256 = encode(sha256(convert_to(payload_text, 'UTF8'::name)), 'hex'::text))"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_check2",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK ((unit_kind = 'dependency'::text) = (stage = 'shared-dependency'::text))"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_check3",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (((entry_text::jsonb ->> 'issueId'::text) = issue_id) IS TRUE)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_check4",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (((entry_text::jsonb ->> 'stage'::text) = stage) IS TRUE)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_check5",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (((entry_text::jsonb ->> 'unitKind'::text) = unit_kind) IS TRUE)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_check6",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (((entry_text::jsonb -> 'approvedOutcome'::text) = payload_text::jsonb) IS TRUE)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_entry_text_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(entry_text::jsonb) = 'object'::text)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_issue_id_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (length(issue_id) > 0)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_operation_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (operation_id) REFERENCES _migration.task69_operation(operation_id)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_operation_id_issue_id_payload_sha256_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (operation_id, issue_id, payload_sha256)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_payload_text_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(payload_text::jsonb) = 'object'::text)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (operation_id, issue_id)"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_stage_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (stage = ANY (ARRAY['S1-party-display'::text, 'S2-lawyer-membership'::text, 'S3-admin-parents'::text, 'S4-step-restoration'::text, 'S5-poa-membership'::text, 'S6-documents'::text, 'S7-fee-provenance'::text, 'S8-history-dispositions'::text, 'shared-dependency'::text]))"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "conname": "task69_allowlist_unit_kind_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (unit_kind = ANY (ARRAY['issue'::text, 'dependency'::text]))"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_after_values_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(after_values) = 'object'::text)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_after_values_check1",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK ((after_values ->> 'id'::text) ~ '^[1-9][0-9]*$'::text)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_audit_event_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (audit_event_id) REFERENCES audit_events(id)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_audit_event_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (audit_event_id)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_before_values_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (before_values IS NULL OR jsonb_typeof(before_values) = 'object'::text)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (before_values IS DISTINCT FROM after_values)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_check1",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (entity_key = jsonb_build_object('id', after_values -> 'id'::text))"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_check2",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (before_values IS NULL OR (before_values -> 'id'::text) = (after_values -> 'id'::text))"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_entity_key_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(entity_key) = 'object'::text AND entity_key <> '{}'::jsonb)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_entity_schema_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (entity_schema = 'public'::text)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_entity_table_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (entity_table = ANY (ARRAY['matters'::text, 'matter_parties'::text, 'matter_party_roles'::text, 'matter_lawyers'::text, 'admin_tasks'::text, 'task_actions'::text, 'powers_of_attorney'::text, 'power_of_attorney_lawyers'::text, 'documents'::text, 'fee_letters'::text, 'fee_letter_matters'::text, 'matter_fee_letter_references'::text, 'lookup_party_role'::text, 'lookup_court'::text, 'lookup_matter_destination'::text, 'admin_task_assignees'::text, 'document_matters'::text, 'document_responsible_people'::text]))"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_ordinal_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (ordinal > 0)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (receipt_id, ordinal)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_receipt_id_entity_schema_entity_table_entity_k_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (receipt_id, entity_schema, entity_table, entity_key)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_contract_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (contract_sha256 = encode(sha256(convert_to(contract_text, 'UTF8'::name)), 'hex'::text))"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_check1",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (((contract_text::jsonb ->> 'operationId'::text) = operation_id::text) IS TRUE)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_check2",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (((contract_text::jsonb ->> 'registerSha256'::text) = register_sha256) IS TRUE)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_check3",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (((contract_text::jsonb ->> 'planSha256'::text) = plan_sha256) IS TRUE)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_check4",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (((contract_text::jsonb ->> 'runnerSha256'::text) = runner_sha256) IS TRUE)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_check5",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (((contract_text::jsonb ->> 'schemaSha256'::text) = schema_sha256) IS TRUE)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_contract_text_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(contract_text::jsonb) = 'object'::text)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_contract_text_check1",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK ((jsonb_typeof(contract_text::jsonb -> 'entries'::text) = 'object'::text) IS TRUE)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (operation_id)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_plan_sha256_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (plan_sha256 = '2984c0910801835cc95a2358bb08e94c8ffb37def51d847355720cff0e565ded'::text)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_register_sha256_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (register_sha256 = '23e9aaecc39c5dbed4025495ac328e36e6b635285371524c9b72e7fb1a09d512'::text)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_runner_sha256_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (runner_sha256 ~ '^[a-f0-9]{64}$'::text)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_schema_sha256_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (schema_sha256 ~ '^[a-f0-9]{64}$'::text)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_target_cluster_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (target_cluster ~ '^[0-9]+$'::text)"
+    },
+    {
+      "table_name": "task69_operation",
+      "conname": "task69_operation_target_database_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (length(target_database) > 0)"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_actor_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (actor_id) REFERENCES audit_actors(id)"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK ((phase = 'compensate'::text) = (prior_receipt_id IS NOT NULL))"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_check1",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK ((effect = 'no-business-write'::text) = (expected_delta_count = 0))"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_check2",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK ((phase = 'compensate'::text) = (effect = 'compensated'::text))"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_effect_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (effect = ANY (ARRAY['business-change'::text, 'no-business-write'::text, 'compensated'::text]))"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_expected_delta_count_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (expected_delta_count >= 0)"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_operation_id_issue_id_payload_sha256_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (operation_id, issue_id, payload_sha256) REFERENCES _migration.task69_allowlist(operation_id, issue_id, payload_sha256)"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_operation_id_issue_id_phase_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (operation_id, issue_id, phase)"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_phase_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (phase = ANY (ARRAY['apply'::text, 'compensate'::text]))"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (receipt_id)"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_prior_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (prior_receipt_id) REFERENCES _migration.task69_receipt(receipt_id)"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_request_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (request_id)"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_returned_ids_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(returned_ids) = 'object'::text)"
+    },
+    {
+      "table_name": "task69_receipt",
+      "conname": "task69_receipt_source_occurrences_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(source_occurrences) = 'array'::text)"
+    }
+  ],
+  "indexes": [
+    {
+      "table_name": "task69_allowlist",
+      "definition": "CREATE UNIQUE INDEX task69_allowlist_operation_id_issue_id_payload_sha256_key ON _migration.task69_allowlist USING btree (operation_id, issue_id, payload_sha256)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_allowlist",
+      "definition": "CREATE UNIQUE INDEX task69_allowlist_pkey ON _migration.task69_allowlist USING btree (operation_id, issue_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_delta",
+      "definition": "CREATE INDEX task69_delta_entity_idx ON _migration.task69_delta USING btree (entity_schema, entity_table)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_delta",
+      "definition": "CREATE UNIQUE INDEX task69_delta_audit_event_id_key ON _migration.task69_delta USING btree (audit_event_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_delta",
+      "definition": "CREATE UNIQUE INDEX task69_delta_pkey ON _migration.task69_delta USING btree (receipt_id, ordinal)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_delta",
+      "definition": "CREATE UNIQUE INDEX task69_delta_receipt_id_entity_schema_entity_table_entity_k_key ON _migration.task69_delta USING btree (receipt_id, entity_schema, entity_table, entity_key)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_operation",
+      "definition": "CREATE UNIQUE INDEX task69_operation_pkey ON _migration.task69_operation USING btree (operation_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_receipt",
+      "definition": "CREATE INDEX task69_receipt_operation_idx ON _migration.task69_receipt USING btree (operation_id, created_at, receipt_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_receipt",
+      "definition": "CREATE UNIQUE INDEX task69_receipt_operation_id_issue_id_phase_key ON _migration.task69_receipt USING btree (operation_id, issue_id, phase)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_receipt",
+      "definition": "CREATE UNIQUE INDEX task69_receipt_pkey ON _migration.task69_receipt USING btree (receipt_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "table_name": "task69_receipt",
+      "definition": "CREATE UNIQUE INDEX task69_receipt_request_id_key ON _migration.task69_receipt USING btree (request_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "triggers": [
+    {
+      "table_name": "task69_allowlist",
+      "tgname": "task69_allowlist_bound",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_allowlist_bound BEFORE INSERT ON _migration.task69_allowlist FOR EACH ROW EXECUTE FUNCTION _migration.task69_allowlist_bound()"
+    },
+    {
+      "table_name": "task69_allowlist",
+      "tgname": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_allowlist FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "table_name": "task69_delta",
+      "tgname": "task69_delta_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_delta_complete AFTER INSERT ON _migration.task69_delta DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_require_receipt()"
+    },
+    {
+      "table_name": "task69_delta",
+      "tgname": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_delta FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "table_name": "task69_operation",
+      "tgname": "task69_contract_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_contract_complete AFTER INSERT ON _migration.task69_operation DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_require_contract()"
+    },
+    {
+      "table_name": "task69_operation",
+      "tgname": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_operation FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "table_name": "task69_receipt",
+      "tgname": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_receipt FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "table_name": "task69_receipt",
+      "tgname": "task69_receipt_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_require_receipt()"
+    }
+  ],
+  "functions": [
+    {
+      "proname": "task69_allowlist_bound",
+      "arguments": "",
+      "result": "trigger",
+      "prosrc": "\nDECLARE expected text;\nBEGIN\n SELECT contract_text::jsonb->'entries'->>NEW.issue_id INTO expected FROM _migration.task69_operation WHERE operation_id=NEW.operation_id;\n IF expected IS DISTINCT FROM NEW.entry_sha256 THEN RAISE EXCEPTION 'Task69 issue differs from sealed operation allowlist'; END IF;\n RETURN NEW;\nEND ",
+      "prosecdef": true,
+      "proconfig": ["search_path=pg_catalog, public"],
+      "provolatile": "v",
+      "prokind": "f",
+      "proisstrict": false,
+      "proleakproof": false,
+      "proparallel": "u",
+      "owner": "litigation"
+    },
+    {
+      "proname": "task69_authorize_issue",
+      "arguments": "p_operation uuid, p_issue text, p_payload_hash text, p_account integer, p_version integer, p_role text, p_expires timestamp with time zone, p_session uuid",
+      "result": "jsonb",
+      "prosrc": "\nDECLARE actor integer; operation _migration.task69_operation%ROWTYPE; receipt _migration.task69_receipt%ROWTYPE; delta _migration.task69_delta%ROWTYPE; current_row jsonb;\nBEGIN\n -- Always before receipt reuse: a formerly authorized person is not enough.\n actor:=_migration.task69_require_actor(p_account,p_version,p_role,p_expires,p_session);\n SELECT * INTO operation FROM _migration.task69_operation WHERE operation_id=p_operation FOR SHARE;\n IF NOT FOUND OR operation.target_cluster IS DISTINCT FROM (pg_control_system()).system_identifier::text\n OR operation.target_database IS DISTINCT FROM current_database() THEN RAISE EXCEPTION 'Task69 operation target differs'; END IF;\n PERFORM 1 FROM _migration.task69_allowlist WHERE operation_id=p_operation AND issue_id=p_issue AND payload_sha256=p_payload_hash FOR SHARE;\n IF NOT FOUND THEN RAISE EXCEPTION 'Task69 issue or approved payload differs'; END IF;\n IF EXISTS(SELECT 1 FROM _migration.task69_receipt WHERE operation_id=p_operation AND issue_id=p_issue AND phase='compensate') THEN RAISE EXCEPTION 'Task69 compensated issue requires a separately reviewed operation'; END IF;\n SELECT * INTO receipt FROM _migration.task69_receipt WHERE operation_id=p_operation AND issue_id=p_issue AND phase='apply';\n IF NOT FOUND THEN RETURN jsonb_build_object('actorId',actor,'receipt',NULL); END IF;\n IF NOT _migration.task69_receipt_valid(receipt.receipt_id) THEN RAISE EXCEPTION 'Task69 prior receipt is incomplete'; END IF;\n FOR delta IN SELECT * FROM _migration.task69_delta WHERE receipt_id=receipt.receipt_id ORDER BY ordinal LOOP\n  EXECUTE format('SELECT to_jsonb(r) FROM %I.%I r WHERE id=$1 FOR SHARE',delta.entity_schema,delta.entity_table) INTO current_row USING (delta.entity_key->>'id')::integer;\n  IF current_row IS DISTINCT FROM delta.after_values THEN RAISE EXCEPTION 'Task69 receipt postimage was edited: %.% %',delta.entity_schema,delta.entity_table,delta.entity_key; END IF;\n END LOOP;\n RETURN jsonb_build_object('actorId',actor,'receipt',to_jsonb(receipt));\nEND ",
+      "prosecdef": false,
+      "proconfig": ["search_path=pg_catalog, public", "TimeZone=UTC"],
+      "provolatile": "v",
+      "prokind": "f",
+      "proisstrict": false,
+      "proleakproof": false,
+      "proparallel": "u",
+      "owner": "litigation"
+    },
+    {
+      "proname": "task69_contract_valid",
+      "arguments": "p_operation uuid",
+      "result": "boolean",
+      "prosrc": "\nDECLARE operation _migration.task69_operation%ROWTYPE; item record; expected jsonb; observed jsonb;\nBEGIN\n SELECT * INTO operation FROM _migration.task69_operation WHERE operation_id=p_operation;\n IF NOT FOUND THEN RETURN false; END IF;\n expected:=(operation.contract_text::jsonb)->'entries';\n SELECT coalesce(jsonb_object_agg(issue_id,entry_sha256),'{}') INTO observed FROM _migration.task69_allowlist WHERE operation_id=p_operation;\n IF observed IS DISTINCT FROM expected THEN RETURN false; END IF;\n IF (SELECT count(*) FROM _migration.task69_allowlist WHERE operation_id=p_operation AND unit_kind='issue')<>3465 THEN RETURN false; END IF;\n FOR item IN SELECT * FROM (VALUES ('S1-party-display',743),('S2-lawyer-membership',191),('S3-admin-parents',544),('S4-step-restoration',769),('S5-poa-membership',714),('S6-documents',291),('S7-fee-provenance',76),('S8-history-dispositions',137)) x(stage,expected_count) LOOP\n  IF (SELECT count(*) FROM _migration.task69_allowlist WHERE operation_id=p_operation AND stage=item.stage)<>item.expected_count THEN RETURN false; END IF;\n END LOOP;\n RETURN true;\nEND ",
+      "prosecdef": true,
+      "proconfig": ["search_path=pg_catalog, public"],
+      "provolatile": "s",
+      "prokind": "f",
+      "proisstrict": false,
+      "proleakproof": false,
+      "proparallel": "u",
+      "owner": "litigation"
+    },
+    {
+      "proname": "task69_immutable",
+      "arguments": "",
+      "result": "trigger",
+      "prosrc": "\nBEGIN RAISE EXCEPTION 'Task69 contract, source occurrences, deltas and receipts are immutable'; END ",
+      "prosecdef": true,
+      "proconfig": ["search_path=pg_catalog, public"],
+      "provolatile": "v",
+      "prokind": "f",
+      "proisstrict": false,
+      "proleakproof": false,
+      "proparallel": "u",
+      "owner": "litigation"
+    },
+    {
+      "proname": "task69_receipt_valid",
+      "arguments": "p_receipt uuid",
+      "result": "boolean",
+      "prosrc": "\nDECLARE receipt _migration.task69_receipt%ROWTYPE; delta _migration.task69_delta%ROWTYPE; event public.audit_events%ROWTYPE; expected_before jsonb; expected_after jsonb; expected_fields text[]; prior _migration.task69_receipt%ROWTYPE;\nBEGIN\n SELECT * INTO receipt FROM _migration.task69_receipt WHERE receipt_id=p_receipt;\n IF NOT FOUND OR (SELECT count(*) FROM _migration.task69_delta WHERE receipt_id=p_receipt)<>receipt.expected_delta_count\n OR (SELECT count(*) FROM public.audit_events WHERE request_id=receipt.request_id)<>receipt.expected_delta_count THEN RETURN false; END IF;\n IF NOT EXISTS(SELECT 1 FROM public.audit_events WHERE actor_id=receipt.actor_id AND audit_session_id=receipt.audit_session_id AND action='login_succeeded' AND outcome='succeeded') THEN RETURN false; END IF;\n IF receipt.phase='compensate' THEN\n  SELECT * INTO prior FROM _migration.task69_receipt WHERE receipt_id=receipt.prior_receipt_id;\n  IF NOT FOUND OR prior.phase<>'apply' OR prior.operation_id<>receipt.operation_id OR prior.issue_id<>receipt.issue_id OR prior.payload_sha256<>receipt.payload_sha256 THEN RETURN false; END IF;\n END IF;\n FOR delta IN SELECT * FROM _migration.task69_delta WHERE receipt_id=p_receipt LOOP\n  SELECT * INTO event FROM public.audit_events WHERE id=delta.audit_event_id;\n  IF NOT FOUND OR event.actor_id<>receipt.actor_id OR event.audit_session_id IS DISTINCT FROM receipt.audit_session_id\n  OR event.request_id IS DISTINCT FROM receipt.request_id OR event.correlation_id IS DISTINCT FROM receipt.operation_id\n  OR event.entity_schema<>delta.entity_schema OR event.entity_table<>delta.entity_table OR event.entity_key<>delta.entity_key\n  OR event.outcome IS DISTINCT FROM 'succeeded' OR (event.actor_role_snapshot IN('Administrator','Litigation Assistant')) IS NOT TRUE\n OR event.action IS DISTINCT FROM (SELECT CASE WHEN entity_kind='record' THEN CASE WHEN delta.before_values IS NULL THEN 'record_created' ELSE 'record_updated' END ELSE CASE WHEN delta.before_values IS NULL THEN 'relationship_added' ELSE 'relationship_updated' END END FROM public.audit_event_table_rules WHERE entity_schema=delta.entity_schema AND entity_table=delta.entity_table) THEN RETURN false; END IF;\n  SELECT array_agg(f.field_name ORDER BY f.field_name),\n   CASE WHEN delta.before_values IS NULL THEN '{}'::jsonb ELSE coalesce(jsonb_object_agg(f.field_name,public.audit_bound_json_value(delta.before_values->f.field_name,f.max_text_characters,f.capture_mode)),'{}') END,\n   coalesce(jsonb_object_agg(f.field_name,public.audit_bound_json_value(delta.after_values->f.field_name,f.max_text_characters,f.capture_mode)),'{}')\n   INTO expected_fields,expected_before,expected_after\n  FROM public.audit_event_fields f WHERE f.entity_schema=delta.entity_schema AND f.entity_table=delta.entity_table\n   AND f.capture_mode IN('value','redacted') AND (delta.before_values IS NULL OR delta.before_values->f.field_name IS DISTINCT FROM delta.after_values->f.field_name);\n  IF event.changed_fields IS DISTINCT FROM expected_fields OR event.before_values IS DISTINCT FROM expected_before OR event.after_values IS DISTINCT FROM expected_after THEN RETURN false; END IF;\n END LOOP;\n RETURN true;\nEND ",
+      "prosecdef": true,
+      "proconfig": ["search_path=pg_catalog, public"],
+      "provolatile": "s",
+      "prokind": "f",
+      "proisstrict": false,
+      "proleakproof": false,
+      "proparallel": "u",
+      "owner": "litigation"
+    },
+    {
+      "proname": "task69_require_actor",
+      "arguments": "p_account integer, p_version integer, p_role text, p_expires timestamp with time zone, p_session uuid",
+      "result": "integer",
+      "prosrc": "\nDECLARE actor integer;\nBEGIN\n IF current_user<>session_user OR NOT (SELECT rolsuper FROM pg_roles WHERE rolname=session_user) THEN\n  RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Task69 requires direct administration principal';\n END IF;\n IF p_session IS NULL OR p_expires IS NULL OR p_expires>clock_timestamp()+interval '31 days' THEN\n  RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Current genuine Task69 session required';\n END IF;\n actor:=_migration.matter_edit_require_account(p_account,p_version,p_role,p_expires,true);\n IF (SELECT count(*) FROM public.audit_events WHERE actor_id=actor AND audit_session_id=p_session\n  AND action='login_succeeded' AND outcome='succeeded')<>1\n OR EXISTS(SELECT 1 FROM public.audit_events WHERE actor_id=actor AND audit_session_id=p_session\n  AND action='logout' AND outcome='succeeded') THEN\n  RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Task69 session lacks one genuine current sign-in';\n END IF;\n RETURN actor;\nEND ",
+      "prosecdef": false,
+      "proconfig": ["search_path=pg_catalog, public"],
+      "provolatile": "v",
+      "prokind": "f",
+      "proisstrict": false,
+      "proleakproof": false,
+      "proparallel": "u",
+      "owner": "litigation"
+    },
+    {
+      "proname": "task69_require_contract",
+      "arguments": "",
+      "result": "trigger",
+      "prosrc": "\nBEGIN\n IF NEW.target_cluster IS DISTINCT FROM (pg_control_system()).system_identifier::text\n OR NEW.target_database IS DISTINCT FROM current_database()\n OR NOT _migration.task69_contract_valid(NEW.operation_id) THEN\n  RAISE EXCEPTION 'Task69 contract is incomplete or belongs to another database';\n END IF;\n RETURN NULL;\nEND ",
+      "prosecdef": true,
+      "proconfig": ["search_path=pg_catalog, public"],
+      "provolatile": "v",
+      "prokind": "f",
+      "proisstrict": false,
+      "proleakproof": false,
+      "proparallel": "u",
+      "owner": "litigation"
+    },
+    {
+      "proname": "task69_require_receipt",
+      "arguments": "",
+      "result": "trigger",
+      "prosrc": "\nDECLARE identity uuid;\nBEGIN\n identity:=NEW.receipt_id;\n IF NOT _migration.task69_receipt_valid(identity) THEN RAISE EXCEPTION 'Task69 receipt lacks exact atomic audit and delta correspondence'; END IF;\n RETURN NULL;\nEND ",
+      "prosecdef": true,
+      "proconfig": ["search_path=pg_catalog, public"],
+      "provolatile": "v",
+      "prokind": "f",
+      "proisstrict": false,
+      "proleakproof": false,
+      "proparallel": "u",
+      "owner": "litigation"
+    }
+  ]
+}

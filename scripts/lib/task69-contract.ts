@@ -165,6 +165,7 @@ export const TASK69_REFERENCE_TABLES = [
   'public.lookup_court',
   'public.lookup_matter_destination',
   'public.lookup_party_role',
+  'public.matter_fee_letter_references',
   'public.matter_lawyers',
   'public.matter_parties',
   'public.matter_party_roles',
@@ -191,7 +192,7 @@ export type Task69RowTransition = {
   receiptId: string;
   table: string;
   id: number;
-  before: Row;
+  before: Row | null;
   after: Row;
 };
 
@@ -215,6 +216,7 @@ export function assertTask69Guard(
     assert.ok(change.receiptId && change.issueId, 'Unreceipted dependency change');
     assert.ok(!receipts.has(change.receiptId), 'Repeated dependency receipt');
     receipts.add(change.receiptId);
+    assert.ok(change.before, 'Existing reference cannot be replaced with a new insert');
     assert.equal(
       task69Digest(change.before),
       hash,

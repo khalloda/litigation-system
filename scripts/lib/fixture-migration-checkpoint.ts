@@ -84,10 +84,12 @@ function reviewedRepository(
 ) {
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78].includes(
+    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79].includes(
       repository.migrations.length,
     ),
   );
+  if (repository.migrations.length >= 79)
+    assert.equal(repository.migrations[78]?.name, '20261007120000_task69_operation_contract');
   if (repository.migrations.length >= 78)
     assert.equal(
       repository.migrations[77]?.name,
