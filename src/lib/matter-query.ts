@@ -168,6 +168,10 @@ export type MatterParty = {
   name: string | null;
   gender: string | null;
   ordinal: number | null;
+  semantic_party_name: string | null;
+  representative_name: string | null;
+  contextual_text: string | null;
+  explanatory_text: string | null;
   roles: { id: number; roleId: number; name: string; ordinal: number | null }[];
 };
 export type MatterDetail = Omit<MatterRow, 'matches'> & {
@@ -371,8 +375,8 @@ export async function readMatter(
     );
     const parties = await tx.$queryRaw<
       MatterParty[]
-    >(Prisma.sql`SELECT p.id,p.side,p.party_name AS name,p.gender,p.ordinal,
-      coalesce((SELECT jsonb_agg(jsonb_build_object('id',r.id,'roleId',r.role_id,'name',CASE WHEN p.gender='f' THEN l.label_ar_f ELSE l.label_ar_m END,'ordinal',r.ordinal) ORDER BY r.ordinal NULLS LAST,r.id) FROM public.matter_party_roles r JOIN public.lookup_party_role l ON l.id=r.role_id WHERE NOT r.is_retired AND r.party_id=p.id),'[]'::jsonb) roles
+    >(Prisma.sql`SELECT p.id,p.side,p.party_name AS name,p.gender,p.ordinal,p.semantic_party_name,p.representative_name,p.contextual_text,p.explanatory_text,
+      coalesce((SELECT jsonb_agg(jsonb_build_object('id',r.id,'roleId',r.role_id,'name',coalesce(r.display_label,CASE WHEN p.gender='f' THEN l.label_ar_f ELSE l.label_ar_m END)||CASE WHEN coalesce(r.qualifier,'')='' THEN '' ELSE ' '||r.qualifier END,'ordinal',r.ordinal) ORDER BY r.ordinal NULLS LAST,r.id) FROM public.matter_party_roles r JOIN public.lookup_party_role l ON l.id=r.role_id WHERE NOT r.is_retired AND r.party_id=p.id),'[]'::jsonb) roles
       FROM public.matter_parties p WHERE NOT p.is_retired AND p.matter_id=${id} ORDER BY p.side,p.ordinal NULLS LAST,p.id LIMIT 1001`);
     if (lawyers.length > 1000 || parties.length > 1000)
       throw new Error('Matter relationship bound exceeded');

@@ -1,0 +1,104 @@
+{
+  "columns": [
+    {
+      "table_name": "matter_parties",
+      "column_name": "contextual_text",
+      "type": "text",
+      "attnotnull": false,
+      "default_value": null
+    },
+    {
+      "table_name": "matter_parties",
+      "column_name": "explanatory_text",
+      "type": "text",
+      "attnotnull": false,
+      "default_value": null
+    },
+    {
+      "table_name": "matter_parties",
+      "column_name": "representative_name",
+      "type": "text",
+      "attnotnull": false,
+      "default_value": null
+    },
+    {
+      "table_name": "matter_parties",
+      "column_name": "semantic_party_name",
+      "type": "text",
+      "attnotnull": false,
+      "default_value": null
+    },
+    {
+      "table_name": "matter_party_roles",
+      "column_name": "display_label",
+      "type": "text",
+      "attnotnull": false,
+      "default_value": null
+    },
+    {
+      "table_name": "matter_party_roles",
+      "column_name": "qualifier",
+      "type": "text",
+      "attnotnull": false,
+      "default_value": null
+    }
+  ],
+  "constraints": [
+    {
+      "table_name": "matter_parties",
+      "conname": "matter_parties_contextual_text_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (contextual_text IS NULL OR length(contextual_text) <= 100000)"
+    },
+    {
+      "table_name": "matter_parties",
+      "conname": "matter_parties_explanatory_text_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (explanatory_text IS NULL OR length(explanatory_text) <= 100000)"
+    },
+    {
+      "table_name": "matter_parties",
+      "conname": "matter_parties_representative_name_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (representative_name IS NULL OR length(representative_name) <= 100000)"
+    },
+    {
+      "table_name": "matter_parties",
+      "conname": "matter_parties_semantic_party_name_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (semantic_party_name IS NULL OR length(semantic_party_name) <= 100000)"
+    },
+    {
+      "table_name": "matter_party_roles",
+      "conname": "matter_party_roles_display_label_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (display_label IS NULL OR length(display_label) <= 100000)"
+    },
+    {
+      "table_name": "matter_party_roles",
+      "conname": "matter_party_roles_party_role_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE NULLS NOT DISTINCT (party_id, role_id, display_label, qualifier)"
+    },
+    {
+      "table_name": "matter_party_roles",
+      "conname": "matter_party_roles_qualifier_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (qualifier IS NULL OR length(qualifier) <= 100000)"
+    },
+    {
+      "table_name": "task69_delta",
+      "conname": "task69_delta_exact_identity",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK ((jsonb_typeof(after_values -> 'id'::text) = 'number'::text AND (after_values ->> 'id'::text) ~ '^[1-9][0-9]*$'::text AND (before_values IS NULL OR (before_values -> 'id'::text) = (after_values -> 'id'::text))) IS TRUE)"
+    }
+  ]
+}

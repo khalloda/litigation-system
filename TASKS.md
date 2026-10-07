@@ -2479,6 +2479,11 @@ than assuming one rule for every workflow. Test with real volumes.
       The other four are now one parameterised report — see 6.2.
 - [ ] **6.9 Reconcile six reports against Access, row for row**
 
+      Task 6.9 remains HOLD. The authorized v1.293 isolated implementation is
+      underway on a separate candidate branch; all eight stages and independent
+      implementation review remain required. No owner restoration, activation or
+      acceptance is recorded by this candidate. Saved-selection S1/S2 stay deferred.
+
 ---
 
 ## Stage 7 — Going live

@@ -1,3 +1,4 @@
+import { task69PartyApplied, TASK69_PARTY_FIELDS } from './task69-party-checkpoint';
 import { task69FoundationFailures } from './task69-foundation-checkpoint';
 import {
   administrativeSelectionApplied,
@@ -211,7 +212,9 @@ export async function auditEventStructureFailures(
   const hearingLifecycle = await hearingLifecycleApplied(db);
   const matterBoundary = await matterEditApplied(db);
   const lifecycle = await matterLifecycleApplied(db);
+  const partySemantics = await task69PartyApplied(db);
   const currentFieldRules = [
+    ...(partySemantics ? TASK69_PARTY_FIELDS : []),
     ...(reportSelection ? REPORT_SELECTION_FIELDS : []),
     ...(closedSelection ? CLOSED_SELECTION_FIELDS : []),
     ...(lawyerSelection ? LAWYER_SELECTION_FIELDS : []),

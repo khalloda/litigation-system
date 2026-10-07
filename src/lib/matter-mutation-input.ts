@@ -44,11 +44,21 @@ export const MATTER_FIELDS = [
 ] as const;
 export type MatterField = (typeof MATTER_FIELDS)[number];
 export type MatterValues = Partial<Record<MatterField | 'client_id', string | number | null>>;
-export type MatterCapacityInput = { id: number | null; role_id: number; ordinal: number | null };
+export type MatterCapacityInput = {
+  id: number | null;
+  role_id: number;
+  ordinal: number | null;
+  display_label?: string | null;
+  qualifier?: string | null;
+};
 export type MatterPartyInput = {
   id: number | null;
   side: 'client' | 'opponent';
   party_name: string | null;
+  semantic_party_name?: string | null;
+  representative_name?: string | null;
+  contextual_text?: string | null;
+  explanatory_text?: string | null;
   gender: 'm' | 'f' | null;
   ordinal: number | null;
   roles: MatterCapacityInput[];
@@ -169,27 +179,61 @@ export function parseMatterMutationInput(
     raw.parties === undefined
       ? undefined
       : array(raw.parties).map((value) => {
-          const p = object(value, ['id', 'side', 'party_name', 'gender', 'ordinal', 'roles']);
+          const p = object(value, [
+            'id',
+            'side',
+            'party_name',
+            'gender',
+            'ordinal',
+            'roles',
+            'semantic_party_name',
+            'representative_name',
+            'contextual_text',
+            'explanatory_text',
+          ]);
           if (
             !['client', 'opponent'].includes(String(p.side)) ||
             !['m', 'f', null].includes(p.gender as null)
           )
             bad();
           const roles = array(p.roles).map((value) => {
-            const r = object(value, ['id', 'role_id', 'ordinal']);
+            const r = object(value, ['id', 'role_id', 'ordinal', 'display_label', 'qualifier']);
             return {
               id: optionalId(r.id),
               role_id: matterMutationId(r.role_id),
               ordinal: order(r.ordinal),
+              ...(r.display_label === undefined
+                ? {}
+                : { display_label: text(r.display_label, 'parties') }),
+              ...(r.qualifier === undefined ? {} : { qualifier: text(r.qualifier, 'parties') }),
             };
           });
           unique(roles.map((r) => r.id));
-          unique(roles.map((r) => r.role_id));
+          // Omitted additive fields on an existing ID are preserved by the
+          // database gateway before it checks the resolved capacity identity.
+          const capacities = roles.map((r) =>
+            r.id !== null && (r.display_label === undefined || r.qualifier === undefined)
+              ? `existing:${r.id}`
+              : JSON.stringify([r.role_id, r.display_label ?? null, r.qualifier ?? null]),
+          );
+          if (new Set(capacities).size !== capacities.length) bad('parties');
           unique(roles.map((r) => r.ordinal));
           return {
             id: optionalId(p.id),
             side: p.side,
             party_name: text(p.party_name, 'parties'),
+            ...(p.semantic_party_name === undefined
+              ? {}
+              : { semantic_party_name: text(p.semantic_party_name, 'parties') }),
+            ...(p.representative_name === undefined
+              ? {}
+              : { representative_name: text(p.representative_name, 'parties') }),
+            ...(p.contextual_text === undefined
+              ? {}
+              : { contextual_text: text(p.contextual_text, 'parties') }),
+            ...(p.explanatory_text === undefined
+              ? {}
+              : { explanatory_text: text(p.explanatory_text, 'parties') }),
             gender: p.gender,
             ordinal: order(p.ordinal),
             roles,

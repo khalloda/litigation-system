@@ -300,6 +300,7 @@ export function task69RunnerSourceDigest(repository: string): string {
         'scripts/lib/task69-contract.ts',
         'scripts/lib/task69-runner.ts',
         'scripts/lib/task69-preflight.ts',
+        'scripts/lib/task69-matter-executor.ts',
       ].map((name) => [name, task69Sha(readFileSync(join(repository, name)))]),
     ),
   );

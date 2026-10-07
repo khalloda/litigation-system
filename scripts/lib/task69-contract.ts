@@ -186,6 +186,34 @@ export function task69ReferenceSql(table: string): string {
     .join('.');
 }
 
+/** Schema additions are explicit nullable defaults, not exemptions from row
+ * freshness. A populated new attribute without a reviewed transition refuses. */
+export const TASK69_ADDITIVE_NULL_FIELDS: Record<string, readonly string[]> = {
+  'public.matter_parties': [
+    'semantic_party_name',
+    'representative_name',
+    'contextual_text',
+    'explanatory_text',
+  ],
+  'public.matter_party_roles': ['display_label', 'qualifier'],
+};
+export function task69OriginalShape(table: string, row: Row): Row {
+  const original = { ...row };
+  for (const field of TASK69_ADDITIVE_NULL_FIELDS[table] ?? []) {
+    if (Object.hasOwn(original, field)) {
+      assert.equal(original[field], null, `${table}.${field}: unreceipted new attribute`);
+      delete original[field];
+    }
+  }
+  return original;
+}
+export function task69ExpandedBaseline(table: string, row: Row): Row {
+  return {
+    ...Object.fromEntries((TASK69_ADDITIVE_NULL_FIELDS[table] ?? []).map((k) => [k, null])),
+    ...row,
+  };
+}
+
 export type Task69RowTransition = {
   operationId: string;
   issueId: string;
@@ -211,14 +239,14 @@ export function assertTask69Guard(
   let hash = guard.hash;
   const links = transitions.filter((t) => t.table === guard.table && t.id === guard.id);
   const receipts = new Set<string>();
-  for (const change of links) {
+  for (const [index, change] of links.entries()) {
     assert.equal(change.operationId, operationId, 'Foreign operation cannot satisfy a dependency');
     assert.ok(change.receiptId && change.issueId, 'Unreceipted dependency change');
     assert.ok(!receipts.has(change.receiptId), 'Repeated dependency receipt');
     receipts.add(change.receiptId);
     assert.ok(change.before, 'Existing reference cannot be replaced with a new insert');
     assert.equal(
-      task69Digest(change.before),
+      task69Digest(index === 0 ? task69OriginalShape(guard.table, change.before) : change.before),
       hash,
       'Dependency does not start at exact reviewed preimage',
     );
@@ -226,7 +254,11 @@ export function assertTask69Guard(
     assert.equal(change.after.id, guard.id);
     hash = task69Digest(change.after);
   }
-  assert.equal(task69Digest(current), hash, `${guard.table}/${guard.id}: stale complete row`);
+  assert.equal(
+    task69Digest(links.length ? current : task69OriginalShape(guard.table, current)),
+    hash,
+    `${guard.table}/${guard.id}: stale complete row`,
+  );
   if (guard.eligibility.requireUnarchived)
     assert.equal(current.is_archived, false, 'Archived parent');
 }

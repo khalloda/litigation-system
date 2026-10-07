@@ -25,24 +25,32 @@ export async function reportParties(tx: Prisma.TransactionClient, matterIds: rea
   const result = new Map<number, { client: string[]; opponent: string[] }>();
   if (!ids.length) return result;
   const rows = await tx.$queryRaw<
-    { matterId: number; side: 'client' | 'opponent'; name: string | null; roles: string[] }[]
+    {
+      matterId: number;
+      side: 'client' | 'opponent';
+      name: string | null;
+      explanatoryText: string | null;
+      roles: string[];
+    }[]
   >(Prisma.sql`WITH roles AS (
-      SELECT r.party_id,jsonb_agg(CASE WHEN p.gender='f' THEN l.label_ar_f ELSE l.label_ar_m END
+      SELECT r.party_id,jsonb_agg(coalesce(r.display_label,CASE WHEN p.gender='f' THEN l.label_ar_f ELSE l.label_ar_m END)||CASE WHEN coalesce(r.qualifier,'')='' THEN '' ELSE ' '||r.qualifier END
         ORDER BY r.ordinal NULLS LAST,r.id) labels
       FROM public.matter_party_roles r JOIN public.matter_parties p ON p.id=r.party_id
       JOIN public.lookup_party_role l ON l.id=r.role_id
       WHERE NOT r.is_retired AND NOT p.is_retired AND p.matter_id=ANY(${ids}::int[])
       GROUP BY r.party_id
-    ) SELECT p.matter_id AS "matterId",p.side,p.party_name AS name,
+    ) SELECT p.matter_id AS "matterId",p.side,p.party_name AS name,p.explanatory_text AS "explanatoryText",
       coalesce(r.labels,'[]'::jsonb) roles
     FROM public.matter_parties p LEFT JOIN roles r ON r.party_id=p.id
     WHERE NOT p.is_retired AND p.matter_id=ANY(${ids}::int[])
     ORDER BY p.matter_id,p.side,p.ordinal NULLS LAST,p.id`);
   for (const row of rows) {
     const sides = result.get(row.matterId) ?? { client: [], opponent: [] };
-    const value = [row.name ?? t.reports.nullValue, ...row.roles.map((role) => `"${role}"`)].join(
-      '\n',
-    );
+    const value = [
+      row.name ?? t.reports.nullValue,
+      ...row.roles.map((role) => `"${role}"`),
+      ...(row.explanatoryText === null ? [] : [row.explanatoryText]),
+    ].join('\n');
     if (row.side === 'client') sides.client.push(value);
     else sides.opponent.push(value);
     result.set(row.matterId, sides);

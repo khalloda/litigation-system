@@ -103,7 +103,9 @@ export function MatterEditor(props: {
   const updateLawyer = (index: number, change: Partial<MatterLawyerInput>) =>
     setLawyers((old) => old.map((p, i) => (i === index ? { ...p, ...change } : p)));
   const originalCapacity = (party: MatterPartyInput, roleId: number) =>
-    snapshot.parties.find((p) => p.id === party.id)?.roles.find((r) => r.role_id === roleId);
+    snapshot.parties
+      .find((p) => p.id === party.id)
+      ?.roles.find((r) => r.role_id === roleId && r.display_label == null && r.qualifier == null);
   const originalLawyer = (personId: number) =>
     snapshot.lawyers.find((l) => l.person_id === personId);
   const changePartySide = (index: number, side: MatterPartyInput['side']) =>
@@ -393,6 +395,64 @@ export function MatterEditor(props: {
                   </select>
                 </div>
               </div>
+              <div className={local.grid}>
+                <div className={styles.field}>
+                  <label htmlFor={`${prefix}semantic_party_name-${index}`}>
+                    {t.matters.manage.semantic_party_name}
+                  </label>
+                  <textarea
+                    id={`${prefix}semantic_party_name-${index}`}
+                    value={p.semantic_party_name ?? ''}
+                    onChange={(e) =>
+                      updateParty(index, {
+                        semantic_party_name: e.target.value === '' ? null : e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor={`${prefix}representative_name-${index}`}>
+                    {t.matters.manage.representative_name}
+                  </label>
+                  <textarea
+                    id={`${prefix}representative_name-${index}`}
+                    value={p.representative_name ?? ''}
+                    onChange={(e) =>
+                      updateParty(index, {
+                        representative_name: e.target.value === '' ? null : e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor={`${prefix}contextual_text-${index}`}>
+                    {t.matters.manage.contextual_text}
+                  </label>
+                  <textarea
+                    id={`${prefix}contextual_text-${index}`}
+                    value={p.contextual_text ?? ''}
+                    onChange={(e) =>
+                      updateParty(index, {
+                        contextual_text: e.target.value === '' ? null : e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor={`${prefix}explanatory_text-${index}`}>
+                    {t.matters.manage.explanatory_text}
+                  </label>
+                  <textarea
+                    id={`${prefix}explanatory_text-${index}`}
+                    value={p.explanatory_text ?? ''}
+                    onChange={(e) =>
+                      updateParty(index, {
+                        explanatory_text: e.target.value === '' ? null : e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
               {p.roles.map((r, ri) => (
                 <fieldset key={ri} className={local.capacity}>
                   <legend>
@@ -412,6 +472,8 @@ export function MatterEditor(props: {
                                 ...x,
                                 id: originalCapacity(p, Number(e.target.value))?.id ?? null,
                                 role_id: Number(e.target.value),
+                                display_label: null,
+                                qualifier: null,
                               }
                             : x,
                         ),
@@ -431,6 +493,45 @@ export function MatterEditor(props: {
                         </option>
                       ))}
                   </select>
+                  <div className={styles.field}>
+                    <label htmlFor={`${prefix}display_label-${index}-${ri}`}>
+                      {t.matters.manage.display_label}
+                    </label>
+                    <textarea
+                      id={`${prefix}display_label-${index}-${ri}`}
+                      value={r.display_label ?? ''}
+                      onChange={(e) =>
+                        updateParty(index, {
+                          roles: p.roles.map((x, i) =>
+                            i === ri
+                              ? {
+                                  ...x,
+                                  display_label: e.target.value === '' ? null : e.target.value,
+                                }
+                              : x,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className={styles.field}>
+                    <label htmlFor={`${prefix}qualifier-${index}-${ri}`}>
+                      {t.matters.manage.qualifier}
+                    </label>
+                    <textarea
+                      id={`${prefix}qualifier-${index}-${ri}`}
+                      value={r.qualifier ?? ''}
+                      onChange={(e) =>
+                        updateParty(index, {
+                          roles: p.roles.map((x, i) =>
+                            i === ri
+                              ? { ...x, qualifier: e.target.value === '' ? null : e.target.value }
+                              : x,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
                   {orderButtons(
                     ri,
                     p.roles.length,

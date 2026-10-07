@@ -1,3 +1,4 @@
+import { task69PartyApplied } from './task69-party-checkpoint';
 import type { ClientBase } from 'pg';
 
 type ConstraintRow = {
@@ -234,6 +235,7 @@ function sameStrings(actual: string[], expected: readonly string[]): boolean {
 export async function matterRelationshipStructureFailures(db: ClientBase): Promise<string[]> {
   const { matterEditApplied } = await import('./matter-edit-checkpoint');
   const editing = await matterEditApplied(db);
+  const qualified = await task69PartyApplied(db);
   const constraintNames = [
     ...EXPECTED_CHECKS.map((row) => row.name),
     ...EXPECTED_FOREIGN_KEYS.map((row) => row.name),
@@ -403,7 +405,16 @@ export async function matterRelationshipStructureFailures(db: ClientBase): Promi
     defects.push('Task 2.7 constraint inventory');
   }
 
-  for (const expected of EXPECTED_INDEXES) {
+  for (const legacy of EXPECTED_INDEXES) {
+    const expected =
+      qualified && legacy.name === 'matter_party_roles_party_role_key'
+        ? {
+            ...legacy,
+            columns: ['party_id', 'role_id', 'display_label', 'qualifier'],
+            definition:
+              'CREATE UNIQUE INDEX matter_party_roles_party_role_key ON matter_party_roles USING btree (party_id, role_id, display_label, qualifier) NULLS NOT DISTINCT',
+          }
+        : legacy;
     const actual = indexes.rows.find((row) => row.name === expected.name);
     if (
       actual === undefined ||
@@ -416,7 +427,8 @@ export async function matterRelationshipStructureFailures(db: ClientBase): Promi
       !actual.ready ||
       !actual.live ||
       actual.immediate !== !(editing && expected.name === 'matter_party_roles_party_ordinal_key') ||
-      actual.nulls_not_distinct ||
+      actual.nulls_not_distinct !==
+        (qualified && expected.name === 'matter_party_roles_party_role_key') ||
       actual.clustered ||
       actual.exclusion ||
       actual.key_count !== expected.columns.length ||

@@ -2053,6 +2053,10 @@ model MatterParty {
   side String
 
   partyName String? @map("party_name")
+  semanticPartyName String? @map("semantic_party_name")
+  representativeName String? @map("representative_name")
+  contextualText String? @map("contextual_text")
+  explanatoryText String? @map("explanatory_text")
 
   /// m | f, or null when it is not known or the party is an organisation.
   /// Used to render the right form of the role: D7 stores مدعي and مدعية and
@@ -2090,6 +2094,8 @@ model MatterParty {
 /// A party can hold more than one role. D7: `مستأنف ضده، مستأنف` becomes TWO
 /// ROWS, not one combined value.
 model MatterPartyRole {
+  displayLabel String? @map("display_label")
+  qualifier String?
   isRetired Boolean @default(false) @map("is_retired")
   id      Int         @id @default(autoincrement())
   partyId Int         @map("party_id")
@@ -2110,7 +2116,7 @@ model MatterPartyRole {
   createdByActor AuditActor @relation("MatterPartyRoleCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_party_roles_created_by_fkey")
   updatedByActor AuditActor @relation("MatterPartyRoleUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matter_party_roles_updated_by_fkey")
 
-  @@unique([partyId, roleId], map: "matter_party_roles_party_role_key")
+  @@unique([partyId, roleId, displayLabel, qualifier], map: "matter_party_roles_party_role_key")
   @@unique([partyId, ordinal], map: "matter_party_roles_party_ordinal_key")
   @@index([partyId])
   @@index([createdBy], map: "matter_party_roles_created_by_idx")

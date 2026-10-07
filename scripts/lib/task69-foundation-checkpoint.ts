@@ -1,3 +1,5 @@
+import { task69RestorationApplied } from './task69-restoration-checkpoint';
+import { task69PartyApplied, task69PartyExpected } from './task69-party-checkpoint';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
@@ -84,6 +86,41 @@ export async function task69FoundationFailures(db: ClientBase): Promise<string[]
   try {
     if (!(await task69FoundationApplied(db))) return failures;
     const expected = JSON.parse(readFileSync('scripts/lib/task69-foundation-catalog.json', 'utf8'));
+    if (await task69PartyApplied(db)) {
+      expected.constraints.push(
+        ...task69PartyExpected().constraints.filter(
+          (c: { table_name: string }) => c.table_name === 'task69_delta',
+        ),
+      );
+      expected.constraints.sort(
+        (a: { table_name: string; conname: string }, b: { table_name: string; conname: string }) =>
+          (a.table_name + '/' + a.conname).localeCompare(b.table_name + '/' + b.conname),
+      );
+    }
+    if (await task69RestorationApplied(db)) {
+      expected.constraints.push({
+        table_name: 'task69_receipt',
+        conname: 'task69_party_receipt_complete',
+        contype: 't',
+        convalidated: true,
+        definition: 'TRIGGER DEFERRABLE INITIALLY DEFERRED',
+      });
+      expected.constraints.sort(
+        (a: { table_name: string; conname: string }, b: { table_name: string; conname: string }) =>
+          (a.table_name + '/' + a.conname).localeCompare(b.table_name + '/' + b.conname),
+      );
+      expected.triggers.push({
+        table_name: 'task69_receipt',
+        tgname: 'task69_party_receipt_complete',
+        tgenabled: 'O',
+        definition:
+          'CREATE CONSTRAINT TRIGGER task69_party_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_party_receipt_complete()',
+      });
+      expected.triggers.sort(
+        (a: { table_name: string; tgname: string }, b: { table_name: string; tgname: string }) =>
+          (a.table_name + '/' + a.tgname).localeCompare(b.table_name + '/' + b.tgname),
+      );
+    }
     assert.deepEqual(
       await task69FoundationCatalog(db),
       expected,

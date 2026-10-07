@@ -409,6 +409,30 @@ export async function MatterDetail({
                         <p className={local.multiline} dir="auto">
                           {p.name?.trim() ? p.name : t.common.notRecorded}
                         </p>
+                        {p.semantic_party_name !== null && (
+                          <p className={local.multiline} dir="auto">
+                            <strong>{t.matters.manage.semantic_party_name}: </strong>
+                            {p.semantic_party_name}
+                          </p>
+                        )}
+                        {p.representative_name !== null && (
+                          <p className={local.multiline} dir="auto">
+                            <strong>{t.matters.manage.representative_name}: </strong>
+                            {p.representative_name}
+                          </p>
+                        )}
+                        {p.contextual_text !== null && (
+                          <p className={local.multiline} dir="auto">
+                            <strong>{t.matters.manage.contextual_text}: </strong>
+                            {p.contextual_text}
+                          </p>
+                        )}
+                        {p.explanatory_text !== null && (
+                          <p className={local.multiline} dir="auto">
+                            <strong>{t.matters.manage.explanatory_text}: </strong>
+                            {p.explanatory_text}
+                          </p>
+                        )}
                         {p.roles.length ? (
                           <ul>
                             {p.roles.map((r) => (

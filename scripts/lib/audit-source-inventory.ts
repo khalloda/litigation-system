@@ -140,9 +140,9 @@ const MATTER_MUTATION_SERVICE = 'src/lib/matter-mutations.ts';
 const MATTER_MUTATION_SERVICE_SHA256 =
   'b4930cecc0d67bb0c9945ccd2673a43c88412eb581ac366ab3b563aae717c861';
 const MATTER_MUTATION_INPUT_SHA256 =
-  'fe15a2bdab5bac145d5aa9cd00734aba06bf3256c92e1a9cff0030419f98e3fa';
+  'e0330790c04e15b9d0e2ccab63d8d7f508dd05bece931874dca39db39a986009';
 const MATTER_READ_SERVICE_SHA256 =
-  '37822bdec1e3868fd4e12c69a20f16d2a90bc72be1a8e906ab2424de43d512e2';
+  '54d2f6640a3fc1a02f7b8b864c641431919ebf5c24cd4fe14f504160ad161fbd';
 const CLIENT_MUTATION_SERVICE = 'src/lib/client-mutations.ts';
 const LOGO_MUTATION_SERVICE = 'src/lib/client-logo-management.ts';
 const LOGO_MUTATION_SERVICE_SHA256 =
@@ -498,7 +498,7 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/reports/client-report-data.ts',
     'reportParties',
-    '6f400d7b6b320dbcb789e3be9f4a2922fbf4df40467dc146dad7133e1e14520e',
+    'ddd698e9000ac7436176a09fb3c49ce03357c249168f1d55d6d0f88d83099aad',
   ],
   [
     'src/lib/reports/authority.ts',
@@ -1019,7 +1019,7 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/matter-query.ts',
     'readMatter',
-    'f9927661d7ade85805a13e35aeb897c057fabde9b5307646e578821567ae5e29',
+    '654978e4ac4c30e906688fdbadf6f6b428c3db8d362b6d6190fe29deaabbab05',
   ],
   // END MATTER READ CALLS
   [

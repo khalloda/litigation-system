@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { ClientBase } from 'pg';
 import {
   assertTask69References,
+  task69ExpandedBaseline,
   task69Digest,
   task69ReferenceSql,
   TASK69_REFERENCE_TABLES,
@@ -114,7 +115,7 @@ export async function readTask69Transitions(
 ): Promise<Task69RowTransition[]> {
   const rows = (
     await db.query(
-      "SELECT r.operation_id,r.issue_id,r.receipt_id,d.entity_schema||'.'||d.entity_table table_name,(d.entity_key->>'id')::int id,d.before_values,d.after_values,_migration.task69_receipt_valid(r.receipt_id) valid FROM _migration.task69_receipt r JOIN _migration.task69_delta d USING(receipt_id) WHERE r.operation_id=$1 ORDER BY r.created_at,r.receipt_id,d.ordinal",
+      "WITH receipts AS MATERIALIZED (SELECT r.*,_migration.task69_receipt_valid(r.receipt_id) valid FROM _migration.task69_receipt r WHERE r.operation_id=$1) SELECT r.operation_id,r.issue_id,r.receipt_id,d.entity_schema||'.'||d.entity_table table_name,(d.entity_key->>'id')::int id,d.before_values,d.after_values,r.valid FROM receipts r JOIN _migration.task69_delta d USING(receipt_id) ORDER BY r.created_at,r.receipt_id,d.ordinal",
       [operationId],
     )
   ).rows;
@@ -277,7 +278,9 @@ export async function assertTask69Memberships(
     } else throw new Error('Unreviewed membership namespace');
     assert.equal(typeof id, 'number', 'Exact parent identity required');
     const rows: Row[] = (await db.query(sql, [id])).rows.map((r) => r.value);
-    const expected = new Map((expectedValue as Row[]).map((r) => [r.id, r]));
+    const expected = new Map(
+      (expectedValue as Row[]).map((r) => [r.id, task69ExpandedBaseline(table, r)]),
+    );
     const inScope = (row: Row) =>
       table === 'public.matter_party_roles'
         ? rows.some((r) => r.party_id === row.party_id) ||
