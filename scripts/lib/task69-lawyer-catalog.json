@@ -1,0 +1,58 @@
+{
+  "columns": [
+    {
+      "type": "uuid",
+      "attnotnull": false
+    }
+  ],
+  "constraints": [
+    {
+      "conname": "matter_lawyers_rule_shape",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (legacy_source_record_key IS NULL AND reviewed_rule_id IS NULL OR legacy_source_record_key IS NOT NULL AND (reviewed_rule_id IS NULL AND source_member_ordinal = 1 OR reviewed_rule_id IS NOT NULL OR task69_receipt_id IS NOT NULL))"
+    },
+    {
+      "conname": "matter_lawyers_task69_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (task69_receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "conname": "matter_lawyers_task69_source_shape",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (task69_receipt_id IS NULL OR (legacy_source_record_key IS NOT NULL AND legacy_source IS NOT NULL AND reviewed_rule_id IS NULL AND source_field = 'lawyerA'::text) IS TRUE)"
+    },
+    {
+      "conname": "task69_lawyer_source_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    }
+  ],
+  "indexes": [
+    {
+      "definition": "CREATE INDEX matter_lawyers_task69_receipt_idx ON public.matter_lawyers USING btree (task69_receipt_id) WHERE (task69_receipt_id IS NOT NULL)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "triggers": [
+    {
+      "schema": "_migration",
+      "table": "task69_receipt",
+      "name": "task69_lawyer_receipt_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_lawyer_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_lawyer_receipt_complete()"
+    },
+    {
+      "schema": "public",
+      "table": "matter_lawyers",
+      "name": "task69_lawyer_source_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_lawyer_source_complete AFTER INSERT ON matter_lawyers DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_lawyer_source_complete()"
+    }
+  ]
+}

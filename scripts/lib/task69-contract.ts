@@ -189,6 +189,7 @@ export function task69ReferenceSql(table: string): string {
 /** Schema additions are explicit nullable defaults, not exemptions from row
  * freshness. A populated new attribute without a reviewed transition refuses. */
 export const TASK69_ADDITIVE_NULL_FIELDS: Record<string, readonly string[]> = {
+  'public.matter_lawyers': ['task69_receipt_id'],
   'public.matter_parties': [
     'semantic_party_name',
     'representative_name',

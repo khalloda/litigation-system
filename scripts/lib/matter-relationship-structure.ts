@@ -1,3 +1,4 @@
+import { task69LawyerApplied } from './task69-lawyer-checkpoint';
 import { task69PartyApplied } from './task69-party-checkpoint';
 import type { ClientBase } from 'pg';
 
@@ -235,6 +236,7 @@ function sameStrings(actual: string[], expected: readonly string[]): boolean {
 export async function matterRelationshipStructureFailures(db: ClientBase): Promise<string[]> {
   const { matterEditApplied } = await import('./matter-edit-checkpoint');
   const editing = await matterEditApplied(db);
+  const historicalLawyers = await task69LawyerApplied(db);
   const qualified = await task69PartyApplied(db);
   const constraintNames = [
     ...EXPECTED_CHECKS.map((row) => row.name),
@@ -359,7 +361,15 @@ export async function matterRelationshipStructureFailures(db: ClientBase): Promi
   );
 
   const defects: string[] = [];
-  for (const expected of EXPECTED_CHECKS) {
+  for (const legacy of EXPECTED_CHECKS) {
+    const expected =
+      historicalLawyers && legacy.name === 'matter_lawyers_rule_shape'
+        ? {
+            ...legacy,
+            definition:
+              'CHECK (legacy_source_record_key IS NULL AND reviewed_rule_id IS NULL OR legacy_source_record_key IS NOT NULL AND (reviewed_rule_id IS NULL AND source_member_ordinal = 1 OR reviewed_rule_id IS NOT NULL OR task69_receipt_id IS NOT NULL))',
+          }
+        : legacy;
     const actual = constraints.rows.find((row) => row.name === expected.name);
     if (
       actual === undefined ||

@@ -1,4 +1,9 @@
 import {
+  task69LawyerApplied,
+  assertTask69LawyerSources,
+  TASK69_LAWYER_MIGRATION,
+} from './task69-lawyer-checkpoint';
+import {
   task69RestorationApplied,
   TASK69_RESTORATION_MIGRATION,
 } from './task69-restoration-checkpoint';
@@ -232,6 +237,7 @@ export async function assertStaffCheckpoint(
   | 79
   | 80
   | 81
+  | 82
 > {
   assert.ok(
     ['historical-full-state-upgrade', 'canonical-clean-replay'].includes(profile),
@@ -250,12 +256,14 @@ export async function assertStaffCheckpoint(
   const repository = await readGate4RepositoryMigrationInventory();
   assert.deepEqual(repository.defects, []);
   assert.ok(
-    [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81].includes(
-      repository.migrations.length,
-    ),
+    [
+      61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82,
+    ].includes(repository.migrations.length),
     'Exact reviewed repository checkpoint required',
   );
   assert.equal(repository.migrations[60]?.name, STAFF_MIGRATION);
+  if (repository.migrations.length >= 82)
+    assert.equal(repository.migrations[81]?.name, TASK69_LAWYER_MIGRATION);
   if (repository.migrations.length >= 81)
     assert.equal(repository.migrations[80]?.name, TASK69_RESTORATION_MIGRATION);
   if (repository.migrations.length >= 80)
@@ -299,6 +307,8 @@ export async function assertStaffCheckpoint(
     );
   if (repository.migrations.length >= 77)
     assert.equal(repository.migrations[76]?.name, LAWYER_SELECTION_MIGRATION);
+  const lawyerRestoration = await task69LawyerApplied(db);
+  if (lawyerRestoration) await assertTask69LawyerSources(db);
   const restoration = await task69RestorationApplied(db);
   const partySemantics = await task69PartyApplied(db);
   const foundation = await task69FoundationApplied(db);
@@ -344,49 +354,52 @@ export async function assertStaffCheckpoint(
   assert.ok(!foundation || administrativeSelection);
   assert.ok(!partySemantics || foundation);
   assert.ok(!restoration || partySemantics);
-  const checkpoint = restoration
-    ? 81
-    : partySemantics
-      ? 80
-      : foundation
-        ? 79
-        : administrativeSelection
-          ? 78
-          : lawyerSelection
-            ? 77
-            : closedSelection
-              ? 76
-              : task62Source
-                ? 75
-                : reportSelection
-                  ? 74
-                  : auditHistory
-                    ? 73
-                    : billingLabels
-                      ? 72
-                      : tasks46_47
-                        ? 71
-                        : poa
-                          ? 70
-                          : adminLifecycle
-                            ? 69
-                            : admin
-                              ? 68
-                              : hearingLifecycle
-                                ? 67
-                                : hearing
-                                  ? 66
-                                  : lifecycle
-                                    ? 65
-                                    : editing
-                                      ? 64
-                                      : logosApplied
-                                        ? 63
-                                        : clientsApplied
-                                          ? 62
-                                          : applied
-                                            ? 61
-                                            : 60;
+  assert.ok(!lawyerRestoration || restoration);
+  const checkpoint = lawyerRestoration
+    ? 82
+    : restoration
+      ? 81
+      : partySemantics
+        ? 80
+        : foundation
+          ? 79
+          : administrativeSelection
+            ? 78
+            : lawyerSelection
+              ? 77
+              : closedSelection
+                ? 76
+                : task62Source
+                  ? 75
+                  : reportSelection
+                    ? 74
+                    : auditHistory
+                      ? 73
+                      : billingLabels
+                        ? 72
+                        : tasks46_47
+                          ? 71
+                          : poa
+                            ? 70
+                            : adminLifecycle
+                              ? 69
+                              : admin
+                                ? 68
+                                : hearingLifecycle
+                                  ? 67
+                                  : hearing
+                                    ? 66
+                                    : lifecycle
+                                      ? 65
+                                      : editing
+                                        ? 64
+                                        : logosApplied
+                                          ? 63
+                                          : clientsApplied
+                                            ? 62
+                                            : applied
+                                              ? 61
+                                              : 60;
   const checkpointFiles = repository.migrations.slice(0, checkpoint);
   const evidence = reconcileGate4Migrations(history, {
     ...repository,

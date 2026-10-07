@@ -1,3 +1,4 @@
+import { currentTask69LawyerSql, task69LawyerApplied } from './task69-lawyer-checkpoint';
 import {
   currentTask69RestorationSql,
   task69RestorationApplied,
@@ -180,12 +181,15 @@ export async function assertMatterEditBoundary(db: ClientBase, profile: string) 
       "SELECT n.nspname schema,p.proname name,p.prosrc body,p.prosecdef,p.proconfig,has_function_privilege('litigation_runtime',p.oid,'EXECUTE') runtime, EXISTS(SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE') public FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','_migration') AND p.proname LIKE 'matter_edit_%'",
     )
   ).rows;
-  const source = currentTask69RestorationSql(
-    currentTask69PartySql(
-      currentMatterEditSql(matterEditSql(), await matterLifecycleApplied(db)),
-      await task69PartyApplied(db),
+  const source = currentTask69LawyerSql(
+    currentTask69RestorationSql(
+      currentTask69PartySql(
+        currentMatterEditSql(matterEditSql(), await matterLifecycleApplied(db)),
+        await task69PartyApplied(db),
+      ),
+      await task69RestorationApplied(db),
     ),
-    await task69RestorationApplied(db),
+    await task69LawyerApplied(db),
   );
   assert.equal(functions.length, [...source.matchAll(/CREATE FUNCTION /gu)].length);
   for (const fn of functions) {

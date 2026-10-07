@@ -13,7 +13,12 @@ import type { Task69PreparedOperation } from './task69-runner';
 import { assertTask69Preflight } from './task69-preflight';
 
 export type Task69Delta = { table: string; before: Row | null; after: Row };
-export type Task69Context = { actorId: number; requestId: string; receipt: Row | null };
+export type Task69Context = {
+  actorId: number;
+  requestId: string;
+  receiptId: string;
+  receipt: Row | null;
+};
 
 export async function authorizeTask69Issue(
   db: ClientBase,
@@ -51,7 +56,12 @@ export async function authorizeTask69Issue(
       [operation.operationId, issueId],
     );
   }
-  return { actorId: result.actorId, requestId, receipt: result.receipt };
+  return {
+    actorId: result.actorId,
+    requestId,
+    receiptId: result.receipt?.receipt_id ?? randomUUID(),
+    receipt: result.receipt,
+  };
 }
 
 export async function recordTask69Receipt(
@@ -67,7 +77,7 @@ export async function recordTask69Receipt(
   const allowed = operation.allowlist.find((e) => e.issue_id === issueId);
   assert.ok(allowed);
   assert.equal(context.receipt, null);
-  const receiptId = randomUUID();
+  const receiptId = context.receiptId;
   await db.query(
     "INSERT INTO _migration.task69_receipt(receipt_id,operation_id,issue_id,payload_sha256,phase,actor_id,audit_session_id,request_id,returned_ids,source_occurrences,effect,expected_delta_count) VALUES($1,$2,$3,$4,'apply',$5,$6,$7,$8,$9,$10,$11)",
     [
@@ -118,6 +128,7 @@ export async function recordTask69Receipt(
 }
 
 const writableTables = [
+  'matter_lawyers',
   'matter_parties',
   'matter_party_roles',
   'lookup_party_role',

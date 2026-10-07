@@ -17,7 +17,13 @@ async function main() {
     await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     try {
       const checkpoint = await assertStaffCheckpoint(db, 'historical-full-state-upgrade');
-      assert.ok(checkpoint === 78 || checkpoint === 79 || checkpoint === 80 || checkpoint === 81);
+      assert.ok(
+        checkpoint === 78 ||
+          checkpoint === 79 ||
+          checkpoint === 80 ||
+          checkpoint === 81 ||
+          checkpoint === 82,
+      );
       assert.deepEqual(await task69FoundationFailures(db), []);
       await db.query('ROLLBACK');
       return {

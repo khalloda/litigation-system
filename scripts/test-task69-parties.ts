@@ -45,7 +45,7 @@ async function main() {
           'SELECT count(*)::int n FROM public._prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL',
         )
       ).rows[0].n,
-      draftMode ? 80 : 81,
+      draftMode ? 80 : 82,
     );
     await db.query(
       draftMode

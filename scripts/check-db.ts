@@ -2257,7 +2257,9 @@ async function main() {
         occurrenceOk,
       );
     }
-    const structureFailures = await matterRelationshipStructureFailures(relationshipDb);
+    // Structure and current Task69 provenance require the actual schema; the
+    // original source oracle above deliberately uses the historical row projection.
+    const structureFailures = await matterRelationshipStructureFailures(currentRelationshipDb);
     // Git-owned reviewed rules are universal; source-cell occurrences are not.
     structureFailures.push(...(await storedRuleSourceFailures(relationshipDb)));
     record(

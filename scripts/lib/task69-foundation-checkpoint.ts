@@ -1,3 +1,4 @@
+import { task69LawyerApplied } from './task69-lawyer-checkpoint';
 import { task69RestorationApplied } from './task69-restoration-checkpoint';
 import { task69PartyApplied, task69PartyExpected } from './task69-party-checkpoint';
 import assert from 'node:assert/strict';
@@ -121,6 +122,30 @@ export async function task69FoundationFailures(db: ClientBase): Promise<string[]
           (a.table_name + '/' + a.tgname).localeCompare(b.table_name + '/' + b.tgname),
       );
     }
+    if (await task69LawyerApplied(db)) {
+      expected.constraints.push({
+        table_name: 'task69_receipt',
+        conname: 'task69_lawyer_receipt_complete',
+        contype: 't',
+        convalidated: true,
+        definition: 'TRIGGER DEFERRABLE INITIALLY DEFERRED',
+      });
+      expected.triggers.push({
+        table_name: 'task69_receipt',
+        tgname: 'task69_lawyer_receipt_complete',
+        tgenabled: 'O',
+        definition:
+          'CREATE CONSTRAINT TRIGGER task69_lawyer_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_lawyer_receipt_complete()',
+      });
+    }
+    expected.constraints.sort(
+      (a: { table_name: string; conname: string }, b: { table_name: string; conname: string }) =>
+        (a.table_name + '/' + a.conname).localeCompare(b.table_name + '/' + b.conname),
+    );
+    expected.triggers.sort(
+      (a: { table_name: string; tgname: string }, b: { table_name: string; tgname: string }) =>
+        (a.table_name + '/' + a.tgname).localeCompare(b.table_name + '/' + b.tgname),
+    );
     assert.deepEqual(
       await task69FoundationCatalog(db),
       expected,

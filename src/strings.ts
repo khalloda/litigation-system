@@ -846,6 +846,7 @@ export const t = {
       ordinal: 'الترتيب المسجل',
       outcome: 'النتيجة',
       page_count: 'عدد الصفحات',
+      task69_receipt_id: 'معرّف إثبات الاستعادة',
       party_id: 'معرّف الطرف',
       party_name: 'اسم الطرف',
       semantic_party_name: 'الاسم المقصود بالصفة',

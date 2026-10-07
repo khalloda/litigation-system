@@ -1990,6 +1990,8 @@ model FeeLetter {
 /// D14 refuses to restrict billing to "the lawyer's own matters" — such a
 /// rule would hide half the firm from everybody.
 model MatterLawyer {
+  /// Private historical receipt; enforced by SQL, never accepted from native input.
+  task69ReceiptId String? @map("task69_receipt_id") @db.Uuid
   isRetired Boolean @default(false) @map("is_retired")
   id       Int    @id @default(autoincrement())
   matterId Int    @map("matter_id")
