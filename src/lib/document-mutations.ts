@@ -23,6 +23,7 @@ export type DocumentSnapshot = {
     version: string;
     archived: boolean;
     values: DocumentValues;
+    related: { matterIds: number[]; responsiblePersonIds: number[] };
     facts: Record<string, unknown>;
   } | null;
   clients: { id: number; name: string; active: boolean }[];

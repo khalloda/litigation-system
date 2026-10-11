@@ -1,4 +1,9 @@
 import {
+  task69DocumentApplied,
+  TASK69_DOCUMENT_TABLES,
+  TASK69_DOCUMENT_FIELDS,
+} from './task69-document-checkpoint';
+import {
   task69AdminAssignmentApplied,
   TASK69_ADMIN_ASSIGNMENT_FIELDS,
 } from './task69-admin-assignment-checkpoint';
@@ -195,11 +200,13 @@ export async function auditEventStructureFailures(
   failures.push(...(await lawyerSelectionFailures(db)));
   failures.push(...(await closedSelectionFailures(db)));
   failures.push(...(await reportSelectionFailures(db)));
+  const documentRelationships = await task69DocumentApplied(db);
   const adminAssignments = await task69AdminAssignmentApplied(db);
   const eventTables = reportSelection
     ? [
         ...AUDITED_TABLES,
         ...(adminAssignments ? ['admin_task_assignees'] : []),
+        ...(documentRelationships ? TASK69_DOCUMENT_TABLES : []),
         'client_report_selections',
         ...(closedSelection ? ['closed_report_selections'] : []),
         ...(lawyerSelection ? ['lawyer_report_selections'] : []),
@@ -223,6 +230,7 @@ export async function auditEventStructureFailures(
   const partySemantics = await task69PartyApplied(db);
   const currentFieldRules = [
     ...(adminAssignments ? TASK69_ADMIN_ASSIGNMENT_FIELDS : []),
+    ...(documentRelationships ? TASK69_DOCUMENT_FIELDS : []),
     ...(lawyerRestoration ? TASK69_LAWYER_FIELDS : []),
     ...(partySemantics ? TASK69_PARTY_FIELDS : []),
     ...(reportSelection ? REPORT_SELECTION_FIELDS : []),
@@ -267,6 +275,7 @@ export async function auditEventStructureFailures(
         capture_mode:
           [
             'admin_task_assignees',
+            ...TASK69_DOCUMENT_TABLES,
             'client_report_selections',
             'closed_report_selections',
             'lawyer_report_selections',

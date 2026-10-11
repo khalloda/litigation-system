@@ -115,7 +115,7 @@ export const documentReports: readonly ReportDefinition[] = [
   ...documentEntries.map(([purpose, id, title, description]): ReportDefinition => ({
     descriptor: {
       id,
-      version: '1',
+      version: '2',
       title,
       description,
       layout: purpose === 'card' ? 'card' : purpose === 'client' ? 'flat' : 'grouped',
@@ -299,11 +299,10 @@ async function readDocumentReport(
   const record = parameters.document?.kind === 'id' ? parameters.document.id : null;
   const rows = await tx.$queryRaw<Document[]>(Prisma.sql`
     SELECT d.id,d.legacy_id AS serial,d.client_id AS "clientId",c.name_ar AS client,c.documents_location AS "clientStorage",
-      m.case_number_ar AS "caseNumber",d.description,d.document_date::text AS "documentDate",d.page_count AS pages,
-      d.legacy_page_count_raw AS "sourcePages",d.deposit_date::text AS "depositDate",p.name_ar AS person,
+      (SELECT string_agg(coalesce(m.case_number_ar,${t.reports.nullValue}),E'\\n' ORDER BY dm.position,dm.id) FROM public.document_matters dm JOIN public.matters m ON m.id=dm.matter_id WHERE dm.document_id=d.id AND NOT dm.is_retired) AS "caseNumber",d.description,d.document_date::text AS "documentDate",d.page_count AS pages,
+      d.legacy_page_count_raw AS "sourcePages",d.deposit_date::text AS "depositDate",(SELECT string_agg(p.name_ar,E'\\n' ORDER BY dp.position,dp.id) FROM public.document_responsible_people dp JOIN public.people p ON p.id=dp.person_id WHERE dp.document_id=d.id AND NOT dp.is_retired) AS person,
       d.storage_location AS storage,d.notes,d.mfiles_id AS mfiles,d.movement_card AS "movementReference"
     FROM public.documents d LEFT JOIN public.clients c ON c.id=d.client_id
-    LEFT JOIN public.matters m ON m.id=d.matter_id LEFT JOIN public.people p ON p.id=d.responsible_person_id
     WHERE ${purpose === 'card' ? Prisma.sql`d.id=${record}` : Prisma.sql`c.id IS NOT NULL`}
       ${purpose === 'client' ? Prisma.sql`AND d.client_id=${client}` : Prisma.empty}
     ORDER BY ${purpose === 'inventory' ? Prisma.sql`c.id,c.name_ar COLLATE "C",` : Prisma.empty}d.legacy_id NULLS LAST,d.id`);

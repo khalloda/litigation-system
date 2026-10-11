@@ -502,6 +502,7 @@ model Person {
   adminTasks                      AdminTask[]
   adminTaskAssignments            AdminTaskAssignee[]
   /// Paper documents this person is responsible for.
+  documentResponsibilities        DocumentResponsiblePerson[]
   documents                       Document[]
   /// Administrative task steps this person carried out (القائم بالعمل).
   taskActions                     TaskAction[]
@@ -1406,6 +1407,7 @@ model Matter {
   updatedByActor AuditActor        @relation("MatterUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "matters_updated_by_fkey")
   hearings       Hearing[]
   adminTasks     AdminTask[]
+  documentMemberships DocumentMatter[]
   documents      Document[]
   lawyers        MatterLawyer[]
   parties        MatterParty[]
@@ -1847,6 +1849,8 @@ model PowerOfAttorneyLawyer {
 /// This records DESCRIPTIONS of paper documents and where the hard copy is
 /// filed. **The system does not store files** (docs/PRD.md).
 model Document {
+  relatedMatters DocumentMatter[]
+  responsiblePeople DocumentResponsiblePerson[]
   id       Int  @id @default(autoincrement())
   legacyId Int? @unique @map("legacy_id")
 
@@ -2775,4 +2779,33 @@ model AdministrativeStepReportSelection {
   isSelected Boolean @map("is_selected")
   rowVersion BigInt @map("row_version")
   @@map("administrative_step_report_selections")
+}
+
+/// Canonical ordered document memberships. Retired rows retain their identity.
+model DocumentMatter {
+  id         Int      @id @default(autoincrement())
+  documentId Int      @map("document_id")
+  matterId   Int      @map("matter_id")
+  position   Int?
+  isRetired  Boolean  @default(false) @map("is_retired")
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  matter     Matter   @relation(fields: [matterId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([documentId, matterId], map: "document_matters_member_key")
+  @@unique([documentId, position], map: "document_matters_position_key")
+  @@map("document_matters")
+}
+
+model DocumentResponsiblePerson {
+  id         Int      @id @default(autoincrement())
+  documentId Int      @map("document_id")
+  personId   Int      @map("person_id")
+  position   Int?
+  isRetired  Boolean  @default(false) @map("is_retired")
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  person     Person   @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([documentId, personId], map: "document_responsible_people_member_key")
+  @@unique([documentId, position], map: "document_responsible_people_position_key")
+  @@map("document_responsible_people")
 }

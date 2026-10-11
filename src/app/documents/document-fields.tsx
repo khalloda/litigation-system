@@ -40,16 +40,28 @@ export function DocumentFields({
         <div>
           <dt>{t.documentsModule.currentMatter}</dt>
           <dd>
-            {r.matterId ? (
-              <Link className={styles.nameLink} href={'/matters/' + r.matterId}>
-                {r.matterNumber ?? t.documentsModule.unknown}
-              </Link>
-            ) : (
-              t.documentsModule.unknown
-            )}
+            {r.matters.length
+              ? r.matters.map((matter) => (
+                  <div key={matter.id}>
+                    <Link className={styles.nameLink} href={'/matters/' + matter.id}>
+                      {matter.name ?? t.documentsModule.unknown}
+                    </Link>
+                    {matter.archived ? ' — ' + t.documentsModule.archived : ''}
+                  </div>
+                ))
+              : t.documentsModule.unknown}
           </dd>
         </div>
-        <Value label={t.documentsModule.responsible} value={r.personName} />
+        <Value
+          label={t.documentsModule.responsible}
+          value={
+            r.people.length
+              ? r.people
+                  .map((person) => person.name + (!person.active ? ' — ' + t.staff.former : ''))
+                  .join('\n')
+              : null
+          }
+        />
         <Value label={t.documentsModule.mfilesId} value={r.mfilesId} />
         {full ? (
           <>

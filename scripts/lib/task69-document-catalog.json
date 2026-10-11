@@ -1,0 +1,431 @@
+{
+  "columns": [
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "name": "document_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "name": "matters",
+      "type": "jsonb",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "name": "people",
+      "type": "jsonb",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "name": "version",
+      "type": "bigint",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "name": "document_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "name": "id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "d",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "name": "is_retired",
+      "type": "boolean",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": "false"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "name": "matter_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "name": "position",
+      "type": "integer",
+      "attnotnull": false,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "name": "document_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "name": "id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "d",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "name": "is_retired",
+      "type": "boolean",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": "false"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "name": "person_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "name": "position",
+      "type": "integer",
+      "attnotnull": false,
+      "attidentity": "",
+      "default_value": null
+    }
+  ],
+  "constraints": [
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "conname": "task69_document_relationship_boundary_document_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (document_id) REFERENCES documents(id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "conname": "task69_document_relationship_boundary_matters_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(matters) = 'array'::text)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "conname": "task69_document_relationship_boundary_people_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(people) = 'array'::text)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "conname": "task69_document_relationship_boundary_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (document_id)"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "conname": "document_matters_document_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "conname": "document_matters_matter_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (matter_id) REFERENCES matters(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "conname": "document_matters_member_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (document_id, matter_id)"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "conname": "document_matters_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "conname": "document_matters_position_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (is_retired AND \"position\" IS NULL OR NOT is_retired AND \"position\" IS NOT NULL AND \"position\" > 0)"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "conname": "document_matters_position_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (document_id, \"position\") DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "conname": "relationship_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "conname": "document_responsible_people_document_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "conname": "document_responsible_people_member_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (document_id, person_id)"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "conname": "document_responsible_people_person_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "conname": "document_responsible_people_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "conname": "document_responsible_people_position_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (is_retired AND \"position\" IS NULL OR NOT is_retired AND \"position\" IS NOT NULL AND \"position\" > 0)"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "conname": "document_responsible_people_position_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (document_id, \"position\") DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "conname": "relationship_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    }
+  ],
+  "triggers": [
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "name": "immutable_rows",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON _migration.task69_document_relationship_boundary FOR EACH STATEMENT EXECUTE FUNCTION _migration.tasks46_47_immutable()"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "name": "audit_event_capture",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER audit_event_capture AFTER INSERT OR UPDATE ON document_matters FOR EACH ROW EXECUTE FUNCTION audit_capture_row_event()"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "name": "relationship_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER relationship_complete AFTER INSERT OR UPDATE ON document_matters DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_document_relationship_complete()"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "name": "relationship_guard",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER relationship_guard BEFORE INSERT OR DELETE OR UPDATE ON document_matters FOR EACH ROW EXECUTE FUNCTION _migration.task69_document_relationship_guard()"
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "name": "relationship_no_truncate",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER relationship_no_truncate BEFORE TRUNCATE ON document_matters FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_document_relationship_guard()"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "name": "audit_event_capture",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER audit_event_capture AFTER INSERT OR UPDATE ON document_responsible_people FOR EACH ROW EXECUTE FUNCTION audit_capture_row_event()"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "name": "relationship_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER relationship_complete AFTER INSERT OR UPDATE ON document_responsible_people DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_document_relationship_complete()"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "name": "relationship_guard",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER relationship_guard BEFORE INSERT OR DELETE OR UPDATE ON document_responsible_people FOR EACH ROW EXECUTE FUNCTION _migration.task69_document_relationship_guard()"
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "name": "relationship_no_truncate",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER relationship_no_truncate BEFORE TRUNCATE ON document_responsible_people FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_document_relationship_guard()"
+    }
+  ],
+  "indexes": [
+    {
+      "schema": "_migration",
+      "table": "task69_document_relationship_boundary",
+      "definition": "CREATE UNIQUE INDEX task69_document_relationship_boundary_pkey ON _migration.task69_document_relationship_boundary USING btree (document_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "definition": "CREATE INDEX document_matters_member_idx ON public.document_matters USING btree (matter_id, document_id) WHERE (NOT is_retired)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "definition": "CREATE UNIQUE INDEX document_matters_member_key ON public.document_matters USING btree (document_id, matter_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "definition": "CREATE UNIQUE INDEX document_matters_pkey ON public.document_matters USING btree (id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "document_matters",
+      "definition": "CREATE UNIQUE INDEX document_matters_position_key ON public.document_matters USING btree (document_id, \"position\")",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "definition": "CREATE INDEX document_responsible_people_member_idx ON public.document_responsible_people USING btree (person_id, document_id) WHERE (NOT is_retired)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "definition": "CREATE UNIQUE INDEX document_responsible_people_member_key ON public.document_responsible_people USING btree (document_id, person_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "definition": "CREATE UNIQUE INDEX document_responsible_people_pkey ON public.document_responsible_people USING btree (id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "document_responsible_people",
+      "definition": "CREATE UNIQUE INDEX document_responsible_people_position_key ON public.document_responsible_people USING btree (document_id, \"position\")",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "grants": [
+    {
+      "schema": "public",
+      "name": "document_matters",
+      "grantee": "litigation_runtime",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    },
+    {
+      "schema": "public",
+      "name": "document_responsible_people",
+      "grantee": "litigation_runtime",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    }
+  ]
+}

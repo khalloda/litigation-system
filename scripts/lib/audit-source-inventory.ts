@@ -51,7 +51,7 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 const REPORT_ENGINE_CLOSURES = new Map([
   [
     'src/lib/reports/document-reports.ts',
-    '6045cd74865e4d1cdd080cf541841fa56df63590e38db4a987ad49be737ed7c8',
+    '187c22a6008aac9c77cfb8ae97513f3f86d58449f36071c3d50732798e03a512',
   ],
   [
     'src/lib/reports/administrative-reports.ts',
@@ -233,7 +233,7 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/reports/document-reports.ts',
     'readDocumentReport',
-    '8a7fdacc2db3e27fbfb8bbdfc6234774d3cc37264b92ba5949afc35343006fa1',
+    'bfadece17c36c1c757aff2034210b0515ab7173ef14a52fac6af43753e98abcf',
   ],
   [
     'src/lib/reports/administrative-reports.ts',
@@ -686,17 +686,17 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/document-query.ts',
     'readDocuments',
-    '7106dc2f6676328bf681518d78b5a59ab8071e8e94cad9dab8d45ee636c1ad43',
+    'aabc6ad651215d8437d957c752d10a9774a7693ac17c8ff4d1fa306a1508f769',
   ],
   [
     'src/lib/document-query.ts',
     'readDocuments',
-    '65193a7eeee7b53ce1f32952a572cbdf058f925ca663d4c33ef9688f88ed761a',
+    '79c801ad82943914391b218b30d418aad49d597f63012a9100961ca3ca54d4f2',
   ],
   [
     'src/lib/document-query.ts',
     'readDocument',
-    '3847888c25ec139c194fa55e55c2ca65af2f720cdd412ba61faeb0c7087f0eb5',
+    '6d988f82087f1f6a400dc452926ac6445f154db9b387f3f17a6362f702f826ec',
   ],
   [
     'src/lib/document-mutations.ts',
@@ -2725,13 +2725,13 @@ export function auditRuntimeSourceFailures(
     if (
       isDocumentMutationService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
-        'c1e2be6a6f652103854b9968aba054bd0dcac28d39e248dd335610b6268ccbe5'
+        'e00b9026730c206f841c848a8dbbe9b1558191223ac5e11fe45721becc335766'
     )
       failures.add('Document mutation closure differs from reviewed inventory');
     if (
       source.path === 'src/lib/document-mutation-input.ts' &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
-        '066451b54edec2774872bf8d66829c549acd7912d03c5d83b1345506650ded7d'
+        '8848f2773b09875c5e834bc2353067e24a5adb6460acb2a2a6bfbc2d6d680bfd'
     )
       failures.add('Document input differs from reviewed inventory');
     if (
@@ -2845,7 +2845,7 @@ export function auditRuntimeSourceFailures(
     if (
       isDocumentReadService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
-        '11c9264d519b0bf06692e34d2aa7b491b3e5b577c029bac2142b6e7c40bbba2d'
+        '31b45a70bba126581de4ec1144fc440c83693daa6eea4468cdc4f5e2b3573cd9'
     )
       failures.add('Document read closure differs from reviewed inventory');
     if (

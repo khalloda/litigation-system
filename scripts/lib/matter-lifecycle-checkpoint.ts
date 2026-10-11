@@ -1,3 +1,4 @@
+import { task69DocumentApplied, currentTask69DocumentSql } from './task69-document-checkpoint';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -48,7 +49,7 @@ export async function matterLifecycleApplied(db: ClientBase) {
     { column_name: 'is_archived', is_nullable: 'NO', column_default: 'false' },
   ]);
   const definitions = [
-    ...source.matchAll(
+    ...currentTask69DocumentSql(source, await task69DocumentApplied(db)).matchAll(
       /CREATE FUNCTION ((?:public|_migration)\.matter_lifecycle_\w+)\([\s\S]*?AS \$\$([\s\S]*?)\$\$;/gu,
     ),
   ];

@@ -52,6 +52,9 @@ export function DocumentEditor({
   const [values, setValues] = useState<DocumentValues>(() =>
     structuredClone(s.record?.values ?? Object.fromEntries(DOCUMENT_FIELDS.map((k) => [k, null]))),
   );
+  const [related, setRelated] = useState(() =>
+    structuredClone(s.record?.related ?? { matterIds: [], responsiblePersonIds: [] }),
+  );
   const [result, setResult] = useState<DocumentActionResult | null>(null),
     [pending, start] = useTransition();
   const feedback = useRef<HTMLDivElement>(null),
@@ -108,7 +111,9 @@ export function DocumentEditor({
         ? {}
         : Object.fromEntries(
             Object.entries(values).filter(
-              ([k, v]) => creating || v !== new Map(Object.entries(original)).get(k),
+              ([k, v]) =>
+                !['matter_id', 'responsible_person_id'].includes(k) &&
+                (creating || v !== new Map(Object.entries(original)).get(k)),
             ),
           );
       payload = JSON.stringify({
@@ -117,7 +122,7 @@ export function DocumentEditor({
         version: s.record?.version ?? null,
         submission,
         values: patch,
-        related: null,
+        related: lifecycle ? null : related,
         facts: lifecycle ? s.record?.facts : null,
       });
       last.current = payload;
@@ -171,28 +176,42 @@ export function DocumentEditor({
       }}
     >
       <div className={local.fields}>
-        {DOCUMENT_FIELDS.map((key) => (
+        {(['matterIds', 'responsiblePersonIds'] as const).map((key) => (
+          <RelatedChoices
+            key={key}
+            label={
+              key === 'matterIds' ? t.documentsModule.currentMatter : t.documentsModule.responsible
+            }
+            selected={key === 'matterIds' ? related.matterIds : related.responsiblePersonIds}
+            original={
+              (key === 'matterIds'
+                ? s.record?.related.matterIds
+                : s.record?.related.responsiblePersonIds) ?? []
+            }
+            disabled={disabled}
+            options={
+              key === 'matterIds'
+                ? s.matters
+                : s.people.map((p) => ({ ...p, active: p.active && p.staff }))
+            }
+            change={(ids) => setRelated((old) => ({ ...old, [key]: ids }))}
+          />
+        ))}
+        {DOCUMENT_FIELDS.filter(
+          (key) => key !== 'matter_id' && key !== 'responsible_person_id',
+        ).map((key) => (
           <div className={styles.field} key={key}>
             <label htmlFor={prefix + key}>{new Map(Object.entries(labels)).get(key)}</label>
-            {key === 'client_id' || key === 'matter_id' || key === 'responsible_person_id' ? (
+            {key === 'client_id' ? (
               <select
                 id={prefix + key}
                 disabled={disabled}
-                value={String(new Map(Object.entries(values)).get(key) ?? '')}
+                value={String(values.client_id ?? '')}
                 onChange={(e) => change(key, e.target.value ? Number(e.target.value) : null)}
               >
                 <option value="">{t.documentsModule.unknown}</option>
-                {(key === 'client_id'
-                  ? s.clients
-                  : key === 'matter_id'
-                    ? s.matters
-                    : s.people.filter((p) => p.staff)
-                ).map((o) => (
-                  <option
-                    key={o.id}
-                    value={o.id}
-                    disabled={!o.active && o.id !== new Map(Object.entries(values)).get(key)}
-                  >
+                {s.clients.map((o) => (
+                  <option key={o.id} value={o.id} disabled={!o.active && o.id !== values.client_id}>
                     {o.name}
                   </option>
                 ))}
@@ -302,5 +321,77 @@ function Actions({
         {t.documentsModule.cancel}
       </a>
     </div>
+  );
+}
+
+function RelatedChoices({
+  label,
+  selected,
+  original,
+  options,
+  disabled,
+  change,
+}: {
+  label: string;
+  selected: number[];
+  original: number[];
+  options: { id: number; name: string | null; active: boolean }[];
+  disabled: boolean;
+  change: (ids: number[]) => void;
+}) {
+  const id = useId(),
+    names = new Map(options.map((o) => [o.id, o]));
+  const move = (index: number, offset: number) => {
+    const ids = [...selected];
+    const current = ids.at(index)!;
+    ids.splice(index, 1, ids.at(index + offset)!);
+    ids.splice(index + offset, 1, current);
+    change(ids);
+  };
+  return (
+    <fieldset className={styles.field} disabled={disabled}>
+      <legend>{label}</legend>
+      <ol>
+        {selected.map((value, index) => (
+          <li key={value}>
+            <span className={local.value}>{names.get(value)?.name ?? String(value)}</span>
+            <button type="button" onClick={() => change(selected.filter((x) => x !== value))}>
+              {t.matters.manage.remove}
+            </button>
+            <button
+              type="button"
+              disabled={disabled || index === 0}
+              onClick={() => move(index, -1)}
+            >
+              {t.matters.manage.up}
+            </button>
+            <button
+              type="button"
+              disabled={disabled || index === selected.length - 1}
+              onClick={() => move(index, 1)}
+            >
+              {t.matters.manage.down}
+            </button>
+          </li>
+        ))}
+      </ol>
+      <label htmlFor={id}>{label}</label>
+      <select
+        id={id}
+        value=""
+        onChange={(e) => {
+          if (e.target.value) change([...selected, Number(e.target.value)]);
+        }}
+      >
+        <option value="">{t.documentsModule.unknown}</option>
+        {options
+          .filter((o) => !selected.includes(o.id) && (o.active || original.includes(o.id)))
+          .map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name ?? String(o.id)}
+            </option>
+          ))}
+      </select>
+    </fieldset>
   );
 }

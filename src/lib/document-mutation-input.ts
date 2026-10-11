@@ -31,7 +31,7 @@ export type DocumentInput = {
   version: string | null;
   submission: string;
   values: DocumentValues;
-  related: null;
+  related: { matterIds: number[]; responsiblePersonIds: number[] } | null;
   facts: Record<string, unknown> | null;
 };
 const invalid = (field = ''): never => {
@@ -83,13 +83,34 @@ export function parseDocumentInput(operation: DocumentOperation, input: unknown)
     !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/u.test(value.submission)
   )
     return invalid();
-  if (
-    !value.values ||
-    typeof value.values !== 'object' ||
-    Array.isArray(value.values) ||
-    value.related !== null
-  )
+  if (!value.values || typeof value.values !== 'object' || Array.isArray(value.values))
     return invalid();
+  if (value.related !== null) {
+    if (!value.related || typeof value.related !== 'object' || Array.isArray(value.related))
+      return invalid('related');
+    const related = value.related as Record<string, unknown>;
+    if (Object.keys(related).sort().join(',') !== 'matterIds,responsiblePersonIds')
+      return invalid('related');
+    for (const [key, scalar] of [
+      ['matterIds', 'matter_id'],
+      ['responsiblePersonIds', 'responsible_person_id'],
+    ] as const) {
+      const ids = new Map(Object.entries(related)).get(key);
+      if (
+        !Array.isArray(ids) ||
+        ids.length > 1000 ||
+        ids.some((id) => !positive(id)) ||
+        new Set(ids).size !== ids.length
+      )
+        return invalid(key);
+      const fields = value.values as Record<string, unknown>;
+      if (
+        scalar in fields &&
+        new Map(Object.entries(fields)).get(scalar) !== (ids.length === 1 ? ids[0] : null)
+      )
+        return invalid(scalar);
+    }
+  }
   for (const [field, fieldValue] of Object.entries(value.values)) {
     if (!(DOCUMENT_FIELDS as readonly string[]).includes(field)) return invalid(field);
     if (fieldValue === null) continue;
@@ -122,6 +143,7 @@ export function parseDocumentInput(operation: DocumentOperation, input: unknown)
     return invalid('description');
   if (operation === 'archive' || operation === 'restore') {
     if (
+      value.related !== null ||
       Object.keys(value.values).length ||
       !value.facts ||
       typeof value.facts !== 'object' ||

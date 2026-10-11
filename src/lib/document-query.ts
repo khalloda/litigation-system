@@ -30,6 +30,8 @@ export type DocumentRecord = {
   clientId: number | null;
   clientName: string | null;
   clientArchived: boolean;
+  matters: { id: number; name: string | null; archived: boolean }[];
+  people: { id: number; name: string; active: boolean }[];
   matterId: number | null;
   matterNumber: string | null;
   matterArchived: boolean;
@@ -105,13 +107,22 @@ function where(filters: DocumentFilters) {
   const conditions = [Prisma.sql`true`];
   if (filters.archive !== 'all')
     conditions.push(Prisma.sql`d.is_archived=${filters.archive === 'archived'}`);
-  for (const [key, column] of [
-    [filters.client, Prisma.sql`d.client_id`],
-    [filters.matter, Prisma.sql`d.matter_id`],
-    [filters.person, Prisma.sql`d.responsible_person_id`],
-  ] as const) {
+  for (const [key, column] of [[filters.client, Prisma.sql`d.client_id`]] as const) {
     if (key === 'missing') conditions.push(Prisma.sql`${column} IS NULL`);
     else if (key !== 'all') conditions.push(Prisma.sql`${column}=${Number(key)}`);
+  }
+  for (const [key, table, column] of [
+    [filters.matter, Prisma.sql`public.document_matters`, Prisma.sql`matter_id`],
+    [filters.person, Prisma.sql`public.document_responsible_people`, Prisma.sql`person_id`],
+  ] as const) {
+    if (key === 'missing')
+      conditions.push(
+        Prisma.sql`NOT EXISTS(SELECT 1 FROM ${table} dm WHERE dm.document_id=d.id AND NOT dm.is_retired)`,
+      );
+    else if (key !== 'all')
+      conditions.push(
+        Prisma.sql`EXISTS(SELECT 1 FROM ${table} dm WHERE dm.document_id=d.id AND NOT dm.is_retired AND dm.${column}=${Number(key)})`,
+      );
   }
   if (filters.mfiles === 'present') conditions.push(Prisma.sql`d.mfiles_id IS NOT NULL`);
   if (filters.mfiles === 'missing') conditions.push(Prisma.sql`d.mfiles_id IS NULL`);
@@ -122,10 +133,13 @@ function where(filters: DocumentFilters) {
       OR EXISTS(SELECT 1 FROM unnest(ARRAY[d.description,d.movement_card,d.storage_location,
         d.notes,d.mfiles_id,d.legacy_client_name_raw,d.legacy_matter_ref_raw,
         d.legacy_responsible_raw,d.legacy_page_count_raw,c.name_ar,c.full_name,c.name_en,
-        m.case_number_ar,m.subject,p.name_ar]) value
+        NULL::text]) value
         WHERE public.ar_normalise(value) LIKE ${pattern(filters.q)})
-      OR EXISTS(SELECT 1 FROM public.person_name_alias a WHERE a.person_id=p.id
-        AND NOT a.is_retired AND public.ar_normalise(a.alias_ar) LIKE ${pattern(filters.q)})
+      OR EXISTS(SELECT 1 FROM public.document_matters dm JOIN public.matters m ON m.id=dm.matter_id
+        WHERE dm.document_id=d.id AND NOT dm.is_retired AND (public.ar_normalise(m.case_number_ar) LIKE ${pattern(filters.q)} OR public.ar_normalise(m.subject) LIKE ${pattern(filters.q)}))
+      OR EXISTS(SELECT 1 FROM public.document_responsible_people dp JOIN public.people p ON p.id=dp.person_id
+        WHERE dp.document_id=d.id AND NOT dp.is_retired AND (public.ar_normalise(p.name_ar) LIKE ${pattern(filters.q)}
+        OR EXISTS(SELECT 1 FROM public.person_name_alias a WHERE a.person_id=p.id AND NOT a.is_retired AND public.ar_normalise(a.alias_ar) LIKE ${pattern(filters.q)})))
     )`);
   return Prisma.join(conditions, ' AND ');
 }
@@ -133,6 +147,8 @@ const projection = Prisma.sql`d.id,d.legacy_id AS "legacyId",d.row_version::text
  d.is_archived archived,d.description,d.document_date::text AS "documentDate",
  d.deposit_date::text AS "depositDate",d.page_count AS "pageCount",
  d.client_id AS "clientId",c.name_ar AS "clientName",coalesce(c.is_archived,false) AS "clientArchived",
+ coalesce((SELECT jsonb_agg(jsonb_build_object('id',m.id,'name',m.case_number_ar,'archived',m.is_archived) ORDER BY dm.position,dm.id) FROM public.document_matters dm JOIN public.matters m ON m.id=dm.matter_id WHERE dm.document_id=d.id AND NOT dm.is_retired),'[]') matters,
+ coalesce((SELECT jsonb_agg(jsonb_build_object('id',p.id,'name',p.name_ar,'active',p.is_active) ORDER BY dp.position,dp.id) FROM public.document_responsible_people dp JOIN public.people p ON p.id=dp.person_id WHERE dp.document_id=d.id AND NOT dp.is_retired),'[]') people,
  d.matter_id AS "matterId",m.case_number_ar AS "matterNumber",coalesce(m.is_archived,false) AS "matterArchived",
  d.responsible_person_id AS "personId",p.name_ar AS "personName",coalesce(p.is_active,false) AS "personActive",
  d.movement_card AS "movementCard",d.storage_location AS "storageLocation",d.notes,
@@ -140,6 +156,12 @@ const projection = Prisma.sql`d.id,d.legacy_id AS "legacyId",d.row_version::text
  d.legacy_matter_ref_raw AS "sourceMatter",d.legacy_responsible_raw AS "sourcePerson",
  d.legacy_page_count_raw AS "sourcePageCount",d.legacy_mfiles_id_raw AS "sourceMfiles",
  public.document_edit_evidence_count(d.legacy_source_record_key) AS "evidenceCount"`;
+export const documentCountQuery = (filters: DocumentFilters) =>
+  Prisma.sql`SELECT count(*)::int total ${joins} WHERE ${where(filters)}`;
+export const documentRowsQuery = (filters: DocumentFilters, page: number) =>
+  Prisma.sql`SELECT ${projection} ${joins} WHERE ${where(filters)} ORDER BY d.id DESC LIMIT ${DOCUMENT_PAGE_SIZE} OFFSET ${(page - 1) * DOCUMENT_PAGE_SIZE}`;
+export const documentDetailQuery = (id: number) =>
+  Prisma.sql`SELECT ${projection} ${joins} WHERE d.id=${id}`;
 function authorize(session: Session | null) {
   requireAuthorizedDecision(decideAuthorization(session, 'documents', 'view'));
   if (!session || !(Date.parse(session.expires) > Date.now()))
@@ -202,15 +224,15 @@ export async function readDocuments(
     )
       throw new DocumentFilterError('unknown identity');
     const counts = await tx.$queryRaw<{ total: number }[]>(
-      Prisma.sql`SELECT count(*)::int total ${joins} WHERE ${where(filters)}`,
+      Prisma.sql`${documentCountQuery(filters)}`,
     );
     if (counts.length !== 1) throw new Error('document count cardinality');
     const total = counts[0]!.total;
     const pages = Math.max(1, Math.ceil(total / DOCUMENT_PAGE_SIZE));
     const page = Math.min(filters.page, pages);
-    const rows = await tx.$queryRaw<DocumentRecord[]>(Prisma.sql`SELECT ${projection} ${joins}
-      WHERE ${where(filters)} ORDER BY d.id DESC LIMIT ${DOCUMENT_PAGE_SIZE}
-      OFFSET ${(page - 1) * DOCUMENT_PAGE_SIZE}`);
+    const rows = await tx.$queryRaw<DocumentRecord[]>(
+      Prisma.sql`${documentRowsQuery(filters, page)}`,
+    );
     if (
       rows.length !==
         Math.min(DOCUMENT_PAGE_SIZE, Math.max(0, total - (page - 1) * DOCUMENT_PAGE_SIZE)) ||
@@ -268,9 +290,7 @@ export async function readDocument(
   const id = clientId(rawId);
   if (id === null) return null;
   return snapshot(db, session!, async (tx) => {
-    const rows = await tx.$queryRaw<DocumentRecord[]>(
-      Prisma.sql`SELECT ${projection} ${joins} WHERE d.id=${id}`,
-    );
+    const rows = await tx.$queryRaw<DocumentRecord[]>(Prisma.sql`${documentDetailQuery(id)}`);
     if (rows.length > 1) throw new Error('document identity cardinality');
     return rows[0] ?? null;
   });

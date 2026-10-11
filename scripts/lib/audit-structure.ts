@@ -1,3 +1,4 @@
+import { task69DocumentApplied, TASK69_DOCUMENT_TABLES } from './task69-document-checkpoint';
 import { task69PoaApplied } from './task69-poa-checkpoint';
 import { task69StepApplied } from './task69-step-checkpoint';
 import { task69AdminAssignmentApplied } from './task69-admin-assignment-checkpoint';
@@ -376,11 +377,13 @@ export async function runtimeRoleBoundaryFailures(
   const closedSelection = await closedSelectionApplied(db);
   const administrativeSelection = await administrativeSelectionApplied(db);
   const lawyerSelection = await lawyerSelectionApplied(db);
+  const documentRelationships = await task69DocumentApplied(db);
   const adminAssignments = await task69AdminAssignmentApplied(db);
   const runtimeTables: readonly string[] = reportSelection
     ? [
         ...AUDITED_TABLES,
         ...(adminAssignments ? ['admin_task_assignees'] : []),
+        ...(documentRelationships ? TASK69_DOCUMENT_TABLES : []),
         'client_report_selections',
         ...(closedSelection ? ['closed_report_selections'] : []),
         ...(lawyerSelection ? ['lawyer_report_selections'] : []),
@@ -403,6 +406,7 @@ export async function runtimeRoleBoundaryFailures(
   const lifecycle = await matterLifecycleApplied(db);
   const rosterLocked = (table: string) =>
     (adminAssignments && table === 'admin_task_assignees') ||
+    (documentRelationships && TASK69_DOCUMENT_TABLES.includes(table)) ||
     (administrativeSelection && ADMINISTRATIVE_SELECTION_TABLES.includes(table)) ||
     (closedSelection && table === 'closed_report_selections') ||
     (lawyerSelection && table === 'lawyer_report_selections') ||

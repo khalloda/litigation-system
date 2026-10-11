@@ -31,7 +31,7 @@ export default async function Page({
   }
   const r = await getDocument(session, (await params).id);
   if (!r) notFound();
-  const parentArchived = r.matterId ? r.matterArchived : r.clientArchived;
+  const parentArchived = r.matters.length ? r.matters.some((m) => m.archived) : r.clientArchived;
   return (
     <main className={styles.page}>
       <header className={styles.header}>

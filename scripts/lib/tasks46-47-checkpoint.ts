@@ -1,3 +1,4 @@
+import { task69DocumentApplied, currentTask69DocumentSql } from './task69-document-checkpoint';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -287,8 +288,9 @@ export async function assertTasks46_47Boundary(db: ClientBase, profile: string) 
         (p.proname LIKE 'tasks46_47_%' OR p.proname LIKE 'document_edit_%'
           OR p.proname LIKE 'fee_letter_edit_%' OR p.proname LIKE 'matter_fee_reference_%')`)
   ).rows;
+  const effectiveSql = currentTask69DocumentSql(tasks46_47Sql(), await task69DocumentApplied(db));
   for (const fn of functions) {
-    const source = tasks46_47Sql().match(
+    const source = effectiveSql.match(
       new RegExp(
         'CREATE FUNCTION ' +
           fn.schema +
