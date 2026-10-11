@@ -250,7 +250,66 @@ export async function assertTask69Memberships(
         )
       ).rows;
       assert.equal(rows.length, 1);
-      assert.deepEqual(rows[0].value, expectedValue, 'Document scalar relationships changed');
+      const projection = (r: Row) => ({
+        matter_id: r.matter_id,
+        responsible_person_id: r.responsible_person_id,
+      });
+      let expected = expectedValue;
+      for (const t of transitions.filter(
+        (t) => t.table === 'public.documents' && t.id === p.documentId,
+      )) {
+        assert.ok(t.before, 'An existing document must retain its identity');
+        assert.deepEqual(
+          projection(t.before),
+          expected,
+          'Document transition must start at reviewed scalar relationships',
+        );
+        expected = projection(t.after) as Row;
+      }
+      assert.deepEqual(rows[0].value, expected, 'Document scalar relationships changed');
+      // Structural migration starts each exact reviewed aggregate without a
+      // business write. Follow only complete receipts in this operation from
+      // that immutable boundary, including retained and retired link objects.
+      const boundary = (
+        await db.query(
+          'SELECT version,matters,people FROM _migration.task69_document_relationship_boundary WHERE document_id=$1',
+          [p.documentId],
+        )
+      ).rows;
+      assert.equal(boundary.length, 1, 'Reviewed document boundary required');
+      const guard = entry.expectedStateGuards.targetGuards.find(
+        (g) => g.table === 'public.documents' && g.id === p.documentId,
+      );
+      assert.ok(guard, 'Complete original document guard required');
+      for (const [namespace, kind] of [
+        ['public.document_matters', 'matters'],
+        ['public.document_responsible_people', 'people'],
+      ] as const) {
+        const members = new Map((boundary[0][kind] as Row[]).map((r) => [r.id, r]));
+        for (const t of transitions.filter(
+          (t) => t.table === namespace && t.after.document_id === p.documentId,
+        )) {
+          if (t.before === null) assert.ok(!members.has(t.id), 'Repeated document member insert');
+          else
+            assert.deepEqual(
+              members.get(t.id),
+              t.before,
+              'Membership transition must start at structural boundary',
+            );
+          members.set(t.id, t.after);
+        }
+        const current = (
+          await db.query(
+            `SELECT to_jsonb(r) value FROM ${task69ReferenceSql(namespace)} r WHERE document_id=$1 ORDER BY id FOR SHARE`,
+            [p.documentId],
+          )
+        ).rows.map((r) => r.value);
+        assert.deepEqual(
+          current,
+          byId([...members.values()]),
+          'Complete canonical document membership changed',
+        );
+      }
       continue;
     }
     assert.ok(Array.isArray(expectedValue), 'Invalid membership baseline');

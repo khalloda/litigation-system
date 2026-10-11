@@ -159,6 +159,8 @@ export const TASK69_REFERENCE_TABLES = [
   'public.admin_tasks',
   'public.clients',
   'public.documents',
+  'public.document_matters',
+  'public.document_responsible_people',
   'public.fee_letter_matters',
   'public.fee_letters',
   'public.hearings',

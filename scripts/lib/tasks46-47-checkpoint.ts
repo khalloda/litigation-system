@@ -1,3 +1,7 @@
+import {
+  task69DocumentRestorationApplied,
+  currentTask69DocumentRestorationSql,
+} from './task69-document-restoration-checkpoint';
 import { task69DocumentApplied, currentTask69DocumentSql } from './task69-document-checkpoint';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -288,7 +292,10 @@ export async function assertTasks46_47Boundary(db: ClientBase, profile: string) 
         (p.proname LIKE 'tasks46_47_%' OR p.proname LIKE 'document_edit_%'
           OR p.proname LIKE 'fee_letter_edit_%' OR p.proname LIKE 'matter_fee_reference_%')`)
   ).rows;
-  const effectiveSql = currentTask69DocumentSql(tasks46_47Sql(), await task69DocumentApplied(db));
+  const effectiveSql = currentTask69DocumentRestorationSql(
+    currentTask69DocumentSql(tasks46_47Sql(), await task69DocumentApplied(db)),
+    await task69DocumentRestorationApplied(db),
+  );
   for (const fn of functions) {
     const source = effectiveSql.match(
       new RegExp(
