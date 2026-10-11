@@ -51,7 +51,7 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 const REPORT_ENGINE_CLOSURES = new Map([
   [
     'src/lib/reports/document-reports.ts',
-    'dae744058de44296089a522d46632af3def205a138f91ce8aee82f3ec3d8e9da',
+    '6045cd74865e4d1cdd080cf541841fa56df63590e38db4a987ad49be737ed7c8',
   ],
   [
     'src/lib/reports/administrative-reports.ts',
@@ -228,7 +228,7 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/reports/document-reports.ts',
     'readPoaReport',
-    '35f24d450bf41a2d27c4d5a7f17e2b714671fdc9da3233d0ad976b946e679bda',
+    'ba5910953f991ff3f5c20223ef826308323f1fe06c4be7ce8e52917df127b7c8',
   ],
   [
     'src/lib/reports/document-reports.ts',
@@ -2857,7 +2857,7 @@ export function auditRuntimeSourceFailures(
     if (
       isPoaReadService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
-        '9becbabff998b972425475341a9cf1db178a0fc553dce54474d3999ef2103eca'
+        'dfcb023e2902836916b9833fb03e062c0d26728cdf946479ae8998f5383c24d0'
     )
       failures.add('POA read closure differs from reviewed inventory');
     const isAdminReadService = source.path === ADMIN_READ_SERVICE;

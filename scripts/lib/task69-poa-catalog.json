@@ -1,0 +1,237 @@
+{
+  "sourceShape": [
+    {
+      "conname": "task69_poa_source_complete",
+      "convalidated": true,
+      "definition": "CHECK (COALESCE(legacy_source_record_key IS NULL AND legacy_source_extraction_sha256 IS NULL AND legacy_lawyers_raw IS NULL AND reviewed_rule_id IS NULL AND source_member_ordinal IS NULL OR legacy_source_record_key ~ '^[0-9a-f]{64}:[0-9]{6}$'::text AND legacy_source_extraction_sha256 ~ '^[0-9A-F]{64}$'::text AND legacy_lawyers_raw IS NOT NULL AND (source_member_ordinal > 0 OR source_member_ordinal IS NULL AND reviewed_rule_id IS NULL AND current_order > 0), false))"
+    }
+  ],
+  "columns": [
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "name": "poa_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "name": "version",
+      "type": "bigint",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "name": "member_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "name": "poa_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "name": "position",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    }
+  ],
+  "constraints": [
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "conname": "task69_poa_change_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "conname": "task69_poa_change_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (poa_id, version)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "conname": "task69_poa_change_poa_id_version_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (poa_id, version) REFERENCES _migration.poa_edit_change(poa_id, version) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "conname": "task69_poa_change_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "conname": "task69_poa_change_receipt_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (receipt_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "conname": "task69_poa_order_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "conname": "task69_poa_order_member_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (member_id) REFERENCES power_of_attorney_lawyers(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "conname": "task69_poa_order_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (member_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "conname": "task69_poa_order_poa_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (poa_id) REFERENCES powers_of_attorney(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "conname": "task69_poa_order_poa_id_position_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (poa_id, \"position\")"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "conname": "task69_poa_order_position_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (\"position\" > 0)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "conname": "task69_poa_order_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    }
+  ],
+  "triggers": [
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "name": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_poa_change FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "name": "task69_poa_change_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_poa_change_complete AFTER INSERT ON _migration.task69_poa_change DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_poa_receipt_complete()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "name": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_poa_order FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "name": "task69_poa_order_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_poa_order_complete AFTER INSERT ON _migration.task69_poa_order DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_poa_receipt_complete()"
+    }
+  ],
+  "indexes": [
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "definition": "CREATE UNIQUE INDEX task69_poa_change_pkey ON _migration.task69_poa_change USING btree (poa_id, version)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_change",
+      "definition": "CREATE UNIQUE INDEX task69_poa_change_receipt_id_key ON _migration.task69_poa_change USING btree (receipt_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "definition": "CREATE UNIQUE INDEX task69_poa_order_pkey ON _migration.task69_poa_order USING btree (member_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_poa_order",
+      "definition": "CREATE UNIQUE INDEX task69_poa_order_poa_id_position_key ON _migration.task69_poa_order USING btree (poa_id, \"position\")",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "grants": []
+}

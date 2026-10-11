@@ -1,3 +1,4 @@
+import { task69PoaApplied, task69PoaSql } from './task69-poa-checkpoint';
 import type { ClientBase } from 'pg';
 
 type Constraint = {
@@ -495,8 +496,18 @@ export async function poaStructureFailures(db: ClientBase): Promise<string[]> {
       failures.push(`trigger definition: ${name}`);
   }
   if (triggerRows.rows.length !== triggers.length) failures.push('Task 2.9B trigger inventory');
+  const effectiveProvenance = (await task69PoaApplied(db))
+    ? task69PoaSql().match(
+        /CREATE OR REPLACE FUNCTION public\.enforce_poa_lawyer_provenance\(\)[\s\S]*?AS \$POA_MEMBER\$([\s\S]*?)\$POA_MEMBER\$;/u,
+      )![1]!
+    : provenanceBody;
   const expectedFunctions = [
-    ['enforce_poa_lawyer_provenance()', 'enforce_poa_lawyer_provenance', 'public', provenanceBody],
+    [
+      'enforce_poa_lawyer_provenance()',
+      'enforce_poa_lawyer_provenance',
+      'public',
+      effectiveProvenance,
+    ],
     [
       'quarantine.refuse_poa_evidence_change()',
       'refuse_poa_evidence_change',

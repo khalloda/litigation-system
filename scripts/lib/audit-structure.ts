@@ -1,3 +1,4 @@
+import { task69PoaApplied } from './task69-poa-checkpoint';
 import { task69StepApplied } from './task69-step-checkpoint';
 import { task69AdminAssignmentApplied } from './task69-admin-assignment-checkpoint';
 import {
@@ -394,6 +395,7 @@ export async function runtimeRoleBoundaryFailures(
   const tasks46_47Boundary = await tasks46_47Applied(db);
   const adminBoundary = await adminEditApplied(db);
   const task69Steps = await task69StepApplied(db);
+  const task69Poas = await task69PoaApplied(db);
   const adminLifecycle = await adminLifecycleApplied(db);
   const hearingBoundary = await hearingEditApplied(db);
   const hearingLifecycle = await hearingLifecycleApplied(db);
@@ -414,6 +416,7 @@ export async function runtimeRoleBoundaryFailures(
     (poaBoundary && POA_EDIT_TABLES.includes(table as never)) ||
     (tasks46_47Boundary && TASKS46_47_TABLES.includes(table as never));
   const approvedDefiners: readonly string[] = [
+    ...(task69Poas ? ['public.poa_member_display_order(p_member integer)'] : []),
     ...(task69Steps ? ['public.admin_source_parent_context(p_id integer)'] : []),
     ...(auditHistory ? AUDIT_HISTORY_GATEWAYS : []),
     ...(reportSelection

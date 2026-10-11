@@ -1,3 +1,4 @@
+import { task69PoaApplied } from './task69-poa-checkpoint';
 import { task69StepApplied } from './task69-step-checkpoint';
 import {
   task69ContinuationApplied,
@@ -191,6 +192,22 @@ export async function task69FoundationFailures(db: ClientBase): Promise<string[]
         tgenabled: 'O',
         definition:
           'CREATE CONSTRAINT TRIGGER task69_step_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_step_receipt_complete()',
+      });
+    }
+    if (await task69PoaApplied(db)) {
+      expected.constraints.push({
+        table_name: 'task69_receipt',
+        conname: 'task69_poa_receipt_complete',
+        contype: 't',
+        convalidated: true,
+        definition: 'TRIGGER DEFERRABLE INITIALLY DEFERRED',
+      });
+      expected.triggers.push({
+        table_name: 'task69_receipt',
+        tgname: 'task69_poa_receipt_complete',
+        tgenabled: 'O',
+        definition:
+          'CREATE CONSTRAINT TRIGGER task69_poa_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_poa_receipt_complete()',
       });
     }
     expected.constraints.sort(

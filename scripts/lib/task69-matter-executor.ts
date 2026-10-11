@@ -128,6 +128,7 @@ export async function recordTask69Receipt(
 }
 
 const writableTables = [
+  'power_of_attorney_lawyers',
   'task_actions',
   'admin_tasks',
   'matter_lawyers',

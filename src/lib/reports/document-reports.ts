@@ -65,7 +65,7 @@ export const documentReports: readonly ReportDefinition[] = [
   ...poaEntries.map(([purpose, id, title, description]): ReportDefinition => ({
     descriptor: {
       id,
-      version: '1',
+      version: '2',
       title,
       description,
       layout: purpose === 'card' ? 'card' : purpose === 'client' ? 'flat' : 'grouped',
@@ -202,7 +202,7 @@ async function readPoaReport(
       p.serial_no AS serial,p.principal_name AS principal,p.poa_capacity AS capacity,
       p.poa_number AS number,p.poa_letter AS letter,p.poa_year AS year,p.issuing_authority AS issuer,
       p.issue_date::text AS "issueDate",p.copies_count AS copies,p.notes,p.legacy_lawyers_raw AS "sourceLawyers",
-      coalesce((SELECT jsonb_agg(person.name_ar ORDER BY (l.current_order IS NOT NULL),l.source_member_ordinal NULLS LAST,l.current_order,l.id)
+      coalesce((SELECT jsonb_agg(person.name_ar ORDER BY public.poa_member_display_order(l.id),l.id)
         FROM public.power_of_attorney_lawyers l JOIN public.people person ON person.id=l.person_id
         WHERE l.power_of_attorney_id=p.id AND NOT l.is_retired),'[]'::jsonb) AS lawyers
     FROM public.powers_of_attorney p LEFT JOIN public.clients c ON c.id=p.client_id
