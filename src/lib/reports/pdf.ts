@@ -43,6 +43,7 @@ export async function reportHtml(result: ReportResult, session: Session) {
     Boolean(result.descriptor.sectionPageBreaks) ||
     Boolean(result.descriptor.charts?.length) ||
     result.descriptor.id.startsWith('administrative-') ||
+    result.descriptor.id === 'fee-letter-engagements' ||
     [
       'lawyer-principal-matters',
       'lawyer-supporting-matters',

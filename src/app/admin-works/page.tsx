@@ -215,7 +215,16 @@ export default async function AdminWorksPage({
                         value={row.historicalContext.label}
                       />
                     ) : null}
-                    <Field label={t.adminWorks.requiredWork} value={row.requiredWork} />
+                    <Field
+                      label={t.adminWorks.requiredWork}
+                      value={
+                        row.requiredWork?.trim() ? (
+                          <span className={local.multiline}>{row.requiredWork}</span>
+                        ) : (
+                          row.requiredWork
+                        )
+                      }
+                    />
                   </dl>
                   <p>{t.adminWorks.stepCount(row.stepCount)}</p>
                 </div>

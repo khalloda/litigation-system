@@ -42,7 +42,7 @@ export function DocumentFields({
           <dd>
             {r.matters.length
               ? r.matters.map((matter) => (
-                  <div key={matter.id}>
+                  <div key={matter.id} className={local.value}>
                     <Link className={styles.nameLink} href={'/matters/' + matter.id}>
                       {matter.name ?? t.documentsModule.unknown}
                     </Link>
