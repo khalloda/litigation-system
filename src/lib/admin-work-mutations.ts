@@ -1,3 +1,4 @@
+import type { AdminSourceContext } from './admin-work-query';
 import type { Session } from 'next-auth';
 import { Prisma, type PrismaClient } from '@/generated/prisma/client';
 import { db } from '@/lib/db';
@@ -20,6 +21,7 @@ import {
 type Choice = { id: number; name: string; active: boolean; context?: string | null };
 export type AdminMutationSnapshot = {
   task: {
+    historicalContext?: AdminSourceContext | null;
     id: number;
     version: string;
     matterArchived: boolean;
@@ -82,6 +84,13 @@ export async function readAdminMutation(
         );
         if (rows.length !== 1) throw new AdminMutationError('generic');
         const state = rows[0]!.state;
+        if (state.task) {
+          const context = await transaction.$queryRaw<{ context: AdminSourceContext | null }[]>(
+            Prisma.sql`SELECT public.admin_source_parent_context(${state.task.id}::integer) AS context`,
+          );
+          if (context.length !== 1) throw new AdminMutationError('generic');
+          state.task.historicalContext = context[0]!.context;
+        }
         // Keep source, audit and hidden values out of client form props.
         if (state.task)
           state.task.values = Object.fromEntries(

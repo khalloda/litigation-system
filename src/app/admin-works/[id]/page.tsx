@@ -100,6 +100,9 @@ export default async function AdminWorkPage({
       <section className={styles.panel} aria-label={t.adminWorks.details}>
         <h2>{t.adminWorks.details}</h2>
         <dl className={styles.facts}>
+          {record.historicalContext ? (
+            <Field label={t.adminWorks.historicalContext} value={record.historicalContext.label} />
+          ) : null}
           <Field label={t.adminWorks.requiredWork} value={record.requiredWork} />
           <Field
             label={t.adminWorks.person}

@@ -14,6 +14,7 @@ function failures(sources: AuditRuntimeSource[]) {
       [
         'src/app/admin-works/page.tsx',
         'src/app/admin-works/[id]/page.tsx',
+        'src/app/admin-works/unassigned-steps/page.tsx',
         'src/app/admin-works/fixture.tsx',
       ].includes(s.path) ||
       ['src/lib/admin-work-query.ts', 'src/lib/admin-works.ts'].includes(s.path),
@@ -70,7 +71,7 @@ function failures(sources: AuditRuntimeSource[]) {
             method.text !== 'get' ||
             !action ||
             !ts.isStringLiteral(action) ||
-            action.text !== '/admin-works'
+            !['/admin-works', '/admin-works/unassigned-steps'].includes(action.text)
           )
             errors.push('non-GET form');
         }
@@ -83,9 +84,13 @@ function failures(sources: AuditRuntimeSource[]) {
 assert.deepEqual(failures(discoverAuditRuntimeSources(process.cwd())), []);
 assert.deepEqual(routeInventoryFailures(discoverAuthorizationEntrypoints(process.cwd())), []);
 const entries = ROUTE_INVENTORY.filter((e) =>
-  ['src/app/admin-works/page.tsx', 'src/app/admin-works/[id]/page.tsx'].includes(e.source),
+  [
+    'src/app/admin-works/page.tsx',
+    'src/app/admin-works/[id]/page.tsx',
+    'src/app/admin-works/unassigned-steps/page.tsx',
+  ].includes(e.source),
 );
-assert.equal(entries.length, 2);
+assert.equal(entries.length, 3);
 assert.ok(
   entries.every(
     (e) =>
@@ -107,4 +112,4 @@ for (const text of [
   'db.$queryRaw(Prisma.sql`SELECT * FROM admin-works`)',
 ])
   assert.ok(failures([{ path: 'src/app/admin-works/fixture.tsx', text }]).length, text);
-console.log('PASS administrative read-only closure, two guarded pages, nine rejecting fixtures');
+console.log('PASS administrative read-only closure, three guarded pages, nine rejecting fixtures');

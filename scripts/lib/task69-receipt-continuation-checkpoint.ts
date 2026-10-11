@@ -1,3 +1,4 @@
+import { task69StepApplied, currentTask69StepSql } from './task69-step-checkpoint';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
@@ -9,7 +10,8 @@ export const task69ContinuationSql = () =>
  * later native edits. Historical receipts remain valid after normal edits;
  * only retry eligibility requires their current postimages. */
 export async function task69ContinuationApplied(db: ClientBase) {
-  const source = task69ContinuationSql();
+  const raw = task69ContinuationSql(),
+    source = currentTask69StepSql(raw, await task69StepApplied(db));
   const matches = [
     ...source.matchAll(
       /CREATE FUNCTION _migration\.(task69_\w+)\([\s\S]*?LANGUAGE (?:sql|plpgsql) ([\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
@@ -36,7 +38,7 @@ export async function task69ContinuationApplied(db: ClientBase) {
   assert.ok(
     ledger[0].finished_at && !ledger[0].rolled_back_at && ledger[0].applied_steps_count === 1,
   );
-  assert.equal(ledger[0].checksum, task69Sha(source));
+  assert.equal(ledger[0].checksum, task69Sha(raw));
   assert.equal(functions.length, matches.length);
   for (const fn of functions) {
     const m = matches.find((x) => x[1] === fn.proname)!;

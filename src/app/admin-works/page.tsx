@@ -56,6 +56,9 @@ export default async function AdminWorksPage({
         <div>
           <p className={styles.eyebrow}>{t.app.system}</p>
           <h1>{t.adminWorks.title}</h1>
+          <Link className={styles.link} href="/admin-works/unassigned-steps">
+            {t.adminWorks.unassignedSteps}
+          </Link>
           <p>{t.adminWorks.subtitle}</p>
           {!hasPermission(session.user.role, 'administrativeWorks', 'create') ? (
             <p>{t.adminWorks.readOnly}</p>
@@ -206,6 +209,12 @@ export default async function AdminWorksPage({
                 </div>
                 <div>
                   <dl>
+                    {row.historicalContext ? (
+                      <Field
+                        label={t.adminWorks.historicalContext}
+                        value={row.historicalContext.label}
+                      />
+                    ) : null}
                     <Field label={t.adminWorks.requiredWork} value={row.requiredWork} />
                   </dl>
                   <p>{t.adminWorks.stepCount(row.stepCount)}</p>

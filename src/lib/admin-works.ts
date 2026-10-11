@@ -1,7 +1,12 @@
 import 'server-only';
 import type { Session } from 'next-auth';
 import { db } from './db';
-import { readAdminWorks, readAdminWork, type AdminArchiveFilter } from './admin-work-query';
+import {
+  readAdminWorks,
+  readAdminWork,
+  readUnassignedAdminSteps,
+  type AdminArchiveFilter,
+} from './admin-work-query';
 import type { ClientSearchParams } from './client-query';
 export const listAdminWorks = (session: Session, params: ClientSearchParams) =>
   readAdminWorks(session, params, db);
@@ -11,3 +16,6 @@ export const getAdminWork = (
   stepPage: string,
   archive: AdminArchiveFilter = 'current',
 ) => readAdminWork(session, id, stepPage, db, archive);
+
+export const listUnassignedAdminSteps = (session: Session, params: ClientSearchParams) =>
+  readUnassignedAdminSteps(session, params, db);

@@ -99,7 +99,9 @@ export function parseAdminDetailParams(params: ClientSearchParams) {
     stepArchive: adminArchiveFilter(stepArchive),
   };
 }
+export type AdminSourceContext = { label: string; sourceTaskId: number };
 export type AdminRow = {
+  historicalContext: AdminSourceContext | null;
   archived: boolean;
   currentStepCount: number;
   archivedStepCount: number;
@@ -162,7 +164,7 @@ export type AdminOption = {
 };
 const joins = Prisma.sql`FROM public.admin_tasks a LEFT JOIN public.matters m ON m.id=a.matter_id
   LEFT JOIN public.clients c ON c.id=m.client_id LEFT JOIN public.people p ON p.id=a.assigned_to_person_id`;
-const projection = Prisma.sql`a.id,a.is_archived AS archived,a.legacy_id AS "legacyId",a.required_work AS "requiredWork",
+const projection = Prisma.sql`public.admin_source_parent_context(a.id) AS "historicalContext",a.id,a.is_archived AS archived,a.legacy_id AS "legacyId",a.required_work AS "requiredWork",
   a.matter_id AS "matterId",m.case_number_ar AS "caseNumber",m.subject,m.is_archived AS "matterArchived",
   m.client_id AS "clientId",c.name_ar AS "clientName",c.is_archived AS "clientArchived",
   a.assigned_to_person_id AS "personId",p.name_ar AS "personName",p.is_active AS "personActive",a.legacy_assignee_raw AS "assigneeRaw",
@@ -200,7 +202,7 @@ function where(f: AdminFilters) {
     OR m.case_number_ar_normalised LIKE ${pattern(f.q)} OR m.subject_normalised LIKE ${pattern(f.q)}
     OR c.name_ar_normalised LIKE ${pattern(f.q)} OR c.full_name_normalised LIKE ${pattern(f.q)} OR public.ar_normalise(c.name_en) LIKE ${pattern(f.q)}
     OR EXISTS (SELECT 1 FROM public.admin_task_assignees am JOIN public.person_name_alias n ON n.person_id=am.person_id WHERE am.task_id=a.id AND NOT am.is_retired AND NOT n.is_retired AND public.ar_normalise(n.alias_ar) LIKE ${pattern(f.q)})
-    OR a.id::text=public.ar_normalise(${f.q}) OR a.legacy_id::text=public.ar_normalise(${f.q}))`);
+    OR public.ar_normalise(public.admin_source_parent_context(a.id)->>'label') LIKE ${pattern(f.q)} OR (public.admin_source_parent_context(a.id)->>'sourceTaskId')=public.ar_normalise(${f.q}) OR a.id::text=public.ar_normalise(${f.q}) OR a.legacy_id::text=public.ar_normalise(${f.q}))`);
   return Prisma.join(conditions, ' AND ');
 }
 export function adminCountQuery(f: AdminFilters) {
@@ -333,5 +335,71 @@ export async function readAdminWork(
       visibleStepCount,
       stepPageClamped: stepPage !== requested,
     };
+  });
+}
+
+export type UnassignedAdminStep = AdminStep & {
+  nextAppointment: string | null;
+  parentRaw: string | null;
+};
+export function unassignedAdminFilters(params: ClientSearchParams) {
+  if (Object.keys(params).some((k) => !['q', 'page', 'person'].includes(k)))
+    throw new AdminFilterError('unknown unassigned step filter');
+  return parseAdminFilters(params);
+}
+export function unassignedAdminHref(filters: AdminFilters, page = filters.page) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.person !== 'all') params.set('person', filters.person);
+  if (page !== 1) params.set('page', String(page));
+  return '/admin-works/unassigned-steps' + (params.size ? '?' + params.toString() : '');
+}
+function unassignedWhere(filters: AdminFilters) {
+  const predicates = [Prisma.sql`s.task_id IS NULL`];
+  if (filters.person === 'missing') predicates.push(Prisma.sql`s.performed_by_person_id IS NULL`);
+  else if (filters.person !== 'all')
+    predicates.push(Prisma.sql`s.performed_by_person_id=${Number(filters.person)}`);
+  if (filters.q)
+    predicates.push(
+      Prisma.sql`(public.ar_normalise(s.result) LIKE ${pattern(filters.q)} OR public.ar_normalise(s.report) LIKE ${pattern(filters.q)} OR public.ar_normalise(s.legacy_performed_by_raw) LIKE ${pattern(filters.q)} OR public.ar_normalise(p.name_ar) LIKE ${pattern(filters.q)} OR EXISTS(SELECT 1 FROM public.person_name_alias n WHERE n.person_id=s.performed_by_person_id AND NOT n.is_retired AND public.ar_normalise(n.alias_ar) LIKE ${pattern(filters.q)}) OR s.id::text=public.ar_normalise(${filters.q}) OR s.legacy_id::text=public.ar_normalise(${filters.q}))`,
+    );
+  return Prisma.join(predicates, ' AND ');
+}
+export function unassignedAdminCountQuery(filters: AdminFilters) {
+  return Prisma.sql`SELECT count(*)::int total FROM public.task_actions s LEFT JOIN public.people p ON p.id=s.performed_by_person_id WHERE ${unassignedWhere(filters)}`;
+}
+export function unassignedAdminRowsQuery(filters: AdminFilters, page: number) {
+  return Prisma.sql`SELECT s.id,s.is_archived AS archived,s.legacy_id AS "legacyId",s.source_ordinal AS "sourceOrdinal",s.action_date::text AS "actionDate",s.next_appointment::text AS "nextAppointment",s.performed_by_person_id AS "personId",p.name_ar AS "personName",p.is_active AS "personActive",s.legacy_performed_by_raw AS "performerRaw",s.legacy_task_id_raw AS "parentRaw",s.result,s.report FROM public.task_actions s LEFT JOIN public.people p ON p.id=s.performed_by_person_id WHERE ${unassignedWhere(filters)} ORDER BY s.id LIMIT ${ADMIN_PAGE_SIZE} OFFSET ${(page - 1) * ADMIN_PAGE_SIZE}`;
+}
+export async function readUnassignedAdminSteps(
+  session: Session | null,
+  params: ClientSearchParams,
+  database: PrismaClient,
+) {
+  authorize(session);
+  const filters = unassignedAdminFilters(params);
+  return snapshot(database, session!, async (tx) => {
+    const options = await tx.$queryRaw<AdminOption[]>(
+      Prisma.sql`SELECT 'person' kind,p.id::text value,p.name_ar label,false archived,NOT p.is_active inactive FROM public.people p WHERE EXISTS(SELECT 1 FROM public.task_actions s WHERE s.task_id IS NULL AND s.performed_by_person_id=p.id) ORDER BY p.name_ar COLLATE "arabic",p.id`,
+    );
+    if (
+      !['all', 'missing'].includes(filters.person) &&
+      !options.some((o) => o.value === filters.person)
+    )
+      throw new AdminFilterError('unknown performer');
+    const counts = await tx.$queryRaw<{ total: number }[]>(
+      Prisma.sql`${unassignedAdminCountQuery(filters)}`,
+    );
+    if (counts.length !== 1) throw new Error('Unassigned step count cardinality differs');
+    const total = counts[0]!.total,
+      pages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE)),
+      page = Math.min(filters.page, pages);
+    const rows = await tx.$queryRaw<UnassignedAdminStep[]>(
+      Prisma.sql`${unassignedAdminRowsQuery(filters, page)}`,
+    );
+    const expected = Math.min(ADMIN_PAGE_SIZE, Math.max(0, total - (page - 1) * ADMIN_PAGE_SIZE));
+    if (rows.length !== expected || new Set(rows.map((row) => row.id)).size !== expected)
+      throw new Error('Distinct unassigned step page cardinality differs');
+    return { rows, total, pages, options, filters: { ...filters, page } };
   });
 }

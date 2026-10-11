@@ -1,3 +1,8 @@
+import {
+  historicalTask69LookupSql,
+  historicalTask69LookupClient,
+  task69OriginalLookups,
+} from './lib/task69-lookup-history';
 import { assertPoaEditBoundary, historicalPoaClient } from './lib/poa-edit-checkpoint';
 import { assertTasks46_47Boundary, historicalTasks46_47Client } from './lib/tasks46-47-checkpoint';
 import { assertAdminLifecycleBoundary } from './lib/admin-lifecycle-checkpoint';
@@ -194,6 +199,9 @@ async function main() {
     `Verification profile: ${profile}; migration ${checkpoint}${checkpoint >= 63 ? '' : checkpoint === 62 ? ' (candidate migration 63 pending)' : checkpoint === 61 ? ' (migrations 62/63 pending)' : ' (migrations 61/62/63 pending)'}`,
   );
   const db = await migrationDbReady;
+  const originalLookups = await withApprovedMigrationClient((current) =>
+    task69OriginalLookups(current, checkpoint >= 81),
+  );
   const highImpactState = await withApprovedMigrationClient(async (current) => {
     const verified = await verifyHighImpactApplication(current);
     if (verified.state !== null)
@@ -271,8 +279,9 @@ async function main() {
   const order = sorted.map((r) => r.word);
   record('Arabic sorts correctly', '… ,… ,بسام last', order.join(' '), order[2] === 'بسام');
 
-  // 6. The nine lookup lists, through Prisma rather than raw SQL — so this
-  //    also proves the generated client matches the tables that exist.
+  // 6. The original nine lookup lists. Task69 additions and renamed labels are
+  //    independently checked against exact current receipts above; the original
+  //    transform retains the vocabulary under which its decisions were made.
   //
   //    Rule 15: state the count, fail loudly if it differs. The migration
   //    asserts these once, when it runs; this asserts them every time anyone
@@ -283,11 +292,19 @@ async function main() {
     ['degree', () => db.lookupDegree.count(), 12],
     ['venue', () => db.lookupVenue.count(), 7],
     ['importance', () => db.lookupImportance.count(), 3],
-    ['party_role', () => db.lookupPartyRole.count(), 11 + approvedTask62Capacities.length],
+    [
+      'party_role',
+      () => Promise.resolve(originalLookups.lookup_party_role.length),
+      11 + approvedTask62Capacities.length,
+    ],
     ['hearing_action', () => db.lookupHearingAction.count(), 20],
     //  27 + 4: the firm ruled that four of the seven "not a court" values are
     //  destinations. See sql/court-wrong-destinations.sql.
-    ['matter_destination', () => db.lookupMatterDestination.count(), 32],
+    [
+      'matter_destination',
+      () => Promise.resolve(originalLookups.lookup_matter_destination.length),
+      32,
+    ],
     ['client_branch', () => db.lookupClientBranch.count(), 15 + appliedBranches.length],
   ];
 
@@ -434,7 +451,7 @@ async function main() {
   //    rows that cannot see a rule with no members at all.
   const crosswalk = await db.migrationCrosswalk.findMany();
 
-  const courtNames = new Set((await db.lookupCourt.findMany()).map((r) => r.labelAr));
+  const courtNames = new Set(originalLookups.lookup_court.map((r) => String(r.label_ar)));
   const listTargets: Record<string, Set<string>> = {
     hearing_action: new Set((await db.lookupHearingAction.findMany()).map((r) => r.labelAr)),
     client_branch: new Set((await db.lookupClientBranch.findMany()).map((r) => r.labelAr)),
@@ -444,7 +461,7 @@ async function main() {
     venue: new Set((await db.lookupVenue.findMany()).map((r) => r.labelAr)),
     importance: new Set((await db.lookupImportance.findMany()).map((r) => r.labelAr)),
     matter_destination: new Set(
-      (await db.lookupMatterDestination.findMany()).map((r) => r.labelAr),
+      originalLookups.lookup_matter_destination.map((r) => String(r.label_ar)),
     ),
     court: courtNames,
   };
@@ -563,7 +580,7 @@ async function main() {
 
   //    The court list itself — 308, not the 309 the reviewed file states. The
   //    309th was هيئة الاستثمار, a spelling rather than a court.
-  const courts = await db.lookupCourt.count();
+  const courts = originalLookups.lookup_court.length;
   const courtRules = crosswalk.filter((c) => c.sourceField === 'court').length;
   record(
     'Court list and crosswalk',
@@ -2153,7 +2170,10 @@ async function main() {
     const permanentMatterResult = one(
       await db.$queryRawUnsafe<MatterReconciliationRow[]>(
         historicalMatterSql(
-          historicalHighImpactSql(MATTER_RECONCILIATION_SQL, highImpactState),
+          historicalTask69LookupSql(
+            historicalHighImpactSql(MATTER_RECONCILIATION_SQL, highImpactState),
+            checkpoint >= 81,
+          ),
           checkpoint >= 64,
         ),
       ),
@@ -2190,7 +2210,11 @@ async function main() {
     // staging plus the reviewed database tables. It does not import or call the
     // transform's TypeScript planner/parser.
   }
-  await withApprovedMigrationClient(async (currentRelationshipDb) => {
+  await withApprovedMigrationClient(async (actualRelationshipDb) => {
+    const currentRelationshipDb = historicalTask69LookupClient(
+      actualRelationshipDb,
+      checkpoint >= 81,
+    );
     const relationshipDb = historicalHighImpactClient(
       historicalMatterClient(
         historicalHearingClient(currentRelationshipDb, checkpoint >= 66),

@@ -194,6 +194,12 @@ export const ROUTE_INVENTORY = [
   },
   {
     kind: 'page',
+    source: 'src/app/admin-works/unassigned-steps/page.tsx',
+    route: '/admin-works/unassigned-steps',
+    classification: { access: 'permission', area: 'administrativeWorks', action: 'view' },
+  },
+  {
+    kind: 'page',
     source: 'src/app/admin-works/page.tsx',
     route: '/admin-works',
     classification: { access: 'permission', area: 'administrativeWorks', action: 'view' },

@@ -1664,6 +1664,11 @@ export const t = {
   },
 
   adminWorks: {
+    historicalContext: 'السياق التاريخي',
+    unassignedSteps: 'إجراءات غير مرتبطة بعمل إداري',
+    unassignedStepsHint:
+      'إجراءات مستقلة؛ لم يسجل المصدر عملاً إدارياً مرتبطاً. يبقى كل إجراء سجلاً منفصلاً.',
+    unassignedStepsSearch: 'البحث في الإجراءات غير المرتبطة',
     lifecycle: {
       archive: 'أرشفة العمل الإداري',
       restore: 'استعادة العمل الإداري',

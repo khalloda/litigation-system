@@ -154,6 +154,7 @@ export function AdminEditor(props: {
             : t.adminWorks.manage.edit}
       </h1>
       {snapshot.task ? <p>{t.adminWorks.identity(snapshot.task.id)}</p> : null}
+      {snapshot.task?.historicalContext ? <p>{snapshot.task.historicalContext.label}</p> : null}
       <a className={styles.link} href={original.cancel}>
         {t.common.cancel}
       </a>

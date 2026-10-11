@@ -1,3 +1,4 @@
+import { task69StepApplied, currentTask69StepSql } from './task69-step-checkpoint';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
@@ -42,7 +43,8 @@ export async function task69AdminOriginCatalog(db: ClientBase) {
 }
 
 export async function task69AdminRestorationApplied(db: ClientBase): Promise<boolean> {
-  const source = task69AdminRestorationSql(),
+  const raw = task69AdminRestorationSql(),
+    source = currentTask69StepSql(raw, await task69StepApplied(db)),
     matches = [
       ...source.matchAll(
         /CREATE FUNCTION _migration\.(task69_\w+)\([\s\S]*?LANGUAGE (?:sql|plpgsql) ([\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
@@ -76,7 +78,7 @@ export async function task69AdminRestorationApplied(db: ClientBase): Promise<boo
   assert.ok(
     ledger[0].finished_at && !ledger[0].rolled_back_at && ledger[0].applied_steps_count === 1,
   );
-  assert.equal(ledger[0].checksum, task69Sha(source));
+  assert.equal(ledger[0].checksum, task69Sha(raw));
   assert.deepEqual(
     catalog,
     JSON.parse(readFileSync('scripts/lib/task69-admin-origin-catalog.json', 'utf8')),
@@ -107,7 +109,7 @@ export async function assertTask69AdminRestoration(db: ClientBase) {
   assert.deepEqual(
     (
       await db.query(
-        "SELECT o.task_id FROM _migration.task69_admin_origin o JOIN _migration.task69_receipt r USING(receipt_id) LEFT JOIN public.admin_tasks t ON t.id=o.task_id WHERE t.id IS NULL OR _migration.admin_edit_current_valid(o.task_id) IS NOT TRUE OR NOT EXISTS(SELECT 1 FROM _migration.task69_allowlist a WHERE a.operation_id=r.operation_id AND a.issue_id=r.issue_id AND a.stage='S3-admin-parents')",
+        "SELECT o.task_id FROM _migration.task69_admin_origin o JOIN _migration.task69_receipt r USING(receipt_id) LEFT JOIN public.admin_tasks t ON t.id=o.task_id WHERE t.id IS NULL OR _migration.admin_edit_current_valid(o.task_id) IS NOT TRUE OR NOT EXISTS(SELECT 1 FROM _migration.task69_allowlist a WHERE a.operation_id=r.operation_id AND a.issue_id=r.issue_id AND (a.stage='S3-admin-parents' OR (a.stage='shared-dependency' AND a.issue_id LIKE 'GENERATED-PARENT/%')))",
       )
     ).rows,
     [],

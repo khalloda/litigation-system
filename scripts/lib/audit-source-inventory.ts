@@ -122,7 +122,7 @@ const HEARING_LIFECYCLE_SHA256 = '42be3170ff4425089e19a5524e907f1b6fcbd11bd72971
 const ADMIN_LIFECYCLE_SERVICE = 'src/lib/admin-lifecycle.ts';
 const ADMIN_LIFECYCLE_SHA256 = '6fb81283bae3223e4ca8670738c6a9564cb25c1412981b61e5a4bde1a213514d';
 const ADMIN_MUTATION_SERVICE = 'src/lib/admin-work-mutations.ts';
-const ADMIN_MUTATION_SHA256 = '48c196e2a3461da29cd6499d191500ea7cb155ee8716195146ade970241976e0';
+const ADMIN_MUTATION_SHA256 = 'a4cbc2f017a1df90f072334c2a0caada936a48e5bcb764c788c6a8ef5bb3c4e2';
 // Task69 S3: canonical membership parser; exact runtime role, retry and audit gateway unchanged.
 const ADMIN_INPUT_SHA256 = '433fea05aa98445e9d33e401b51a0065b9b43312dd464ca2311f94926fefc5d5';
 const HEARING_MUTATION_SERVICE = 'src/lib/hearing-mutations.ts';
@@ -131,7 +131,7 @@ const HEARING_INPUT_SHA256 = 'a7a3c2ba5615d2806d71595fb83ee9b09f1addaf07c625df39
 const ADMIN_READ_SERVICE = 'src/lib/admin-work-query.ts';
 // Task69 S3: aggregate/EXISTS membership reads preserve distinct parent pagination.
 const ADMIN_READ_SERVICE_SHA256 =
-  '4d93cf632e1e8c844daf628be7dcb3be6cbc4bb57c77c472a344dde6e5f8b78d';
+  'f631a4f06632d2a3b4f6334875a63bb065a19e7e611a7f45a16a5dade016cf25';
 const HEARING_READ_SERVICE = 'src/lib/hearing-query.ts';
 const HEARING_READ_SERVICE_SHA256 =
   '7b2c7df159b024ced5b2ec8cabdef2a9dcd399c0f2498a4e93f94291042f7731';
@@ -837,6 +837,27 @@ const REVIEWED_RAW_SQL_CALLS = [
     'src/lib/admin-lifecycle.ts',
     'mutateAdminLifecycle',
     '3eed086781efec16e68316c1f32614a8ac85066880d9dcc207bab141e0239743',
+  ],
+  // Task69 S4: exact SELECT-only context and separate-step reads; normal mutations unchanged.
+  [
+    'src/lib/admin-work-mutations.ts',
+    'readAdminMutation',
+    'a1731c5cc67bb807cdf22bda84d917247cea86470d478e14205df7727523a365',
+  ],
+  [
+    'src/lib/admin-work-query.ts',
+    'readUnassignedAdminSteps',
+    '6081ed7de1961edcedb6c3f50ec2114684860f1404cebc5dcf5b4a46862500c3',
+  ],
+  [
+    'src/lib/admin-work-query.ts',
+    'readUnassignedAdminSteps',
+    '535402ad0669f8a8f1bd5564199ac6811bca1400439ebb403cb3279d80731562',
+  ],
+  [
+    'src/lib/admin-work-query.ts',
+    'readUnassignedAdminSteps',
+    'a9df4b9fabe06ed4abc4229813b86bbe196c25e240720f173a7d21e84dfc5288',
   ],
   [
     'src/lib/admin-work-mutations.ts',
