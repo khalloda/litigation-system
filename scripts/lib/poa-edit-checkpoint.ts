@@ -1,3 +1,7 @@
+import {
+  task69CompensationApplied,
+  currentTask69CompensationSql,
+} from './task69-compensation-checkpoint';
 import { task69PoaApplied, currentTask69PoaSql } from './task69-poa-checkpoint';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -256,7 +260,8 @@ export async function assertPoaEditBoundary(db: ClientBase, profile: string) {
       'immutable evidence trigger ' + table,
     );
   }
-  const effectiveSql = currentTask69PoaSql(poaEditSql(), await task69PoaApplied(db));
+  let effectiveSql = currentTask69PoaSql(poaEditSql(), await task69PoaApplied(db));
+  effectiveSql = currentTask69CompensationSql(effectiveSql, await task69CompensationApplied(db));
   const functions = (
     await db.query(
       "SELECT n.nspname schema,p.proname name,p.prosrc body,p.prosecdef,p.proconfig,has_function_privilege('litigation_runtime',p.oid,'EXECUTE') runtime,EXISTS(SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE') public FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','_migration') AND p.proname LIKE 'poa_edit_%'",

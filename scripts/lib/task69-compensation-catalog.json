@@ -1,0 +1,289 @@
+{
+  "columns": [
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "name": "entity_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "name": "entity_table",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "name": "version",
+      "type": "bigint",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "name": "after_values",
+      "type": "jsonb",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "name": "apply_ordinal",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "name": "before_values",
+      "type": "jsonb",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "name": "entity_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "name": "entity_table",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    }
+  ],
+  "constraints": [
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "conname": "task69_compensation_change_entity_id_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (entity_id > 0)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "conname": "task69_compensation_change_entity_table_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (entity_table = ANY (ARRAY['matters'::text, 'admin_tasks'::text, 'powers_of_attorney'::text, 'documents'::text, 'fee_letters'::text, 'matter_fee_letter_references'::text]))"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "conname": "task69_compensation_change_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (entity_table, entity_id, version)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "conname": "task69_compensation_change_receipt_id_entity_table_entity_i_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (receipt_id, entity_table, entity_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "conname": "task69_compensation_change_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "conname": "task69_compensation_change_version_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (version > 1)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "conname": "task69_compensation_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "conname": "task69_compensation_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "conname": "task69_compensation_row_after_values_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(after_values) = 'object'::text)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "conname": "task69_compensation_row_apply_ordinal_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (apply_ordinal > 0)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "conname": "task69_compensation_row_before_values_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(before_values) = 'object'::text)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "conname": "task69_compensation_row_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK ((before_values ->> 'id'::text) = entity_id::text AND (after_values ->> 'id'::text) = entity_id::text)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "conname": "task69_compensation_row_entity_id_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (entity_id > 0)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "conname": "task69_compensation_row_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (receipt_id, apply_ordinal)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "conname": "task69_compensation_row_receipt_id_entity_table_entity_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (receipt_id, entity_table, entity_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "conname": "task69_compensation_row_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    }
+  ],
+  "triggers": [
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "name": "immutable_rows",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_compensation_change FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "name": "task69_compensation_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_compensation_complete AFTER INSERT ON _migration.task69_compensation_change DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_compensation_complete()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "name": "immutable_rows",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_compensation_row FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "name": "task69_compensation_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_compensation_complete AFTER INSERT ON _migration.task69_compensation_row DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_compensation_complete()"
+    }
+  ],
+  "indexes": [
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "definition": "CREATE UNIQUE INDEX task69_compensation_change_pkey ON _migration.task69_compensation_change USING btree (entity_table, entity_id, version)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_change",
+      "definition": "CREATE UNIQUE INDEX task69_compensation_change_receipt_id_entity_table_entity_i_key ON _migration.task69_compensation_change USING btree (receipt_id, entity_table, entity_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "definition": "CREATE UNIQUE INDEX task69_compensation_row_pkey ON _migration.task69_compensation_row USING btree (receipt_id, apply_ordinal)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_compensation_row",
+      "definition": "CREATE UNIQUE INDEX task69_compensation_row_receipt_id_entity_table_entity_id_key ON _migration.task69_compensation_row USING btree (receipt_id, entity_table, entity_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "grants": []
+}

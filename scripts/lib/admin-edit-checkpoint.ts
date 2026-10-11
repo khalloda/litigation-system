@@ -1,3 +1,7 @@
+import {
+  task69CompensationApplied,
+  currentTask69CompensationSql,
+} from './task69-compensation-checkpoint';
 import { task69StepApplied, currentTask69StepSql } from './task69-step-checkpoint';
 import {
   task69AdminRestorationApplied,
@@ -223,7 +227,7 @@ export async function assertAdminEditBoundary(db: ClientBase, profile: string) {
       "SELECT n.nspname schema,p.proname name,p.prosrc body,p.prosecdef,p.proconfig,has_function_privilege('litigation_runtime',p.oid,'EXECUTE') runtime, EXISTS(SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE') public FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('public','_migration') AND p.proname LIKE 'admin_edit_%'",
     )
   ).rows;
-  const source = currentTask69StepSql(
+  let source = currentTask69StepSql(
     currentTask69AdminRestorationSql(
       currentTask69AdminAssignmentSql(
         currentAdminEditSql(adminEditSql(), await adminLifecycleApplied(db)),
@@ -233,6 +237,7 @@ export async function assertAdminEditBoundary(db: ClientBase, profile: string) {
     ),
     await task69StepApplied(db),
   );
+  source = currentTask69CompensationSql(source, await task69CompensationApplied(db));
   assert.equal(functions.length, [...source.matchAll(/CREATE FUNCTION /gu)].length);
   for (const fn of functions) {
     const match = source.match(

@@ -1,3 +1,7 @@
+import {
+  task69CompensationApplied,
+  currentTask69CompensationSql,
+} from './task69-compensation-checkpoint';
 import { task69FeeApplied, currentTask69FeeSql } from './task69-fee-checkpoint';
 import {
   task69DocumentRestorationApplied,
@@ -297,7 +301,8 @@ export async function assertTasks46_47Boundary(db: ClientBase, profile: string) 
     currentTask69DocumentSql(tasks46_47Sql(), await task69DocumentApplied(db)),
     await task69DocumentRestorationApplied(db),
   );
-  const effectiveSql = currentTask69FeeSql(documentSql, await task69FeeApplied(db));
+  let effectiveSql = currentTask69FeeSql(documentSql, await task69FeeApplied(db));
+  effectiveSql = currentTask69CompensationSql(effectiveSql, await task69CompensationApplied(db));
   for (const fn of functions) {
     const source = effectiveSql.match(
       new RegExp(

@@ -1,3 +1,4 @@
+import { task69CompensationApplied } from './task69-compensation-checkpoint';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
@@ -117,6 +118,7 @@ export function currentTask69StepSql(original: string, applied: boolean) {
   return result;
 }
 export async function assertTask69Steps(db: ClientBase) {
+  const compensation = await task69CompensationApplied(db);
   assert.deepEqual(
     (
       await db.query(
@@ -129,7 +131,7 @@ export async function assertTask69Steps(db: ClientBase) {
   assert.deepEqual(
     (
       await db.query(
-        "SELECT o.step_id FROM _migration.task69_step_origin o JOIN _migration.task69_receipt r USING(receipt_id) LEFT JOIN public.task_actions s ON s.id=o.step_id WHERE s.id IS NULL OR (s.task_id IS NULL AND NOT EXISTS(SELECT 1 FROM _migration.task69_delta d WHERE d.receipt_id=r.receipt_id AND d.entity_table='task_actions' AND d.after_values=to_jsonb(s))) OR (s.task_id IS NOT NULL AND _migration.admin_edit_current_valid(s.task_id) IS NOT TRUE)",
+        `SELECT o.step_id FROM _migration.task69_step_origin o JOIN _migration.task69_receipt r USING(receipt_id) LEFT JOIN public.task_actions s ON s.id=o.step_id WHERE s.id IS NULL OR (s.task_id IS NULL AND NOT EXISTS(SELECT 1 FROM _migration.task69_delta d WHERE d.receipt_id=r.receipt_id AND d.entity_table='task_actions' AND d.after_values=to_jsonb(s))${compensation ? ' AND _migration.task69_compensation_unassigned_valid(s.id,to_jsonb(s)) IS NOT TRUE' : ''}) OR (s.task_id IS NOT NULL AND _migration.admin_edit_current_valid(s.task_id) IS NOT TRUE)`,
       )
     ).rows,
     [],
