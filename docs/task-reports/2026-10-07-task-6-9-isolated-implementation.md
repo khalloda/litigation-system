@@ -136,3 +136,36 @@ Private immutable inverse rows and native-history bindings enforce exact prior-r
 Draft evidence `contract-test-1791714269671.json` and applied evidence `contract-test-1791714755571.json` each cover 43 representative receipts across all eight stages and shared dependencies. Seven probes cover unauthorized/expired actors, an injected journal-write failure with complete rollback, a genuine later native edit, exact original business projections with retained source objects, duplicate retry, and later native drift on a historical-only retry. Test transactions rolled back; this is not yet the required committed combined compensation proof. Earlier failed draft/test attempts are retained, including constraint timing, retired document positions and an SQL alias collision.
 
 Migration 94 SQL SHA256 `12512f0c632c4f042b50897bed125e03a7242507ce0e63d6bc0e42feba699bd4` is frozen after fixture application. All 148 database checks pass with the exact new private schema, guarded history branches and unchanged prior migration bytes. The outer checkpoint list and source-comparison adapter were updated after their preserved initial failures. A second fresh full-state fixture (database `litigation_task69_combined`, cluster `7695355887450075174`) matched all 159 tables and 48 complete sequence states before migrations, then rehearsed migrations 79–94. Its four genuine fixture sign-ins and credential preparation are separate from owner authentication. Final combined execution, independent source reconciliation, committed compensation, browser/export and frozen final gates remain mandatory. Owner actions remain NOT_APPLIED; Task6.9 remains HOLD.
+
+## Completed combined candidate — independent review next
+
+The earlier checkpoint pending statements above are preserved as historical observations. All eight implementation stages and the final combined execution, independent source comparison, browser/export and committed compensation gates have now completed on the identified task-owned copies. This does not accept Task 6.9 or apply anything to the owner system.
+
+The combined operation committed 1,598 parent/dependency receipts first and 1,987 remaining-stage receipts second: 3,465 exact approved issues plus 120 dependencies. Original conservation remains 3,960 = 3,465 decisions + 411 historical releases + 84 exclusions; 97 remains a subset. The independent oracle reads the original workbook/source authorities, then compares every approved physical effect, returned identity, complete occurrence witness and exact audit linkage. Every changed or added business row has its exact latest journal postimage; untouched rows and existing POA/fee/reverse objects remain unchanged.
+
+An injected pre-journal error proved transaction rollback. A deliberate failure after server commit simulated a lost response; the next invocation recovered the exact original receipts and IDs without new effects. Whole-operation compensation then committed all 3,585 exact inverse receipts. Original business projections matched, while new source objects remained archived, retired or inactive and audit/provenance history and sequence advancement were retained truthfully. Genuine later native edits refused both initial compensation and historical-only retry. Duplicate compensation returned the same receipts without changing business, audit or sequence state.
+
+Actual fixture-browser checks cover Arabic RTL/Noto detail and edit screens, genuine unchanged editor submissions, exact distinct pagination and filters, all 39 NULL-parent steps, qualified-party reports, both bounded fee associations and multi-link document reports. Fee scope is shown on forward-link detail/list, the covered-link editor, matter context and reports; the plain field editor is separately checked for original wording. Actual preview and Excel values, types, NULL states, identifiers and totals agree. Chromium PDFs were rendered and visually inspected. The administrative multi-assignee renderer proof uses an actual native/query transaction that rolls back its temporary status/choice; actual HTTP empty-selection output remains zero. PDF copying remains an accepted limitation and search is not certified. The visual evidence also discloses dense wrapping in fee-preview metadata columns and the long complete staff checkbox list; these presentation observations remain visible for independent review, without claiming a separate layout refinement.
+
+The full static/type/format/encoding, authorization/audit/RTL and build checks, schema validation and 148 permanent database checks are recorded in the final external review index. Unchanged build/application evidence is reused only with exact source identity. All failed attempts remain preserved. Six existing Next/Turbopack client-logo path-tracing warnings remain recorded; no dependency or renderer was added.
+
+Final owner preservation matched the implementation observation interval across all 159 table digests, 48 complete sequence states, migration/audit/selection schema and tracked repository bytes, plus Access and recovery identities. Migration 78, hearing 11003 archive/version, all saved choices, all owner TASKS bytes and every checkbox line remain unchanged. No owner HTTP/login/export/restart, migration/repair, activation, acceptance closure or push occurred. Only task-owned browser applications were stopped; recovery and full-state fixtures remain retained for review. The older addendum initial sequence-observation gap remains explicitly historical.
+
+Evidence references:
+
+No listener was observed on owner port 3000 during the final OS-only resource observation. The owner app was not started or restarted; no HTTP request was made. This is an availability observation, not an application-health test.
+
+- parents: `contract-test-1791722145654.json`.
+- lost-response: `contract-test-1791723715884.json`.
+- recovered: `contract-test-1791726906391.json`.
+- compensation: `contract-test-1791727417546.json`.
+- compensation-retry: `contract-test-1791732381977.json`.
+- independent-source: `final-combined-source-reconciliation-20261011T135638Z.json`.
+- browser: `contract-test-1791727101208.json`.
+- before-compensation: `contract-test-1791727305339.json`.
+- after-compensation: `contract-test-1791733237097.json`.
+- browser-visual-review.json: `browser-visual-review.json`.
+- owner-final-preservation-seal.json: `owner-final-preservation-seal.json`.
+- resource-retention.json: `resource-retention.json`.
+
+Task 6.9 remains HOLD. S1/S2 saved-selection proposals remain deferred, distinct from implementation stages S1/S2. Project Stage 7 has not started. The five-file package is for independent implementation review; no owner operation follows automatically.
