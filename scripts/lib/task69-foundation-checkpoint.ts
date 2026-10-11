@@ -1,3 +1,4 @@
+import { task69HistoryApplied } from './task69-history-checkpoint';
 import { task69ActorApplied, task69ActorSql } from './task69-actor-checkpoint';
 import { task69FeeApplied } from './task69-fee-checkpoint';
 import { task69DocumentRestorationApplied } from './task69-document-restoration-checkpoint';
@@ -219,6 +220,22 @@ export async function task69FoundationFailures(db: ClientBase): Promise<string[]
         tgenabled: 'O',
         definition:
           'CREATE CONSTRAINT TRIGGER task69_poa_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_poa_receipt_complete()',
+      });
+    }
+    if (await task69HistoryApplied(db)) {
+      expected.constraints.push({
+        table_name: 'task69_receipt',
+        conname: 'task69_history_receipt_complete',
+        contype: 't',
+        convalidated: true,
+        definition: 'TRIGGER DEFERRABLE INITIALLY DEFERRED',
+      });
+      expected.triggers.push({
+        table_name: 'task69_receipt',
+        tgname: 'task69_history_receipt_complete',
+        tgenabled: 'O',
+        definition:
+          'CREATE CONSTRAINT TRIGGER task69_history_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_history_receipt_complete()',
       });
     }
     if (await task69FeeApplied(db)) {

@@ -1,3 +1,8 @@
+import {
+  task69HistoryApplied,
+  assertTask69History,
+  TASK69_HISTORY_MIGRATION,
+} from './task69-history-checkpoint';
 import { task69ActorApplied, TASK69_ACTOR_MIGRATION } from './task69-actor-checkpoint';
 import { task69FeeApplied, assertTask69Fees, TASK69_FEE_MIGRATION } from './task69-fee-checkpoint';
 import {
@@ -280,6 +285,7 @@ export async function assertStaffCheckpoint(
   | 85
   | 86
   | 87
+  | 93
   | 92
   | 91
   | 90
@@ -305,11 +311,13 @@ export async function assertStaffCheckpoint(
   assert.ok(
     [
       61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
-      84, 85, 86, 87, 88, 89, 90, 91, 92,
+      84, 85, 86, 87, 88, 89, 90, 91, 92, 93,
     ].includes(repository.migrations.length),
     'Exact reviewed repository checkpoint required',
   );
   assert.equal(repository.migrations[60]?.name, STAFF_MIGRATION);
+  if (repository.migrations.length >= 93)
+    assert.equal(repository.migrations[92]?.name, TASK69_HISTORY_MIGRATION);
   if (repository.migrations.length >= 92)
     assert.equal(repository.migrations[91]?.name, TASK69_ACTOR_MIGRATION);
   if (repository.migrations.length >= 91)
@@ -375,6 +383,8 @@ export async function assertStaffCheckpoint(
     );
   if (repository.migrations.length >= 77)
     assert.equal(repository.migrations[76]?.name, LAWYER_SELECTION_MIGRATION);
+  const historyDispositions = await task69HistoryApplied(db);
+  if (historyDispositions) await assertTask69History(db);
   const actorWallClock = await task69ActorApplied(db);
   const feeProvenance = await task69FeeApplied(db);
   if (feeProvenance) await assertTask69Fees(db);
@@ -451,71 +461,74 @@ export async function assertStaffCheckpoint(
   assert.ok(!documentRestoration || documentRelationships);
   assert.ok(!feeProvenance || documentRestoration);
   assert.ok(!actorWallClock || feeProvenance);
-  const checkpoint = actorWallClock
-    ? 92
-    : feeProvenance
-      ? 91
-      : documentRestoration
-        ? 90
-        : documentRelationships
-          ? 89
-          : poaRestoration
-            ? 88
-            : steps
-              ? 87
-              : continuation
-                ? 86
-                : adminRestoration
-                  ? 85
-                  : destinationDependency
-                    ? 84
-                    : adminAssignments
-                      ? 83
-                      : lawyerRestoration
-                        ? 82
-                        : restoration
-                          ? 81
-                          : partySemantics
-                            ? 80
-                            : foundation
-                              ? 79
-                              : administrativeSelection
-                                ? 78
-                                : lawyerSelection
-                                  ? 77
-                                  : closedSelection
-                                    ? 76
-                                    : task62Source
-                                      ? 75
-                                      : reportSelection
-                                        ? 74
-                                        : auditHistory
-                                          ? 73
-                                          : billingLabels
-                                            ? 72
-                                            : tasks46_47
-                                              ? 71
-                                              : poa
-                                                ? 70
-                                                : adminLifecycle
-                                                  ? 69
-                                                  : admin
-                                                    ? 68
-                                                    : hearingLifecycle
-                                                      ? 67
-                                                      : hearing
-                                                        ? 66
-                                                        : lifecycle
-                                                          ? 65
-                                                          : editing
-                                                            ? 64
-                                                            : logosApplied
-                                                              ? 63
-                                                              : clientsApplied
-                                                                ? 62
-                                                                : applied
-                                                                  ? 61
-                                                                  : 60;
+  assert.ok(!historyDispositions || actorWallClock);
+  const checkpoint = historyDispositions
+    ? 93
+    : actorWallClock
+      ? 92
+      : feeProvenance
+        ? 91
+        : documentRestoration
+          ? 90
+          : documentRelationships
+            ? 89
+            : poaRestoration
+              ? 88
+              : steps
+                ? 87
+                : continuation
+                  ? 86
+                  : adminRestoration
+                    ? 85
+                    : destinationDependency
+                      ? 84
+                      : adminAssignments
+                        ? 83
+                        : lawyerRestoration
+                          ? 82
+                          : restoration
+                            ? 81
+                            : partySemantics
+                              ? 80
+                              : foundation
+                                ? 79
+                                : administrativeSelection
+                                  ? 78
+                                  : lawyerSelection
+                                    ? 77
+                                    : closedSelection
+                                      ? 76
+                                      : task62Source
+                                        ? 75
+                                        : reportSelection
+                                          ? 74
+                                          : auditHistory
+                                            ? 73
+                                            : billingLabels
+                                              ? 72
+                                              : tasks46_47
+                                                ? 71
+                                                : poa
+                                                  ? 70
+                                                  : adminLifecycle
+                                                    ? 69
+                                                    : admin
+                                                      ? 68
+                                                      : hearingLifecycle
+                                                        ? 67
+                                                        : hearing
+                                                          ? 66
+                                                          : lifecycle
+                                                            ? 65
+                                                            : editing
+                                                              ? 64
+                                                              : logosApplied
+                                                                ? 63
+                                                                : clientsApplied
+                                                                  ? 62
+                                                                  : applied
+                                                                    ? 61
+                                                                    : 60;
   const checkpointFiles = repository.migrations.slice(0, checkpoint);
   const evidence = reconcileGate4Migrations(history, {
     ...repository,

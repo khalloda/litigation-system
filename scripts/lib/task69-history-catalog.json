@@ -1,0 +1,141 @@
+{
+  "columns": [
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "name": "approved_outcome",
+      "type": "jsonb",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "name": "kind",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "name": "source_values",
+      "type": "jsonb",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "name": "witness",
+      "type": "jsonb",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    }
+  ],
+  "constraints": [
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "conname": "task69_history_disposition_approved_outcome_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(approved_outcome) = 'object'::text)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "conname": "task69_history_disposition_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "conname": "task69_history_disposition_kind_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (kind = ANY (ARRAY['attendee-fragment'::text, 'historical-staff'::text, 'unassigned-hearing'::text]))"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "conname": "task69_history_disposition_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (receipt_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "conname": "task69_history_disposition_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "conname": "task69_history_disposition_source_values_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(source_values) = 'object'::text)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "conname": "task69_history_disposition_witness_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(witness) = 'object'::text)"
+    }
+  ],
+  "triggers": [
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "name": "task69_history_disposition_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_history_disposition_complete AFTER INSERT ON _migration.task69_history_disposition DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_history_receipt_complete()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "name": "task69_history_insert_guard",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_history_insert_guard BEFORE INSERT ON _migration.task69_history_disposition FOR EACH ROW EXECUTE FUNCTION _migration.task69_history_insert_guard()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "name": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_history_disposition FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    }
+  ],
+  "indexes": [
+    {
+      "schema": "_migration",
+      "table": "task69_history_disposition",
+      "definition": "CREATE UNIQUE INDEX task69_history_disposition_pkey ON _migration.task69_history_disposition USING btree (receipt_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "grants": []
+}
