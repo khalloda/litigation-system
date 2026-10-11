@@ -73,6 +73,7 @@ function workColumns(purpose: WorkPurpose): readonly ReportColumn[] {
     ...(purpose === 'client' ? [{ key: 'destination', label: a.workDestination, width: 22 }] : []),
     { key: 'decisions', label: a.chosenDecisions, width: 37 },
     { key: 'requiredWork', label: t.adminWorks.requiredWork, width: 37 },
+    { key: 'assignees', label: t.adminWorks.person, width: 26 },
     { key: 'steps', label: purpose === 'destination' ? a.latestSteps : a.chosenSteps, width: 37 },
     { key: 'status', label: t.adminWorks.status, width: 14 },
     { key: 'createdDate', label: t.adminWorks.createdDate, width: 16 },
@@ -104,7 +105,7 @@ export const administrativeReports: readonly ReportDefinition[] = [
   ...workEntries.map(([purpose, id, title, description]): ReportDefinition => ({
     descriptor: {
       id,
-      version: '1',
+      version: '2',
       title,
       description,
       layout: 'grouped',
@@ -184,6 +185,7 @@ type Work = {
   destinationId: number | null;
   destination: string | null;
   requiredWork: string | null;
+  assignees: { name: string; active: boolean }[];
   status: string;
   createdDate: string | null;
   age: number | null;
@@ -219,6 +221,7 @@ async function readAdministrative(
     ) SELECT w.id,m.id AS "matterId",m.case_number_ar AS "caseNumber",c.label_ar AS court,w.circuit,
       w.destination_id AS "destinationId",d.label_ar AS destination,w.required_work AS "requiredWork",
       w.status,w.task_created_date::text AS "createdDate",${today}::date-w.task_created_date AS age,
+      coalesce((SELECT jsonb_agg(jsonb_build_object('name',p.name_ar,'active',p.is_active) ORDER BY am.position,am.id) FROM public.admin_task_assignees am JOIN public.people p ON p.id=am.person_id WHERE am.task_id=w.id AND NOT am.is_retired),'[]'::jsonb) AS assignees,
       h.contexts AS hearings,coalesce(f.contexts,'[]'::jsonb) AS steps
     FROM public.admin_tasks w JOIN public.matters m ON m.id=w.matter_id
     JOIN chosen_hearings h ON h.matter_id=m.id LEFT JOIN followups f ON f.task_id=w.id
@@ -259,6 +262,11 @@ async function readAdministrative(
         ...(purpose === 'client' ? [reportText(r.destination)] : []),
         reportText(r.hearings.map((h) => contextText(h.date, h.value)).join('\n\n')),
         reportText(r.requiredWork),
+        reportText(
+          r.assignees.length
+            ? r.assignees.map((p) => p.name + (p.active ? '' : ' — ' + t.staff.former)).join('\n')
+            : null,
+        ),
         reportText(
           r.steps.length
             ? r.steps

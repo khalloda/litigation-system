@@ -1,0 +1,99 @@
+{
+  "columns": [
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "name": "task_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    }
+  ],
+  "constraints": [
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "conname": "task69_admin_origin_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "conname": "task69_admin_origin_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (task_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "conname": "task69_admin_origin_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "conname": "task69_admin_origin_receipt_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (receipt_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "conname": "task69_admin_origin_task_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (task_id) REFERENCES admin_tasks(id) ON DELETE RESTRICT"
+    }
+  ],
+  "triggers": [
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "name": "task69_admin_origin_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_admin_origin_complete AFTER INSERT ON _migration.task69_admin_origin DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_admin_receipt_complete()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "name": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_admin_origin FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    }
+  ],
+  "indexes": [
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "definition": "CREATE UNIQUE INDEX task69_admin_origin_pkey ON _migration.task69_admin_origin USING btree (task_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_origin",
+      "definition": "CREATE UNIQUE INDEX task69_admin_origin_receipt_id_key ON _migration.task69_admin_origin USING btree (receipt_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "grants": []
+}

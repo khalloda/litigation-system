@@ -128,6 +128,7 @@ export async function recordTask69Receipt(
 }
 
 const writableTables = [
+  'admin_tasks',
   'matter_lawyers',
   'matter_parties',
   'matter_party_roles',

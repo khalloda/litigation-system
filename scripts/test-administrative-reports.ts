@@ -58,6 +58,7 @@ async function main() {
         'matters',
         'clients',
         'admin_tasks',
+        'admin_task_assignees',
         'task_actions',
         'people',
         'lookup_court',
@@ -428,6 +429,19 @@ async function main() {
                         .join('\n\n'),
                     ),
                     cell(value(w, 'required_work')),
+                    cell(
+                      tables
+                        .admin_task_assignees!.filter((a) => a.task_id === w.id && !a.is_retired)
+                        .sort((a, b) => number(a, 'position') - number(b, 'position'))
+                        .map((a) => {
+                          const person = people.get(number(a, 'person_id'))!;
+                          return (
+                            value(person, 'name_ar') +
+                            (person.is_active ? '' : ' — ' + t.staff.former)
+                          );
+                        })
+                        .join('\n') || null,
+                    ),
                     cell(
                       steps.length
                         ? steps

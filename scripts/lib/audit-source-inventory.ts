@@ -55,7 +55,7 @@ const REPORT_ENGINE_CLOSURES = new Map([
   ],
   [
     'src/lib/reports/administrative-reports.ts',
-    'd47e24acea95cf0e92125cbc0375a86abe6b3e051eb00eb7475a0d3f57ed6c43',
+    '81a6f68c962cb1bac76965547ca1f2f96a02ac043871c153483659f893b02e0a',
   ],
   [
     'src/lib/reports/hearing-teams.ts',
@@ -238,7 +238,7 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/reports/administrative-reports.ts',
     'readAdministrative',
-    '6090b4483c1313a8b368759f0049f37791f67ecfc42b261a1782e4f67635c479',
+    '0b3c5c4c1d0c019e1bdfec90e1cf79d4de83cadb0111495ddb6a1959d153fbd3',
   ],
   [
     'src/lib/reports/administrative-reports.ts',
