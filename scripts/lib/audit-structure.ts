@@ -1,3 +1,4 @@
+import { task69AdminAssignmentApplied } from './task69-admin-assignment-checkpoint';
 import {
   administrativeSelectionApplied,
   ADMINISTRATIVE_SELECTION_TABLES,
@@ -373,9 +374,11 @@ export async function runtimeRoleBoundaryFailures(
   const closedSelection = await closedSelectionApplied(db);
   const administrativeSelection = await administrativeSelectionApplied(db);
   const lawyerSelection = await lawyerSelectionApplied(db);
+  const adminAssignments = await task69AdminAssignmentApplied(db);
   const runtimeTables: readonly string[] = reportSelection
     ? [
         ...AUDITED_TABLES,
+        ...(adminAssignments ? ['admin_task_assignees'] : []),
         'client_report_selections',
         ...(closedSelection ? ['closed_report_selections'] : []),
         ...(lawyerSelection ? ['lawyer_report_selections'] : []),
@@ -395,6 +398,7 @@ export async function runtimeRoleBoundaryFailures(
   const matterBoundary = await matterEditApplied(db);
   const lifecycle = await matterLifecycleApplied(db);
   const rosterLocked = (table: string) =>
+    (adminAssignments && table === 'admin_task_assignees') ||
     (administrativeSelection && ADMINISTRATIVE_SELECTION_TABLES.includes(table)) ||
     (closedSelection && table === 'closed_report_selections') ||
     (lawyerSelection && table === 'lawyer_report_selections') ||

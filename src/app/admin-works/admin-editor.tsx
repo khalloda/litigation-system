@@ -53,7 +53,7 @@ export function AdminEditor(props: {
   const [baseline] = useState<AdminValues>(() =>
     structuredClone(
       (step ? snapshot.step : snapshot.task)?.values ??
-        (step ? { action_date: null } : { task_created_date: null }),
+        (step ? { action_date: null } : { task_created_date: null, assignee_person_ids: [] }),
     ),
   );
   const [values, setValues] = useState<AdminValues>(() => structuredClone(baseline));
@@ -72,7 +72,7 @@ export function AdminEditor(props: {
       router.push('/admin-works/' + result.id + original.successQuery);
     else if (result) feedback.current?.focus();
   }, [result, original.successQuery, router]);
-  function change(key: string, value: string | number | null) {
+  function change(key: string, value: string | number | number[] | null) {
     setValues((old) => ({ ...old, [key]: value }));
   }
   function submit() {
@@ -99,7 +99,10 @@ export function AdminEditor(props: {
     if (!uncertain) {
       const patch = Object.fromEntries(
         Object.entries(values).filter(
-          ([key, value]) => creating || value !== new Map(Object.entries(baseline)).get(key),
+          ([key, value]) =>
+            key !== 'assigned_to_person_id' &&
+            (creating ||
+              JSON.stringify(value) !== JSON.stringify(new Map(Object.entries(baseline)).get(key))),
         ),
       );
       payload = JSON.stringify({
@@ -168,7 +171,13 @@ export function AdminEditor(props: {
               <select
                 id={prefix + 'matter'}
                 disabled={operation !== 'task-create'}
-                value={!matterChosen ? '' : (values.matter_id ?? 'none')}
+                value={
+                  !matterChosen
+                    ? ''
+                    : typeof values.matter_id === 'number'
+                      ? values.matter_id
+                      : 'none'
+                }
                 aria-invalid={result?.field === 'matter_id' || undefined}
                 onChange={(event) => {
                   setMatterChosen(event.target.value !== '');
@@ -193,9 +202,49 @@ export function AdminEditor(props: {
             </div>
           ) : null}
           {operation === 'task-create' ? <p>{t.adminWorks.manage.dateHint}</p> : null}
-          {(step ? ADMIN_STEP_FIELDS : ADMIN_TASK_FIELDS).map((key) => {
+          {(step
+            ? ADMIN_STEP_FIELDS
+            : ADMIN_TASK_FIELDS.filter((key) => key !== 'assigned_to_person_id')
+          ).map((key) => {
+            if (key === 'assignee_person_ids') {
+              const selected = Array.isArray(values.assignee_person_ids)
+                ? values.assignee_person_ids
+                : [];
+              const originalIds = Array.isArray(baseline.assignee_person_ids)
+                ? baseline.assignee_person_ids
+                : [];
+              return (
+                <fieldset
+                  key={key}
+                  className={styles.field}
+                  aria-invalid={result?.field === key || undefined}
+                >
+                  <legend>{t.adminWorks.person}</legend>
+                  {snapshot.people.map((person) => (
+                    <label key={person.id}>
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(person.id)}
+                        disabled={!person.active && !originalIds.includes(person.id)}
+                        onChange={(event) =>
+                          change(
+                            key,
+                            event.target.checked
+                              ? [...selected, person.id]
+                              : selected.filter((id) => id !== person.id),
+                          )
+                        }
+                      />
+                      {person.name}
+                      {!person.active ? ' — ' + t.staff.former : ''}
+                    </label>
+                  ))}
+                </fieldset>
+              );
+            }
             const id = prefix + key,
-              value = new Map(Object.entries(values)).get(key) ?? '',
+              stored = new Map(Object.entries(values)).get(key),
+              value = typeof stored === 'string' || typeof stored === 'number' ? stored : '',
               choices =
                 key === 'court_id'
                   ? snapshot.courts

@@ -1,6 +1,7 @@
 export const ADMIN_TASK_FIELDS = [
   'required_work',
   'assigned_to_person_id',
+  'assignee_person_ids',
   'task_created_date',
   'execution_date',
   'result',
@@ -20,7 +21,7 @@ export const ADMIN_STEP_FIELDS = [
   'report',
 ] as const;
 export type AdminOperation = 'task-create' | 'task-update' | 'step-create' | 'step-update';
-export type AdminValues = Record<string, string | number | null>;
+export type AdminValues = Record<string, string | number | number[] | null>;
 export type AdminMutationCode =
   'invalid' | 'archived' | 'stale' | 'submission' | 'session' | 'not-found' | 'generic';
 export class AdminMutationError extends Error {
@@ -87,7 +88,11 @@ export function parseAdminMutationInput(operation: AdminOperation, input: unknow
   const values: AdminValues = {};
   for (const [key, value] of Object.entries(object(raw.values))) {
     if (!fields.has(key)) bad(key);
-    if (key.endsWith('_id')) positive(value);
+    if (key === 'assignee_person_ids') {
+      if (!Array.isArray(value) || value.length > 1000 || new Set(value).size !== value.length)
+        bad(key);
+      for (const id of value) if (positive(id) === null) bad(key);
+    } else if (key.endsWith('_id')) positive(value);
     else if (value !== null) {
       if (
         typeof value !== 'string' ||
@@ -109,6 +114,11 @@ export function parseAdminMutationInput(operation: AdminOperation, input: unknow
     (!Object.hasOwn(values, 'matter_id') || !Object.hasOwn(values, 'task_created_date'))
   )
     bad();
+  if (
+    Object.hasOwn(values, 'assignee_person_ids') &&
+    Object.hasOwn(values, 'assigned_to_person_id')
+  )
+    bad('assignee_person_ids');
   // Update completeness is checked against current stored values in the locked gateway.
   if (
     creating &&

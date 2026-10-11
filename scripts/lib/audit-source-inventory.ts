@@ -123,13 +123,15 @@ const ADMIN_LIFECYCLE_SERVICE = 'src/lib/admin-lifecycle.ts';
 const ADMIN_LIFECYCLE_SHA256 = '6fb81283bae3223e4ca8670738c6a9564cb25c1412981b61e5a4bde1a213514d';
 const ADMIN_MUTATION_SERVICE = 'src/lib/admin-work-mutations.ts';
 const ADMIN_MUTATION_SHA256 = '48c196e2a3461da29cd6499d191500ea7cb155ee8716195146ade970241976e0';
-const ADMIN_INPUT_SHA256 = '50c2deb2a790ef33429e41411ef967f1f9331beb10db88c711cd772f40961480';
+// Task69 S3: canonical membership parser; exact runtime role, retry and audit gateway unchanged.
+const ADMIN_INPUT_SHA256 = '433fea05aa98445e9d33e401b51a0065b9b43312dd464ca2311f94926fefc5d5';
 const HEARING_MUTATION_SERVICE = 'src/lib/hearing-mutations.ts';
 const HEARING_MUTATION_SHA256 = '49f1c5bbd9459173effebcebf633fae714a1b906a45df072329b5dc1b3c4fa7f';
 const HEARING_INPUT_SHA256 = 'a7a3c2ba5615d2806d71595fb83ee9b09f1addaf07c625df39e1f40d98c03b05';
 const ADMIN_READ_SERVICE = 'src/lib/admin-work-query.ts';
+// Task69 S3: aggregate/EXISTS membership reads preserve distinct parent pagination.
 const ADMIN_READ_SERVICE_SHA256 =
-  '4353b5dd43f864c36718d3f57d9dad2b0859896cdc178a22a018a0d063e668d3';
+  '4d93cf632e1e8c844daf628be7dcb3be6cbc4bb57c77c472a344dde6e5f8b78d';
 const HEARING_READ_SERVICE = 'src/lib/hearing-query.ts';
 const HEARING_READ_SERVICE_SHA256 =
   '7b2c7df159b024ced5b2ec8cabdef2a9dcd399c0f2498a4e93f94291042f7731';

@@ -695,6 +695,7 @@ export const t = {
       hearings: 'الجلسات',
       hearing_attendees: 'حضور الجلسات',
       admin_tasks: 'الأعمال الإدارية',
+      admin_task_assignees: 'القائم بالعمل — الأعمال الإدارية',
       task_actions: 'إجراءات المهام',
       powers_of_attorney: 'التوكيلات',
       power_of_attorney_lawyers: 'محامو التوكيل',

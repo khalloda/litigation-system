@@ -1,0 +1,246 @@
+{
+  "columns": [
+    {
+      "schema": "_migration",
+      "table": "task69_admin_assignment_boundary",
+      "name": "assignees",
+      "type": "jsonb",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_assignment_boundary",
+      "name": "task_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_assignment_boundary",
+      "name": "version",
+      "type": "bigint",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "name": "id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "d",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "name": "is_retired",
+      "type": "boolean",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": "false"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "name": "person_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "name": "position",
+      "type": "integer",
+      "attnotnull": false,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "name": "task_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    }
+  ],
+  "constraints": [
+    {
+      "schema": "_migration",
+      "table": "task69_admin_assignment_boundary",
+      "conname": "task69_admin_assignment_boundary_assignees_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(assignees) = 'array'::text)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_assignment_boundary",
+      "conname": "task69_admin_assignment_boundary_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (task_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_admin_assignment_boundary",
+      "conname": "task69_admin_assignment_boundary_task_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (task_id) REFERENCES admin_tasks(id)"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "conname": "admin_task_assignees_person_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "conname": "admin_task_assignees_person_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (task_id, person_id)"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "conname": "admin_task_assignees_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "conname": "admin_task_assignees_position_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (is_retired AND \"position\" IS NULL OR NOT is_retired AND \"position\" IS NOT NULL AND \"position\" > 0)"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "conname": "admin_task_assignees_position_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (task_id, \"position\") DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "conname": "admin_task_assignees_task_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (task_id) REFERENCES admin_tasks(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "conname": "assignment_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    }
+  ],
+  "triggers": [
+    {
+      "schema": "_migration",
+      "table": "task69_admin_assignment_boundary",
+      "name": "immutable_rows",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON _migration.task69_admin_assignment_boundary FOR EACH STATEMENT EXECUTE FUNCTION _migration.admin_edit_immutable()"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "name": "assignment_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER assignment_complete AFTER INSERT OR UPDATE ON admin_task_assignees DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_admin_assignee_complete()"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "name": "assignment_guard",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER assignment_guard BEFORE INSERT OR DELETE OR UPDATE ON admin_task_assignees FOR EACH ROW EXECUTE FUNCTION _migration.task69_admin_assignee_guard()"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "name": "assignment_no_truncate",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER assignment_no_truncate BEFORE TRUNCATE ON admin_task_assignees FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_admin_assignee_guard()"
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "name": "audit_event_capture",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER audit_event_capture AFTER INSERT OR UPDATE ON admin_task_assignees FOR EACH ROW EXECUTE FUNCTION audit_capture_row_event()"
+    }
+  ],
+  "indexes": [
+    {
+      "schema": "_migration",
+      "table": "task69_admin_assignment_boundary",
+      "definition": "CREATE UNIQUE INDEX task69_admin_assignment_boundary_pkey ON _migration.task69_admin_assignment_boundary USING btree (task_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "definition": "CREATE INDEX admin_task_assignees_person_task_idx ON public.admin_task_assignees USING btree (person_id, task_id) WHERE (NOT is_retired)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "definition": "CREATE UNIQUE INDEX admin_task_assignees_person_key ON public.admin_task_assignees USING btree (task_id, person_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "definition": "CREATE UNIQUE INDEX admin_task_assignees_pkey ON public.admin_task_assignees USING btree (id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "admin_task_assignees",
+      "definition": "CREATE UNIQUE INDEX admin_task_assignees_position_key ON public.admin_task_assignees USING btree (task_id, \"position\")",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "grants": [
+    {
+      "schema": "public",
+      "name": "admin_task_assignees",
+      "grantee": "litigation_runtime",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    }
+  ]
+}

@@ -1,3 +1,7 @@
+import {
+  task69AdminAssignmentApplied,
+  currentTask69AdminAssignmentSql,
+} from './task69-admin-assignment-checkpoint';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -81,7 +85,10 @@ export async function auditHistoryFailures(db: ClientBase) {
   try {
     if (!(await auditHistoryApplied(db))) return failures;
     const normalize = (s: string) => s.replaceAll('\r\n', '\n').trim();
-    for (const match of source().matchAll(
+    for (const match of currentTask69AdminAssignmentSql(
+      source(),
+      await task69AdminAssignmentApplied(db),
+    ).matchAll(
       /CREATE FUNCTION ((?:public|_migration)\.audit_(?:export|history)_\w+)\(([\s\S]*?)\)\s*RETURNS([\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
     )) {
       const [schema, name] = match[1]!.split('.');

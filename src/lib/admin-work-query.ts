@@ -116,6 +116,7 @@ export type AdminRow = {
   personId: number | null;
   personName: string | null;
   personActive: boolean | null;
+  assignees: { id: number; name: string; active: boolean }[];
   assigneeRaw: string | null;
   taskCreatedDate: string | null;
   executionDate: string | null;
@@ -165,6 +166,7 @@ const projection = Prisma.sql`a.id,a.is_archived AS archived,a.legacy_id AS "leg
   a.matter_id AS "matterId",m.case_number_ar AS "caseNumber",m.subject,m.is_archived AS "matterArchived",
   m.client_id AS "clientId",c.name_ar AS "clientName",c.is_archived AS "clientArchived",
   a.assigned_to_person_id AS "personId",p.name_ar AS "personName",p.is_active AS "personActive",a.legacy_assignee_raw AS "assigneeRaw",
+  coalesce((SELECT jsonb_agg(jsonb_build_object('id',ap.id,'name',ap.name_ar,'active',ap.is_active) ORDER BY am.position,am.id) FROM public.admin_task_assignees am JOIN public.people ap ON ap.id=am.person_id WHERE am.task_id=a.id AND NOT am.is_retired),'[]'::jsonb) AS assignees,
   a.task_created_date::text AS "taskCreatedDate",a.execution_date::text AS "executionDate",a.status,
   (SELECT count(*)::int FROM public.task_actions s WHERE s.task_id=a.id) AS "stepCount",
   (SELECT count(*)::int FROM public.task_actions s WHERE s.task_id=a.id AND NOT s.is_archived) AS "currentStepCount",
@@ -177,20 +179,27 @@ function where(f: AdminFilters) {
   for (const [column, value] of [
     [Prisma.sql`a.matter_id`, f.matter],
     [Prisma.sql`m.client_id`, f.client],
-    [Prisma.sql`a.assigned_to_person_id`, f.person],
   ] as const) {
     if (value === 'missing') conditions.push(Prisma.sql`${column} IS NULL`);
     else if (value !== 'all') conditions.push(Prisma.sql`${column}=${Number(value)}`);
   }
+  if (f.person === 'missing')
+    conditions.push(
+      Prisma.sql`NOT EXISTS(SELECT 1 FROM public.admin_task_assignees am WHERE am.task_id=a.id AND NOT am.is_retired)`,
+    );
+  else if (f.person !== 'all')
+    conditions.push(
+      Prisma.sql`EXISTS(SELECT 1 FROM public.admin_task_assignees am WHERE am.task_id=a.id AND am.person_id=${Number(f.person)} AND NOT am.is_retired)`,
+    );
   if (f.status === 'missing') conditions.push(Prisma.sql`a.status IS NULL`);
   else if (f.status !== 'all') conditions.push(Prisma.sql`a.status=${f.status.slice(6)}`);
   if (f.q)
     conditions.push(Prisma.sql`(public.ar_normalise(a.required_work) LIKE ${pattern(f.q)}
     OR public.ar_normalise(a.result) LIKE ${pattern(f.q)} OR public.ar_normalise(a.last_followup) LIKE ${pattern(f.q)}
-    OR public.ar_normalise(a.legacy_assignee_raw) LIKE ${pattern(f.q)} OR public.ar_normalise(p.name_ar) LIKE ${pattern(f.q)}
+    OR public.ar_normalise(a.legacy_assignee_raw) LIKE ${pattern(f.q)} OR EXISTS(SELECT 1 FROM public.admin_task_assignees am JOIN public.people ap ON ap.id=am.person_id WHERE am.task_id=a.id AND NOT am.is_retired AND public.ar_normalise(ap.name_ar) LIKE ${pattern(f.q)})
     OR m.case_number_ar_normalised LIKE ${pattern(f.q)} OR m.subject_normalised LIKE ${pattern(f.q)}
     OR c.name_ar_normalised LIKE ${pattern(f.q)} OR c.full_name_normalised LIKE ${pattern(f.q)} OR public.ar_normalise(c.name_en) LIKE ${pattern(f.q)}
-    OR EXISTS (SELECT 1 FROM public.person_name_alias n WHERE n.person_id=a.assigned_to_person_id AND NOT n.is_retired AND public.ar_normalise(n.alias_ar) LIKE ${pattern(f.q)})
+    OR EXISTS (SELECT 1 FROM public.admin_task_assignees am JOIN public.person_name_alias n ON n.person_id=am.person_id WHERE am.task_id=a.id AND NOT am.is_retired AND NOT n.is_retired AND public.ar_normalise(n.alias_ar) LIKE ${pattern(f.q)})
     OR a.id::text=public.ar_normalise(${f.q}) OR a.legacy_id::text=public.ar_normalise(${f.q}))`);
   return Prisma.join(conditions, ' AND ');
 }
@@ -215,7 +224,7 @@ export function adminOptionsQuery() {
   return Prisma.sql`SELECT * FROM (
     SELECT 'matter' kind,m.id::text value,m.case_number_ar label,m.is_archived archived,false inactive FROM public.matters m
     UNION ALL SELECT 'client',c.id::text,c.name_ar,c.is_archived,false FROM public.clients c
-    UNION ALL SELECT 'person',p.id::text,p.name_ar,false,NOT p.is_active FROM public.people p WHERE EXISTS(SELECT 1 FROM public.admin_tasks a WHERE a.assigned_to_person_id=p.id)
+    UNION ALL SELECT 'person',p.id::text,p.name_ar,false,NOT p.is_active FROM public.people p WHERE EXISTS(SELECT 1 FROM public.admin_task_assignees am WHERE am.person_id=p.id AND NOT am.is_retired)
     UNION ALL SELECT DISTINCT 'status','value:'||a.status,a.status,false,false FROM public.admin_tasks a WHERE a.status IS NOT NULL
   ) choices ORDER BY kind,label COLLATE "arabic" NULLS LAST,value LIMIT 4001`;
 }

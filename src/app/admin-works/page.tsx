@@ -175,7 +175,19 @@ export default async function AdminWorksPage({
                   <dl>
                     <Field label={t.adminWorks.createdDate} value={row.taskCreatedDate} />
                     <Field label={t.adminWorks.status} value={row.status} />
-                    <Field label={t.adminWorks.person} value={row.personName} />
+                    <Field
+                      label={t.adminWorks.person}
+                      value={
+                        <span className={local.multiline}>
+                          {row.assignees
+                            .map(
+                              (person) =>
+                                person.name + (person.active ? '' : ' — ' + t.staff.former),
+                            )
+                            .join('\n') || t.common.notRecorded}
+                        </span>
+                      }
+                    />
                     {row.assigneeRaw !== null ? (
                       <Field
                         label={t.adminWorks.person + ' — ' + t.adminWorks.sourceText}
@@ -183,7 +195,6 @@ export default async function AdminWorksPage({
                       />
                     ) : null}
                   </dl>
-                  {row.personActive === false ? <p>{t.matters.former}</p> : null}
                 </div>
                 <div>
                   <p className={local.multiline} dir="auto">

@@ -101,7 +101,16 @@ export default async function AdminWorkPage({
         <h2>{t.adminWorks.details}</h2>
         <dl className={styles.facts}>
           <Field label={t.adminWorks.requiredWork} value={record.requiredWork} />
-          <Field label={t.adminWorks.person} value={record.personName} />
+          <Field
+            label={t.adminWorks.person}
+            value={
+              <span className={local.multiline}>
+                {record.assignees
+                  .map((person) => person.name + (person.active ? '' : ' — ' + t.staff.former))
+                  .join('\n') || t.common.notRecorded}
+              </span>
+            }
+          />
           {record.assigneeRaw !== null ? (
             <Field
               label={t.adminWorks.person + ' — ' + t.adminWorks.sourceText}
@@ -128,7 +137,6 @@ export default async function AdminWorkPage({
           <Field label={t.clients.systemId} value={record.id} />
           <Field label={t.clients.accessId} value={record.legacyId ?? t.clients.native} />
         </dl>
-        {record.personActive === false ? <p>{t.matters.former}</p> : null}
       </section>
       <section className={styles.panel} aria-label={t.nav.matters}>
         <h2>{t.nav.matters}</h2>

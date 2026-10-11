@@ -500,6 +500,7 @@ model Person {
   updatedByActor                  AuditActor                        @relation("PersonUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "people_updated_by_fkey")
   /// Administrative tasks assigned to this person (المسئول).
   adminTasks                      AdminTask[]
+  adminTaskAssignments            AdminTaskAssignee[]
   /// Paper documents this person is responsible for.
   documents                       Document[]
   /// Administrative task steps this person carried out (القائم بالعمل).
@@ -1536,6 +1537,7 @@ model AdminTask {
   /// never by matching people.name_ar — rule 15.
   assignedToPersonId Int?    @map("assigned_to_person_id")
   assignedTo         Person? @relation(fields: [assignedToPersonId], references: [id])
+  assignees          AdminTaskAssignee[]
   /// The typed name exactly as it appeared. One of the three person-name
   /// mappings that had NO raw column until the 21 August audit — and names are
   /// the highest-ratio mapping in this project, the one that has already gone
@@ -1593,6 +1595,20 @@ model AdminTask {
   @@index([createdBy], map: "admin_tasks_created_by_idx")
   @@index([updatedBy], map: "admin_tasks_updated_by_idx")
   @@map("admin_tasks")
+}
+
+/// Canonical administrative membership; the task scalar is only a compatibility projection.
+model AdminTaskAssignee {
+  id Int @id @default(autoincrement())
+  taskId Int @map("task_id")
+  personId Int @map("person_id")
+  position Int?
+  isRetired Boolean @default(false) @map("is_retired")
+  task AdminTask @relation(fields:[taskId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  person Person @relation(fields:[personId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@unique([taskId,personId],map:"admin_task_assignees_person_key")
+  @@unique([taskId,position],map:"admin_task_assignees_position_key")
+  @@map("admin_task_assignees")
 }
 
 /// Steps within an administrative task. 4,252 rows in the Task 2.9 extraction.

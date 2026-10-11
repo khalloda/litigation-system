@@ -1,5 +1,6 @@
 export const AUDIT_HISTORY_TABLES = [
   'admin_tasks',
+  'admin_task_assignees',
   'attendance',
   'client_logos',
   'clients',
