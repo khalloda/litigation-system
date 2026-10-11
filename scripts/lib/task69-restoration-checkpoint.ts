@@ -1,3 +1,7 @@
+import {
+  task69DestinationApplied,
+  currentTask69DestinationSql,
+} from './task69-destination-checkpoint';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
@@ -7,6 +11,7 @@ export const task69RestorationSql = () =>
   readFileSync(`prisma/migrations/${TASK69_RESTORATION_MIGRATION}/migration.sql`, 'utf8');
 export async function task69RestorationApplied(db: ClientBase): Promise<boolean> {
   const source = task69RestorationSql();
+  const currentSource = currentTask69DestinationSql(source, await task69DestinationApplied(db));
   const names = [...source.matchAll(/CREATE FUNCTION _migration\.(task69_\w+)\(/gu)].map(
     (m) => m[1]!,
   );
@@ -39,7 +44,7 @@ export async function task69RestorationApplied(db: ClientBase): Promise<boolean>
   assert.equal(ledger[0].checksum, task69Sha(source));
   assert.equal(functions.length, names.length);
   for (const fn of functions) {
-    const definition = source.match(
+    const definition = currentSource.match(
       new RegExp(
         'CREATE FUNCTION _migration\\.' + fn.proname + '\\([\\s\\S]*?AS \\$\\$([\\s\\S]*?)\\$\\$;',
         'u',

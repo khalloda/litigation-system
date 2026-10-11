@@ -187,13 +187,13 @@ export async function executeTask69Lookup(
     'Approved exact label must still be absent',
   );
   const fields: Row = {
-    code:
-      't69_' +
-      task69Digest({ namespace: payload.namespace!, label: payload.exactLabel! }).slice(0, 20),
     is_active: true,
     sort_order: 0,
   };
   if (table === 'lookup_party_role') {
+    fields.code =
+      't69_' +
+      task69Digest({ namespace: payload.namespace!, label: payload.exactLabel! }).slice(0, 20);
     fields.label_ar_m = payload.exactLabel!;
     fields.label_ar_f = payload.exactLabel!;
   } else fields.label_ar = payload.exactLabel!;
