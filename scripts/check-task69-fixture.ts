@@ -33,7 +33,8 @@ async function main() {
           checkpoint === 90 ||
           checkpoint === 91 ||
           checkpoint === 92 ||
-          checkpoint === 93,
+          checkpoint === 93 ||
+          checkpoint === 94,
       );
       assert.deepEqual(await task69FoundationFailures(db), []);
       await db.query('ROLLBACK');
