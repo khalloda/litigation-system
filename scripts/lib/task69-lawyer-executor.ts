@@ -3,7 +3,7 @@ import type { ClientBase } from 'pg';
 import type { SessionClaims } from '../../src/lib/auth/session';
 import { type Row, type Json, type Task69Entry } from './task69-contract';
 import type { Task69PreparedOperation } from './task69-runner';
-import { assertTask69Preflight } from './task69-preflight';
+import { assertTask69Preflight, assertTask69EntryBound } from './task69-preflight';
 import {
   authorizeTask69Issue,
   recordTask69Receipt,
@@ -17,6 +17,7 @@ export async function executeTask69Lawyers(
   entry: Task69Entry,
   authority: SessionClaims,
 ): Promise<Row> {
+  assertTask69EntryBound(entry, operation);
   const context = await authorizeTask69Issue(db, operation, entry.issueId, authority);
   if (context.receipt) return context.receipt;
   await assertTask69Preflight(db, entry, operation);

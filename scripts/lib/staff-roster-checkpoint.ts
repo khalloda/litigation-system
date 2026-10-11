@@ -1,4 +1,8 @@
 import {
+  task69ContinuationApplied,
+  TASK69_CONTINUATION_MIGRATION,
+} from './task69-receipt-continuation-checkpoint';
+import {
   task69AdminRestorationApplied,
   assertTask69AdminRestoration,
   TASK69_ADMIN_RESTORATION_MIGRATION,
@@ -255,6 +259,7 @@ export async function assertStaffCheckpoint(
   | 83
   | 84
   | 85
+  | 86
 > {
   assert.ok(
     ['historical-full-state-upgrade', 'canonical-clean-replay'].includes(profile),
@@ -275,11 +280,13 @@ export async function assertStaffCheckpoint(
   assert.ok(
     [
       61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
-      84, 85,
+      84, 85, 86,
     ].includes(repository.migrations.length),
     'Exact reviewed repository checkpoint required',
   );
   assert.equal(repository.migrations[60]?.name, STAFF_MIGRATION);
+  if (repository.migrations.length >= 86)
+    assert.equal(repository.migrations[85]?.name, TASK69_CONTINUATION_MIGRATION);
   if (repository.migrations.length >= 85)
     assert.equal(repository.migrations[84]?.name, TASK69_ADMIN_RESTORATION_MIGRATION);
   if (repository.migrations.length >= 84)
@@ -331,6 +338,7 @@ export async function assertStaffCheckpoint(
     );
   if (repository.migrations.length >= 77)
     assert.equal(repository.migrations[76]?.name, LAWYER_SELECTION_MIGRATION);
+  const continuation = await task69ContinuationApplied(db);
   const adminRestoration = await task69AdminRestorationApplied(db);
   if (adminRestoration) await assertTask69AdminRestoration(db);
   const destinationDependency = await task69DestinationApplied(db);
@@ -387,57 +395,60 @@ export async function assertStaffCheckpoint(
   assert.ok(!adminAssignments || lawyerRestoration);
   assert.ok(!destinationDependency || adminAssignments);
   assert.ok(!adminRestoration || destinationDependency);
-  const checkpoint = adminRestoration
-    ? 85
-    : destinationDependency
-      ? 84
-      : adminAssignments
-        ? 83
-        : lawyerRestoration
-          ? 82
-          : restoration
-            ? 81
-            : partySemantics
-              ? 80
-              : foundation
-                ? 79
-                : administrativeSelection
-                  ? 78
-                  : lawyerSelection
-                    ? 77
-                    : closedSelection
-                      ? 76
-                      : task62Source
-                        ? 75
-                        : reportSelection
-                          ? 74
-                          : auditHistory
-                            ? 73
-                            : billingLabels
-                              ? 72
-                              : tasks46_47
-                                ? 71
-                                : poa
-                                  ? 70
-                                  : adminLifecycle
-                                    ? 69
-                                    : admin
-                                      ? 68
-                                      : hearingLifecycle
-                                        ? 67
-                                        : hearing
-                                          ? 66
-                                          : lifecycle
-                                            ? 65
-                                            : editing
-                                              ? 64
-                                              : logosApplied
-                                                ? 63
-                                                : clientsApplied
-                                                  ? 62
-                                                  : applied
-                                                    ? 61
-                                                    : 60;
+  assert.ok(!continuation || adminRestoration);
+  const checkpoint = continuation
+    ? 86
+    : adminRestoration
+      ? 85
+      : destinationDependency
+        ? 84
+        : adminAssignments
+          ? 83
+          : lawyerRestoration
+            ? 82
+            : restoration
+              ? 81
+              : partySemantics
+                ? 80
+                : foundation
+                  ? 79
+                  : administrativeSelection
+                    ? 78
+                    : lawyerSelection
+                      ? 77
+                      : closedSelection
+                        ? 76
+                        : task62Source
+                          ? 75
+                          : reportSelection
+                            ? 74
+                            : auditHistory
+                              ? 73
+                              : billingLabels
+                                ? 72
+                                : tasks46_47
+                                  ? 71
+                                  : poa
+                                    ? 70
+                                    : adminLifecycle
+                                      ? 69
+                                      : admin
+                                        ? 68
+                                        : hearingLifecycle
+                                          ? 67
+                                          : hearing
+                                            ? 66
+                                            : lifecycle
+                                              ? 65
+                                              : editing
+                                                ? 64
+                                                : logosApplied
+                                                  ? 63
+                                                  : clientsApplied
+                                                    ? 62
+                                                    : applied
+                                                      ? 61
+                                                      : 60;
   const checkpointFiles = repository.migrations.slice(0, checkpoint);
   const evidence = reconcileGate4Migrations(history, {
     ...repository,

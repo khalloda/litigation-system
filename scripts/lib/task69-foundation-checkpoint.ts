@@ -1,3 +1,7 @@
+import {
+  task69ContinuationApplied,
+  currentTask69AuthorizationBody,
+} from './task69-receipt-continuation-checkpoint';
 import { task69AdminRestorationApplied } from './task69-admin-restoration-checkpoint';
 import { task69DestinationApplied } from './task69-destination-checkpoint';
 import { task69LawyerApplied } from './task69-lawyer-checkpoint';
@@ -180,6 +184,13 @@ export async function task69FoundationFailures(db: ClientBase): Promise<string[]
       (a: { table_name: string; tgname: string }, b: { table_name: string; tgname: string }) =>
         (a.table_name + '/' + a.tgname).localeCompare(b.table_name + '/' + b.tgname),
     );
+    if (await task69ContinuationApplied(db)) {
+      const fn = expected.functions.find(
+        (r: { proname: string }) => r.proname === 'task69_authorize_issue',
+      );
+      assert(fn);
+      fn.prosrc = currentTask69AuthorizationBody();
+    }
     assert.deepEqual(
       await task69FoundationCatalog(db),
       expected,
