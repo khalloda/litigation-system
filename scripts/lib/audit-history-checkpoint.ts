@@ -1,3 +1,4 @@
+import { task69FeeApplied, currentTask69FeeSql } from './task69-fee-checkpoint';
 import { task69DocumentApplied, currentTask69DocumentSql } from './task69-document-checkpoint';
 import {
   task69AdminAssignmentApplied,
@@ -86,9 +87,12 @@ export async function auditHistoryFailures(db: ClientBase) {
   try {
     if (!(await auditHistoryApplied(db))) return failures;
     const normalize = (s: string) => s.replaceAll('\r\n', '\n').trim();
-    for (const match of currentTask69DocumentSql(
-      currentTask69AdminAssignmentSql(source(), await task69AdminAssignmentApplied(db)),
-      await task69DocumentApplied(db),
+    for (const match of currentTask69FeeSql(
+      currentTask69DocumentSql(
+        currentTask69AdminAssignmentSql(source(), await task69AdminAssignmentApplied(db)),
+        await task69DocumentApplied(db),
+      ),
+      await task69FeeApplied(db),
     ).matchAll(
       /CREATE FUNCTION ((?:public|_migration)\.audit_(?:export|history)_\w+)\(([\s\S]*?)\)\s*RETURNS([\s\S]*?)AS \$\$([\s\S]*?)\$\$;/gu,
     )) {

@@ -1,3 +1,4 @@
+import { task69FeeApplied, TASK69_FEE_TABLES } from './task69-fee-checkpoint';
 import { task69DocumentApplied, TASK69_DOCUMENT_TABLES } from './task69-document-checkpoint';
 import { task69PoaApplied } from './task69-poa-checkpoint';
 import { task69StepApplied } from './task69-step-checkpoint';
@@ -377,6 +378,7 @@ export async function runtimeRoleBoundaryFailures(
   const closedSelection = await closedSelectionApplied(db);
   const administrativeSelection = await administrativeSelectionApplied(db);
   const lawyerSelection = await lawyerSelectionApplied(db);
+  const feeProvenance = await task69FeeApplied(db);
   const documentRelationships = await task69DocumentApplied(db);
   const adminAssignments = await task69AdminAssignmentApplied(db);
   const runtimeTables: readonly string[] = reportSelection
@@ -384,6 +386,7 @@ export async function runtimeRoleBoundaryFailures(
         ...AUDITED_TABLES,
         ...(adminAssignments ? ['admin_task_assignees'] : []),
         ...(documentRelationships ? TASK69_DOCUMENT_TABLES : []),
+        ...(feeProvenance ? TASK69_FEE_TABLES : []),
         'client_report_selections',
         ...(closedSelection ? ['closed_report_selections'] : []),
         ...(lawyerSelection ? ['lawyer_report_selections'] : []),
@@ -407,6 +410,7 @@ export async function runtimeRoleBoundaryFailures(
   const rosterLocked = (table: string) =>
     (adminAssignments && table === 'admin_task_assignees') ||
     (documentRelationships && TASK69_DOCUMENT_TABLES.includes(table)) ||
+    (feeProvenance && TASK69_FEE_TABLES.includes(table)) ||
     (administrativeSelection && ADMINISTRATIVE_SELECTION_TABLES.includes(table)) ||
     (closedSelection && table === 'closed_report_selections') ||
     (lawyerSelection && table === 'lawyer_report_selections') ||
@@ -420,6 +424,7 @@ export async function runtimeRoleBoundaryFailures(
     (poaBoundary && POA_EDIT_TABLES.includes(table as never)) ||
     (tasks46_47Boundary && TASKS46_47_TABLES.includes(table as never));
   const approvedDefiners: readonly string[] = [
+    ...(feeProvenance ? ['public.fee_letter_link_provenance(p_table text, p_id integer)'] : []),
     ...(task69Poas ? ['public.poa_member_display_order(p_member integer)'] : []),
     ...(task69Steps ? ['public.admin_source_parent_context(p_id integer)'] : []),
     ...(auditHistory ? AUDIT_HISTORY_GATEWAYS : []),

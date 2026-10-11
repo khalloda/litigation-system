@@ -50,6 +50,10 @@ const AUDIT_HISTORY_CLOSURES = new Map([
 // The selection editor also uses the existing trusted human context, bounded below.
 const REPORT_ENGINE_CLOSURES = new Map([
   [
+    'src/lib/reports/fee-engagements.ts',
+    'a98bd27836ced551f7c014af1ceb483cfec4dd186cd68a41653070052e970b88',
+  ],
+  [
     'src/lib/reports/document-reports.ts',
     '187c22a6008aac9c77cfb8ae97513f3f86d58449f36071c3d50732798e03a512',
   ],
@@ -144,7 +148,7 @@ const MATTER_MUTATION_SERVICE_SHA256 =
 const MATTER_MUTATION_INPUT_SHA256 =
   'e0330790c04e15b9d0e2ccab63d8d7f508dd05bece931874dca39db39a986009';
 const MATTER_READ_SERVICE_SHA256 =
-  '54d2f6640a3fc1a02f7b8b864c641431919ebf5c24cd4fe14f504160ad161fbd';
+  '71dd967115c3066734bdbd0094b016f9dc39389daca501b9cb99e1ab52b6f5f2';
 const CLIENT_MUTATION_SERVICE = 'src/lib/client-mutations.ts';
 const LOGO_MUTATION_SERVICE = 'src/lib/client-logo-management.ts';
 const LOGO_MUTATION_SERVICE_SHA256 =
@@ -229,6 +233,11 @@ const REVIEWED_RAW_SQL_CALLS = [
     'src/lib/reports/document-reports.ts',
     'readPoaReport',
     'ba5910953f991ff3f5c20223ef826308323f1fe06c4be7ce8e52917df127b7c8',
+  ],
+  [
+    'src/lib/reports/fee-engagements.ts',
+    'readFeeEngagementReport',
+    '8317d195bc17916dcf68e86f5376d690ac664422ad645f87b73d3693e8a9092b',
   ],
   [
     'src/lib/reports/document-reports.ts',
@@ -736,17 +745,17 @@ const REVIEWED_RAW_SQL_CALLS = [
   [
     'src/lib/fee-letter-query.ts',
     'readFeeLetters',
-    '7106dc2f6676328bf681518d78b5a59ab8071e8e94cad9dab8d45ee636c1ad43',
+    '23661f945cc56e7970252c392ae84ee38d363ab2ef0c912be92f2b11ff3d1474',
   ],
   [
     'src/lib/fee-letter-query.ts',
     'readFeeLetters',
-    'ad763cbed575115cc16aa7ff1c00f49a32854da6e4e6cfd5a2919d454c258f10',
+    'a6f992175b3fb3249f2312c118d0158f0033f9d6441c2e9c1675dbdc21ef63cc',
   ],
   [
     'src/lib/fee-letter-query.ts',
     'readFeeLetter',
-    '173122724961ad415d3435d703a868ed7870f874a57dd8eaaeef0a64ef8f01a9',
+    '6bffa7780002c4cffd571147af03469f6f04ad3bef52babecb34190b725674c8',
   ],
   [
     'src/lib/fee-letter-mutations.ts',
@@ -2654,6 +2663,7 @@ export function auditRuntimeSourceFailures(
     )
       failures.add('Report guarded closure differs from reviewed inventory: ' + source.path);
     const isReportReadService =
+      source.path === 'src/lib/reports/fee-engagements.ts' ||
       source.path === 'src/lib/reports/document-reports.ts' ||
       source.path === 'src/lib/reports/administrative-reports.ts' ||
       source.path === 'src/lib/reports/hearing-periods.ts' ||
@@ -2737,7 +2747,7 @@ export function auditRuntimeSourceFailures(
     if (
       isFeeLetterMutationService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
-        'eddd93434374273851cfe81dd6cd64c325cce839f9703157a2a76b5b318c7ae4'
+        'c2324c9f35814303cf7b0b9c9587d175475ecf1ef86d171c89c2473d655e62eb'
     )
       failures.add('Fee-letter mutation closure differs from reviewed inventory');
     if (
@@ -2851,7 +2861,7 @@ export function auditRuntimeSourceFailures(
     if (
       isFeeLetterReadService &&
       createHash('sha256').update(source.text.replaceAll('\r\n', '\n')).digest('hex') !==
-        'bed60eaf2edcf53ab93a953c514843e6dc5f83f2e8fba90301d63fed311e84b2'
+        '964c36babcfb7ed2dd0378fc9eb94cea2acef08ffcb6257e728af54674b51c1c'
     )
       failures.add('Fee-letter read closure differs from reviewed inventory');
     if (

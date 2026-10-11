@@ -1,3 +1,4 @@
+import { FeeScope } from './fee-scope';
 import Link from 'next/link';
 import type { Session } from 'next-auth';
 import { AuditRecordEntry } from '@/app/audit-history/record-entry';
@@ -30,9 +31,15 @@ function Matters({
           <Link className={styles.nameLink} href={'/matters/' + r.matterId}>
             {r.matterNumber ?? String(r.matterId)}
           </Link>
+          <FeeScope scope={r.scope} />
           {r.retired ? ' · ' + t.feeLettersModule.retired : ''}
           {r.original ? ' · ' + t.feeLettersModule.original : ''}
           {r.matterArchived ? ' · ' + t.feeLettersModule.archived : ''}
+          {r.occurrences?.map((o, index) => (
+            <p className={local.value} key={o.sourceKey + '/' + index}>
+              {t.feeLettersModule.sourceReference}: {o.reference ?? t.feeLettersModule.unknown}
+            </p>
+          ))}
           {r.sourceReference ? (
             <span>
               {' '}

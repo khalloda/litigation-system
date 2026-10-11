@@ -307,6 +307,7 @@ export function task69RunnerSourceDigest(repository: string): string {
         'scripts/lib/task69-step-executor.ts',
         'scripts/lib/task69-poa-executor.ts',
         'scripts/lib/task69-document-executor.ts',
+        'scripts/lib/task69-fee-executor.ts',
       ].map((name) => [name, task69Sha(readFileSync(join(repository, name)))]),
     ),
   );

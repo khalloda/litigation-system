@@ -1,0 +1,698 @@
+{
+  "columns": [
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "name": "forward_id",
+      "type": "integer",
+      "attnotnull": false,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "name": "position",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "name": "reverse_id",
+      "type": "integer",
+      "attnotnull": false,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "name": "was_created",
+      "type": "boolean",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "name": "entity_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "name": "entity_table",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "name": "version",
+      "type": "bigint",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "direction",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "fee_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "fee_version",
+      "type": "bigint",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "identifier_space",
+      "type": "text",
+      "attnotnull": false,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "original_work",
+      "type": "text",
+      "attnotnull": false,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "source_contract_id",
+      "type": "integer",
+      "attnotnull": false,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "source_ordinal",
+      "type": "text",
+      "attnotnull": false,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "source_values",
+      "type": "jsonb",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "name": "receipt_id",
+      "type": "uuid",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "name": "scope_id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "name": "covered_proceeding",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "name": "excluded_stages",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "name": "id",
+      "type": "integer",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "name": "original_work",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "name": "scope_kind",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "name": "scope_statement",
+      "type": "text",
+      "attnotnull": true,
+      "attidentity": "",
+      "default_value": null
+    }
+  ],
+  "constraints": [
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "conname": "task69_fee_association_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK ((forward_id IS NULL) <> (reverse_id IS NULL))"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "conname": "task69_fee_association_forward_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (forward_id) REFERENCES fee_letter_matters(id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "conname": "task69_fee_association_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (receipt_id, \"position\")"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "conname": "task69_fee_association_position_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (\"position\" > 0)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "conname": "task69_fee_association_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_fee_occurrence(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "conname": "task69_fee_association_receipt_id_forward_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (receipt_id, forward_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "conname": "task69_fee_association_receipt_id_reverse_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (receipt_id, reverse_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "conname": "task69_fee_association_reverse_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (reverse_id) REFERENCES matter_fee_letter_references(id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "conname": "task69_fee_receipt_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "conname": "task69_fee_change_entity_table_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (entity_table = ANY (ARRAY['fee_letters'::text, 'matter_fee_letter_references'::text]))"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "conname": "task69_fee_change_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (entity_table, entity_id, version)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "conname": "task69_fee_change_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "conname": "task69_fee_change_receipt_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (receipt_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "conname": "task69_fee_change_version_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (version > 1)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "conname": "task69_fee_receipt_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "conname": "task69_fee_occurrence_direction_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (direction = ANY (ARRAY['FORWARD'::text, 'REVERSE'::text]))"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "conname": "task69_fee_occurrence_fee_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (fee_id) REFERENCES fee_letters(id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "conname": "task69_fee_occurrence_fee_version_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (fee_version > 0)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "conname": "task69_fee_occurrence_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (receipt_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "conname": "task69_fee_occurrence_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "conname": "task69_fee_occurrence_source_values_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (jsonb_typeof(source_values) = 'object'::text)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "conname": "task69_fee_receipt_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "conname": "task69_fee_receipt_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "conname": "task69_fee_scope_binding_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (scope_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "conname": "task69_fee_scope_binding_receipt_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (receipt_id) REFERENCES _migration.task69_receipt(receipt_id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "conname": "task69_fee_scope_binding_receipt_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (receipt_id)"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "conname": "task69_fee_scope_binding_scope_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (scope_id) REFERENCES fee_letter_matter_scopes(id) DEFERRABLE INITIALLY DEFERRED"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "conname": "fee_letter_matter_scopes_covered_proceeding_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (length(covered_proceeding) >= 1 AND length(covered_proceeding) <= 10000)"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "conname": "fee_letter_matter_scopes_excluded_stages_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (length(excluded_stages) >= 1 AND length(excluded_stages) <= 10000)"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "conname": "fee_letter_matter_scopes_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (id) REFERENCES fee_letter_matters(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "conname": "fee_letter_matter_scopes_original_work_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (length(original_work) >= 1 AND length(original_work) <= 10000)"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "conname": "fee_letter_matter_scopes_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "conname": "fee_letter_matter_scopes_scope_kind_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (scope_kind = 'BOUNDED_ORIGINAL_WORK'::text)"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "conname": "fee_letter_matter_scopes_scope_statement_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (length(scope_statement) >= 1 AND length(scope_statement) <= 10000)"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "conname": "task69_fee_scope_complete",
+      "contype": "t",
+      "convalidated": true,
+      "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+    }
+  ],
+  "triggers": [
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "name": "task69_fee_receipt_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_fee_receipt_complete AFTER INSERT ON _migration.task69_fee_association DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_fee_receipt_complete()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "name": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_fee_association FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "name": "task69_fee_receipt_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_fee_receipt_complete AFTER INSERT ON _migration.task69_fee_change DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_fee_receipt_complete()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "name": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_fee_change FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "task69_fee_receipt_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_fee_receipt_complete AFTER INSERT ON _migration.task69_fee_occurrence DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_fee_receipt_complete()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "name": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_fee_occurrence FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "name": "task69_fee_receipt_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_fee_receipt_complete AFTER INSERT ON _migration.task69_fee_scope_binding DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_fee_receipt_complete()"
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "name": "task69_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER task69_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON _migration.task69_fee_scope_binding FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "name": "audit_event_capture",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER audit_event_capture AFTER INSERT ON fee_letter_matter_scopes FOR EACH ROW EXECUTE FUNCTION audit_capture_row_event()"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "name": "scope_immutable",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER scope_immutable BEFORE DELETE OR UPDATE OR TRUNCATE ON fee_letter_matter_scopes FOR EACH STATEMENT EXECUTE FUNCTION _migration.task69_immutable()"
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "name": "task69_fee_scope_complete",
+      "tgenabled": "O",
+      "definition": "CREATE CONSTRAINT TRIGGER task69_fee_scope_complete AFTER INSERT ON fee_letter_matter_scopes DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_fee_scope_complete()"
+    }
+  ],
+  "indexes": [
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "definition": "CREATE INDEX task69_fee_association_forward_idx ON _migration.task69_fee_association USING btree (forward_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "definition": "CREATE INDEX task69_fee_association_reverse_idx ON _migration.task69_fee_association USING btree (reverse_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "definition": "CREATE UNIQUE INDEX task69_fee_association_pkey ON _migration.task69_fee_association USING btree (receipt_id, \"position\")",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "definition": "CREATE UNIQUE INDEX task69_fee_association_receipt_id_forward_id_key ON _migration.task69_fee_association USING btree (receipt_id, forward_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_association",
+      "definition": "CREATE UNIQUE INDEX task69_fee_association_receipt_id_reverse_id_key ON _migration.task69_fee_association USING btree (receipt_id, reverse_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "definition": "CREATE UNIQUE INDEX task69_fee_change_pkey ON _migration.task69_fee_change USING btree (entity_table, entity_id, version)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_change",
+      "definition": "CREATE UNIQUE INDEX task69_fee_change_receipt_id_key ON _migration.task69_fee_change USING btree (receipt_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_occurrence",
+      "definition": "CREATE UNIQUE INDEX task69_fee_occurrence_pkey ON _migration.task69_fee_occurrence USING btree (receipt_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "definition": "CREATE UNIQUE INDEX task69_fee_scope_binding_pkey ON _migration.task69_fee_scope_binding USING btree (scope_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "_migration",
+      "table": "task69_fee_scope_binding",
+      "definition": "CREATE UNIQUE INDEX task69_fee_scope_binding_receipt_id_key ON _migration.task69_fee_scope_binding USING btree (receipt_id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    },
+    {
+      "schema": "public",
+      "table": "fee_letter_matter_scopes",
+      "definition": "CREATE UNIQUE INDEX fee_letter_matter_scopes_pkey ON public.fee_letter_matter_scopes USING btree (id)",
+      "indisvalid": true,
+      "indisready": true,
+      "indislive": true
+    }
+  ],
+  "grants": [
+    {
+      "schema": "public",
+      "name": "fee_letter_matter_scopes",
+      "grantee": "litigation_runtime",
+      "privilege_type": "SELECT",
+      "is_grantable": false
+    }
+  ]
+}

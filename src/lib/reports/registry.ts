@@ -1,3 +1,4 @@
+import { feeEngagementReport } from './fee-engagements';
 import 'server-only';
 import type { ReportDefinition } from './types';
 import { activeClientContacts } from './client-contacts';
@@ -32,5 +33,6 @@ export const reportDefinitions: readonly ReportDefinition[] = Object.freeze([
   teamHearingReport,
   ...administrativeReports,
   ...documentReports,
+  feeEngagementReport,
   judgmentsByLawyer,
 ]);

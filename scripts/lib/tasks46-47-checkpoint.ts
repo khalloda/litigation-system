@@ -1,3 +1,4 @@
+import { task69FeeApplied, currentTask69FeeSql } from './task69-fee-checkpoint';
 import {
   task69DocumentRestorationApplied,
   currentTask69DocumentRestorationSql,
@@ -292,10 +293,11 @@ export async function assertTasks46_47Boundary(db: ClientBase, profile: string) 
         (p.proname LIKE 'tasks46_47_%' OR p.proname LIKE 'document_edit_%'
           OR p.proname LIKE 'fee_letter_edit_%' OR p.proname LIKE 'matter_fee_reference_%')`)
   ).rows;
-  const effectiveSql = currentTask69DocumentRestorationSql(
+  const documentSql = currentTask69DocumentRestorationSql(
     currentTask69DocumentSql(tasks46_47Sql(), await task69DocumentApplied(db)),
     await task69DocumentRestorationApplied(db),
   );
+  const effectiveSql = currentTask69FeeSql(documentSql, await task69FeeApplied(db));
   for (const fn of functions) {
     const source = effectiveSql.match(
       new RegExp(

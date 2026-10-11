@@ -1,3 +1,4 @@
+import type { FeeLetterScope } from './fee-letter-query';
 import type { Session } from 'next-auth';
 import { Prisma, type PrismaClient } from '@/generated/prisma/client';
 import { db } from './db';
@@ -26,7 +27,14 @@ export type FeeLetterSnapshot = {
     archived: boolean;
     values: FeeLetterValues;
     facts: Record<string, unknown>;
-    covered: { id: number; matterId: number; retired: boolean; order: number; original: boolean }[];
+    covered: {
+      scope: FeeLetterScope | null;
+      id: number;
+      matterId: number;
+      retired: boolean;
+      order: number;
+      original: boolean;
+    }[];
   };
   clients: { id: number; name: string; active: boolean }[];
   matters: { id: number; name: string | null; active: boolean }[];

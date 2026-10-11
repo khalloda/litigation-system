@@ -2227,6 +2227,7 @@ model HearingAttendee {
 /// letter through the reviewed two-key-space rule. Two different links and
 /// two different numbers must not be reconciled together.
 model FeeLetterMatter {
+  scope FeeLetterMatterScope?
   id          Int       @id @default(autoincrement())
   isRetired   Boolean   @default(false) @map("is_retired")
   currentOrder Int?     @map("current_order")
@@ -2808,4 +2809,16 @@ model DocumentResponsiblePerson {
   @@unique([documentId, personId], map: "document_responsible_people_member_key")
   @@unique([documentId, position], map: "document_responsible_people_position_key")
   @@map("document_responsible_people")
+}
+
+/// Immutable approved scope for a bounded original-work association.
+model FeeLetterMatterScope {
+  id Int @id
+  member FeeLetterMatter @relation(fields: [id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  scopeKind String @map("scope_kind")
+  coveredProceeding String @map("covered_proceeding")
+  originalWork String @map("original_work")
+  scopeStatement String @map("scope_statement")
+  excludedStages String @map("excluded_stages")
+  @@map("fee_letter_matter_scopes")
 }

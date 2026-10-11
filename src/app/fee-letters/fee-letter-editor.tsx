@@ -1,4 +1,5 @@
 'use client';
+import { FeeScope } from './fee-scope';
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { FeeLetterSnapshot, MatterFeeReferenceSnapshot } from '@/lib/fee-letter-mutations';
@@ -338,7 +339,7 @@ export function CoveredMatterEditor({
           <li key={x.id}>
             {s.matters.find((m) => m.id === x.matterId)?.name ?? x.matterId} ·{' '}
             {x.retired ? t.feeLettersModule.retired : t.feeLettersModule.current}
-            {x.original ? ' · ' + t.feeLettersModule.original : ''}{' '}
+            {x.original ? ' · ' + t.feeLettersModule.original : ''} <FeeScope scope={x.scope} />
             <button
               className={styles.link}
               type="button"
@@ -360,7 +361,12 @@ export function CoveredMatterEditor({
         >
           <option value="">{t.feeLettersModule.chooseMatter}</option>
           {s.matters
-            .filter((m) => m.active && !current.includes(m.id))
+            .filter(
+              (m) =>
+                m.active &&
+                !current.includes(m.id) &&
+                !record.covered.some((x) => x.matterId === m.id && x.scope),
+            )
             .map((m) => (
               <option value={m.id} key={m.id}>
                 {m.name ?? m.id}

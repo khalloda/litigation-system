@@ -1,3 +1,4 @@
+import type { FeeLetterScope } from './fee-letter-query';
 import { Prisma, type PrismaClient } from '@/generated/prisma/client';
 import type { Session } from 'next-auth';
 import {
@@ -193,6 +194,12 @@ export type MatterDetail = Omit<MatterRow, 'matches'> & {
   legalOpinion: string | null;
   notes1: string | null;
   notes2: string | null;
+  coveredFees: {
+    id: number;
+    contractId: number | null;
+    originalWork: string | null;
+    scope: FeeLetterScope | null;
+  }[];
   currentFeeLetterId: number | null;
   currentFeeContractId: number | null;
   currentFeeClientName: string | null;
@@ -281,6 +288,7 @@ export function matterDetailQuery(id: number) {
     i.label_ar AS importance,ds.label_ar AS destination,m.start_date::text AS "startDate",m.end_date::text AS "endDate",
     m.asked_amount::text AS "askedAmount",m.judged_amount::text AS "judgedAmount",m.current_status AS "currentStatus",
     m.evaluation,m.legal_opinion AS "legalOpinion",m.notes_1 AS "notes1",m.notes_2 AS "notes2",
+    coalesce((SELECT jsonb_agg(jsonb_build_object('id',f.id,'contractId',f.contract_id,'originalWork',f.contract_details,'scope',public.fee_letter_link_provenance('fee_letter_matters',l.id)->'scope') ORDER BY f.id,l.id) FROM public.fee_letter_matters l JOIN public.fee_letters f ON f.id=l.fee_letter_id WHERE l.matter_id=m.id AND NOT l.is_retired),'[]') AS "coveredFees",
     current_ref.fee_letter_id AS "currentFeeLetterId",current_fee.contract_id AS "currentFeeContractId",
     current_client.name_ar AS "currentFeeClientName",m.fee_letter_ref AS "originalFeeReference",
     original_ref.fee_letter_id AS "originalFeeLetterId",original_fee.contract_id AS "originalFeeContractId",

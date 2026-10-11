@@ -52,6 +52,7 @@ export const REPORT_CATEGORIES = {
     'document-inventory',
     'client-documents',
     'document-movement-card',
+    'fee-letter-engagements',
   ],
 } as const;
 

@@ -1,3 +1,5 @@
+import { task69ActorApplied, task69ActorSql } from './task69-actor-checkpoint';
+import { task69FeeApplied } from './task69-fee-checkpoint';
 import { task69DocumentRestorationApplied } from './task69-document-restoration-checkpoint';
 import { task69PoaApplied } from './task69-poa-checkpoint';
 import { task69StepApplied } from './task69-step-checkpoint';
@@ -96,6 +98,14 @@ export async function task69FoundationFailures(db: ClientBase): Promise<string[]
   try {
     if (!(await task69FoundationApplied(db))) return failures;
     const expected = JSON.parse(readFileSync('scripts/lib/task69-foundation-catalog.json', 'utf8'));
+    if (await task69ActorApplied(db)) {
+      const actor = expected.functions.find(
+        (f: { proname: string }) => f.proname === 'task69_require_actor',
+      );
+      assert.ok(actor);
+      const sql = task69ActorSql();
+      actor.prosrc = sql.slice(sql.indexOf('AS $$') + 5, sql.indexOf('END $$;') + 4);
+    }
     if (await task69PartyApplied(db)) {
       expected.constraints.push(
         ...task69PartyExpected().constraints.filter(
@@ -211,6 +221,22 @@ export async function task69FoundationFailures(db: ClientBase): Promise<string[]
           'CREATE CONSTRAINT TRIGGER task69_poa_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_poa_receipt_complete()',
       });
     }
+    if (await task69FeeApplied(db)) {
+      expected.constraints.push({
+        table_name: 'task69_receipt',
+        conname: 'task69_fee_receipt_complete',
+        contype: 't',
+        convalidated: true,
+        definition: 'TRIGGER DEFERRABLE INITIALLY DEFERRED',
+      });
+      expected.triggers.push({
+        table_name: 'task69_receipt',
+        tgname: 'task69_fee_receipt_complete',
+        tgenabled: 'O',
+        definition:
+          'CREATE CONSTRAINT TRIGGER task69_fee_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_fee_receipt_complete()',
+      });
+    }
     if (await task69DocumentRestorationApplied(db)) {
       expected.constraints.push({
         table_name: 'task69_receipt',
@@ -226,6 +252,17 @@ export async function task69FoundationFailures(db: ClientBase): Promise<string[]
         definition:
           'CREATE CONSTRAINT TRIGGER task69_document_receipt_complete AFTER INSERT ON _migration.task69_receipt DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION _migration.task69_document_receipt_complete()',
       });
+    }
+    if (await task69FeeApplied(db)) {
+      const constraint = expected.constraints.find(
+        (r: { conname: string }) => r.conname === 'task69_delta_entity_table_check',
+      );
+      assert(constraint);
+      assert.equal(constraint.definition.split("'document_responsible_people'::text").length, 2);
+      constraint.definition = constraint.definition.replace(
+        "'document_responsible_people'::text",
+        "'document_responsible_people'::text, 'fee_letter_matter_scopes'::text",
+      );
     }
     expected.constraints.sort(
       (a: { table_name: string; conname: string }, b: { table_name: string; conname: string }) =>

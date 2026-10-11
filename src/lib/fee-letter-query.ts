@@ -18,6 +18,22 @@ export type FeeLetterFilters = {
   referencing: string;
   mfiles: 'all' | 'present' | 'missing';
 };
+export type FeeLetterScope = {
+  scope_kind: 'BOUNDED_ORIGINAL_WORK';
+  covered_proceeding: string;
+  original_work: string;
+  scope_statement: string;
+  excluded_stages: string;
+};
+export type FeeLetterOccurrence = {
+  sourceKey: string;
+  reference: string | null;
+  sourceOrdinal: string | null;
+  memberPosition: number;
+  identifierSpace: string | null;
+  sourceContractId: number | null;
+  originalWork: string | null;
+};
 export type FeeLetterMatterLink = {
   id: number;
   matterId: number;
@@ -27,6 +43,8 @@ export type FeeLetterMatterLink = {
   original: boolean;
   order: number | null;
   sourceReference: string | null;
+  scope: FeeLetterScope | null;
+  occurrences: FeeLetterOccurrence[];
 };
 export type FeeLetterRecord = {
   id: number;
@@ -129,9 +147,10 @@ function where(filters: FeeLetterFilters) {
         f.contract_type,f.contract_details,f.contract_structure,f.status,c.name_ar,c.full_name,c.name_en]) value
         WHERE public.ar_normalise(value) LIKE ${pattern(filters.q)})
       OR EXISTS(SELECT 1 FROM public.fee_letter_matters l JOIN public.matters m ON m.id=l.matter_id
-        WHERE l.fee_letter_id=f.id AND (NOT l.is_retired OR l.legacy_source_record_key IS NOT NULL)
+        WHERE l.fee_letter_id=f.id AND (NOT l.is_retired OR l.legacy_source_record_key IS NOT NULL OR jsonb_array_length(public.fee_letter_link_provenance('fee_letter_matters',l.id)->'occurrences')>0)
         AND (public.ar_normalise(m.case_number_ar) LIKE ${pattern(filters.q)}
-          OR public.ar_normalise(l.legacy_matter_ref) LIKE ${pattern(filters.q)}))
+          OR public.ar_normalise(l.legacy_matter_ref) LIKE ${pattern(filters.q)}
+          OR EXISTS(SELECT 1 FROM public.fee_letter_matter_scopes s WHERE s.id=l.id AND (public.ar_normalise(s.original_work) LIKE ${pattern(filters.q)} OR public.ar_normalise(s.covered_proceeding) LIKE ${pattern(filters.q)} OR public.ar_normalise(s.scope_statement) LIKE ${pattern(filters.q)}))))
       OR EXISTS(SELECT 1 FROM public.matter_fee_letter_references r JOIN public.matters m ON m.id=r.matter_id
         WHERE r.fee_letter_id=f.id AND (NOT r.is_retired OR r.legacy_source_record_key IS NOT NULL)
         AND (public.ar_normalise(m.case_number_ar) LIKE ${pattern(filters.q)}
@@ -148,7 +167,8 @@ const projection = Prisma.sql`f.id,f.contract_id AS "contractId",f.row_version::
  f.status AS "sourceStatus",
  (SELECT coalesce(jsonb_agg(jsonb_build_object('id',l.id,'matterId',l.matter_id,
    'matterNumber',m.case_number_ar,'matterArchived',coalesce(m.is_archived,false),
-   'retired',l.is_retired,'original',l.legacy_source_record_key IS NOT NULL,
+   'retired',l.is_retired,'original',l.legacy_source_record_key IS NOT NULL OR jsonb_array_length(public.fee_letter_link_provenance('fee_letter_matters',l.id)->'occurrences')>0,
+   'scope',public.fee_letter_link_provenance('fee_letter_matters',l.id)->'scope','occurrences',public.fee_letter_link_provenance('fee_letter_matters',l.id)->'occurrences',
    'order',coalesce(l.current_order,l.ordinal+1),'sourceReference',l.legacy_matter_ref)
    ORDER BY coalesce(l.current_order,l.ordinal+1),l.id),'[]')
   FROM public.fee_letter_matters l LEFT JOIN public.matters m ON m.id=l.matter_id
@@ -156,12 +176,19 @@ const projection = Prisma.sql`f.id,f.contract_id AS "contractId",f.row_version::
  (SELECT coalesce(jsonb_agg(jsonb_build_object('id',r.id,'matterId',r.matter_id,
    'matterNumber',m.case_number_ar,'matterArchived',coalesce(m.is_archived,false),
    'retired',r.is_retired,'original',r.legacy_source_record_key IS NOT NULL,
+   'scope',NULL,'occurrences',public.fee_letter_link_provenance('matter_fee_letter_references',r.id)->'occurrences',
    'order',NULL,'sourceReference',r.legacy_reference_raw) ORDER BY m.case_number_ar COLLATE "arabic",r.id),'[]')
   FROM public.matter_fee_letter_references r JOIN public.matters m ON m.id=r.matter_id
   WHERE r.fee_letter_id=f.id) referencing,
  (SELECT count(*)::int FROM public.invoices i WHERE i.fee_letter_id=f.id) AS "invoiceCount",
  public.fee_letter_edit_forward_quarantine_count(f.contract_id) AS "forwardQuarantineCount",
  public.fee_letter_edit_reverse_quarantine_count(f.legacy_source_record_key) AS "reverseQuarantineCount"`;
+export const feeLetterCountQuery = (filters: FeeLetterFilters) =>
+  Prisma.sql`SELECT count(*)::int total ${joins} WHERE ${where(filters)}`;
+export const feeLetterRowsQuery = (filters: FeeLetterFilters, page: number) =>
+  Prisma.sql`SELECT ${projection} ${joins} WHERE ${where(filters)} ORDER BY f.id DESC LIMIT ${FEE_LETTER_PAGE_SIZE} OFFSET ${(page - 1) * FEE_LETTER_PAGE_SIZE}`;
+export const feeLetterDetailQuery = (id: number) =>
+  Prisma.sql`SELECT ${projection} ${joins} WHERE f.id=${id}`;
 function authorize(session: Session | null) {
   requireAuthorizedDecision(decideAuthorization(session, 'feeLetters', 'view'));
   if (!session || !(Date.parse(session.expires) > Date.now()))
@@ -220,15 +247,15 @@ export async function readFeeLetters(
       )
         throw new FeeLetterFilterError('unknown identity');
     const counts = await tx.$queryRaw<{ total: number }[]>(
-      Prisma.sql`SELECT count(*)::int total ${joins} WHERE ${where(filters)}`,
+      Prisma.sql`${feeLetterCountQuery(filters)}`,
     );
     if (counts.length !== 1) throw new Error('fee-letter count cardinality');
     const total = counts[0]!.total;
     const pages = Math.max(1, Math.ceil(total / FEE_LETTER_PAGE_SIZE));
     const page = Math.min(filters.page, pages);
-    const rows = await tx.$queryRaw<FeeLetterRecord[]>(Prisma.sql`SELECT ${projection} ${joins}
-      WHERE ${where(filters)} ORDER BY f.id DESC LIMIT ${FEE_LETTER_PAGE_SIZE}
-      OFFSET ${(page - 1) * FEE_LETTER_PAGE_SIZE}`);
+    const rows = await tx.$queryRaw<FeeLetterRecord[]>(
+      Prisma.sql`${feeLetterRowsQuery(filters, page)}`,
+    );
     if (
       rows.length !==
         Math.min(FEE_LETTER_PAGE_SIZE, Math.max(0, total - (page - 1) * FEE_LETTER_PAGE_SIZE)) ||
@@ -276,9 +303,7 @@ export async function readFeeLetter(
   const id = clientId(rawId);
   if (id === null) return null;
   return snapshot(db, session!, async (tx) => {
-    const rows = await tx.$queryRaw<FeeLetterRecord[]>(
-      Prisma.sql`SELECT ${projection} ${joins} WHERE f.id=${id}`,
-    );
+    const rows = await tx.$queryRaw<FeeLetterRecord[]>(Prisma.sql`${feeLetterDetailQuery(id)}`);
     if (rows.length > 1) throw new Error('fee-letter identity cardinality');
     return rows[0] ?? null;
   });

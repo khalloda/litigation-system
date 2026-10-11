@@ -1,3 +1,4 @@
+import { FeeScope } from '@/app/fee-letters/fee-scope';
 import {
   hearingReturnHref,
   HearingFilterError,
@@ -302,6 +303,14 @@ export async function MatterDetail({
           ) : null}
           {hasPermission(session.user.role, 'feeLetters', 'view') ? (
             <>
+              {matter.coveredFees?.map((f) => (
+                <div key={f.id}>
+                  <Link className={styles.link} href={'/fee-letters/' + f.id}>
+                    {t.feeLettersModule.title} {f.contractId ?? f.id}
+                  </Link>
+                  <FeeScope scope={f.scope} />
+                </div>
+              ))}
               <Link className={styles.link} href={`/fee-letters?covered=${matter.id}&archive=all`}>
                 {t.feeLettersModule.covered}
               </Link>

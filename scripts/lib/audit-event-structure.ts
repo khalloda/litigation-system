@@ -1,3 +1,4 @@
+import { task69FeeApplied, TASK69_FEE_TABLES, TASK69_FEE_FIELDS } from './task69-fee-checkpoint';
 import {
   task69DocumentApplied,
   TASK69_DOCUMENT_TABLES,
@@ -200,6 +201,7 @@ export async function auditEventStructureFailures(
   failures.push(...(await lawyerSelectionFailures(db)));
   failures.push(...(await closedSelectionFailures(db)));
   failures.push(...(await reportSelectionFailures(db)));
+  const feeProvenance = await task69FeeApplied(db);
   const documentRelationships = await task69DocumentApplied(db);
   const adminAssignments = await task69AdminAssignmentApplied(db);
   const eventTables = reportSelection
@@ -207,6 +209,7 @@ export async function auditEventStructureFailures(
         ...AUDITED_TABLES,
         ...(adminAssignments ? ['admin_task_assignees'] : []),
         ...(documentRelationships ? TASK69_DOCUMENT_TABLES : []),
+        ...(feeProvenance ? TASK69_FEE_TABLES : []),
         'client_report_selections',
         ...(closedSelection ? ['closed_report_selections'] : []),
         ...(lawyerSelection ? ['lawyer_report_selections'] : []),
@@ -231,6 +234,7 @@ export async function auditEventStructureFailures(
   const currentFieldRules = [
     ...(adminAssignments ? TASK69_ADMIN_ASSIGNMENT_FIELDS : []),
     ...(documentRelationships ? TASK69_DOCUMENT_FIELDS : []),
+    ...(feeProvenance ? TASK69_FEE_FIELDS : []),
     ...(lawyerRestoration ? TASK69_LAWYER_FIELDS : []),
     ...(partySemantics ? TASK69_PARTY_FIELDS : []),
     ...(reportSelection ? REPORT_SELECTION_FIELDS : []),
@@ -276,6 +280,7 @@ export async function auditEventStructureFailures(
           [
             'admin_task_assignees',
             ...TASK69_DOCUMENT_TABLES,
+            ...TASK69_FEE_TABLES,
             'client_report_selections',
             'closed_report_selections',
             'lawyer_report_selections',
@@ -550,7 +555,11 @@ export async function auditEventStructureFailures(
     ].includes(row.table_name);
     if (
       !row.definition.includes(
-        relationship ? 'AFTER INSERT OR DELETE OR UPDATE' : 'AFTER INSERT OR UPDATE',
+        row.table_name === 'fee_letter_matter_scopes'
+          ? 'AFTER INSERT ON'
+          : relationship
+            ? 'AFTER INSERT OR DELETE OR UPDATE'
+            : 'AFTER INSERT OR UPDATE',
       ) ||
       !row.definition.endsWith('EXECUTE FUNCTION audit_capture_row_event()')
     ) {
