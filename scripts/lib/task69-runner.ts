@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClientBase } from 'pg';
 import { decode } from 'next-auth/jwt';
@@ -129,6 +129,16 @@ export function prepareTask69Operation(input: {
   assert.match(input.database, /^litigation_task69_[a-z0-9_]+$/u);
   assert.match(input.runnerSha256, /^[a-f0-9]{64}$/u);
   assert.match(input.schemaSha256, /^[a-f0-9]{64}$/u);
+  assert.equal(
+    input.runnerSha256,
+    task69RunnerSourceDigest(process.cwd()),
+    'Exact current runner and application sources required',
+  );
+  assert.equal(
+    input.schemaSha256,
+    task69SchemaSourceDigest(process.cwd()),
+    'Complete candidate schema identity required',
+  );
   const contract = loadTask69Contract(input.directory);
   const allowlist = compileTask69Entries(contract);
   const value = {
@@ -176,6 +186,7 @@ export async function withTask69Fixture<T>(
   operation: Task69PreparedOperation,
   work: (db: ClientBase) => Promise<T>,
 ): Promise<T> {
+  assertTask69RuntimeBound(operation);
   const target = migrationDatabaseTarget();
   const url = new URL(`${target.protocol}//${target.hostname}:${target.port}/${target.database}`);
   assert.equal(url.pathname, '/' + operation.targetDatabase);
@@ -198,6 +209,7 @@ export async function registerTask69Operation(
   operation: Task69PreparedOperation,
   authority: SessionClaims,
 ): Promise<'registered' | 'already-registered'> {
+  assertTask69RuntimeBound(operation);
   const target = migrationDatabaseTarget();
   await assertIsolatedTestCluster(
     db,
@@ -230,6 +242,7 @@ export async function bindTask69Operation(
   operation: Task69PreparedOperation,
   authority: SessionClaims,
 ): Promise<'registered' | 'already-registered'> {
+  assertTask69RuntimeBound(operation);
   const target = migrationDatabaseTarget();
   await assertIsolatedTestCluster(
     db,
@@ -293,23 +306,57 @@ export async function bindTask69Operation(
   return 'registered';
 }
 
+/** Full source identities are rechecked before every transaction entry/retry.
+ * They include actual application consumers and all forward migrations, not
+ * merely the latest migration file or a handwritten executor subset. */
+function task69SourceTree(
+  repository: string,
+  roots: readonly string[],
+  excluded: readonly string[] = [],
+): Record<string, string> {
+  const files: Record<string, string> = {};
+  const visit = (relative: string) => {
+    for (const item of readdirSync(join(repository, relative), { withFileTypes: true })) {
+      const path = (relative + '/' + item.name).replaceAll('\\', '/');
+      assert(!item.isSymbolicLink(), 'Source manifest refuses links');
+      if (excluded.includes(path)) continue;
+      if (item.isDirectory()) visit(path);
+      else files[path] = task69Sha(readFileSync(join(repository, path)));
+    }
+  };
+  for (const root of roots) visit(root);
+  return files;
+}
+export function task69SchemaSourceDigest(repository: string): string {
+  const files = task69SourceTree(repository, ['prisma/migrations']);
+  files['prisma/schema.prisma'] = task69Sha(readFileSync(join(repository, 'prisma/schema.prisma')));
+  return task69Digest(files);
+}
 export function task69RunnerSourceDigest(repository: string): string {
-  return task69Digest(
-    Object.fromEntries(
-      [
-        'scripts/lib/task69-contract.ts',
-        'scripts/lib/task69-runner.ts',
-        'scripts/lib/task69-preflight.ts',
-        'scripts/lib/task69-matter-executor.ts',
-        'scripts/lib/task69-lawyer-executor.ts',
-        'scripts/lib/task69-destination-executor.ts',
-        'scripts/lib/task69-admin-executor.ts',
-        'scripts/lib/task69-step-executor.ts',
-        'scripts/lib/task69-poa-executor.ts',
-        'scripts/lib/task69-document-executor.ts',
-        'scripts/lib/task69-fee-executor.ts',
-        'scripts/lib/task69-history-executor.ts',
-      ].map((name) => [name, task69Sha(readFileSync(join(repository, name)))]),
-    ),
+  const files = task69SourceTree(repository, ['src', 'scripts/lib', 'public'], ['src/generated']);
+  for (const name of [
+    'package.json',
+    'package-lock.json',
+    'prisma.config.ts',
+    'next.config.ts',
+    'tsconfig.json',
+  ])
+    files[name] = task69Sha(readFileSync(join(repository, name)));
+  for (const name of readdirSync(join(repository, 'scripts')).filter((n) =>
+    /^task69-.*\.(?:ts|mts|cts)$/u.test(n),
+  ))
+    files['scripts/' + name] = task69Sha(readFileSync(join(repository, 'scripts', name)));
+  return task69Digest(files);
+}
+export function assertTask69RuntimeBound(operation: Task69PreparedOperation): void {
+  assert.equal(
+    operation.runnerSha256,
+    task69RunnerSourceDigest(process.cwd()),
+    'Runner/application changed since this sealed operation',
+  );
+  assert.equal(
+    operation.schemaSha256,
+    task69SchemaSourceDigest(process.cwd()),
+    'Schema changed since this sealed operation',
   );
 }

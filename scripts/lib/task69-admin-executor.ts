@@ -21,8 +21,8 @@ export async function executeTask69Admin(
 ): Promise<Row> {
   assertTask69EntryBound(entry, operation);
   let context = await authorizeTask69Issue(db, operation, entry.issueId, authority);
-  if (context.receipt) return context.receipt;
   await assertTask69Preflight(db, entry, operation);
+  if (context.receipt) return context.receipt;
   const intended = entry.approvedOutcome.task as Row;
   assert.ok(intended && typeof intended === 'object' && !Array.isArray(intended));
   const values: Row = structuredClone(intended);

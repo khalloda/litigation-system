@@ -21,8 +21,8 @@ export async function executeTask69Poa(
 ): Promise<Row> {
   assertTask69EntryBound(entry, operation);
   const context = await authorizeTask69Issue(db, operation, entry.issueId, authority);
-  if (context.receipt) return context.receipt;
   await assertTask69Preflight(db, entry, operation);
+  if (context.receipt) return context.receipt;
   const intended = entry.approvedOutcome,
     source = entry.originalIssue.original,
     id = intended.poaId;

@@ -4,12 +4,13 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { SessionClaims } from '../src/lib/auth/session';
-import { loadTask69Contract, task69Sha, type Row } from './lib/task69-contract';
+import { loadTask69Contract, type Row } from './lib/task69-contract';
 import {
   prepareTask69Operation,
   withTask69Fixture,
   bindTask69Operation,
   task69RunnerSourceDigest,
+  task69SchemaSourceDigest,
 } from './lib/task69-runner';
 import { executeTask69Document } from './lib/task69-document-executor';
 import {
@@ -42,7 +43,7 @@ async function main() {
     cluster: descriptor.cluster,
     database: descriptor.database,
     runnerSha256: task69RunnerSourceDigest(resolve('.')),
-    schemaSha256: task69Sha(sql),
+    schemaSha256: task69SchemaSourceDigest(process.cwd()),
   });
   const results: Row[] = [],
     probes: string[] = [];
@@ -312,7 +313,7 @@ async function main() {
             focused,
             operationId: operation.operationId,
             runnerSha256: operation.runnerSha256,
-            schemaSha256: task69Sha(sql),
+            schemaSha256: task69SchemaSourceDigest(process.cwd()),
             results,
             probes,
             responsibilityLinks: n('people'),

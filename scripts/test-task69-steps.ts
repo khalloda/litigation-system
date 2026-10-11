@@ -12,12 +12,13 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { SessionClaims } from '../src/lib/auth/session';
-import { loadTask69Contract, task69Sha, type Row } from './lib/task69-contract';
+import { loadTask69Contract, type Row } from './lib/task69-contract';
 import {
   prepareTask69Operation,
   withTask69Fixture,
   bindTask69Operation,
   task69RunnerSourceDigest,
+  task69SchemaSourceDigest,
   type Task69PreparedOperation,
 } from './lib/task69-runner';
 import { executeTask69Step, executeTask69GeneratedParent } from './lib/task69-step-executor';
@@ -56,7 +57,7 @@ async function main() {
       cluster: descriptor.cluster,
       database: descriptor.database,
       runnerSha256: task69RunnerSourceDigest(resolve('.')),
-      schemaSha256: task69Sha(sql),
+      schemaSha256: task69SchemaSourceDigest(process.cwd()),
     });
   } else {
     operation = JSON.parse(readFileSync(planPath, 'utf8')).operation;
@@ -65,7 +66,7 @@ async function main() {
       task69RunnerSourceDigest(resolve('.')),
       'Committed rehearsal runner changed; keep old evidence and start a distinct fixture',
     );
-    assert.equal(operation.schemaSha256, task69Sha(sql));
+    assert.equal(operation.schemaSha256, task69SchemaSourceDigest(process.cwd()));
   }
   assert.equal(operation.targetCluster, descriptor.cluster);
   assert.equal(operation.targetDatabase, descriptor.database);
@@ -425,7 +426,7 @@ async function main() {
             parents,
             operationId: operation.operationId,
             runnerSha256: operation.runnerSha256,
-            schemaSha256: task69Sha(sql),
+            schemaSha256: task69SchemaSourceDigest(process.cwd()),
             results,
             probes,
             before,
@@ -462,7 +463,7 @@ async function main() {
             draft,
             parents,
             operationId: operation.operationId,
-            schemaSha256: task69Sha(sql),
+            schemaSha256: task69SchemaSourceDigest(process.cwd()),
             results,
             probes,
             message: e instanceof Error ? e.message : String(e),

@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto';
 import type { SessionClaims } from '../src/lib/auth/session';
 import {
   loadTask69Contract,
-  task69Sha,
   task69Digest,
   type Row,
   type Task69Entry,
@@ -15,6 +14,7 @@ import {
   withTask69Fixture,
   bindTask69Operation,
   task69RunnerSourceDigest,
+  task69SchemaSourceDigest,
 } from './lib/task69-runner';
 import { executeTask69Parties, executeTask69Lookup } from './lib/task69-matter-executor';
 import { executeTask69Lawyers } from './lib/task69-lawyer-executor';
@@ -42,7 +42,7 @@ async function main() {
       cluster: d.cluster,
       database: d.database,
       runnerSha256: task69RunnerSourceDigest(resolve('.')),
-      schemaSha256: task69Sha(sql),
+      schemaSha256: task69SchemaSourceDigest(process.cwd()),
     }),
     probes: string[] = [];
   const parties = contract.stages['S1-party-display'].map((id) => contract.byIssue.get(id)!);
@@ -230,7 +230,7 @@ async function main() {
             started,
             completed: new Date().toISOString(),
             draft,
-            schemaSha256: task69Sha(sql),
+            schemaSha256: task69SchemaSourceDigest(process.cwd()),
             probes,
             records,
             before,
@@ -256,7 +256,7 @@ async function main() {
             started,
             completed: new Date().toISOString(),
             draft,
-            schemaSha256: task69Sha(sql),
+            schemaSha256: task69SchemaSourceDigest(process.cwd()),
             probes,
             message: e instanceof Error ? e.message : String(e),
             diagnostic:

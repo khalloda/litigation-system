@@ -10,6 +10,7 @@ import {
   withTask69Fixture,
   bindTask69Operation,
   task69RunnerSourceDigest,
+  task69SchemaSourceDigest,
 } from './lib/task69-runner';
 import { executeTask69Lawyers } from './lib/task69-lawyer-executor';
 async function main() {
@@ -35,7 +36,7 @@ async function main() {
       cluster: descriptor.cluster,
       database: descriptor.database,
       runnerSha256: task69RunnerSourceDigest(resolve('.')),
-      schemaSha256: task69Sha(sql),
+      schemaSha256: task69SchemaSourceDigest(process.cwd()),
     }),
     results: Row[] = [];
   await withTask69Fixture(operation, async (db) => {
@@ -48,7 +49,7 @@ async function main() {
     assert.equal(
       (
         await db.query(
-          'SELECT count(*)::int n FROM public._prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL',
+          "SELECT count(*)::int n FROM public._prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL AND migration_name<='20261007150000_task69_lawyer_restoration'",
         )
       ).rows[0].n,
       draft ? 81 : 82,

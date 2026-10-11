@@ -1,3 +1,4 @@
+import { executeTask69History } from './lib/task69-history-executor';
 import { assertTask69Preflight } from './lib/task69-preflight';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -5,13 +6,14 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SessionClaims } from '../src/lib/auth/session';
 import {
+  assertTask69RuntimeBound,
   bindTask69Operation,
   prepareTask69Operation,
   task69RunnerSourceDigest,
+  task69SchemaSourceDigest,
   withTask69Fixture,
 } from './lib/task69-runner';
-import { loadTask69Contract, task69Sha } from './lib/task69-contract';
-import { TASK69_FOUNDATION_MIGRATION } from './lib/task69-foundation-checkpoint';
+import { loadTask69Contract } from './lib/task69-contract';
 
 async function main() {
   const started = new Date().toISOString();
@@ -32,9 +34,7 @@ async function main() {
     cluster: descriptor.cluster,
     database: descriptor.database,
     runnerSha256: task69RunnerSourceDigest(process.cwd()),
-    schemaSha256: task69Sha(
-      readFileSync(`prisma/migrations/${TASK69_FOUNDATION_MIGRATION}/migration.sql`),
-    ),
+    schemaSha256: task69SchemaSourceDigest(process.cwd()),
   });
   assert.equal(operation.allowlist.filter((e) => e.unit_kind === 'issue').length, 3465);
   const counts = Object.fromEntries(
@@ -45,6 +45,18 @@ async function main() {
   );
   assert.deepEqual(counts, { 'LOOKUP/': 89, 'GENERATED-PARENT/': 30, 'DEST-': 1 });
   const probes: { name: string; result: string }[] = [];
+  assert.throws(
+    () => assertTask69RuntimeBound({ ...operation, runnerSha256: '0'.repeat(64) }),
+    /Runner\/application changed/u,
+  );
+  assert.throws(
+    () => assertTask69RuntimeBound({ ...operation, schemaSha256: '0'.repeat(64) }),
+    /Schema changed/u,
+  );
+  probes.push({
+    name: 'complete application and schema binding rejects changed operation hashes',
+    result: 'REFUSED_AS_REQUIRED',
+  });
   await withTask69Fixture(operation, async (db) => {
     await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     try {
@@ -114,22 +126,14 @@ async function main() {
         );
       const actor = (await authorize(admin)).rows[0].value.actorId;
       await db.query('SET CONSTRAINTS ALL DEFERRED');
-      const receiptId = randomUUID();
-      const returned = { originalIssue: entry.issue_id };
-      await db.query(
-        "INSERT INTO _migration.task69_receipt(receipt_id,operation_id,issue_id,payload_sha256,phase,actor_id,audit_session_id,request_id,returned_ids,source_occurrences,effect,expected_delta_count) VALUES($1,$2,$3,$4,'apply',$5,$6,$7,$8,$9,'no-business-write',0)",
-        [
-          receiptId,
-          operation.operationId,
-          entry.issue_id,
-          entry.payload_sha256,
-          actor,
-          admin.auditSessionId,
-          randomUUID(),
-          JSON.stringify(returned),
-          JSON.stringify([JSON.parse(entry.entry_text).source]),
-        ],
+      const historicalReceipt = await executeTask69History(
+        db,
+        operation,
+        full.entries.find((e) => e.issueId === entry.issue_id)!,
+        admin,
       );
+      const receiptId = historicalReceipt.receipt_id;
+      const returned = historicalReceipt.returned_ids;
       await db.query('SET CONSTRAINTS ALL IMMEDIATE');
       assert.equal((await authorize(admin)).rows[0].value.receipt.receipt_id, receiptId);
       assert.deepEqual((await authorize(assistant)).rows[0].value.receipt.returned_ids, returned);
@@ -210,7 +214,7 @@ async function main() {
           );
           await db.query('SET CONSTRAINTS ALL IMMEDIATE');
         },
-        /exact atomic audit and delta correspondence/,
+        /Task69 party receipt differs from exact approved semantics/,
       );
       await refuses(
         'receipt cannot be overwritten',

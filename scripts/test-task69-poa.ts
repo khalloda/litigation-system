@@ -3,12 +3,13 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { SessionClaims } from '../src/lib/auth/session';
-import { loadTask69Contract, task69Sha, type Row } from './lib/task69-contract';
+import { loadTask69Contract, type Row } from './lib/task69-contract';
 import {
   prepareTask69Operation,
   withTask69Fixture,
   bindTask69Operation,
   task69RunnerSourceDigest,
+  task69SchemaSourceDigest,
 } from './lib/task69-runner';
 import { executeTask69Poa } from './lib/task69-poa-executor';
 import { poaDetailQuery, poaCountQuery, poaRowsQuery, parsePoaFilters } from '../src/lib/poa-query';
@@ -37,7 +38,7 @@ async function main() {
     cluster: descriptor.cluster,
     database: descriptor.database,
     runnerSha256: task69RunnerSourceDigest(resolve('.')),
-    schemaSha256: task69Sha(sql),
+    schemaSha256: task69SchemaSourceDigest(process.cwd()),
   });
   const results: Row[] = [],
     probes: string[] = [];
@@ -216,6 +217,51 @@ async function main() {
         /Source, authority, payload or complete guard closure changed/u,
         () => executeTask69Poa(db, operation, changed, authority),
       );
+      const historical = ids
+        .map((id) => contract.byIssue.get(id)!)
+        .find((e) => e.approvedOutcome.poaId === 100)!;
+      assert(historical, 'Empty-client POA100 disposition required');
+      await fault(
+        'later-native-edit-refuses-zero-delta-receipt',
+        /changed|differs|stale/iu,
+        async () => {
+          await db.query(
+            "SELECT set_config('litigation.task69_operation','',true),set_config('litigation.task69_issue','',true)",
+          );
+          await db.query('SELECT public.audit_set_human_context($1)', [authority.userId]);
+          await db.query("SELECT public.audit_set_event_context($1,$2,$3,NULL,NULL,'system')", [
+            randomUUID(),
+            randomUUID(),
+            authority.auditSessionId,
+          ]);
+          const args = [
+            authority.userId,
+            authority.sessionVersion,
+            authority.role,
+            new Date(authority.absoluteExpiresAt).toISOString(),
+          ];
+          await db.query('SET LOCAL ROLE litigation_runtime');
+          const state = (
+            await db.query('SELECT public.poa_edit_state($1,$2,$3,$4,$5) value', [...args, 100])
+          ).rows[0].value;
+          await db.query('SELECT public.poa_edit_save($1,$2,$3,$4,$5::jsonb)', [
+            ...args,
+            JSON.stringify({
+              operation: 'update',
+              id: 100,
+              version: state.record.version,
+              submission: randomUUID(),
+              values: { notes: 'TASK69 ISOLATED ZERO-DELTA RETRY PROBE' },
+              lawyers: state.lawyers
+                .filter((l: { retired: boolean }) => !l.retired)
+                .map((l: { personId: number }) => l.personId),
+              facts: null,
+            }),
+          ]);
+          await db.query('RESET ROLE');
+          await executeTask69Poa(db, operation, historical, authority);
+        },
+      );
       for (const account of auth) {
         await db.query('SAVEPOINT native_poa');
         await db.query(
@@ -367,7 +413,7 @@ async function main() {
             focused,
             operationId: operation.operationId,
             runnerSha256: operation.runnerSha256,
-            schemaSha256: task69Sha(sql),
+            schemaSha256: task69SchemaSourceDigest(process.cwd()),
             results,
             probes,
             inserted,
