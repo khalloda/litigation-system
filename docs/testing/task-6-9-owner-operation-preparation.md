@@ -19,6 +19,10 @@ owner app remains on migration 78 and its retained production artifact.
 4. The entry point reuses the reviewed executors, two-phase ordering, journal,
    audit, retry and compensation rules. Immediately before registration it locks
    the complete relevant catalog and compares a fresh full-state witness.
+   Locks are acquired before the first SELECT establishes the SERIALIZABLE
+   snapshot. The preflight table list supplies that first lock statement; only
+   then are identity, catalog and complete state read. This prevents a concurrent
+   pre-lock writer being hidden by an earlier snapshot.
    Preparation and first apply also require equality with the sealed snapshot,
    including unrelated business rows, account/audit changes and sequences. The
    mandate, source and genuine session are rechecked after deferred constraints

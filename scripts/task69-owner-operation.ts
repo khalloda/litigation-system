@@ -23,6 +23,7 @@ import {
   task69ReadOnlyState,
   task69OwnerReadOnlyPreflight,
   assertTask69SealedPreflightState,
+  lockTask69PreflightTables,
 } from './lib/task69-owner-preflight';
 import {
   executeTask69BoundPhase,
@@ -353,23 +354,14 @@ async function main() {
           });
           outcome.prewriteState = fresh;
           const beforeBind = async () => {
-            await db.query("SET LOCAL TIME ZONE 'UTC'");
+            // Lock before any SELECT establishes the SERIALIZABLE data snapshot.
+            // A writer committed before this lock must be visible to the comparison.
+            await lockTask69PreflightTables(db, fresh.state);
             await assertTask69OwnerCapability(db, operation);
             assertTask69RuntimeBound(operation);
             assert(
               Date.now() - Date.parse(fresh.at) < 15 * 60000,
               'Fresh phase preflight expired before locking',
-            );
-            const tableNames = (
-              await db.query(
-                "SELECT n.nspname schema,c.relname name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','staging','quarantine','_migration') AND c.relkind IN('r','p') ORDER BY 1,2",
-              )
-            ).rows;
-            await db.query("SET LOCAL lock_timeout='5s'");
-            await db.query(
-              'LOCK TABLE ' +
-                tableNames.map((t) => quote(t.schema) + '.' + quote(t.name)).join(',') +
-                ' IN SHARE ROW EXCLUSIVE MODE',
             );
             const locked = await task69ReadOnlyState(db, 'locked-execution');
             assert.equal(

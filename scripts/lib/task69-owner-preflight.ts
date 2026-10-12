@@ -101,6 +101,27 @@ export async function task69ReadOnlyState(
   return { ...value, stateSha256: task69Digest(value) };
 }
 
+/** Must be the first database work after BEGIN SERIALIZABLE. SET LOCAL and
+ * LOCK do not establish the data snapshot before writers are excluded. The
+ * table list comes from the sealed fresh preflight; the complete catalog/state
+ * is compared after locking, so missing/renamed/new catalog entries refuse.
+ * No target/actor/catalog SELECT may precede this call in the transaction. */
+export async function lockTask69PreflightTables(
+  db: ClientBase,
+  state: { schema: Row[] },
+): Promise<void> {
+  assert(state.schema.length > 0, 'A complete preflight table list is required');
+  const names = state.schema.map((table) => {
+    assert(typeof table.schema === 'string' && typeof table.name === 'string');
+    assert(['public', 'staging', 'quarantine', '_migration'].includes(table.schema));
+    return quote(table.schema) + '.' + quote(table.name);
+  });
+  assert.equal(new Set(names).size, names.length, 'Duplicate preflight tables');
+  await db.query("SET LOCAL TIME ZONE 'UTC'");
+  await db.query("SET LOCAL lock_timeout='5s'");
+  await db.query('LOCK TABLE ' + names.join(',') + ' IN SHARE ROW EXCLUSIVE MODE');
+}
+
 /** A sealed proposal cannot silently absorb unrelated rows, account/audit or
  * sequence changes between its snapshot, baseline and first apply. */
 export function assertTask69SealedPreflightState(
