@@ -115,6 +115,42 @@ If that boundary is slow, inspect the exact task connection read-only; do not
 assume a client timeout proves rollback. A process interruption is not permission
 to run a new operation UUID or discard a still-running transaction.
 
+### T69-OP-R1: recognized committed boundaries
+
+The correction derives exact issue/dependency identity sets from the sealed
+allowlist and stage contract. A count alone cannot authorize recovery. Inspect
+with the same sealed operation UUID and a new output filename for each attempt:
+
+| Observed receipts | Permitted next step under a separate valid execution mandate |
+| --- | --- |
+| No apply or inverse receipts | No compensation. If no executor is in flight, diagnose a failed attempt and retry parents with the same UUID. |
+| Exact complete parent/dependency set (1,598 apply; no inverse) | Continue remaining only if wanted and all original guards pass; otherwise compensate the entire committed parent set. |
+| Exact complete full set (3,585 apply; no inverse) | Reconcile the full operation or compensate the entire set. |
+| Exact matching inverse set for either complete boundary | Retry compensation with the same UUID to verify existing receipt identities and current postimages. Apply refuses. |
+| Arbitrary subset, duplicate, foreign identity, unknown phase or partial/mixed inverse | Refuse. Preserve evidence and investigate; do not fill the gap merely to qualify for compensation. |
+| Any relevant executor still in flight, or unresolved COMMIT response | Observe server activity and receipts read-only first. No automatic compensation and no new UUID. |
+
+Use `inspect` before deciding after uncertainty. Its activity and receipt result
+is a dated observation, not a continuing writer freeze. The existing five-second
+lock timeout, lock-before-first-SELECT order and complete fresh-state comparison
+remain additional execution gates. An uncommitted phase is not a malformed
+partial committed phase; keep observing it without starting competing writes.
+
+For an exact parent boundary, `remaining` is safe continuation only under the
+existing authority, source, actor, references and current-state checks.
+`compensate` uses the same request structure for either complete boundary and
+creates an inverse for every committed identity together. A second `compensate`
+uses a fresh output filename and the same UUID, source and contract; it must add
+no effects. Never reuse the previous output file or edit a sealed contract.
+
+A genuine session must still have at least three hours remaining at phase start
+and remain valid at commit. If renewal is needed, sign in normally within the
+existing eight-hour policy, retain/account for those auth events and update only
+the protected session input. Do not alter the sealed UUID, sources or decisions,
+and do not extend a token lifetime. Reconcile any unrelated state change before
+resuming. Parent-only compensation timings belong to its actual correction-run
+evidence; the earlier full-operation measurement is not a substitute.
+
 Compensation uses complete audited postimage guards. Later native edits cause
 refusal, preserving that work. It retains truthful receipts, audit, metadata,
 sequences and archived/retired source objects; it is not a byte rewind and does

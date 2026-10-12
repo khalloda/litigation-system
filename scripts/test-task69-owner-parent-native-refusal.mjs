@@ -1,0 +1,161 @@
+import assert from 'node:assert/strict';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { assertTask69RuntimeBound } from './lib/task69-runner.ts';
+import { withTask69OwnerAuthority } from './lib/task69-owner-target.ts';
+import { withApprovedMigrationClient } from './lib/migration-principal.ts';
+import { parse } from 'dotenv';
+import { loadTask69Contract } from './lib/task69-contract.ts';
+import { compensateTask69Operation } from './lib/task69-compensation-executor.ts';
+const privateRoot = process.env.TASK69_PRIVATE_ROOT,
+  output = process.env.TASK69_EVIDENCE_OUTPUT;
+const descriptor = JSON.parse(readFileSync(join(privateRoot, 'fixture-descriptor.json')));
+assert.equal(descriptor.database, 'litigation_task69_owner_preparation');
+const operation = JSON.parse(readFileSync(join(privateRoot, 'sealed-operation.json'))),
+  contract = loadTask69Contract(process.env.TASK69_APPROVED_DIRECTORY),
+  authority = JSON.parse(readFileSync(join(privateRoot, 'fixture-logins.json'))).find(
+    (x) => x.role === 'Administrator',
+  ).claims;
+const started = new Date().toISOString();
+async function main() {
+  let outcome;
+  assertTask69RuntimeBound(operation);
+  const request = JSON.parse(readFileSync(join(privateRoot, 'request-compensate.json'))),
+    config = parse(readFileSync(request.connectionFile));
+  assert.equal(request.mode, 'rehearsal');
+  assert.notEqual(descriptor.cluster, '7676117521894273062');
+  await withApprovedMigrationClient(
+    async (db) =>
+      withTask69OwnerAuthority(
+        db,
+        operation,
+        {
+          action: 'compensate',
+          connectionUrl: config.MIGRATION_DATABASE_URL,
+          authorityPath: request.authorityFile,
+          authoritySha256: request.authoritySha256,
+          mandateTextPath: request.mandateTextFile,
+          initialPreflightPath: request.initialPreflightFile,
+          recoveryManifestPath: request.recoveryManifestFile,
+          recoveryDumpPath: request.recoveryDumpFile,
+          fixtureEnvironment: {
+            TASK40A_ISOLATED_CONTAINER: descriptor.name,
+            TASK40A_ISOLATED_TOKEN: descriptor.token,
+            TASK40A_ISOLATED_CLUSTER: descriptor.cluster,
+          },
+        },
+        async () => {
+          const snapshot = async () => {
+            const states = {};
+            for (const table of ['matters', 'matter_lawyers', 'audit_events'])
+              states[table] = (
+                await db.query(
+                  "SELECT count(*)::int n,md5(coalesce(string_agg(md5(to_jsonb(t)::text),'' ORDER BY id),'')) hash FROM public." +
+                    table +
+                    ' t',
+                )
+              ).rows[0];
+            states.receipts = (
+              await db.query(
+                'SELECT count(*)::int n FROM _migration.task69_receipt WHERE operation_id=$1',
+                [operation.operationId],
+              )
+            ).rows[0].n;
+            return states;
+          };
+          const matterId = Number(
+            (
+              await db.query(
+                "SELECT (d.entity_key->>'id')::int id FROM _migration.task69_delta d JOIN _migration.task69_receipt r USING(receipt_id) WHERE r.operation_id=$1 AND d.entity_table='matters' AND d.before_values IS NOT NULL ORDER BY id LIMIT 1",
+                [operation.operationId],
+              )
+            ).rows[0].id,
+          );
+          assert(Number.isInteger(matterId));
+          const baseline = await snapshot();
+          assert([1598, 3196].includes(baseline.receipts));
+          await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+          try {
+            await db.query('SELECT public.audit_set_human_context($1)', [authority.userId]);
+            await db.query("SELECT public.audit_set_event_context($1,$2,$3,NULL,NULL,'system')", [
+              randomUUID(),
+              randomUUID(),
+              authority.auditSessionId,
+            ]);
+            const args = [
+              authority.userId,
+              authority.sessionVersion,
+              authority.role,
+              new Date(authority.absoluteExpiresAt).toISOString(),
+            ];
+            await db.query('SET LOCAL ROLE litigation_runtime');
+            const state = (
+              await db.query('SELECT public.matter_edit_state($1,$2,$3,$4,$5) value', [
+                ...args,
+                matterId,
+              ])
+            ).rows[0].value;
+            const native = (
+              await db.query('SELECT public.matter_edit_save($1,$2,$3,$4,$5::jsonb) value', [
+                ...args,
+                JSON.stringify({
+                  id: matterId,
+                  version: state.record.version,
+                  submission: randomUUID(),
+                  values: { notes_2: 'TASK69 ISOLATED LATER EDIT REFUSAL' },
+                }),
+              ])
+            ).rows[0].value;
+            await db.query('RESET ROLE');
+            assert.equal(native.changed, true);
+            await db.query('SET CONSTRAINTS ALL IMMEDIATE');
+            await db.query('SET CONSTRAINTS ALL DEFERRED');
+            const afterNative = await snapshot();
+            await db.query('SAVEPOINT compensation_attempt');
+            let message;
+            try {
+              await compensateTask69Operation(db, operation, contract, authority);
+            } catch (e) {
+              message = e.message;
+            }
+            await db.query('ROLLBACK TO SAVEPOINT compensation_attempt');
+            assert(message);
+            assert.match(message, /changed|differs|postimage|stale/iu);
+            assert.deepEqual(await snapshot(), afterNative);
+            outcome = {
+              status: 'PASS',
+              phase: baseline.receipts === 1598 ? 'before-compensation' : 'after-compensation',
+              message,
+              genuineNativeEdit: true,
+              completeOperationReceipts: baseline.receipts,
+              failedCompensationAddedNothing: true,
+            };
+          } finally {
+            await db.query('ROLLBACK');
+          }
+          assert.deepEqual(await snapshot(), baseline);
+        },
+      ),
+    { databaseUrl: config.MIGRATION_DATABASE_URL },
+  );
+  writeFileSync(
+    output,
+    JSON.stringify(
+      {
+        ...outcome,
+        started,
+        completed: new Date().toISOString(),
+        ownerActions: 'NOT_APPLIED',
+        rolledBack: true,
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+  console.log(JSON.stringify(outcome));
+}
+main().catch((e) => {
+  console.error(e.message);
+  process.exitCode = 1;
+});

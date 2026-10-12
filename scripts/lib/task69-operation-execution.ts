@@ -30,6 +30,8 @@ import { executeTask69History } from './task69-history-executor';
 import { compensateTask69Operation } from './task69-compensation-executor';
 import { assertTask69Compensation } from './task69-compensation-checkpoint';
 
+import { classifyTask69Receipts, task69PhaseSets } from './task69-receipt-state';
+
 const tables = [
   'matters',
   'matter_parties',
@@ -116,17 +118,13 @@ export async function executeTask69BoundPhase(input: {
     outcome,
     persist,
   } = input;
-  const parentStages = ['S1-party-display', 'S2-lawyer-membership', 'S3-admin-parents'];
-  const expected = operation.allowlist
-    .filter((a) =>
-      action === 'parents'
-        ? a.unit_kind === 'dependency' || parentStages.includes(a.stage)
-        : action === 'remaining'
-          ? a.unit_kind === 'issue' && !parentStages.includes(a.stage)
-          : true,
-    )
-    .map((a) => a.issue_id)
-    .sort();
+  const phaseSets = task69PhaseSets(operation);
+  const expected =
+    action === 'parents'
+      ? phaseSets.parents
+      : action === 'remaining'
+        ? phaseSets.remaining
+        : phaseSets.all;
   const initialBusiness = await task69BusinessSnapshot(db),
     initialAudit = await task69AuditState(db),
     initialSequences = await task69Sequences(db);
@@ -153,6 +151,11 @@ export async function executeTask69BoundPhase(input: {
         [operation.operationId],
       )
     ).rows as Row[];
+    const receiptState = classifyTask69Receipts(
+      operation,
+      prior as unknown as import('./task69-receipt-state').Task69ReceiptIdentity[],
+    );
+    outcome.receiptStateBefore = receiptState;
     outcome.before = {
       businessDigest: task69Digest(initialBusiness),
       audit: initialAudit,
@@ -173,13 +176,17 @@ export async function executeTask69BoundPhase(input: {
       assert.deepEqual(await task69AuditState(db), initialAudit);
       assert.deepEqual(await task69Sequences(db), initialSequences);
     } else if (action === 'compensate') {
-      assert.equal(
-        prior.filter((r) => r.phase === 'apply').length,
-        3585,
-        'All issues and dependencies required before combined compensation',
+      assert.notEqual(
+        receiptState.state,
+        'ZERO_COMMITTED',
+        'No committed operation effects to compensate',
       );
       const receipts = await compensateTask69Operation(db, operation, contract, authority);
-      assert.equal(receipts.length, 3585);
+      assert.deepEqual(
+        receipts.map((r) => String(r.issue_id)).sort(),
+        receiptState.applied,
+        'Every committed entry must have its exact inverse receipt',
+      );
       await assertTask69Compensation(db);
       outcome.receipts = receipts;
       outcome.status = 'COMPENSATED';
@@ -265,14 +272,8 @@ export async function executeTask69BoundPhase(input: {
       } else {
         if (action === 'parents') assert.equal(prior.length, 0);
         else {
-          assert.equal(prior.length, 1598);
-          assert.deepEqual(
-            prior.map((r) => String(r.issue_id)).sort(),
-            operation.allowlist
-              .filter((a) => a.unit_kind === 'dependency' || parentStages.includes(a.stage))
-              .map((a) => a.issue_id)
-              .sort(),
-          );
+          assert.equal(receiptState.boundary, 'parents');
+          assert.deepEqual(prior.map((r) => String(r.issue_id)).sort(), phaseSets.parents);
         }
         if (fault === '--fault-before-journal')
           await db.query(

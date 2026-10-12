@@ -35,6 +35,8 @@ import { withApprovedMigrationClient } from './lib/migration-principal';
 import { assertIsolatedTestCluster } from './lib/isolated-postgres-fixture';
 import { assertStaffCheckpoint } from './lib/staff-roster-checkpoint';
 
+import { classifyTask69Receipts } from './lib/task69-receipt-state';
+
 type Request = {
   mode: 'owner' | 'rehearsal';
   target: Task69Target;
@@ -249,13 +251,22 @@ async function main() {
       const receipts = rows.length
         ? (
             await db.query(
-              'SELECT issue_id,phase,receipt_id::text FROM _migration.task69_receipt WHERE operation_id=$1 ORDER BY issue_id,phase',
+              'SELECT operation_id::text,issue_id,phase,receipt_id::text FROM _migration.task69_receipt WHERE operation_id=$1 ORDER BY issue_id,phase',
               [operation.operationId],
             )
           ).rows
         : [];
+      const activity = (
+        await db.query(
+          "SELECT pid,application_name,state,xact_start,query_start,wait_event_type,wait_event FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND application_name IN ('task69-explicit-owner-parents','task69-explicit-owner-remaining','task69-explicit-owner-compensate','task69-explicit-rehearsal-parents','task69-explicit-rehearsal-remaining','task69-explicit-rehearsal-compensate') AND (xact_start IS NOT NULL OR state='active') ORDER BY pid",
+        )
+      ).rows;
+      const receiptState = classifyTask69Receipts(operation, receipts);
       return {
         status: 'READ_ONLY_OUTCOME_OBSERVATION',
+        resolution: activity.length ? 'IN_FLIGHT_UNRESOLVED' : 'OBSERVED_COMPLETE_BOUNDARY',
+        activity,
+        receiptState,
         at: new Date().toISOString(),
         operationId: operation.operationId,
         target: request.target,
