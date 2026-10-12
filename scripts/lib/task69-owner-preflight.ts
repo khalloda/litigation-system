@@ -101,6 +101,20 @@ export async function task69ReadOnlyState(
   return { ...value, stateSha256: task69Digest(value) };
 }
 
+/** A sealed proposal cannot silently absorb unrelated rows, account/audit or
+ * sequence changes between its snapshot, baseline and first apply. */
+export function assertTask69SealedPreflightState(
+  sealed: { status: string; state: { stateSha256: string } },
+  current: { stateSha256: string },
+): void {
+  assert.equal(sealed.status, 'PASS');
+  assert.equal(
+    current.stateSha256,
+    sealed.state.stateSha256,
+    'Complete state differs from sealed preflight; preserve changes and prepare a new operation before first apply',
+  );
+}
+
 /** Pre-operation only: complete original guards, source identities, label
  * cardinalities and memberships are checked on migration78 or pristine94.
  * A later phase uses receipt-aware executor guards, never rebases these guards.

@@ -18,7 +18,9 @@ owner app remains on migration 78 and its retained production artifact.
    is not an execution mandate. Rehearsal always rejects the actual owner target.
 4. The entry point reuses the reviewed executors, two-phase ordering, journal,
    audit, retry and compensation rules. Immediately before registration it locks
-   the complete relevant catalog and compares a fresh full-state witness. The
+   the complete relevant catalog and compares a fresh full-state witness.
+   Preparation and first apply also require equality with the sealed snapshot,
+   including unrelated business rows, account/audit changes and sequences. The
    mandate, source and genuine session are rechecked after deferred constraints
    and before COMMIT. A missing COMMIT response is UNKNOWN, never a claim that
    rollback succeeded and never an instruction to compensate automatically.

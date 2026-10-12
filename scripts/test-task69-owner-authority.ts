@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { assertTask69SealedPreflightState } from './lib/task69-owner-preflight';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -92,6 +93,21 @@ function rejects(name: string, run: () => unknown) {
   assert(message, name + ' unexpectedly passed');
   checks.push({ name, status: 'REFUSED', message });
 }
+assertTask69SealedPreflightState(
+  { status: 'PASS', state: { stateSha256: hash } },
+  { stateSha256: hash },
+);
+checks.push({
+  name: 'sealed complete state matches before preparation/first apply',
+  status: 'PASS',
+});
+for (const changed of ['unrelated business row', 'account/audit bookkeeping', 'sequence state'])
+  rejects('sealed preflight refuses later ' + changed, () =>
+    assertTask69SealedPreflightState(
+      { status: 'PASS', state: { stateSha256: hash } },
+      { stateSha256: '2'.repeat(64) },
+    ),
+  );
 validateTask69ExecutionAuthority(operation, authority, 'parents', now);
 checks.push({
   name: 'well-formed rehearsal authority structure (not an executed operation)',

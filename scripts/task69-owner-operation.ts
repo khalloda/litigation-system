@@ -19,7 +19,11 @@ import {
   type Task69Target,
 } from './lib/task69-owner-target';
 import { prepareTask69OwnerOperation } from './lib/task69-owner-preparation';
-import { task69ReadOnlyState, task69OwnerReadOnlyPreflight } from './lib/task69-owner-preflight';
+import {
+  task69ReadOnlyState,
+  task69OwnerReadOnlyPreflight,
+  assertTask69SealedPreflightState,
+} from './lib/task69-owner-preflight';
 import {
   executeTask69BoundPhase,
   task69BusinessSnapshot,
@@ -190,12 +194,17 @@ async function main() {
       initialPreflightPath: request.initialPreflightFile,
       recoveryManifestPath: request.recoveryManifestFile,
     });
-    const baseline = await readonly(async (db) => ({
-      capturedAt: new Date().toISOString(),
-      business: await task69BusinessSnapshotBeforeSchema(db),
-      sequences: await task69Sequences(db),
-      audit: await task69AuditState(db),
-    }));
+    const baseline = await readonly(async (db) => {
+      const state = await task69ReadOnlyState(db);
+      assertTask69SealedPreflightState(read(request.initialPreflightFile), state);
+      return {
+        capturedAt: new Date().toISOString(),
+        sealedStateSha256: state.stateSha256,
+        business: await task69BusinessSnapshotBeforeSchema(db),
+        sequences: await task69Sequences(db),
+        audit: await task69AuditState(db),
+      };
+    });
     save(request.baselineFile, baseline);
     save(request.operationFile, operation);
     save(request.outputFile, {
@@ -334,6 +343,7 @@ async function main() {
             if (action === 'parents' && prior === 0) {
               const preflight = await task69OwnerReadOnlyPreflight(snapshot, contract);
               assert.equal(preflight.status, 'PASS', 'Fresh original guards conflict');
+              assertTask69SealedPreflightState(read(request.initialPreflightFile), preflight.state);
               outcome.freshGuardCounts = {
                 sources: preflight.sourceChecks,
                 references: preflight.referenceChecks,
