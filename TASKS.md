@@ -2561,3 +2561,10 @@ than assuming one rule for every workflow. Test with real volumes.
       picking one. Ruled 23 August 2026 when the hazard was found.
 - [ ] Collection splitting between lawyers
 - [ ] Excel import for the attendance and billing history kept outside Access
+
+## Task 6.9 owner-operation preparation v1.294
+
+Preparation candidate only: explicit target/authority entry point and read-only owner
+preflight. Isolated full-volume rehearsal and independent owner-operation review
+remain required. Task 6.9 HOLD; no owner migration, repair, candidate activation or
+push. S1/S2 saved selections deferred; Stage 7 unstarted.

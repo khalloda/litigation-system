@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClientBase } from 'pg';
 import { decode } from 'next-auth/jwt';
+import { task69OwnerBinding, assertTask69OwnerCapability } from './task69-owner-target';
 import { readSessionClaims, type SessionClaims } from '../../src/lib/auth/session';
 import { assertIsolatedTestCluster } from './isolated-postgres-fixture';
 import { migrationDatabaseTarget, withApprovedMigrationClient } from './migration-principal';
@@ -160,15 +161,18 @@ export function prepareTask69Operation(input: {
   };
 }
 
-export async function task69SignedSession(path: string): Promise<SessionClaims> {
+export async function task69SignedSession(
+  path: string,
+  secret = process.env['AUTH_SECRET'],
+): Promise<SessionClaims> {
   const stored = JSON.parse(readFileSync(path, 'utf8'));
   assert.ok(['authjs.session-token', '__Secure-authjs.session-token'].includes(stored.cookieName));
   assert.equal(typeof stored.token, 'string');
-  assert.ok(process.env['AUTH_SECRET'], 'Fixture app authentication secret required');
+  assert.ok(secret, 'Application authentication secret required');
   const decoded = await decode({
     token: stored.token,
     salt: stored.cookieName,
-    secret: process.env['AUTH_SECRET'],
+    secret,
   });
   assert.ok(decoded);
   const claims = readSessionClaims(decoded);
@@ -187,6 +191,11 @@ export async function withTask69Fixture<T>(
   work: (db: ClientBase) => Promise<T>,
 ): Promise<T> {
   assertTask69RuntimeBound(operation);
+  assert.equal(
+    task69OwnerBinding(operation),
+    null,
+    'Bound owner/rehearsal operations require their explicit entry point',
+  );
   const target = migrationDatabaseTarget();
   const url = new URL(`${target.protocol}//${target.hostname}:${target.port}/${target.database}`);
   assert.equal(url.pathname, '/' + operation.targetDatabase);
@@ -210,11 +219,14 @@ export async function registerTask69Operation(
   authority: SessionClaims,
 ): Promise<'registered' | 'already-registered'> {
   assertTask69RuntimeBound(operation);
-  const target = migrationDatabaseTarget();
-  await assertIsolatedTestCluster(
-    db,
-    new URL(`${target.protocol}//${target.hostname}:${target.port}/${target.database}`),
-  );
+  if (task69OwnerBinding(operation)) await assertTask69OwnerCapability(db, operation);
+  else {
+    const target = migrationDatabaseTarget();
+    await assertIsolatedTestCluster(
+      db,
+      new URL(`${target.protocol}//${target.hostname}:${target.port}/${target.database}`),
+    );
+  }
   const actual = (
     await db.query(
       'SELECT current_database() database,(pg_control_system()).system_identifier::text cluster',
@@ -224,7 +236,8 @@ export async function registerTask69Operation(
     database: operation.targetDatabase,
     cluster: operation.targetCluster,
   });
-  assert.match(operation.targetDatabase, /^litigation_task69_[a-z0-9_]+$/u);
+  if (!task69OwnerBinding(operation))
+    assert.match(operation.targetDatabase, /^litigation_task69_[a-z0-9_]+$/u);
   await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
   try {
     const result = await bindTask69Operation(db, operation, authority);
@@ -243,11 +256,14 @@ export async function bindTask69Operation(
   authority: SessionClaims,
 ): Promise<'registered' | 'already-registered'> {
   assertTask69RuntimeBound(operation);
-  const target = migrationDatabaseTarget();
-  await assertIsolatedTestCluster(
-    db,
-    new URL(`${target.protocol}//${target.hostname}:${target.port}/${target.database}`),
-  );
+  if (task69OwnerBinding(operation)) await assertTask69OwnerCapability(db, operation);
+  else {
+    const target = migrationDatabaseTarget();
+    await assertIsolatedTestCluster(
+      db,
+      new URL(`${target.protocol}//${target.hostname}:${target.port}/${target.database}`),
+    );
+  }
   const state = (
     await db.query(
       "SELECT current_database() database,(pg_control_system()).system_identifier::text cluster,current_setting('transaction_isolation') isolation",
