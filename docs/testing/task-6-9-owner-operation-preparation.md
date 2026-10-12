@@ -251,3 +251,64 @@ Owner migration, repair, restoration, candidate activation, main movement,
 acceptance closure and publication remain NOT_APPLIED. Task 6.9 is HOLD for
 independent owner-operation review; S1/S2 selections remain deferred and Stage 7
 remains unstarted.
+
+## T69-OP-R1 correction evidence — 12 October 2026
+
+The corrected executable source is `4e5fcfe9cdfcd6caa7e6f3b93a18c3fae0c089aa`.
+The evidence documentation child changes no runtime. Independent correction review
+remains required; this is not an owner-execution mandate or Task 6.9 acceptance.
+
+A new isolated full-state fixture exercised the same sealed preparation, authority,
+apply and compensation entry point. Its exact 1,598 parent/dependency entries
+committed. An injected missing COMMIT response was reported as UNKNOWN, then
+resolved read-only; same-operation retry preserved complete state. The remaining
+phase failed before COMMIT and rolled back all business/audit/journal/schema
+changes. Only task_actions_id_seq advanced from 10449 to 10450 and was retained.
+
+Compensation of the complete committed parent set passed: 1,598 exact linked
+inverse receipts, all original receipts/history preserved, and all 19,553 old
+business rows restored to their old business projections. Created source objects
+remain archived/retired/inactive; truthful metadata and sequences are not rewound.
+Compensation retry added no effects. Apply after compensation refused. Genuine
+native edits refused compensation before and after it, with both probe transactions
+fully rolled back and complete state/sequence equality.
+
+Measured elapsed times were 23.852 minutes for the first phase, 0.519 for its
+receipt-recovery retry, 0.300 for the deliberately failed remaining phase,
+3.810 for parent-only compensation, and 1.092 for compensation retry. These are
+observations on this laptop, not promised owner maintenance times. The earlier
+full-operation 81.998-minute compensation remains separate historical evidence.
+
+Twenty compiled exact-set/coordinator controls cover complete parent/full sets,
+both compensated retries, zero, duplicates, foreign identities, mixed stages and
+partial inverses. Three additional malformed receipt-read controls use actual
+locked PostgreSQL transactions with intentionally intercepted read results; they
+do not claim that malformed journal rows were stored. In-flight inspection and
+unchanged five-second lock refusal passed. The existing 27 authority and 15 actual
+database boundary controls, full static checks, schema validation and 148 final
+database checks passed.
+The first final database run passed 147/148 checks: the isolated logo directory
+was absent. All 54 protected logo copies were hash-verified and copied to that
+fixture-only path before rerunning the unchanged gate. The failure is preserved.
+
+Fresh independent physical reconciliation covers all 1,478 parent-phase decisions
+and 120 dependencies. All 3,465 source decisions remain independently checked;
+the full physical oracle was rerun over exact retained full-operation evidence.
+Unchanged inverse/authority/transaction/schema dependencies and fresh full-set
+control-flow proof justify reuse of that earlier full PostgreSQL run. Application,
+UI/Noto/font and build inputs are byte-identical; unchanged build/consumer/browser
+proof retains its dates and limitations. No copying/search diagnosis was reopened.
+
+The original five-file delivery and all prior fixtures/evidence remain unchanged.
+The formerly missing external v1.294 manifest is now verified additively; the
+original missing-at-execution receipt stays intact. The historical 22-file command-
+witness limit also remains explicit. The corrected delivery supplies exact source,
+requests, commit/patch provenance, receipt-inclusive verification and its own
+failed-attempt record. Protected credentials and backups stay outside Git/delivery.
+
+The owner app remains on source20ae566/buildnX8tceCzk9kmMQNThtYZA at loopback3000,
+with migration78 unchanged. All159 owner table digests and48 sequence states,
+configuration, recovery dumps and54 logos passed preservation checks. Hearing11003
+and every saved selection are preserved. No owner login/export, migration, repair,
+restoration, candidate activation, main movement, acceptance or push occurred.
+Task6.9 HOLD; saved-selectionS1/S2 DEFERRED; Stage7 UNSTARTED.
