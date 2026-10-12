@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { isIPv4 } from 'node:net';
 import { readFileSync } from 'node:fs';
 import type { ClientBase } from 'pg';
 import { task69Digest, task69Sha, TASK69_INPUTS, type Json } from './task69-contract';
@@ -72,7 +73,11 @@ export function validateTask69OwnerBinding(binding: Task69OwnerBinding): void {
   );
   assert.match(binding.target.cluster, /^[0-9]+$/u);
   assert.equal(binding.target.serverPort, 5432);
-  assert.match(binding.target.serverAddress, /^[0-9.]+$/u);
+  const [address, prefix, ...extra] = binding.target.serverAddress.split('/');
+  assert(
+    isIPv4(address!) && (prefix === undefined || prefix === '32') && extra.length === 0,
+    'Exact PostgreSQL IPv4 host address required',
+  );
   if (binding.mode === 'owner')
     assert.deepEqual(
       {

@@ -39,7 +39,7 @@ const binding: Task69OwnerBinding = {
     database: d.database,
     hostname: '127.0.0.1',
     port: Number(d.port),
-    serverAddress: '172.20.0.2',
+    serverAddress: '172.20.0.2/32',
     serverPort: 5432,
   },
   acceptedBase: '47835caec58be16cd5dc72b14f4564bbfd4cc568',
@@ -97,6 +97,13 @@ checks.push({
   name: 'well-formed rehearsal authority structure (not an executed operation)',
   status: 'PASS',
 });
+for (const invalid of ['172.20.0.2/24', '999.20.0.2/32', '172.20.0.2/32/32'])
+  rejects('invalid server host address ' + invalid, () =>
+    validateTask69OwnerBinding({
+      ...binding,
+      target: { ...binding.target, serverAddress: invalid },
+    }),
+  );
 rejects('preparation is not execution', () =>
   validateTask69ExecutionAuthority(
     operation,
