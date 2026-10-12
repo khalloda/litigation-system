@@ -147,3 +147,71 @@ movement, fetch solely for cached inspection, push or acceptance occurs here.
 Task6.9 remains HOLD for independent owner-operation review. S1/S2 saved choices
 remain deferred; Stage7 is unstarted. N1 remains accepted/unresolved/NOT FIXED;
 PDF copying is accepted/unfixed and search is not certified. No diagnosis reopened.
+
+## Completed preparation evidence
+
+Executable source `a62ff92cfe33a3e127a9fd54502e2b03963de3c4` completed the
+new-entry full-volume rehearsal on a fresh, separately identified cluster restored
+from the refreshed owner backup. The final documentation child changes no runtime
+source. External evidence retains exact commands, source hashes and observation times.
+
+- Apply: 1,598 parent/dependency entries and 1,987 remaining entries, producing
+  3,585 exact apply receipts. An injected missing COMMIT response was reported as
+  unknown; read-only inspection and the same-operation retry proved the commit
+  without adding state or sequence effects.
+- The independent source oracle passed all 3,465 approved decisions and 120
+  dependencies, preserving the 3,960 = 3,465 + 411 + 84 partition and the 97 subset.
+- Guarded compensation produced 3,585 linked inverse receipts. Its retry had
+  zero full-state/sequence effects; all 19,553 original business rows and protected
+  source/selection digests were preserved. Compensation retains source objects as
+  archived/retired/inactive and does not rewind metadata or sequences.
+- Real native-edit probes refused compensation before and after compensation.
+  Their transactional changes rolled back, and both probes left the complete
+  state unchanged. Sequence states are separately compared in the evidence.
+- Focused authority checks (27), real database boundary checks (15), and the
+  two-connection lock-before-snapshot regression (4) passed. Full static checks,
+  production build, schema validation and the required database gates passed.
+- Application, UI/font and schema bytes remain identical to the accepted
+  implementation. Seven dated consumer/browser/fee/catalog proofs are reused only
+  with exact dependency and fresh physical-reconciliation evidence. No new owner
+  authentication/export or PDF copying/search claim is made.
+
+Measured phase times were 23.755 minutes for parents, 70.278 for
+remaining, 81.998 for compensation and 14.266 for its retry. The external
+runbook adds explicit recovery, migration, reconciliation, owner smoke and activation
+allowances; these measurements are not promises of an owner maintenance duration.
+
+Earlier partial fixtures and failed attempts are preserved. A demonstrated
+SERIALIZABLE snapshot-before-lock race caused a controlled rollback of the obsolete
+remaining-phase attempt; only its allocated task-action sequence advanced. The
+corrected source locks before any SELECT, and the fresh run above uses that source.
+No old partial operation was resumed under changed executable code.
+
+The owner remained on migration 78 and the accepted source `20ae566` artifact,
+with build `nX8tceCzk9kmMQNThtYZA` running on loopback port 3000. Read-only final
+preservation and HTTP/login-page health checks passed. The owner's legitimate
+11:07 Cairo desktop sign-in was preserved and exactly accounted in two audit events,
+account timestamps and counters; a refreshed backup includes it. Observation times
+are recorded; this does not claim a continuously frozen owner database.
+
+Recovery includes a full protected dump, configuration/runtime identity and all
+54 logos, verified through isolated restoration. Four PostgreSQL constraint
+deparsing differences have explicit equivalence proofs. No runner preflight was
+normalized or weakened. Recovery stays on this laptop; no off-machine claim is made.
+
+Review limitations remain explicit: the supplied handoff had an internal manifest
+but no external companion manifest; 22 unchanged CSS/icon/PowerShell/TOML files
+were proved separately because historical command witnesses captured executable
+source suffixes only. Every historical witness is retained unchanged. The receipt-
+inclusive verifier checks recorded artifacts; it does not execute PostgreSQL or
+browser tests and grants no owner authority.
+
+Compensation emits no per-entry counter. Exact-target read-only activity witnesses
+record its active, unblocked deferred-constraint phase without exposing query text
+or claiming commit/percentage progress. The transaction remains intact until its
+recorded result; all constraints and genuine-session checks remain enabled.
+
+Owner migration, repair, restoration, candidate activation, main movement,
+acceptance closure and publication remain NOT_APPLIED. Task 6.9 is HOLD for
+independent owner-operation review; S1/S2 selections remain deferred and Stage 7
+remains unstarted.

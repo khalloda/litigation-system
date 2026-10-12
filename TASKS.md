@@ -2565,6 +2565,7 @@ than assuming one rule for every workflow. Test with real volumes.
 ## Task 6.9 owner-operation preparation v1.294
 
 Preparation candidate only: explicit target/authority entry point and read-only owner
-preflight. Isolated full-volume rehearsal and independent owner-operation review
-remain required. Task 6.9 HOLD; no owner migration, repair, candidate activation or
-push. S1/S2 saved selections deferred; Stage 7 unstarted.
+preflight. Full-volume isolated rehearsal, receipt recovery and guarded compensation
+passed; independent owner-operation review remains required. Task 6.9 HOLD; no owner
+migration, repair, candidate activation or push. S1/S2 saved selections deferred;
+Stage 7 unstarted.
