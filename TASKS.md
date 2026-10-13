@@ -2477,20 +2477,20 @@ than assuming one rule for every workflow. Test with real volumes.
       Only `صالح-ضد مفصل حسب المحامي` remains unknown.
       `Copy Of صالح-ضد temp-JTI` has been dropped entirely (D17).
       The other four are now one parameterised report — see 6.2.
-- [ ] **6.9 Reconcile six reports against Access, row for row**
+- [x] **6.9 Reconcile six reports against Access, row for row**
 
-      Task 6.9 remains HOLD. The bounded post-repair reconciliation received
-      independent PASS. On 13 October 2026, the owner approved S1/S2 and all
-      exact 88 saved choices were applied through the accepted app: 3 lawyer,
-      30 administrative hearings and 55 administrative steps. Current identity,
-      audit, report/export and preservation checks passed; independent selection-
-      application review remains required. The prior 3,465 repairs plus 120
-      dependencies and migrations 79–94 remain applied without replay.
-      Executable source 05caa89 is unchanged. Literal six-report Access equality
-      is not claimed; approved-policy and historical-date differences remain.
-      See the [bounded review](docs/reviews/2026-10-13-task-6-9-post-repair-independent-review.md)
-      and [selection report](docs/task-reports/2026-10-13-task-6-9-owner-selections.md).
-      Global acceptance and publication remain open; Stage 7 has not started.
+      Task 6.9 is accepted complete on the explained-reconciliation basis
+      recorded in the acceptance report. All original report rows/fields are
+      accounted for; approved-policy and historical/current-data differences
+      remain explicit. Literal six-report Access equality is not claimed.
+      Independent owner-operation, post-repair reconciliation and saved-selection
+      application reviews passed. All 3,465 decisions plus 120 dependencies,
+      migrations 79–94 and the approved 88 saved choices are applied; no replay.
+      Executable source 05caa89 remains unchanged. Existing limitations are
+      preserved, not marked fixed. See the
+      [selection review](docs/reviews/2026-10-13-task-6-9-owner-selections-independent-review.md)
+      and [acceptance record](docs/task-reports/2026-10-13-task-6-9-acceptance.md).
+      Documentation review/publication remain separate; Stage 7 has not started.
 
 
 ---
@@ -2576,5 +2576,5 @@ than assuming one rule for every workflow. Test with real volumes.
 Historical v1.294 preparation: explicit target/authority entry point and read-only
 owner preflight, with isolated rehearsal, receipt recovery and guarded compensation.
 The later owner operation and independent PASS are recorded in Task 6.9 above.
-S1/S2 were later approved and all 88 applied; independent application review pending.
-Global Task 6.9 HOLD and Stage 7 unstarted.
+S1/S2 were later approved, all 88 applied and independently reviewed PASS.
+Task 6.9 was subsequently accepted on the explained-reconciliation basis above; Stage 7 unstarted.
