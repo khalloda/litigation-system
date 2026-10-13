@@ -2479,10 +2479,17 @@ than assuming one rule for every workflow. Test with real volumes.
       The other four are now one parameterised report — see 6.2.
 - [ ] **6.9 Reconcile six reports against Access, row for row**
 
-      Task 6.9 remains HOLD. The authorized v1.293 isolated implementation is
-      underway on a separate candidate branch; all eight stages and independent
-      implementation review remain required. No owner restoration, activation or
-      acceptance is recorded by this candidate. Saved-selection S1/S2 stay deferred.
+      Task 6.9 remains HOLD. On 13 October 2026, migrations 79–94 and the
+      approved 3,465 decisions plus 120 dependencies were applied and source
+      05caa89 was activated. The independent bounded owner-operation PASS is
+      accepted; no repair replay is required. Current post-repair reconciliation
+      and the isolated 88-choice simulation are complete for independent review.
+      S1/S2 owner selections remain unapproved/unapplied; the six-report comparison
+      retains explicit policy, historical-date and pending-selection differences.
+      See the [operational review](docs/reviews/2026-10-13-task-6-9-owner-operation-independent-review.md)
+      and [reconciliation report](docs/task-reports/2026-10-13-task-6-9-post-repair-reconciliation.md).
+      Global acceptance and publication remain open; Stage 7 has not started.
+
 
 ---
 
@@ -2564,8 +2571,7 @@ than assuming one rule for every workflow. Test with real volumes.
 
 ## Task 6.9 owner-operation preparation v1.294
 
-Preparation candidate only: explicit target/authority entry point and read-only owner
-preflight. Full-volume isolated rehearsal, receipt recovery and guarded compensation
-passed; independent owner-operation review remains required. Task 6.9 HOLD; no owner
-migration, repair, candidate activation or push. S1/S2 saved selections deferred;
-Stage 7 unstarted.
+Historical v1.294 preparation: explicit target/authority entry point and read-only
+owner preflight, with isolated rehearsal, receipt recovery and guarded compensation.
+The later owner operation and independent PASS are recorded in Task 6.9 above.
+S1/S2 owner selections remain pending; global Task 6.9 HOLD and Stage 7 unstarted.
