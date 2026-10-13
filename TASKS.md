@@ -2479,15 +2479,17 @@ than assuming one rule for every workflow. Test with real volumes.
       The other four are now one parameterised report — see 6.2.
 - [ ] **6.9 Reconcile six reports against Access, row for row**
 
-      Task 6.9 remains HOLD. On 13 October 2026, migrations 79–94 and the
-      approved 3,465 decisions plus 120 dependencies were applied and source
-      05caa89 was activated. The independent bounded owner-operation PASS is
-      accepted; no repair replay is required. Current post-repair reconciliation
-      and the isolated 88-choice simulation are complete for independent review.
-      S1/S2 owner selections remain unapproved/unapplied; the six-report comparison
-      retains explicit policy, historical-date and pending-selection differences.
-      See the [operational review](docs/reviews/2026-10-13-task-6-9-owner-operation-independent-review.md)
-      and [reconciliation report](docs/task-reports/2026-10-13-task-6-9-post-repair-reconciliation.md).
+      Task 6.9 remains HOLD. The bounded post-repair reconciliation received
+      independent PASS. On 13 October 2026, the owner approved S1/S2 and all
+      exact 88 saved choices were applied through the accepted app: 3 lawyer,
+      30 administrative hearings and 55 administrative steps. Current identity,
+      audit, report/export and preservation checks passed; independent selection-
+      application review remains required. The prior 3,465 repairs plus 120
+      dependencies and migrations 79–94 remain applied without replay.
+      Executable source 05caa89 is unchanged. Literal six-report Access equality
+      is not claimed; approved-policy and historical-date differences remain.
+      See the [bounded review](docs/reviews/2026-10-13-task-6-9-post-repair-independent-review.md)
+      and [selection report](docs/task-reports/2026-10-13-task-6-9-owner-selections.md).
       Global acceptance and publication remain open; Stage 7 has not started.
 
 
@@ -2574,4 +2576,5 @@ than assuming one rule for every workflow. Test with real volumes.
 Historical v1.294 preparation: explicit target/authority entry point and read-only
 owner preflight, with isolated rehearsal, receipt recovery and guarded compensation.
 The later owner operation and independent PASS are recorded in Task 6.9 above.
-S1/S2 owner selections remain pending; global Task 6.9 HOLD and Stage 7 unstarted.
+S1/S2 were later approved and all 88 applied; independent application review pending.
+Global Task 6.9 HOLD and Stage 7 unstarted.
